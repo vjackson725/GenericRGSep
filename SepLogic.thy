@@ -3,7 +3,6 @@ theory SepLogic
 begin
 
 
-
 lemma prod_eq_decompose:
   \<open>a = (b,c) \<longleftrightarrow> fst a = b \<and> snd a = c\<close>
   \<open>(b,c) = a \<longleftrightarrow> fst a = b \<and> snd a = c\<close>
@@ -38,6 +37,22 @@ next
   qed
 qed
 
+lemmas bij_betw_disjoint_insert =
+  bij_betw_disjoint_Un[where A=\<open>{b}\<close> and C=\<open>{d}\<close> for b d, simplified]
+
+lemma bij_betw_insert_ignore:
+  \<open>bij_betw f B D \<Longrightarrow> b \<in> B \<Longrightarrow> d \<in> D \<Longrightarrow> bij_betw f (insert b B) (insert d D)\<close>
+  by (simp add: insert_absorb)
+
+lemma bij_betw_singleton:
+  \<open>f a = b \<Longrightarrow> bij_betw f {a} {b}\<close>
+  by (simp add: bij_betw_def)
+
+lemmas bij_betw_combine_insert =
+  bij_betw_combine[where A=\<open>{b}\<close> and B=\<open>{d}\<close> for b d, simplified]
+
+
+section \<open>Predicate Logic\<close>
 
 definition pred_false :: \<open>'a \<Rightarrow> bool\<close> (\<open>\<^bold>F\<close>) where
   \<open>\<^bold>F \<equiv> \<lambda>x. False\<close>
@@ -56,37 +71,6 @@ definition pred_disj :: \<open>('a \<Rightarrow> bool) \<Rightarrow> ('a \<Right
 
 definition pred_impl :: \<open>('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool)\<close> (infixr \<open>\<^bold>\<longrightarrow>\<close> 82) where
   \<open>p \<^bold>\<longrightarrow> q \<equiv> \<lambda>x. p x \<longrightarrow> q x\<close>
-
-definition
-  \<open>seplogic_model U L D p z \<equiv>
-    (z \<in> U) \<and>
-    (\<forall>a\<in>U. \<forall>b\<in>U. p a b \<in> U) \<and>
-    (\<forall>a\<in>U. \<forall>b\<in>U. \<forall>c\<in>U. L a b \<longrightarrow> L b c \<longrightarrow> L a c) \<and>
-    (\<forall>a\<in>U. L a a) \<and>
-    (\<forall>a\<in>U. \<forall>b\<in>U. L a b \<longrightarrow> L b a \<longrightarrow> a = b) \<and>
-    (\<forall>a\<in>U. L z a) \<and>
-    (\<forall>a\<in>U. D a a \<longrightarrow> a \<noteq> z) \<and>
-    (\<forall>a\<in>U. \<forall>b\<in>U. D a b = D b a) \<and>
-    (\<forall>a\<in>U. D z a) \<and>
-    (\<forall>a\<in>U. \<forall>b\<in>U. \<forall>c\<in>U. D a (p b c) \<longleftrightarrow> D a b \<and> D a c) \<and>
-    (\<forall>a\<in>U. \<forall>b\<in>U. L a b \<longleftrightarrow> (\<exists>c. D a c \<and> b = p a c)) \<and>
-    (\<forall>a\<in>U. \<forall>b\<in>U. \<forall>c\<in>U. D a b \<longrightarrow> D b c \<longrightarrow> D a c \<longrightarrow> p (p a b) c = p a (p b c)) \<and>
-    (\<forall>a\<in>U. \<forall>b\<in>U. D a b \<longrightarrow> p a b = p b a) \<and>
-    (\<forall>a\<in>U. p z a = a)\<close>
-
-
-definition
-  \<open>seplogic_error_model U L D p z bad \<equiv>
-    seplogic_model U L D p z \<and>
-    (bad \<in> U) \<and>
-    (\<forall>a\<in>U. \<forall>b\<in>U. \<not> D a b \<longrightarrow> p a b = bad)
-  \<close>
-
-lemma
-    \<open>seplogic_model U L D p z \<longleftrightarrow>
-      seplogic_error_model (insert bad U) L D (\<lambda>a b. if D a b then p a b else bad) z bad\<close>
-  unfolding seplogic_model_def seplogic_error_model_def
-  by (safe; fast)
 
 
 class seplogic = plus + zero + order_bot +
@@ -107,10 +91,6 @@ class seplogic = plus + zero + order_bot +
 *)
 begin
 
-(*
-lemma bad_not_sep: \<open>a \<noteq> 0 \<Longrightarrow> \<not> (bad \<currency> a)\<close>
-  by (metis disjoint_add_left disjoint_refl_only_zero disjoint_symm not_sep_add_bad)
-*)
 
 lemma disjoint_add_right[simp]: \<open>(a + b) \<currency> c \<longleftrightarrow> a \<currency> c \<and> b \<currency> c\<close>
   by (simp add: disjoint_symm)
@@ -391,9 +371,19 @@ lemma the_resources_eq_iff:
   \<open>the_resources a = b \<longleftrightarrow> a = Resources b\<close>
   by fastforce
 
+lemma the_varenv_inject:
+  \<open>the_varenv a = the_varenv b \<longleftrightarrow> a = b\<close>
+  by (metis varenv.exhaust_sel)
+lemma the_heap_inject:
+  \<open>the_heap a = the_heap b \<longleftrightarrow> a = b\<close>
+  by (metis heap.exhaust_sel)
+lemma the_resources_inject:
+  \<open>the_resources a = the_resources b \<longleftrightarrow> a = b\<close>
+  by (metis resources.exhaust_sel)
+
 type_synonym 'v state = \<open>'v varenv \<times> heap \<times> resources\<close>
 
-fun denot_iexpr :: \<open>'v iexpr \<Rightarrow> (('v \<rightharpoonup> nat) \<rightharpoonup> nat)\<close> (\<open>(\<lbrakk>_\<rbrakk>\<^sub>I) _\<close> [80,80] 80) where
+fun denot_iexpr :: \<open>'v iexpr \<Rightarrow> (('v \<rightharpoonup> nat) \<rightharpoonup> nat)\<close> (\<open>\<lbrakk>_\<rbrakk>\<^sub>I _\<close> [51,51] 51) where
   \<open>\<lbrakk> IEVar x \<rbrakk>\<^sub>I \<sigma> = \<sigma> x\<close>
 | \<open>\<lbrakk> IELit k \<rbrakk>\<^sub>I \<sigma> = Some k\<close>
 | \<open>\<lbrakk> IEAdd a b \<rbrakk>\<^sub>I \<sigma> =
@@ -423,8 +413,8 @@ inductive opsem_ram_comm :: \<open>'v state \<Rightarrow> 'v ram_comm \<Rightarr
 | \<open>h p = None \<Longrightarrow> (VarEnv s, Heap h, r), CHeapNew x \<leadsto> Some (VarEnv (s(x \<mapsto> p)), Heap (h(p \<mapsto> undefined)), r)\<close>
 | \<open>h p \<noteq> None \<Longrightarrow> (VarEnv s, Heap h, r), CHeapNew x \<leadsto> None\<close>
 | \<open>\<lbrakk>e\<rbrakk>\<^sub>I s = Some p \<Longrightarrow> h p \<noteq> None \<Longrightarrow> (VarEnv s, Heap h, r), CHeapDel e \<leadsto> Some (VarEnv s, Heap (h(p := None)), r)\<close>
-| \<open>\<lbrakk>e\<rbrakk>\<^sub>I s = None \<Longrightarrow> (VarEnv s, h, r), CHeapDel e \<leadsto> None\<close>
 | \<open>\<lbrakk>e\<rbrakk>\<^sub>I s = Some p \<Longrightarrow> h p = None \<Longrightarrow> (VarEnv s, Heap h, r), CHeapDel e \<leadsto> None\<close>
+| \<open>\<lbrakk>e\<rbrakk>\<^sub>I s = None \<Longrightarrow> (VarEnv s, Heap h, r), CHeapDel e \<leadsto> None\<close>
 | \<open>\<lbrakk>b\<rbrakk>\<^sub>B s = Some True \<Longrightarrow> (VarEnv s, h, r), CAssume b \<leadsto> Some (VarEnv s, h, r)\<close>
 
 inductive_cases opsem_ram_comm_CSkipE[elim!]: \<open>s, CSkip \<leadsto> s'\<close>
@@ -436,7 +426,7 @@ inductive_cases opsem_ram_comm_CHeapDelE[elim]: \<open>s, CHeapDel e \<leadsto> 
 inductive_cases opsem_ram_comm_CAssumeE[elim!]: \<open>s, CAssume b \<leadsto> s'\<close>
 
 lemma opsem_ram_comm_simps:
-  \<open>s, CSkip \<leadsto> os' \<longleftrightarrow> (\<exists>s1. os' = Some s1 \<and> s = s1)\<close>
+  \<open>s, CSkip \<leadsto> os' \<longleftrightarrow> os' = Some s\<close>
   \<open>s, CAssign x e \<leadsto> os' \<longleftrightarrow>
     (\<exists>v h r. s = (VarEnv v, h, r) \<and> os' = Some (VarEnv (v(x := \<lbrakk>e\<rbrakk>\<^sub>I v)), h, r))\<close>
   \<open>s, CHeapR x ep \<leadsto> os' \<longleftrightarrow>
@@ -482,14 +472,15 @@ proof -
         s = (VarEnv v, Heap h, r) \<and>
         (case \<lbrakk>e\<rbrakk>\<^sub>I v of None \<Rightarrow> os' = None
          | Some p \<Rightarrow>
-             (case h p of None \<Rightarrow> os' = None | Some x \<Rightarrow> os' = Some (VarEnv v, Heap (h(p := None)), r))))\<close>
+            (case h p of None \<Rightarrow> os' = None
+            | Some x \<Rightarrow> os' = Some (VarEnv v, Heap (h(p := None)), r))))\<close>
     apply (simp split: option.splits)
     apply (rule iffI)
       (* Part 1 *)
      apply (erule opsem_ram_comm_CHeapDelE)
        apply (clarsimp, metis not_Some_eq option.inject)
       apply (force simp add: the_heap_eq_iff[symmetric] split: option.splits)
-     apply fastforce
+    apply (metis Heap_always_ex option.simps(3))
       (* Part 2 *)
     apply clarsimp
     apply (case_tac \<open>\<lbrakk>e\<rbrakk>\<^sub>I v\<close>; clarsimp simp add: opsem_ram_comm.intros)
@@ -751,35 +742,10 @@ qed
 end
 
 
-inductive logic_comm :: \<open>('v state \<Rightarrow> bool) list \<Rightarrow>('v state \<Rightarrow> bool) \<Rightarrow> 'v comm \<Rightarrow> ('v state \<Rightarrow> bool) \<Rightarrow> bool\<close>
-  (\<open>_ \<turnstile>\<^sub>c \<lbrace> _ \<rbrace> _ \<lbrace> _ \<rbrace>\<close> [80,80,80,80] 80)
-  where
-  seplogic_ramcomm: \<open>P h \<Longrightarrow> s, c \<leadsto> Some s' \<Longrightarrow> Q h' \<Longrightarrow> I \<turnstile>\<^sub>c \<lbrace> P \<rbrace> CRam c \<lbrace> Q \<rbrace>\<close>
-| seplogic_seq: \<open>I \<turnstile>\<^sub>c \<lbrace> P \<rbrace> c0 \<lbrace> Q \<rbrace> \<Longrightarrow> I \<turnstile>\<^sub>c \<lbrace> Q \<rbrace> c1 \<lbrace> R \<rbrace> \<Longrightarrow> I \<turnstile>\<^sub>c \<lbrace> P \<rbrace> c0 ;; c1 \<lbrace> R \<rbrace>\<close>
-| seplogic_choice: \<open>I \<turnstile>\<^sub>c \<lbrace> P \<rbrace> c0 \<lbrace> Q \<rbrace> \<Longrightarrow> I \<turnstile>\<^sub>c \<lbrace> P \<rbrace> c1 \<lbrace> Q \<rbrace> \<Longrightarrow> I \<turnstile>\<^sub>c \<lbrace> P \<rbrace> c0 \<box> c1 \<lbrace> Q \<rbrace>\<close>
-| seplogic_loop: \<open>I \<turnstile>\<^sub>c \<lbrace> P \<rbrace> c \<lbrace> P \<rbrace> \<Longrightarrow> I \<turnstile>\<^sub>c \<lbrace> P \<rbrace> c\<^sup>\<star> \<lbrace> P \<rbrace>\<close>
-| seplogic_disj: \<open>I \<turnstile>\<^sub>c \<lbrace> P1 \<rbrace> c \<lbrace> Q1 \<rbrace> \<Longrightarrow> I \<turnstile>\<^sub>c \<lbrace> P2 \<rbrace> c \<lbrace> Q2 \<rbrace> \<Longrightarrow> I \<turnstile>\<^sub>c \<lbrace> P1 \<^bold>\<or> P2 \<rbrace> c \<lbrace> Q1 \<^bold>\<or> Q2 \<rbrace>\<close>
-| seplogic_conj: \<open>I \<turnstile>\<^sub>c \<lbrace> P1 \<rbrace> c \<lbrace> Q1 \<rbrace> \<Longrightarrow> I \<turnstile>\<^sub>c \<lbrace> P2 \<rbrace> c \<lbrace> Q2 \<rbrace> \<Longrightarrow> I \<turnstile>\<^sub>c \<lbrace> P1 \<^bold>\<and> P2 \<rbrace> c \<lbrace> Q1 \<^bold>\<and> Q2 \<rbrace>\<close>
-| seplogic_conseq: \<open>
-  \<lbrakk> All (P \<^bold>\<longrightarrow> P')
-  ; I \<turnstile>\<^sub>c \<lbrace> P' \<rbrace> c \<lbrace> Q' \<rbrace>
-  ; All (Q' \<^bold>\<longrightarrow> Q)
-  \<rbrakk> \<Longrightarrow> I \<turnstile>\<^sub>c \<lbrace> P \<rbrace> c \<lbrace> Q \<rbrace>\<close>
-| seplogic_frame: \<open>I \<turnstile>\<^sub>c \<lbrace> P \<rbrace> c \<lbrace> Q \<rbrace> \<Longrightarrow> I \<turnstile>\<^sub>c \<lbrace> P \<^emph> R \<rbrace> c \<lbrace> Q \<^emph> R \<rbrace>\<close>
-| seplogic_acquire: \<open>I \<turnstile>\<^sub>c \<lbrace> emp \<rbrace> CAcquire r \<lbrace> I ! r \<rbrace>\<close>
-| seplogic_release: \<open>I \<turnstile>\<^sub>c \<lbrace> I ! r \<rbrace> CRelease r \<lbrace> emp \<rbrace>\<close>
 
-
-definition logic_prog :: \<open>('v state \<Rightarrow> bool) list \<Rightarrow> ('v state \<Rightarrow> bool) \<Rightarrow> 'v prog \<Rightarrow> ('v state \<Rightarrow> bool) \<Rightarrow> bool\<close>
-  (\<open>_ \<turnstile>\<^sub>p \<lbrace> _ \<rbrace> _ \<lbrace> _ \<rbrace>\<close> [80,80,80,80] 80)
-  where
-    \<open>I \<turnstile>\<^sub>p \<lbrace> P \<rbrace> cs \<lbrace> Q \<rbrace> \<equiv>
-      \<exists>Ps Qs.
-        P = iterated_sepconj Ps \<and>
-        Q = iterated_sepconj Qs \<and>
-        length Ps = length cs \<and>
-        length Qs = length cs \<and>
-        (\<forall>i<length cs. I \<turnstile>\<^sub>c \<lbrace> Ps ! i \<rbrace> cs ! i \<lbrace> Qs ! i \<rbrace>)\<close>
+lemma varenv_disjoint_map_appendI:
+  \<open>VarEnv v1 \<currency> v2 \<Longrightarrow> x \<notin> dom (the_varenv v2) \<Longrightarrow> VarEnv (v1(x := a)) \<currency> v2\<close>
+  by (simp add: disjoint_varenv_def Diff_Int_distrib2 subset_singleton_iff)
 
 
 section \<open>ram_comm Forward predicate transformer\<close>
@@ -791,51 +757,630 @@ lemma ram_comm_step_iff_forward:
   \<open>(s, c \<leadsto> Some s') \<longleftrightarrow> (=) s' \<le> ram_comm_forward c ((=) s)\<close>
   by (simp add: ram_comm_forward_def le_fun_def prod_eq_decompose)
 
+lemma ram_comm_forward_simps:
+  \<open>ram_comm_forward CSkip P = P\<close>
+  \<open>ram_comm_forward (CAssign x e0) P =
+    (\<lambda>(v, h, r). \<exists>v'. v = VarEnv ((the_varenv v')(x := \<lbrakk>e0\<rbrakk>\<^sub>I (the_varenv v'))) \<and> P (v', h, r))\<close>
+  \<open>ram_comm_forward (CHeapR x ep) P =
+    (\<lambda>(v, h, r). \<exists>v' p.
+      \<lbrakk>ep\<rbrakk>\<^sub>I (the_varenv v') = Some p \<and> v = VarEnv ((the_varenv v')(x := the_heap h p)) \<and> P (v', h, r)
+    )\<close>
+  \<open>ram_comm_forward (CHeapW ep e) P =
+    (\<lambda>(v, h, r). \<exists>h' p.
+      \<lbrakk>ep\<rbrakk>\<^sub>I (the_varenv v) = Some p \<and> h = Heap ((the_heap h')(p := \<lbrakk>e\<rbrakk>\<^sub>I (the_varenv v))) \<and> P (v, h', r)
+    )\<close>
+  \<open>ram_comm_forward (CHeapNew x) P =
+    (\<lambda>(v', h', r). \<exists>v h p.
+      P (VarEnv v, Heap h, r) \<and>
+      h p = None \<and>
+      v' = VarEnv (v(x \<mapsto> p)) \<and>
+      h' = Heap (h(p \<mapsto> undefined))
+    )\<close>
+  \<open>ram_comm_forward (CHeapDel e) P =
+    (\<lambda>(v, h', r).
+      \<exists>h p.
+        P (v, h, r) \<and>
+        \<lbrakk>e\<rbrakk>\<^sub>I the_varenv v = Some p \<and>
+        the_heap h p \<noteq> None \<and>
+        h' = Heap ((the_heap h)(p := None)))\<close>
+  \<open>ram_comm_forward (CAssume be) P = (\<lambda>(s, h, r). P (s, h, r) \<and> (\<lbrakk> be \<rbrakk>\<^sub>B (the_varenv s) = Some True))\<close>
+proof -
+  {
+    fix v' h' r'
+    have \<open>
+      (\<exists>v h r.
+        P (v, h, r) \<and>
+        (\<exists>vm. v = VarEnv vm \<and>
+          (\<exists>y. \<lbrakk>e\<rbrakk>\<^sub>I vm = Some y) \<and>
+          (\<exists>hm. \<forall>x2. (hm x2 = None \<longrightarrow> \<lbrakk>e\<rbrakk>\<^sub>I vm \<noteq> Some x2) \<and>
+          ((\<exists>x2a. hm x2 = Some x2a) \<longrightarrow>
+            \<lbrakk>e\<rbrakk>\<^sub>I vm = Some x2 \<longrightarrow>
+            h = Heap hm \<and> v' = VarEnv vm \<and> h' = Heap (hm(x2 := None)) \<and> r' = r)))) \<longleftrightarrow>
+      (\<exists>vm hm p.
+        P (VarEnv vm, Heap hm, r') \<and>
+        \<lbrakk>e\<rbrakk>\<^sub>I vm = Some p \<and>
+          (\<forall>p'. \<lbrakk>e\<rbrakk>\<^sub>I vm = Some p' \<longrightarrow> hm p' \<noteq> None) \<and>
+          (\<forall>p'. \<lbrakk>e\<rbrakk>\<^sub>I vm = Some p' \<longrightarrow>
+            (\<forall>a. hm p' = Some a \<longrightarrow> v' = VarEnv vm \<and> h' = Heap (hm(p' := None)))))
+    \<close> (is \<open>?lhs = _\<close>)
+      by blast
+    also have \<open>... \<longleftrightarrow>
+      (\<exists>vm hm p a.
+        P (VarEnv vm, Heap hm, r') \<and>
+        \<lbrakk>e\<rbrakk>\<^sub>I vm = Some p \<and>
+        hm p = Some a \<and>
+        v' = VarEnv vm \<and> h' = Heap (hm(p := None)))
+    \<close> (is \<open>_ = ?rhs\<close>)
+      by fastforce
+    finally have \<open>?lhs = ?rhs\<close> .
+  }
+  note s0 = this
+
+  show \<open>ram_comm_forward (CHeapDel e) P =
+    (\<lambda>(v, h', r). \<exists>h p.
+      P (v, h, r) \<and>
+      \<lbrakk>e\<rbrakk>\<^sub>I the_varenv v = Some p \<and>
+      the_heap h p \<noteq> None \<and>
+      h' = Heap ((the_heap h)(p := None)))\<close>
+    unfolding ram_comm_forward_def
+    by (force simp add: s0 fun_eq_iff opsem_ram_comm_simps split: option.splits)
+qed (force simp add: ram_comm_forward_def fun_eq_iff opsem_ram_comm_simps split: option.splits)+
+
+subsection \<open>Healtihness Conditions\<close>
+
 lemma ram_comm_forward_mono:
   \<open>mono (ram_comm_forward c)\<close>
   unfolding mono_def ram_comm_forward_def le_fun_def
   by (simp, metis)
 
+lemma ram_comm_forward_conj:
+  \<open>ram_comm_forward c (P \<^bold>\<and> Q) \<le> (ram_comm_forward c P \<^bold>\<and> ram_comm_forward c Q)\<close>
+  by (induct c)
+     (force split: prod.splits simp add: ram_comm_forward_simps pred_conj_def)+
+
+lemma ram_comm_forward_disj:
+  \<open>ram_comm_forward c (P \<^bold>\<or> Q) = (ram_comm_forward c P \<^bold>\<or> ram_comm_forward c Q)\<close>
+  by (induct c)
+     (force simp add: ram_comm_forward_simps pred_disj_def)+
+
+lemma ram_comm_forward_false:
+  \<open>ram_comm_forward c \<^bold>F = \<^bold>F\<close>
+  by (induct c)
+     (force simp add: ram_comm_forward_simps pred_false_def)+
+
+
 section \<open>Operational Semantics\<close>
 
-inductive cfg :: \<open>'v comm \<Rightarrow> 'l set \<Rightarrow> ('l \<times> 'v comm \<times> 'l) set \<Rightarrow> 'l \<Rightarrow> 'l \<Rightarrow> bool\<close> where
-  \<open>cfg (CRam c) {start,end} {(start, CRam c, end)} start end\<close>
-| \<open>\<lbrakk> cfg c1 N1 T1 start1 end1
-   ; cfg c2 N2 T2 start2 end2
-   \<rbrakk> \<Longrightarrow> cfg (c1 ;; c2) (N1 \<union> N2) (insert (end1, CRam CSkip, start2) (T1 \<union> T2)) start1 end2\<close>
-| \<open>\<lbrakk> cfg c1 N1 T1 start1 end1
-   ; cfg c2 N2 T2 start2 end2
-   \<rbrakk> \<Longrightarrow>
-    cfg
-      (c1 \<box> c2) (N1 \<union> N2 \<union> {start,end})
-      (T1 \<union> T2 \<union>
-        {(start,CRam CSkip,start1), (start,CRam CSkip,start2),
-          (end1,CRam CSkip,end), (end2,CRam CSkip,end)})
-      start end\<close>
-| \<open>cfg c N T start end \<Longrightarrow>
-   cfg
-     (c\<^sup>\<star>) (N \<union> {start', end'})
-     (T \<union> {(start',CRam CSkip,start), (end,CRam CSkip,start), (end,CRam CSkip,end')})
-     start' end'\<close>
+definition transition_labels :: \<open>('l \<times> 'a \<times> 'l) set \<Rightarrow> 'l set\<close> where
+  \<open>transition_labels T \<equiv> fst ` T \<union> (snd \<circ> snd) ` T\<close>
+
+lemma transition_labels_include_start:
+  \<open>(a,c,b) \<in> T \<Longrightarrow> a \<in> transition_labels T\<close>
+  by (force simp add: transition_labels_def)
+
+lemma transition_labels_include_end:
+  \<open>(a,c,b) \<in> T \<Longrightarrow> b \<in> transition_labels T\<close>
+  by (force simp add: transition_labels_def)
+
+lemmas transition_labels_include_startend =
+  transition_labels_include_start
+  transition_labels_include_end
+
+lemma transition_labels_empty[simp]:
+  \<open>transition_labels {} = {}\<close>
+  by (force simp add: transition_labels_def)
+
+lemma transition_labels_insert_eq[simp]:
+  \<open>transition_labels (insert t T) = insert (fst t) (insert (snd (snd t)) (transition_labels T))\<close>
+  by (force simp add: transition_labels_def)
+
+lemma transition_labels_un_eq[simp]:
+  \<open>transition_labels (T1 \<union> T2) = transition_labels T1 \<union> transition_labels T2\<close>
+  by (force simp add: transition_labels_def)
+
+lemma transition_labels_disjoint_then_transitions_disjoint:
+  \<open>transition_labels T1 \<inter> transition_labels T2 = {} \<Longrightarrow> T1 \<inter> T2 = {}\<close>
+  by (force simp add: transition_labels_def)
+
+datatype label =
+  LStart
+  | LEnd
+  | LLeft label
+  | LRight label
+  | LWrap label
+  | LWrap2 label label
+
+definition transition_label_map :: \<open>(label \<Rightarrow> label) \<Rightarrow> (label \<times> 'a \<times> label \<Rightarrow> label \<times> 'a \<times> label)\<close> where
+  \<open>transition_label_map f p = (f (fst p), fst (snd p), f (snd (snd p)))\<close>
+
+lemma transition_label_map_reduce[simp]:
+  \<open>transition_label_map f (a1,c,a2) = (f a1, c, f a2)\<close>
+  by (simp add: transition_label_map_def)
+
+inductive cfg :: \<open>'v comm \<Rightarrow> ('l \<times> 'v comm \<times> 'l) set \<Rightarrow> 'l \<Rightarrow> 'l \<Rightarrow> bool\<close> where
+  cfg_skip: \<open>s \<noteq> e \<Longrightarrow> cfg (CRam c) {(s, CRam c, e)} s e\<close>
+| cfg_seq:
+  \<open>\<lbrakk> cfg c1 T1 s1 e1
+   ; cfg c2 T2 s2 e2
+   ; transition_labels T1 \<inter> transition_labels T2 = {}
+   ; T = insert (e1, CRam CSkip, s2) (T1 \<union> T2)
+   \<rbrakk> \<Longrightarrow> cfg (c1 ;; c2) T s1 e2\<close>
+| cfg_ndet:
+  \<open>\<lbrakk> cfg c1 T1 s1 e1
+   ; cfg c2 T2 s2 e2
+   ; transition_labels T1 \<inter> transition_labels T2 = {}
+   ; s \<notin> transition_labels T1
+   ; s \<notin> transition_labels T2
+   ; e \<notin> transition_labels T1
+   ; e \<notin> transition_labels T2
+   ; s \<noteq> e
+   ; T = {(s, CRam CSkip, s1), (s, CRam CSkip, s2), (e1, CRam CSkip, e), (e2, CRam CSkip, e)} \<union> (T1 \<union> T2)
+   \<rbrakk> \<Longrightarrow> cfg (c1 \<box> c2) T s e\<close>
+| cfg_loop:
+  \<open>\<lbrakk> cfg c T' s' e'
+   ; s \<notin> transition_labels T'
+   ; e \<notin> transition_labels T'
+   ; s \<noteq> e
+   ; (e', CRam CSkip, s') \<notin> T'
+   ; T = {(e', CRam CSkip, s'), (s, CRam CSkip, s'), (e', CRam CSkip, e)} \<union> T'
+   \<rbrakk> \<Longrightarrow> cfg (c\<^sup>\<star>) T s e\<close>
+
+inductive_cases cfg_CRamE[elim!]: \<open>cfg (CRam c) T s e\<close>
+inductive_cases cfg_CSeqE[elim!]: \<open>cfg (c1 ;; c2) T s e\<close>
+inductive_cases cfg_CNDetE[elim!]: \<open>cfg (c1 \<box> c2) T s e\<close>
+inductive_cases cfg_CLoopE[elim!]: \<open>cfg (c\<^sup>\<star>) T s e\<close>
 
 
-lemma cfg_start_label_in_labels:
-  \<open>cfg c N T s e \<Longrightarrow> s \<in> N\<close>
-  by (induct rule: cfg.inducts) simp+
+lemma cfg_simps:
+  \<open>cfg (CRam cr) T s e \<longleftrightarrow> T = {(s, CRam cr, e)} \<and> s \<noteq> e\<close>
+  \<open>cfg (c1 ;; c2) T s e \<longleftrightarrow> (\<exists>T1 T2 e1 s2.
+    cfg c1 T1 s e1 \<and>
+    cfg c2 T2 s2 e \<and>
+    transition_labels T1 \<inter> transition_labels T2 = {} \<and>
+    T = insert (e1, CRam CSkip, s2) (T1 \<union> T2)
+  )\<close>
+  \<open>cfg (c1 \<box> c2) T s e \<longleftrightarrow> s \<noteq> e \<and> (\<exists>T1 T2 s1 s2 e1 e2.
+    cfg c1 T1 s1 e1 \<and>
+    cfg c2 T2 s2 e2 \<and>
+    transition_labels T1 \<inter> transition_labels T2 = {} \<and>
+    s \<notin> transition_labels T1 \<and>
+    e \<notin> transition_labels T1 \<and>
+    s \<notin> transition_labels T2 \<and>
+    e \<notin> transition_labels T2 \<and>
+    T = {(s, CRam CSkip, s1), (s, CRam CSkip, s2), (e1, CRam CSkip, e), (e2, CRam CSkip, e)} \<union> T1 \<union> T2
+  )\<close>
+  \<open>cfg (c\<^sup>\<star>) T s e \<longleftrightarrow> s \<noteq> e \<and> (\<exists>T' s' e'.
+    cfg c T' s' e' \<and>
+    s \<notin> transition_labels T' \<and>
+    e \<notin> transition_labels T' \<and>
+    (e', CRam CSkip, s') \<notin> T' \<and>
+    T = {(e', CRam CSkip, s'), (s, CRam CSkip, s'), (e', CRam CSkip, e)} \<union> T'
+  )\<close>
+     apply (blast intro: cfg.intros)
+    apply (blast intro: cfg.intros)
 
-lemma cfg_end_label_in_labels:
-  \<open>cfg c N T s e \<Longrightarrow> e \<in> N\<close>
-  by (induct rule: cfg.inducts) simp+
+   apply (rule iffI)
+    apply (erule cfg_CNDetE, simp, blast)
+   apply (blast intro: cfg.intros)
 
-lemma cfg_left_transition_label_in_labels:
-  \<open>cfg c N T s e \<Longrightarrow> (l,c',l') \<in> T \<Longrightarrow> l \<in> N\<close>
+   apply (blast intro: cfg.intros)
+  done
+
+lemma cfg_transition_labels_include_start:
+  \<open>cfg c T s e \<Longrightarrow> s \<in> transition_labels T\<close>
   by (induct rule: cfg.inducts)
-    (force dest: cfg_end_label_in_labels)+
+    (force simp add: transition_labels_def)+
 
-lemma cfg_right_transition_label_in_labels:
-  \<open>cfg c N T s e \<Longrightarrow> (l,c',l') \<in> T \<Longrightarrow> l' \<in> N\<close>
+lemma cfg_transition_labels_include_end:
+  \<open>cfg c T s e \<Longrightarrow> e \<in> transition_labels T\<close>
   by (induct rule: cfg.inducts)
-    (force dest: cfg_start_label_in_labels)+
+    (force simp add: transition_labels_def)+
+
+lemmas cfg_transition_labels_include_startend =
+  cfg_transition_labels_include_start
+  cfg_transition_labels_include_end
+
+
+lemma cfg_transition_labels_start_not_end:
+  \<open>cfg c T s e \<Longrightarrow> s \<noteq> e\<close>
+proof (induct rule: cfg.inducts)
+  case (cfg_seq c1 T1 s1 e1 c2 T2 s2 e2 T)
+  then show ?case
+    by (meson cfg_transition_labels_include_startend disjoint_iff_not_equal)
+qed blast+
+
+
+
+lemma cfg_same_command_bij:
+  assumes
+    \<open>cfg c T1 s1 e1\<close>
+    \<open>cfg c T2 s2 e2\<close>
+  shows
+    \<open>\<exists>f. bij_betw f T1 T2\<close>
+  using assms
+  apply (induct arbitrary: T2 s2 e2)
+     apply (force simp add: bij_betw_def)
+
+    apply clarsimp
+    apply (rename_tac  T1a s1a e1a c2 T2a s2a e2a s1b e2b T1b e1b T2b s2b)
+    apply (subgoal_tac \<open>\<exists>f1 f2. bij_betw f1 T1a T1b \<and> bij_betw f2 T2a T2b\<close>, clarify)
+     apply (rule_tac exI)
+     apply (rule bij_betw_disjoint_insert, rule bij_betw_singleton, force)
+       apply (rule bij_betw_disjoint_Un, blast, blast)
+        apply (simp add: transition_labels_disjoint_then_transitions_disjoint)
+       apply (simp add: transition_labels_disjoint_then_transitions_disjoint)
+      apply (metis Un_iff cfg_transition_labels_include_startend disjoint_iff transition_labels_include_startend)
+     apply (metis Un_iff cfg_transition_labels_include_startend disjoint_iff transition_labels_include_startend)
+    apply simp
+
+   apply clarsimp
+   apply (rename_tac T1a s1a e1a c2 T2a s2a e2a sx ex sy ey T1b s1b e1b T2b s2b e2b)
+   apply (subgoal_tac \<open>\<exists>f1 f2. bij_betw f1 T1a T1b \<and> bij_betw f2 T2a T2b\<close>, clarify)
+    apply (rule_tac exI)
+    apply (rule bij_betw_disjoint_insert, rule bij_betw_singleton, force)
+      apply (rule bij_betw_disjoint_insert, rule bij_betw_singleton, force)
+        apply (rule bij_betw_disjoint_insert, rule bij_betw_singleton, force)
+          apply (rule bij_betw_disjoint_insert, rule bij_betw_singleton, force)
+            apply (rule bij_betw_disjoint_Un, blast, blast)
+             apply (metis transition_labels_disjoint_then_transitions_disjoint)
+            apply (metis transition_labels_disjoint_then_transitions_disjoint)
+           apply (metis Un_iff transition_labels_include_end)
+          apply (metis Un_iff transition_labels_include_end)
+         apply (simp, metis disjoint_iff transition_labels_include_end cfg_transition_labels_include_end)
+        apply (simp, metis disjoint_iff transition_labels_include_end cfg_transition_labels_include_end)
+       apply (simp, metis cfg_transition_labels_include_start transition_labels_include_start)
+      apply (simp, metis cfg_transition_labels_include_start transition_labels_include_start)
+     apply (simp, metis disjoint_iff cfg_transition_labels_include_start transition_labels_include_start)
+    apply (simp, metis disjoint_iff cfg_transition_labels_include_start transition_labels_include_start)
+   apply meson
+
+  apply clarsimp
+  apply (rename_tac T1 s1 e1 sx ex sy ey T2 s2 e2)
+  apply (subgoal_tac \<open>\<exists>f. bij_betw f T1 T2\<close>, clarify)
+   apply (rule_tac exI)
+   apply (rule bij_betw_disjoint_insert, rule bij_betw_singleton, force)
+     apply (rule bij_betw_disjoint_insert, rule bij_betw_singleton, force)
+       apply (rule bij_betw_disjoint_insert, rule bij_betw_singleton, force)
+         apply blast
+        apply (metis transition_labels_include_end)
+       apply (metis transition_labels_include_end)
+      apply (simp, metis transition_labels_include_start cfg_transition_labels_include_end)
+     apply (simp, metis transition_labels_include_start cfg_transition_labels_include_end)
+    apply (simp, metis cfg_transition_labels_include_end cfg_transition_labels_include_start)
+   apply (simp, metis cfg_transition_labels_include_end cfg_transition_labels_include_start)
+  apply force
+  done
+
+lemma cfg_same_label_bij:
+  assumes
+    \<open>cfg c T1 s1 e1\<close>
+    \<open>cfg c T2 s2 e2\<close>
+  shows
+    \<open>\<exists>f.
+      bij_betw (\<lambda>(la,c,lb). (f la, c, f lb)) T1 T2 \<and>
+      bij_betw f (transition_labels T1) (transition_labels T2) \<and>
+      f s1 = s2 \<and>
+      f e1 = e2\<close>
+  using assms
+proof (induct arbitrary: T2 s2 e2)
+  case (cfg_skip s e1 c1)
+  then show ?case
+    apply (rule_tac x=\<open>\<lambda>l. if l = e1 then e2 else s2\<close> in exI)
+    apply (force simp add: bij_betw_def)
+    done
+next
+  case (cfg_seq c1 T1a s1a e1a c2 T2a s2a e2a Ta Tb s1b e2b)
+
+  obtain T1b T2b e1b s2b
+    where cfg_b:
+       \<open>cfg c1 T1b s1b e1b\<close>
+       \<open>cfg c2 T2b s2b e2b\<close>
+       \<open>transition_labels T1b \<inter> transition_labels T2b = {}\<close>
+       \<open>Tb = insert (e1b, CRam CSkip, s2b) (T1b \<union> T2b)\<close>
+    using cfg_seq.prems by blast
+
+  obtain f1
+    where iso1:
+      \<open>bij_betw (\<lambda>a. case a of (la, c, lb) \<Rightarrow> (f1 la, c, f1 lb)) T1a T1b\<close>
+      \<open>bij_betw f1 (transition_labels T1a) (transition_labels T1b)\<close>
+      \<open>f1 s1a = s1b\<close>
+      \<open>f1 e1a = e1b\<close>
+    using cfg_b cfg_seq.hyps by blast
+
+  obtain f2
+    where iso2:
+      \<open>bij_betw (\<lambda>a. case a of (la, c, lb) \<Rightarrow> (f2 la, c, f2 lb)) T2a T2b\<close>
+      \<open>bij_betw f2 (transition_labels T2a) (transition_labels T2b)\<close>
+      \<open>f2 s2a = s2b\<close>
+      \<open>f2 e2a = e2b\<close>
+    using cfg_b cfg_seq.hyps by blast
+
+  show ?case
+    using cfg_seq.hyps(1,3,5-) cfg_b iso1 iso2
+      apply (rule_tac x=\<open>\<lambda>l. if l \<in> transition_labels T1a then f1 l else f2 l\<close> in exI)
+    apply (intro conjI)
+         apply (subst bij_betw_cong[
+          where g=\<open>\<lambda>t.
+            if t = (e1a, CRam CSkip, s2a)
+            then (e1b, CRam CSkip, s2b)
+            else if t \<in> T1a
+            then case t of (la, c, lb) \<Rightarrow> (f1 la, c, f1 lb)
+            else case t of (la, c, lb) \<Rightarrow> (f2 la, c, f2 lb)
+          \<close>])
+        apply clarsimp
+        apply (rename_tac lx c ly)
+        apply (case_tac \<open>lx \<in> transition_labels T1a\<close>; case_tac \<open>ly \<in> transition_labels T1a\<close>)
+           apply (meson transition_labels_include_start cfg_transition_labels_include_start disjoint_iff)
+          apply (meson disjoint_iff transition_labels_include_startend)
+         apply (meson cfg_transition_labels_include_end transition_labels_include_startend disjoint_iff)
+        apply (meson cfg_transition_labels_include_end transition_labels_include_end)
+
+       apply clarsimp
+       apply (rule bij_betw_disjoint_insert, rule bij_betw_singleton, force)
+         apply (rule bij_betw_disjoint_Un, blast, blast)
+          apply (metis transition_labels_disjoint_then_transitions_disjoint)
+         apply (metis transition_labels_disjoint_then_transitions_disjoint)
+        apply (metis cfg_transition_labels_include_startend transition_labels_include_startend
+        Un_iff disjoint_iff)
+       apply (metis cfg_transition_labels_include_startend transition_labels_include_startend
+        Un_iff disjoint_iff)
+      apply (simp, intro bij_betw_insert_ignore, (intro bij_betw_disjoint_Un; blast))
+         apply (simp add: cfg_transition_labels_include_start)
+        apply (simp add: cfg_transition_labels_include_start)
+       apply (simp add: cfg_transition_labels_include_end)
+      apply (simp add: cfg_transition_labels_include_end)
+     apply (simp add: cfg_transition_labels_include_start)
+    apply (metis cfg_transition_labels_include_end disjoint_iff)
+    done
+next
+  case (cfg_ndet c1 T1a s1a e1a c2 T2a s2a e2a sa ea Ta Tb sb eb)
+
+  obtain T1b T2b s1b e1b s2b e2b
+    where cfg_b:
+      \<open>cfg c1 T1b s1b e1b\<close>
+      \<open>cfg c2 T2b s2b e2b\<close>
+      \<open>transition_labels T1b \<inter> transition_labels T2b = {}\<close>
+      \<open>sb \<notin> transition_labels T1b\<close>
+      \<open>sb \<notin> transition_labels T2b\<close>
+      \<open>eb \<notin> transition_labels T1b\<close>
+      \<open>eb \<notin> transition_labels T2b\<close>
+      \<open>sb \<noteq> eb\<close>
+      \<open>Tb = {(sb, CRam CSkip, s1b), (sb, CRam CSkip, s2b), (e1b, CRam CSkip, eb), (e2b, CRam CSkip, eb)} \<union>  (T1b \<union> T2b)\<close>
+    using cfg_ndet.prems by blast
+
+  obtain f1
+    where iso1:
+      \<open>bij_betw (\<lambda>a. case a of (la, c, lb) \<Rightarrow> (f1 la, c, f1 lb)) T1a T1b\<close>
+      \<open>bij_betw f1 (transition_labels T1a) (transition_labels T1b)\<close>
+      \<open>f1 s1a = s1b\<close>
+      \<open>f1 e1a = e1b\<close>
+    using cfg_b cfg_ndet.hyps by blast
+
+  obtain f2
+    where iso2:
+      \<open>bij_betw (\<lambda>a. case a of (la, c, lb) \<Rightarrow> (f2 la, c, f2 lb)) T2a T2b\<close>
+      \<open>bij_betw f2 (transition_labels T2a) (transition_labels T2b)\<close>
+      \<open>f2 s2a = s2b\<close>
+      \<open>f2 e2a = e2b\<close>
+    using cfg_b cfg_ndet.hyps by blast
+
+  have label_lemmas1:
+    \<open>s1a \<noteq> ea\<close> \<open>s1a \<noteq> sa\<close>
+    \<open>s2a \<noteq> ea\<close> \<open>s2a \<noteq> sa\<close>
+    \<open>e1a \<noteq> sa\<close> \<open>e1a \<noteq> ea\<close>
+    \<open>e2a \<noteq> sa\<close> \<open>e2a \<noteq> ea\<close>
+    \<open>ea \<noteq> s1a\<close> \<open>sa \<noteq> s1a\<close>
+    \<open>ea \<noteq> s2a\<close> \<open>sa \<noteq> s2a\<close>
+    \<open>sa \<noteq> e1a\<close> \<open>ea \<noteq> e1a\<close>
+    \<open>sa \<noteq> e2a\<close> \<open>ea \<noteq> e2a\<close>
+
+    \<open>s1a \<noteq> s2a\<close>
+    \<open>e1a \<noteq> e2a\<close>
+    \<open>e2a \<noteq> s1a\<close>
+    using cfg_ndet
+    by (force simp add: disjoint_iff dest: cfg_transition_labels_include_startend)+
+
+  have label_lemmas2:
+    \<open>s2a \<notin> transition_labels T1a\<close>
+    \<open>e2a \<notin> transition_labels T1a\<close>
+    \<open>s1a \<notin> transition_labels T2a\<close>
+    \<open>e1a \<notin> transition_labels T2a\<close>
+    \<open>s1a \<in> transition_labels T1a\<close>
+    \<open>e1a \<in> transition_labels T1a\<close>
+    \<open>s2a \<in> transition_labels T2a\<close>
+    \<open>e2a \<in> transition_labels T2a\<close>
+
+    \<open>e1a \<noteq> s1a\<close>
+    using cfg_ndet
+    by (force simp add: disjoint_iff
+        dest: cfg_transition_labels_include_startend cfg_transition_labels_start_not_end)+
+
+  note label_lemmas = label_lemmas1 label_lemmas2
+
+  have transition_lemmas:
+  \<open>\<And>c ly. (sa, c, ly) \<notin> T1a\<close>
+  \<open>\<And>c ly. (sa, c, ly) \<notin> T2a\<close>
+  \<open>\<And>c lx. (lx, c, ea) \<notin> T1a\<close>
+  \<open>\<And>c lx. (lx, c, ea) \<notin> T2a\<close>
+    using cfg_ndet
+    by (force dest: transition_labels_include_startend)+
+
+  show ?case
+    using cfg_ndet.hyps(1,3,5-) cfg_b iso1 iso2
+    apply (rule_tac x=\<open>\<lambda>l.
+      if l = sa then sb
+      else if l = ea then eb
+      else if l \<in> transition_labels T1a then f1 l else f2 l
+    \<close> in exI)
+    apply (intro conjI)
+         apply (subst bij_betw_cong[
+          where g=\<open>\<lambda>t.
+            if t = (sa, CRam CSkip, s1a) then (sb, CRam CSkip, s1b)
+            else if t = (sa, CRam CSkip, s2a) then (sb, CRam CSkip, s2b)
+            else if t = (e1a, CRam CSkip, ea) then (e1b, CRam CSkip, eb)
+            else if t = (e2a, CRam CSkip, ea) then (e2b, CRam CSkip, eb)
+            else if t \<in> T1a
+            then case t of (la, c, lb) \<Rightarrow> (f1 la, c, f1 lb)
+            else case t of (la, c, lb) \<Rightarrow> (f2 la, c, f2 lb)
+          \<close>])
+        apply clarify
+        apply (rename_tac lx c ly)
+        apply (case_tac \<open>(lx, c, ly) \<notin> T1a \<and> (lx, c, ly) \<notin> T2a\<close>)
+         apply (force simp add: label_lemmas transition_lemmas)
+        apply (clarsimp simp add: label_lemmas transition_lemmas)
+        apply (erule disjE)
+         apply (clarsimp simp add: transition_labels_include_startend)
+         apply (metis transition_labels_include_startend)
+        apply (clarsimp simp add: transition_labels_include_startend disjoint_iff)
+        apply (subgoal_tac \<open>lx \<notin> transition_labels T1a \<and> ly \<notin> transition_labels T1a\<close>)
+         apply (simp, metis transition_labels_include_startend)
+        apply (meson transition_labels_include_startend)
+
+       apply clarsimp
+       apply (rule bij_betw_disjoint_insert, rule bij_betw_singleton, blast)
+         apply (rule bij_betw_disjoint_insert, rule bij_betw_singleton, blast)
+           apply (rule bij_betw_disjoint_insert, rule bij_betw_singleton, blast)
+             apply (rule bij_betw_disjoint_insert, rule bij_betw_singleton, blast)
+               apply (rule bij_betw_disjoint_Un, blast, blast)
+                apply (metis transition_labels_disjoint_then_transitions_disjoint)
+               apply (metis transition_labels_disjoint_then_transitions_disjoint)
+              apply (force simp add: transition_lemmas)
+             apply (force dest: transition_labels_include_end)
+            apply (force simp add: label_lemmas transition_lemmas)
+           apply (simp, metis cfg_transition_labels_include_end transition_labels_include_end disjoint_iff)
+          apply (force simp add: label_lemmas transition_lemmas)
+         apply (simp, metis cfg_transition_labels_include_start transition_labels_include_start)
+        apply (force simp add: label_lemmas transition_lemmas)
+       apply (simp, metis cfg_transition_labels_include_start disjoint_iff transition_labels_include_start)
+
+      apply clarsimp
+      apply (rule bij_betw_insert_ignore)
+        apply (rule bij_betw_insert_ignore)
+          apply (rule bij_betw_disjoint_insert, rule bij_betw_singleton, blast)
+            apply (rule bij_betw_insert_ignore)
+              apply (rule bij_betw_insert_ignore)
+                apply (rule bij_betw_insert_ignore)
+                  apply (rule bij_betw_insert_ignore)
+                    apply (rule bij_betw_disjoint_insert, rule bij_betw_singleton, blast)
+                      apply (rule bij_betw_disjoint_Un, blast, blast)
+                       apply blast
+                      apply blast
+                     apply blast
+                    apply blast
+                   apply (force simp add: label_lemmas)
+                  apply (metis Un_iff cfg_transition_labels_include_end insert_iff)
+                 apply blast
+                apply blast
+               apply (force simp add: label_lemmas)
+              apply (metis Un_iff Un_insert_right cfg_transition_labels_include_end)
+             apply (force simp add: label_lemmas)
+            apply (metis Un_iff Un_insert_left cfg_transition_labels_include_start)
+           apply (force simp add: label_lemmas)
+          apply (metis Un_iff cfg_transition_labels_include_startend insert_iff)
+         apply (force simp add: label_lemmas)
+        apply (metis Un_iff Un_insert_right cfg_transition_labels_include_start)
+       apply blast
+      apply blast
+
+     apply (force simp add: label_lemmas)
+    apply (force simp add: label_lemmas)
+    done
+next
+  case (cfg_loop c Ta' sa' ea' sa ea Ta Tb sb eb)
+
+  obtain Tb' sb' eb'
+    where cfg_b:
+      \<open>cfg c Tb' sb' eb'\<close>
+      \<open>sb \<notin> transition_labels Tb'\<close>
+      \<open>eb \<notin> transition_labels Tb'\<close>
+      \<open>sb \<noteq> eb\<close>
+      \<open>(eb', CRam CSkip, sb') \<notin> Tb'\<close>
+      \<open>Tb = insert (eb', CRam CSkip, sb') (insert (sb, CRam CSkip, sb') (insert (eb', CRam CSkip, eb) Tb'))\<close>
+    using cfg_loop.prems
+    by blast
+
+  obtain f
+    where cfgiso:
+      \<open>bij_betw (\<lambda>a. case a of (la, c, lb) \<Rightarrow> (f la, c, f lb)) Ta' Tb'\<close>
+      \<open>bij_betw f (transition_labels Ta') (transition_labels Tb')\<close>
+      \<open>f sa' = sb'\<close>
+      \<open>f ea' = eb'\<close>
+    using cfg_b cfg_loop.hyps
+    by blast
+
+  have label_lemmas:
+    \<open>sa' \<noteq> ea\<close>
+    \<open>ea' \<noteq> sa\<close>
+    \<open>sa' \<noteq> sa\<close>
+    \<open>ea \<noteq> ea'\<close> \<open>ea' \<noteq> ea\<close>
+    using cfg_loop.hyps
+    by (force dest: cfg_transition_labels_include_startend)+
+
+  have transition_lemmas:
+    \<open>\<And>lx c ly. (lx, c, ly) \<in> Ta' \<Longrightarrow> lx \<noteq> sa\<close>
+    \<open>\<And>lx c ly. (lx, c, ly) \<in> Ta' \<Longrightarrow> lx \<noteq> ea\<close>
+    \<open>\<And>lx c ly. (lx, c, ly) \<in> Ta' \<Longrightarrow> ly \<noteq> sa\<close>
+    \<open>\<And>lx c ly. (lx, c, ly) \<in> Ta' \<Longrightarrow> ly \<noteq> ea\<close>
+    using cfg_loop.hyps
+    by (force dest: transition_labels_include_startend)+
+
+  show ?case
+    using cfg_loop.hyps(1,3,5-) cfg_b cfgiso
+    apply (rule_tac x=\<open>\<lambda>l.
+      if l = sa then sb
+      else if l = ea then eb
+      else f l
+    \<close> in exI)
+    apply (intro conjI)
+       apply (subst bij_betw_cong[
+          where g=\<open>\<lambda>t.
+            if t = (ea', CRam CSkip, sa') then (eb', CRam CSkip, sb')
+            else if t = (sa, CRam CSkip, sa') then (sb, CRam CSkip, sb')
+            else if t = (ea', CRam CSkip, ea) then (eb', CRam CSkip, eb)
+            else case t of (la, c, lb) \<Rightarrow> (f la, c, f lb)
+          \<close>])
+        apply clarify
+        apply (rename_tac lx c ly)
+        apply (case_tac \<open>(lx, c, ly) \<notin> Ta'\<close>)
+         apply (force simp add: label_lemmas)
+        apply (simp add: label_lemmas transition_lemmas)
+
+       apply clarsimp
+       apply (rule bij_betw_disjoint_insert, rule bij_betw_singleton, blast)
+         apply (rule bij_betw_disjoint_insert, rule bij_betw_singleton, blast)
+           apply (rule bij_betw_disjoint_insert, rule bij_betw_singleton, blast)
+             apply force
+            apply (force dest: transition_lemmas)
+           apply (force dest: transition_labels_include_end)
+          apply (force simp add: label_lemmas dest: transition_lemmas)
+         apply (force dest: cfg_transition_labels_include_end transition_labels_include_start)
+        apply (force simp add: label_lemmas)
+       apply (force dest: cfg_transition_labels_include_end cfg_transition_labels_include_start)
+
+      apply clarsimp
+      apply (rule bij_betw_insert_ignore)
+        apply (rule bij_betw_insert_ignore)
+          apply (rule bij_betw_disjoint_insert, rule bij_betw_singleton, blast)
+            apply (rule bij_betw_insert_ignore)
+              apply (rule bij_betw_insert_ignore)
+                apply (rule bij_betw_disjoint_insert, rule bij_betw_singleton, blast)
+                  apply blast
+                 apply (force simp add: cfg_loop.hyps)
+                apply (force simp add: cfg_loop.hyps)
+               apply (force dest: cfg_transition_labels_include_end)
+              apply (force dest: cfg_transition_labels_include_end)
+             apply (force dest: cfg_transition_labels_include_start)
+            apply (force dest: cfg_transition_labels_include_start)
+           apply (metis insertE label_lemmas(2-3))
+          apply (force dest: cfg_transition_labels_include_startend)
+         apply (force simp add: label_lemmas)
+        apply blast
+       apply blast
+      apply blast
+     apply simp
+    apply simp
+    done
+qed
 
 
 subsection \<open>Small-step\<close>
@@ -886,14 +1431,14 @@ lemma opsem_prog_iter_smallstep_length:
 
 
 definition semantic_proof :: \<open>'v comm \<Rightarrow> ('l \<Rightarrow> ('v state \<Rightarrow> bool)) \<Rightarrow> _ \<Rightarrow> _ \<Rightarrow> bool\<close> where
-  \<open>semantic_proof C G I T \<equiv>
-    \<exists>N::'l set. \<exists>start end.
-      cfg C N T start end \<and>
-      (\<forall>(l,c',l')\<in>T. case c' of
-        CRam cr' \<Rightarrow> ram_comm_forward cr' (G l) \<le> G l'
-      | CAcquire r \<Rightarrow> r < length I \<and> G l \<^emph> I ! r \<le> G l'
-      | CRelease r \<Rightarrow> r < length I \<and> G l \<le> G l' \<^emph> I ! r
-      )\<close>
+  \<open>semantic_proof c G I T \<equiv>
+    (\<exists>s e. cfg c T s e) \<and>
+    (\<forall>(l,c',l')\<in>T. case c' of
+      CRam cr' \<Rightarrow> ram_comm_forward cr' (G l) \<le> G l'
+    | CAcquire r \<Rightarrow> r < length I \<and> G l \<^emph> I ! r \<le> G l'
+    | CRelease r \<Rightarrow> r < length I \<and> G l \<le> G l' \<^emph> I ! r
+    )\<close>
+
 
 lemma map_if_index_update_eq:
   \<open>j < n \<Longrightarrow> map (\<lambda>i. if j = i then f i else g i) [0..<n] = (map g [0..<n])[j := f j]\<close>
@@ -929,21 +1474,11 @@ lemma iterated_sepconj_map_range_split_at:
   using assms
   by (simp add: iterated_sepconj_take_drop_split_at take_map drop_map)
 
-definition \<open>local_command c \<equiv> \<forall>P Q. ram_comm_forward c (P \<^emph> Q) \<le> (ram_comm_forward c P) \<^emph> Q\<close>
+definition \<open>local_command P c \<equiv> \<forall>Q. ram_comm_forward c (P \<^emph> Q) \<le> (ram_comm_forward c P) \<^emph> Q\<close>
 
 lemma local_commandI:
-  \<open>local_command c \<Longrightarrow> ram_comm_forward c (P \<^emph> Q) \<le> (ram_comm_forward c P) \<^emph> Q\<close>
+  \<open>local_command P c \<Longrightarrow> ram_comm_forward c (P \<^emph> Q) \<le> (ram_comm_forward c P) \<^emph> Q\<close>
   by (simp add: local_command_def)
-
-lemma \<open>local_command c\<close>
-  apply (clarsimp
-      simp add: local_command_def ram_comm_forward_def sepconj_def ex_simps[symmetric]
-      simp del: ex_simps)
-  apply (rename_tac v0 h0 r0 v1 h1 r1 v2 h2 r2)
-  apply (rotate_tac 5)
-  apply (rule opsem_ram_comm.induct, blast)
-             apply simp
-  oops
 
 definition
   \<open>active_resource_invs I fR \<equiv>
@@ -962,8 +1497,9 @@ lemma active_resource_invs_length[simp]:
 lemma lem_4_2_separation_property:
   assumes
     \<open>pc0, s0, fR0 \<sim>[T]\<leadsto>*\<^sub>S pc, os, fR\<close>
-    \<open>\<forall>k<length pc0. semantic_proof (Cs k) (Gs k) I T\<close>
     \<open>os = Some s\<close>
+    \<open>\<forall>k<length pc0. semantic_proof (Cs k) (Gs k) I T\<close>
+    \<open>\<forall>l0 l1 c. (l0, CRam c, l1) \<in> T \<longrightarrow> (\<forall>k. local_command (Gs k l0) c)\<close>
     \<open>(iterated_sepconj (map (\<lambda>k. Gs k (pc0 ! k)) [0..<length pc0]) \<^emph>
       iterated_sepconj (active_resource_invs I fR0))
       s0\<close>
@@ -980,21 +1516,26 @@ next
   proof (cases rule: opsem_prog_smallstep.cases[case_names CRam_succeed CRam_fail CRelease CAcquire])
     case (CRam_succeed k c l')
 
-    have c_local: \<open>local_command c\<close>
-      sorry
+    have c_local: \<open>local_command (Gs k (p ! k)) c\<close>
+      using CRam_succeed opsem_prog_iter_smallstep_step
+      by blast
 
     show ?thesis
     proof (rule opsem_prog_iter_smallstep_step)
       show \<open>\<forall>k<length p'. semantic_proof (Cs k) (Gs k) I T\<close>
         using opsem_prog_iter_smallstep_step.prems CRam_succeed
-        by simp
+        by clarsimp
 
       show \<open>os'' = Some s''\<close>
         using opsem_prog_iter_smallstep_step.prems
         by simp
 
+      show \<open>\<forall>l0 l1 c. (l0, CRam c, l1) \<in> T \<longrightarrow> (\<forall>k. local_command (Gs k l0) c)\<close>
+        using opsem_prog_iter_smallstep_step.prems
+        by simp
+
       have c_predicate_transformer: \<open>ram_comm_forward c (Gs k (p ! k)) \<le> Gs k l'\<close>
-        using CRam_succeed opsem_prog_iter_smallstep_step(4)
+        using CRam_succeed opsem_prog_iter_smallstep_step
         by (fastforce simp add: semantic_proof_def)
 
       show
@@ -1082,10 +1623,14 @@ next
         using opsem_prog_iter_smallstep_step.prems
         by simp
 
+      show \<open>\<forall>l0 l1 c. (l0, CRam c, l1) \<in> T \<longrightarrow> (\<forall>k. local_command (Gs k l0) c)\<close>
+        using opsem_prog_iter_smallstep_step.prems
+        by simp
+
       have sem_proof_step:
         \<open>r < length I\<close>
         \<open>Gs k (p ! k) \<le> Gs k l' \<^emph> I ! r\<close>
-        using CRelease opsem_prog_iter_smallstep_step.prems(1)
+        using CRelease opsem_prog_iter_smallstep_step.prems
         by (force simp add: semantic_proof_def)+
 
       have
@@ -1171,10 +1716,14 @@ next
         using opsem_prog_iter_smallstep_step.prems
         by simp
 
+      show \<open>\<forall>l0 l1 c. (l0, CRam c, l1) \<in> T \<longrightarrow> (\<forall>k. local_command (Gs k l0) c)\<close>
+        using opsem_prog_iter_smallstep_step.prems
+        by simp
+
       have sem_proof_step:
         \<open>r < length I\<close>
         \<open>Gs k (p ! k) \<^emph> I ! r \<le> Gs k l'\<close>
-        using CAcquire opsem_prog_iter_smallstep_step.prems(1)
+        using CAcquire opsem_prog_iter_smallstep_step.prems
         by (force simp add: semantic_proof_def)+
 
       have
@@ -1247,5 +1796,235 @@ next
         using CAcquire opsem_prog_iter_smallstep_step.prems
           length_list_update predicate1D
         by auto
+    qed
   qed
+qed
+
+
+section \<open>Hoare Logic\<close>
+
+definition logic_prog ::
+  \<open>'l set \<Rightarrow> ('v state \<Rightarrow> bool) list \<Rightarrow> ('v state \<Rightarrow> bool) \<Rightarrow> 'v comm \<Rightarrow> ('v state \<Rightarrow> bool) \<Rightarrow> bool\<close>
+  (\<open>_, _ \<turnstile>\<^sub>c \<lbrace> _ \<rbrace> _ \<lbrace> _ \<rbrace>\<close> [80,80,80,80,80] 80)
+  where
+    \<open>L, I \<turnstile>\<^sub>c \<lbrace> P \<rbrace> c \<lbrace> Q \<rbrace> \<equiv> (
+      \<exists>G T. \<exists>s e.
+        cfg c T s e \<and>
+        L = transition_labels T \<and>
+        (\<forall>(l,c',l')\<in>T. case c' of
+          CRam cr' \<Rightarrow> ram_comm_forward cr' (G l) \<le> G l'
+        | CAcquire r \<Rightarrow> r < length I \<and> G l \<^emph> I ! r \<le> G l'
+        | CRelease r \<Rightarrow> r < length I \<and> G l \<le> G l' \<^emph> I ! r
+        ) \<and>
+        P = G s \<and>
+        G e \<le> Q
+    )\<close>
+
+lemma logic_prog_seq:
+  assumes
+    \<open>L1 \<inter> L2 = {}\<close>
+    \<open>L1, I \<turnstile>\<^sub>c \<lbrace> P \<rbrace> c1 \<lbrace> Q \<rbrace>\<close>
+    \<open>L2, I \<turnstile>\<^sub>c \<lbrace> Q \<rbrace> c2 \<lbrace> R \<rbrace>\<close>
+  shows
+    \<open>\<exists>L12. L1 \<subseteq> L12 \<and> L2 \<subseteq> L12 \<and> L12, I \<turnstile>\<^sub>c \<lbrace> P \<rbrace> c1 ;; c2 \<lbrace> R \<rbrace>\<close>
+proof -
+  obtain T1 T2 G1 G2 s1 e1 s2 e2
+    where unfolded_triples:
+      \<open>cfg c1 T1 s1 e1\<close>
+      \<open>cfg c2 T2 s2 e2\<close>
+      \<open>L1 = transition_labels T1\<close>
+      \<open>L2 = transition_labels T2\<close>
+      \<open>\<forall>x\<in>T1. case x of (l, CRam cr', l') \<Rightarrow> ram_comm_forward cr' (G1 l) \<le> G1 l'
+              | (l, CAcquire r, l') \<Rightarrow> r < length I \<and> G1 l \<^emph> I ! r \<le> G1 l'
+              | (l, CRelease r, l') \<Rightarrow> r < length I \<and> G1 l \<le> G1 l' \<^emph> I ! r\<close>
+      \<open>\<forall>x\<in>T2.
+          case x of (l, CRam cr', l') \<Rightarrow> ram_comm_forward cr' (G2 l) \<le> G2 l'
+          | (l, CAcquire r, l') \<Rightarrow> r < length I \<and> G2 l \<^emph> I ! r \<le> G2 l'
+          | (l, CRelease r, l') \<Rightarrow> r < length I \<and> G2 l \<le> G2 l' \<^emph> I ! r\<close>
+      \<open>G1 e1 \<le> G2 s2\<close>
+      \<open>P = G1 s1\<close>
+      \<open>G2 e2 \<le> R\<close>
+      \<open>Q = G2 s2\<close>
+    using assms
+    by (clarsimp simp add: logic_prog_def)
+
+  have T2_separate_T1:
+    \<open>\<And>l. l \<in> transition_labels T2 \<Longrightarrow> l \<notin> transition_labels T1\<close>
+    using assms unfolded_triples by auto
+
+  show ?thesis
+    using unfolded_triples T2_separate_T1
+    apply (clarsimp simp add: logic_prog_def cfg_simps)
+    apply (rule exI[where x=\<open>transition_labels (insert (e1, CRam CSkip, s2) (T1 \<union> T2))\<close>], clarsimp)
+    apply (rule conjI, blast)
+    apply (rule conjI, blast)
+
+    apply (rule_tac x=\<open>\<lambda>l. if l \<in> transition_labels T1 then G1 l else G2 l\<close> in exI)
+    apply (rule_tac x=\<open>insert (e1, CRam CSkip, s2) (T1 \<union> T2)\<close> in exI)
+    apply (rule_tac x=s1 in exI)
+    apply (rule_tac x=e2 in exI)
+    apply (simp add: cfg_transition_labels_include_start cfg_transition_labels_include_end ram_comm_forward_simps)
+    apply (intro conjI impI)
+     apply blast
+    apply (clarsimp, force dest: transition_labels_include_startend)
+    done
+qed
+
+lemma logic_prog_ndet:
+  assumes
+    \<open>L1 \<inter> L2 = {}\<close>
+    \<open>s \<notin> L1\<close> \<open>s \<notin> L2\<close>
+    \<open>e \<notin> L1\<close> \<open>e \<notin> L2\<close>
+    \<open>s \<noteq> e\<close>
+    \<open>L1, I \<turnstile>\<^sub>c \<lbrace> P1 \<rbrace> c1 \<lbrace> Q1 \<rbrace>\<close>
+    \<open>L2, I \<turnstile>\<^sub>c \<lbrace> P2 \<rbrace> c2 \<lbrace> Q2 \<rbrace>\<close>
+  shows
+    \<open>\<exists>L12. L1 \<subseteq> L12 \<and> L2 \<subseteq> L12 \<and> L12, I \<turnstile>\<^sub>c \<lbrace> P1 \<^bold>\<and> P2 \<rbrace> c1 \<box> c2 \<lbrace> Q1 \<^bold>\<or> Q2 \<rbrace>\<close>
+proof -
+  obtain T1 T2 G1 G2 s1 e1 s2 e2
+    where unfolded_triples:
+      \<open>cfg c1 T1 s1 e1\<close>
+      \<open>cfg c2 T2 s2 e2\<close>
+      \<open>L1 = transition_labels T1\<close>
+      \<open>L2 = transition_labels T2\<close>
+      \<open>\<forall>x\<in>T1. case x of (l, CRam cr', l') \<Rightarrow> ram_comm_forward cr' (G1 l) \<le> G1 l'
+              | (l, CAcquire r, l') \<Rightarrow> r < length I \<and> G1 l \<^emph> I ! r \<le> G1 l'
+              | (l, CRelease r, l') \<Rightarrow> r < length I \<and> G1 l \<le> G1 l' \<^emph> I ! r\<close>
+      \<open>\<forall>x\<in>T2.
+          case x of (l, CRam cr', l') \<Rightarrow> ram_comm_forward cr' (G2 l) \<le> G2 l'
+          | (l, CAcquire r, l') \<Rightarrow> r < length I \<and> G2 l \<^emph> I ! r \<le> G2 l'
+          | (l, CRelease r, l') \<Rightarrow> r < length I \<and> G2 l \<le> G2 l' \<^emph> I ! r\<close>
+      \<open>G1 e1 \<le> Q1\<close>
+      \<open>P1 = G1 s1\<close>
+      \<open>G2 e2 \<le> Q2\<close>
+      \<open>P2 = G2 s2\<close>
+    using assms
+    by (clarsimp simp add: logic_prog_def)
+
+  let ?T = \<open>insert (s, CRam CSkip, s1) (insert (s, CRam CSkip, s2)
+           (insert (e1, CRam CSkip, e) (insert (e2, CRam CSkip, e) (T1 \<union> T2))))\<close>
+  let ?G = \<open>\<lambda>l. if l = s then P1 \<^bold>\<and> P2
+                else if l = e then Q1 \<^bold>\<or> Q2
+                else if l \<in> transition_labels T1 then G1 l
+                else G2 l\<close>
+
+  have transition_labels_not_in:
+    \<open>e1 \<in> transition_labels T1\<close>
+    \<open>e2 \<in> transition_labels T2\<close>
+    \<open>s1 \<in> transition_labels T1\<close>
+    \<open>s2 \<in> transition_labels T2\<close>
+    \<open>s \<notin> transition_labels T1\<close>
+    \<open>s \<notin> transition_labels T2\<close>
+    \<open>e \<notin> transition_labels T1\<close>
+    \<open>e \<notin> transition_labels T2\<close>
+    using assms unfolded_triples
+    by (force dest: cfg_transition_labels_include_start cfg_transition_labels_include_end
+        simp add: disjoint_iff)+
+
+  have transition_labels_not_in_general:
+    \<open>\<And>l. l \<in> transition_labels T1 \<Longrightarrow> l \<notin> transition_labels T2\<close>
+    \<open>\<And>l. l \<in> transition_labels T2 \<Longrightarrow> l \<notin> transition_labels T1\<close>
+    using assms unfolded_triples by blast+
+
+  have transition_labels_not_eq:
+    \<open>\<And>l. l \<in> transition_labels T1 \<Longrightarrow> l \<noteq> s\<close> \<open>\<And>l. l \<in> transition_labels T2 \<Longrightarrow> l \<noteq> s\<close>
+    \<open>\<And>l. l \<in> transition_labels T1 \<Longrightarrow> l \<noteq> e\<close> \<open>\<And>l. l \<in> transition_labels T2 \<Longrightarrow> l \<noteq> e\<close>
+    \<open>e \<noteq> s\<close>
+    using assms transition_labels_not_in by force+
+
+  show ?thesis
+    using unfolded_triples
+    apply (clarsimp simp add: logic_prog_def cfg_simps)
+    apply (rule exI[where x=\<open>transition_labels ?T\<close>], simp)
+    apply (rule conjI, blast)
+    apply (rule conjI, blast)
+
+    apply (rule_tac x=\<open>?G\<close> in exI)
+    apply (rule_tac x=\<open>?T\<close> in exI)
+    apply (rule_tac x=s in exI)
+    apply (rule_tac x=e in exI)
+    apply (simp only: assms HOL.simp_thms)
+    apply (intro conjI)
+        apply (rule_tac x=T1 in exI)
+        apply (rule_tac x=T2 in exI)
+        apply (metis assms(1-5) unfolded_triples(1-4))
+       apply simp
+
+    apply (intro conjI ballI)
+
+      apply (simp add: transition_labels_not_in ram_comm_forward_simps)
+      apply (elim disjE; force simp add:
+        transition_labels_include_startend transition_labels_not_in
+        transition_labels_not_eq transition_labels_not_in_general
+        ram_comm_forward_simps pred_conj_def pred_disj_def)
+
+     apply force
+    apply (force simp add: transition_labels_not_eq)
+    done
+qed
+
+
+
+
+lemma logic_prog_conj:
+  assumes
+    \<open>L1, I \<turnstile>\<^sub>c \<lbrace> P1 \<rbrace> c \<lbrace> Q1 \<rbrace>\<close>
+    \<open>L2, I \<turnstile>\<^sub>c \<lbrace> P2 \<rbrace> c \<lbrace> Q2 \<rbrace>\<close>
+    \<open>L1 \<inter> L2 = {}\<close>
+  shows
+    \<open>L1, I \<turnstile>\<^sub>c \<lbrace> P1 \<^bold>\<and> P2 \<rbrace> c \<lbrace> Q1 \<^bold>\<and> Q2 \<rbrace>\<close>
+proof -
+  obtain G1 G2 T1 T2 s1 s2 e1 e2
+    where unfolded_triples:
+      \<open>transition_labels T1 \<inter> transition_labels T2 = {}\<close>
+      \<open>cfg c T1 s1 e1\<close>
+      \<open>cfg c T2 s2 e2\<close>
+      \<open>L1 = transition_labels T1\<close>
+      \<open>L2 = transition_labels T2\<close>
+      \<open>\<forall>x\<in>T1. case x of
+          (l, CRam cr', l') \<Rightarrow> ram_comm_forward cr' (G1 l) \<le> G1 l'
+        | (l, CAcquire r, l') \<Rightarrow> r < length I \<and> G1 l \<^emph> I ! r \<le> G1 l'
+        | (l, CRelease r, l') \<Rightarrow> r < length I \<and> G1 l \<le> G1 l' \<^emph> I ! r\<close>
+      \<open>\<forall>x\<in>T2. case x of
+          (l, CRam cr', l') \<Rightarrow> ram_comm_forward cr' (G2 l) \<le> G2 l'
+        | (l, CAcquire r, l') \<Rightarrow> r < length I \<and> G2 l \<^emph> I ! r \<le> G2 l'
+        | (l, CRelease r, l') \<Rightarrow> r < length I \<and> G2 l \<le> G2 l' \<^emph> I ! r\<close>
+      \<open>G1 e1 \<le> Q1\<close>
+      \<open>P1 = G1 s1\<close>
+      \<open>G2 e2 \<le> Q2\<close>
+      \<open>P2 = G2 s2\<close>
+    using assms
+    by (clarsimp simp add: logic_prog_def cfg_simps)
+
+  obtain t1_to_t2
+    where transitions_bij:
+    \<open>bij_betw t1_to_t2 T1 T2\<close>
+    using unfolded_triples
+    by (meson cfg_same_command_bij)
+
+  obtain l1_to_l2
+    where labels_bij:
+    \<open>bij_betw l1_to_l2 (transition_labels T1) (transition_labels T2)\<close>
+    \<open>l1_to_l2 s1 = s2\<close>
+    \<open>l1_to_l2 e1 = e2\<close>
+    using unfolded_triples
+    by (meson cfg_same_label_bij)
+
+  show ?thesis
+    using unfolded_triples
+    apply (clarsimp simp add: logic_prog_def cfg_simps)
+    apply (rule_tac x=\<open>\<lambda>l. G1 l \<^bold>\<and> G2 (l1_to_l2 l)\<close> in exI)
+    apply (rule_tac x=T1 in exI)
+    apply (rule_tac x=s1 in exI)
+    apply (rule_tac x=e1 in exI)
+    apply (intro conjI)
+        apply simp
+       apply simp
+      apply (intro ballI impI)
+      apply (drule bspec)
+       apply blast
+      apply (drule_tac x=\<open>t1_to_t2 x\<close> in bspec)
+       apply (metis transitions_bij bij_betw_apply)
+
+    sorry
 qed
