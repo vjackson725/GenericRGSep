@@ -73,6 +73,15 @@ definition pred_impl :: \<open>('a \<Rightarrow> bool) \<Rightarrow> ('a \<Right
   \<open>p \<^bold>\<longrightarrow> q \<equiv> \<lambda>x. p x \<longrightarrow> q x\<close>
 
 
+lemma pred_conj_simp:
+  \<open>(p \<^bold>\<and> q) x \<longleftrightarrow> p x \<and> q x\<close>
+  by (simp add: pred_conj_def)
+
+lemma pred_disj_simp:
+  \<open>(p \<^bold>\<or> q) x \<longleftrightarrow> p x \<or> q x\<close>
+  by (simp add: pred_disj_def)
+
+
 class seplogic = plus + zero + order_bot +
   fixes disjoint :: \<open>'a \<Rightarrow> 'a \<Rightarrow> bool\<close> (infix \<open>\<currency>\<close> 70)
   assumes disjoint_refl_only_zero: \<open>a \<currency> a \<Longrightarrow> a = 0\<close>
@@ -990,7 +999,7 @@ proof (induct rule: cfg.inducts)
 qed blast+
 
 
-
+(*
 lemma cfg_same_command_bij:
   assumes
     \<open>cfg c T1 s1 e1\<close>
@@ -1050,22 +1059,30 @@ lemma cfg_same_command_bij:
    apply (simp, metis cfg_transition_labels_include_end cfg_transition_labels_include_start)
   apply force
   done
+*)
+
+definition
+  \<open>cfg_iso \<equiv> \<lambda>(Ta,sa,ea) (Tb,sb,eb).
+    \<exists>f.
+      bij_betw (\<lambda>(la,c,lb). (f la, c, f lb)) Ta Tb \<and>
+      bij_betw f (transition_labels Ta) (transition_labels Tb) \<and>
+      f sa = sb \<and>
+      f ea = eb
+  \<close>
 
 lemma cfg_same_label_bij:
   assumes
-    \<open>cfg c T1 s1 e1\<close>
-    \<open>cfg c T2 s2 e2\<close>
+    \<open>cfg c Ta sa ea\<close>
+    \<open>cfg c Tb sb eb\<close>
   shows
-    \<open>\<exists>f.
-      bij_betw (\<lambda>(la,c,lb). (f la, c, f lb)) T1 T2 \<and>
-      bij_betw f (transition_labels T1) (transition_labels T2) \<and>
-      f s1 = s2 \<and>
-      f e1 = e2\<close>
+    \<open>cfg_iso (Ta,sa,ea) (Tb,sb,eb)\<close>
+  unfolding cfg_iso_def
   using assms
-proof (induct arbitrary: T2 s2 e2)
-  case (cfg_skip s e1 c1)
+proof (induct arbitrary: Tb sb eb)
+  case (cfg_skip sa ea ca)
   then show ?case
-    apply (rule_tac x=\<open>\<lambda>l. if l = e1 then e2 else s2\<close> in exI)
+    apply simp
+    apply (rule_tac x=\<open>\<lambda>l. if l = ea then eb else sb\<close> in exI)
     apply (force simp add: bij_betw_def)
     done
 next
@@ -1097,9 +1114,10 @@ next
 
   show ?case
     using cfg_seq.hyps(1,3,5-) cfg_b iso1 iso2
-      apply (rule_tac x=\<open>\<lambda>l. if l \<in> transition_labels T1a then f1 l else f2 l\<close> in exI)
+    apply simp
+    apply (rule_tac x=\<open>\<lambda>l. if l \<in> transition_labels T1a then f1 l else f2 l\<close> in exI)
     apply (intro conjI)
-         apply (subst bij_betw_cong[
+       apply (subst bij_betw_cong[
           where g=\<open>\<lambda>t.
             if t = (e1a, CRam CSkip, s2a)
             then (e1b, CRam CSkip, s2b)
@@ -1124,7 +1142,7 @@ next
         Un_iff disjoint_iff)
        apply (metis cfg_transition_labels_include_startend transition_labels_include_startend
         Un_iff disjoint_iff)
-      apply (simp, intro bij_betw_insert_ignore, (intro bij_betw_disjoint_Un; blast))
+      apply (intro bij_betw_insert_ignore, (intro bij_betw_disjoint_Un; blast))
          apply (simp add: cfg_transition_labels_include_start)
         apply (simp add: cfg_transition_labels_include_start)
        apply (simp add: cfg_transition_labels_include_end)
@@ -1207,6 +1225,7 @@ next
 
   show ?case
     using cfg_ndet.hyps(1,3,5-) cfg_b iso1 iso2
+    apply simp
     apply (rule_tac x=\<open>\<lambda>l.
       if l = sa then sb
       else if l = ea then eb
@@ -1326,6 +1345,7 @@ next
 
   show ?case
     using cfg_loop.hyps(1,3,5-) cfg_b cfgiso
+    apply simp
     apply (rule_tac x=\<open>\<lambda>l.
       if l = sa then sb
       else if l = ea then eb
@@ -1963,14 +1983,13 @@ proof -
     done
 qed
 
-
-
-
 lemma logic_prog_conj:
   assumes
     \<open>L1, I \<turnstile>\<^sub>c \<lbrace> P1 \<rbrace> c \<lbrace> Q1 \<rbrace>\<close>
     \<open>L2, I \<turnstile>\<^sub>c \<lbrace> P2 \<rbrace> c \<lbrace> Q2 \<rbrace>\<close>
     \<open>L1 \<inter> L2 = {}\<close>
+  and invariant_precision:
+    \<open>\<And>i P Q. i < length I \<Longrightarrow> (P \<^bold>\<and> Q) \<^emph> I ! i = (P \<^emph> I ! i) \<^bold>\<and> (Q \<^emph> I ! i)\<close>
   shows
     \<open>L1, I \<turnstile>\<^sub>c \<lbrace> P1 \<^bold>\<and> P2 \<rbrace> c \<lbrace> Q1 \<^bold>\<and> Q2 \<rbrace>\<close>
 proof -
@@ -1996,24 +2015,19 @@ proof -
     using assms
     by (clarsimp simp add: logic_prog_def cfg_simps)
 
-  obtain t1_to_t2
-    where transitions_bij:
-    \<open>bij_betw t1_to_t2 T1 T2\<close>
-    using unfolded_triples
-    by (meson cfg_same_command_bij)
-
-  obtain l1_to_l2
-    where labels_bij:
-    \<open>bij_betw l1_to_l2 (transition_labels T1) (transition_labels T2)\<close>
-    \<open>l1_to_l2 s1 = s2\<close>
-    \<open>l1_to_l2 e1 = e2\<close>
-    using unfolded_triples
-    by (meson cfg_same_label_bij)
+  obtain f
+    where cfg_isomorphism:
+    \<open>bij_betw (\<lambda>(la, c, lb). (f la, c, f lb)) T1 T2\<close>
+    \<open>bij_betw f (transition_labels T1) (transition_labels T2)\<close>
+    \<open>f s1 = s2\<close>
+    \<open>f e1 = e2\<close>
+    using unfolded_triples(2-3)
+    by (force simp add: cfg_iso_def dest: cfg_same_label_bij)
 
   show ?thesis
-    using unfolded_triples
+    using unfolded_triples cfg_isomorphism
     apply (clarsimp simp add: logic_prog_def cfg_simps)
-    apply (rule_tac x=\<open>\<lambda>l. G1 l \<^bold>\<and> G2 (l1_to_l2 l)\<close> in exI)
+    apply (rule_tac x=\<open>\<lambda>l. G1 l \<^bold>\<and> G2 (f l)\<close> in exI)
     apply (rule_tac x=T1 in exI)
     apply (rule_tac x=s1 in exI)
     apply (rule_tac x=e1 in exI)
@@ -2023,8 +2037,23 @@ proof -
       apply (intro ballI impI)
       apply (drule bspec)
        apply blast
-      apply (drule_tac x=\<open>t1_to_t2 x\<close> in bspec)
-       apply (metis transitions_bij bij_betw_apply)
-
-    sorry
+      apply clarsimp
+      apply (rename_tac lx cc ly)
+      apply (drule_tac x=\<open>(f lx, cc, f ly)\<close> in bspec)
+       apply (force dest: bij_betwE)
+      apply (clarsimp split: comm.splits)
+        apply (force simp add: pred_conj_simp dest!: predicate1D[OF ram_comm_forward_conj])
+      (* Here is the first application of precision *)
+       apply (subst (asm) invariant_precision, blast)
+       apply (force simp add: pred_conj_simp)
+      (* and the second is here *)
+      apply (subst invariant_precision, blast)
+      apply (force simp add: pred_conj_simp)
+     apply blast
+    apply (simp add: le_fun_def pred_conj_simp)
+    done
 qed
+
+
+
+end
