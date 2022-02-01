@@ -1,435 +1,16 @@
-theory SepLogicVar
-  imports Main "HOL-Library.Lattice_Syntax"
+theory Lang
+  imports SepLogic
 begin
 
-
-lemma prod_eq_decompose:
-  \<open>a = (b,c) \<longleftrightarrow> fst a = b \<and> snd a = c\<close>
-  \<open>(b,c) = a \<longleftrightarrow> fst a = b \<and> snd a = c\<close>
-  by force+
-
-lemma upt_add_eq_append:
-  assumes \<open>i \<le> j\<close> \<open>j \<le> k\<close>
-  shows \<open>[i..<k] = [i..<j] @ [j..<k]\<close>
-  using assms
-proof (induct k arbitrary: i j)
-  case 0 then show ?case by simp
-next
-  case (Suc k)
-  show ?case
-  proof (cases \<open>j \<le> k\<close>)
-    case True
-    have \<open>[i..<Suc k] = [i..<k] @ [k]\<close>
-      using Suc.prems True
-      by simp
-    also have \<open>... = [i..<j] @ [j..<k] @ [k]\<close>
-      using Suc.prems True
-      by (subst Suc.hyps[where j=j]; simp)
-    also have \<open>... = [i..<j] @ [j..<Suc k]\<close>
-      using True
-      by simp
-    finally show ?thesis .
-  next
-    case False
-    then show ?thesis
-      using Suc.prems
-      by (clarsimp simp add: le_Suc_eq)
-  qed
-qed
-
-lemmas bij_betw_disjoint_insert =
-  bij_betw_disjoint_Un[where A=\<open>{b}\<close> and C=\<open>{d}\<close> for b d, simplified]
-
-lemma bij_betw_insert_ignore:
-  \<open>bij_betw f B D \<Longrightarrow> b \<in> B \<Longrightarrow> d \<in> D \<Longrightarrow> bij_betw f (insert b B) (insert d D)\<close>
-  by (simp add: insert_absorb)
-
-lemma bij_betw_singleton:
-  \<open>f a = b \<Longrightarrow> bij_betw f {a} {b}\<close>
-  by (simp add: bij_betw_def)
-
-lemmas bij_betw_combine_insert =
-  bij_betw_combine[where A=\<open>{b}\<close> and B=\<open>{d}\<close> for b d, simplified]
-
-
-lemma map_le_restrict_eq: \<open>ma \<subseteq>\<^sub>m mb \<Longrightarrow> mb |` dom ma = ma\<close>
-  by (rule ext, metis domIff map_le_def restrict_map_def)
-
-lemma map_restrict_un_eq:
-  \<open>m |` (A \<union> B) = m |` A ++ m |` B\<close>
-  by (force simp add: restrict_map_def map_add_def split: option.splits)
-
-lemma map_le_split:
-  assumes \<open>ma \<subseteq>\<^sub>m mb\<close>
-  shows \<open>mb = ma ++ mb |` (- dom ma)\<close>
-  using assms
-  by (subst map_le_restrict_eq[OF assms, symmetric], force simp add: map_restrict_un_eq[symmetric])
-
-lemma map_disjoint_dom_cancel_right:
-  assumes disjoint_ac: \<open>dom a \<inter> dom c = {}\<close>
-    and disjoint_ac: \<open>dom b \<inter> dom c = {}\<close>
-    and ac_eq_bc: \<open>a ++ c = b ++ c\<close>
-  shows \<open>a = b\<close>
-  using assms
-  by (metis (no_types, lifting) Int_Un_distrib Int_commute Un_Int_eq(3) ac_eq_bc
-      disjoint_ac dom_map_add map_add_comm map_le_iff_map_add_commute map_le_restrict_eq)
-
-
-section \<open>Predicate Logic\<close>
-
-definition pred_false :: \<open>'a \<Rightarrow> bool\<close> (\<open>\<^bold>F\<close>) where
-  \<open>\<^bold>F \<equiv> \<lambda>x. False\<close>
-
-definition pred_true :: \<open>'a \<Rightarrow> bool\<close> (\<open>\<^bold>T\<close>) where
-  \<open>\<^bold>T \<equiv> \<lambda>x. True\<close>
-
-definition pred_neg :: \<open>('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool)\<close> (\<open>\<^bold>\<not> _\<close> [89] 90) where
-  \<open>\<^bold>\<not> p \<equiv> \<lambda>x. \<not> p x\<close>
-
-definition pred_conj :: \<open>('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool)\<close> (infixr \<open>\<^bold>\<and>\<close> 86) where
-  \<open>p \<^bold>\<and> q \<equiv> \<lambda>x. p x \<and> q x\<close>
-
-definition pred_disj :: \<open>('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool)\<close> (infixr \<open>\<^bold>\<or>\<close> 84) where
-  \<open>p \<^bold>\<or> q \<equiv> \<lambda>x. p x \<or> q x\<close>
-
-definition pred_impl :: \<open>('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool)\<close> (infixr \<open>\<^bold>\<longrightarrow>\<close> 82) where
-  \<open>p \<^bold>\<longrightarrow> q \<equiv> \<lambda>x. p x \<longrightarrow> q x\<close>
-
-
-lemma pred_conj_simp:
-  \<open>(p \<^bold>\<and> q) x \<longleftrightarrow> p x \<and> q x\<close>
-  by (simp add: pred_conj_def)
-
-lemma pred_disj_simp:
-  \<open>(p \<^bold>\<or> q) x \<longleftrightarrow> p x \<or> q x\<close>
-  by (simp add: pred_disj_def)
-
-
-lemma pred_conjD: \<open>(A1 \<^bold>\<and> A2) s \<Longrightarrow> A1 \<le> B1 \<Longrightarrow> A2 \<le> B2 \<Longrightarrow> (B1 \<^bold>\<and> B2) s\<close>
-  by (metis pred_conj_def predicate1D)
-
-lemma pred_conj_left_imp: \<open>A \<^bold>\<and> B \<le> A\<close>
-  by (metis pred_conj_def predicate1I)
-
-lemma pred_conj_right_imp: \<open>A \<^bold>\<and> B \<le> B\<close>
-  by (metis pred_conj_def predicate1I)
-
-lemma pred_disj_left_imp: \<open>A \<le> A \<^bold>\<or> B\<close>
-  by (metis pred_disj_def predicate1I)
-
-lemma pred_disj_right_imp: \<open>B \<le> A \<^bold>\<or> B\<close>
-  by (metis pred_disj_def predicate1I)
-
-
-class seplogic = plus + zero + order_bot +
-  fixes disjoint :: \<open>'a \<Rightarrow> 'a \<Rightarrow> bool\<close> (infix \<open>\<currency>\<close> 70)
-  assumes disjoint_refl_only_zero: \<open>a \<currency> a \<Longrightarrow> a = 0\<close>
-  assumes disjoint_symm: \<open>a \<currency> b = b \<currency> a\<close>
-  assumes disjoint_empty[simp]: \<open>0 \<currency> a\<close>
-  assumes disjoint_add_left[simp]: \<open>a \<currency> (b + c) \<longleftrightarrow> a \<currency> b \<and> a \<currency> c\<close>
-  assumes le_iff_sepadd: \<open>a \<le> b \<longleftrightarrow> (\<exists>c. a \<currency> c \<and> b = a + c)\<close>
-  (* partial commutative monoid *)
-  assumes partial_add_assoc:
-    "a \<currency> b \<Longrightarrow> b \<currency> c \<Longrightarrow> a \<currency> c \<Longrightarrow> (a + b) + c = a + (b + c)"
-  assumes partial_add_commute: \<open>a \<currency> b \<Longrightarrow> a + b = b + a\<close>
-  assumes partial_add_0[simp]: "0 + a = a"
-(*
-  fixes bad :: 'a
-  assumes \<open>\<not> (a \<currency> b) \<Longrightarrow> a + b = bad\<close>
-*)
-begin
-
-
-lemma disjoint_add_right[simp]: \<open>(a + b) \<currency> c \<longleftrightarrow> a \<currency> c \<and> b \<currency> c\<close>
-  by (simp add: disjoint_symm)
-
-(*
-lemma inf_plus_distrib_right: \<open>a \<currency> b \<Longrightarrow> (a + b) \<sqinter> c = a \<sqinter> c + b \<sqinter> c\<close>
-  by (simp add: inf_commute inf_plus_distrib_left)
-*)
-
-lemma disjoint_empty_right[simp]: \<open>h \<currency> 0\<close>
-  using disjoint_symm by fastforce
-
-lemma sep_add_0_right[simp]: "a + 0 = a"
-  by (metis disjoint_empty partial_add_0 partial_add_commute)
-
-lemma zero_le[simp]: \<open>0 \<le> a\<close>
-  by (simp add: le_iff_sepadd)
-
-lemma le_zero_eq: \<open>a \<le> 0 \<longleftrightarrow> a = 0\<close>
-  by (meson antisym zero_le)
-
-lemma bot_eq_zero: \<open>bot = 0\<close>
-  by (simp add: antisym)
-
-lemma le_nonzero_not_disjoint: \<open>a \<le> b \<Longrightarrow> a \<noteq> 0 \<Longrightarrow> \<not> (a \<currency> b)\<close>
-  using disjoint_refl_only_zero le_iff_sepadd by force
-
-lemma le_plus: \<open>a \<currency> b \<Longrightarrow> a \<le> a + b\<close>
-  using le_iff_sepadd by auto
-
-lemma le_plus2: \<open>a \<currency> b \<Longrightarrow> b \<le> a + b\<close>
-  by (metis le_plus disjoint_symm partial_add_commute)
-
-
-lemma exists_intersection_heap:
-  \<open>\<exists>ab. ab \<le> a \<and> ab \<le> b \<and> (\<forall>ab'. ab' \<le> a \<longrightarrow> ab' \<le> b \<longrightarrow> ab' \<le> ab)\<close>
-  oops
-
-(*
-lemma disjoint_impl_int_empty: \<open>a \<currency> b \<Longrightarrow> a \<sqinter> b = 0\<close>
-  by (metis disjoint_add_right le_nonzero_not_disjoint inf.cobounded1 inf_le2 le_iff_sepadd)
-  thm le_nonzero_not_disjoint disjoint_add_left disjoint_symm inf.cobounded2 inf_le1 le_iff_sepadd
-  thm disjoint_add_right le_nonzero_not_disjoint inf.cobounded1 inf_le2 le_iff_sepadd
-*)
-
-(*
-lemma plus_eq_plus_split:
-  \<open>a \<currency> b \<Longrightarrow> c \<currency> d \<Longrightarrow> a + b = c + d \<longleftrightarrow> (\<exists>ac bc ad bd. a = ac + ad \<and> b = bc + bd \<and> c = ac + bc \<and> d = ad + bd)\<close>
-  apply (rule iffI)
-   apply (rule_tac x=\<open>a \<sqinter> c\<close> in exI)
-   apply (rule_tac x=\<open>b \<sqinter> c\<close> in exI)
-   apply (rule_tac x=\<open>a \<sqinter> d\<close> in exI)
-   apply (rule_tac x=\<open>b \<sqinter> d\<close> in exI)
-   apply (intro conjI)
-      apply (metis inf.orderE inf_plus_distrib_left le_iff_sepadd)
-     apply (metis disjoint_symm inf.orderE inf_plus_distrib_left le_iff_sepadd partial_add_commute)
-    apply (metis inf.commute inf.orderE inf_plus_distrib_left le_iff_sepadd)
-   apply (metis inf_plus_distrib_right disjoint_symm inf.absorb_iff2 le_iff_sepadd partial_add_commute)
-  using disjoint_symm partial_add_assoc partial_add_commute apply force
-  done
-*)
-
-definition sepconj :: \<open>('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool)\<close> (infixl \<open>\<^emph>\<close> 88) where
-  \<open>P \<^emph> Q \<equiv> \<lambda>h. \<exists>h1 h2. h1 \<currency> h2 \<and> h = h1 + h2 \<and> P h1 \<and> Q h2\<close>
-
-definition sepimp :: \<open>('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool)\<close> (infixr \<open>\<midarrow>\<^emph>\<close> 85) where
-  \<open>P \<midarrow>\<^emph> Q \<equiv> \<lambda>h. \<forall>h1. h \<currency> h1 \<longrightarrow> P h1 \<longrightarrow> Q (h + h1)\<close>
-
-definition sepcoimp :: \<open>('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool)\<close> (infixr \<open>\<sim>\<^emph>\<close> 85) where
-  \<open>P \<sim>\<^emph> Q \<equiv> \<lambda>h. \<forall>h1 h2. h1 \<currency> h2 \<longrightarrow> h = h1 + h2 \<longrightarrow> P h1 \<longrightarrow> Q h2\<close>
-
-definition septract :: \<open>('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool)\<close> (infixr \<open>\<midarrow>\<odot>\<close> 86) where
-  \<open>P \<midarrow>\<odot> Q \<equiv> \<lambda>h. \<exists>h1. h \<currency> h1 \<and> P h1 \<and> Q (h + h1)\<close>
-
-definition septract_rev :: \<open>('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool)\<close> (infixr \<open>\<odot>\<midarrow>\<close> 86) where
-  \<open>P \<odot>\<midarrow> Q \<equiv> \<lambda>h. \<exists>h'. h \<currency> h' \<and> P (h + h') \<and> Q h'\<close>
-
-definition emp :: \<open>'a \<Rightarrow> bool\<close> where
-  \<open>emp \<equiv> (\<lambda>h. h = 0)\<close>
-
-fun iterated_sepconj :: \<open>('a \<Rightarrow> bool) list \<Rightarrow> ('a \<Rightarrow> bool)\<close> where
-  \<open>iterated_sepconj (P # Ps) = P \<^emph> iterated_sepconj Ps\<close>
-| \<open>iterated_sepconj [] = emp\<close>
-
-
-lemma septract_reverse: \<open>P \<midarrow>\<odot> Q = Q \<odot>\<midarrow> P\<close>
-  by (force simp add: septract_def septract_rev_def)
-
-lemma sepconj_assoc: \<open>(P \<^emph> Q) \<^emph> R = P \<^emph> (Q \<^emph> R)\<close>
-  by (force simp add: sepconj_def ex_simps[symmetric] partial_add_assoc simp del: ex_simps)
-
-lemma sepconj_comm: \<open>P \<^emph> Q = Q \<^emph> P\<close>
-  unfolding sepconj_def
-  by (metis disjoint_symm partial_add_commute)
-
-lemma sepconj_left_comm: \<open>Q \<^emph> (P \<^emph> R) = P \<^emph> (Q \<^emph> R)\<close>
-  apply (clarsimp simp add: sepconj_def ex_simps[symmetric] simp del: ex_simps)
-  apply (metis (hide_lams) disjoint_symm partial_add_assoc partial_add_commute)
-  done
-
-lemmas sepconj_ac = sepconj_assoc sepconj_comm sepconj_left_comm
-
-lemma septract_sepimp_dual: \<open>P \<midarrow>\<odot> Q = \<^bold>\<not>(P \<midarrow>\<^emph> \<^bold>\<not> Q)\<close>
-  unfolding septract_def sepimp_def pred_neg_def
-  by blast
-
-lemma sepimp_sepcoimp_dual: \<open>P \<sim>\<^emph> Q = \<^bold>\<not>(P \<^emph> \<^bold>\<not> Q)\<close>
-  unfolding sepconj_def sepcoimp_def pred_neg_def
-  by blast
-
-lemma sepconj_sepimp_galois: \<open>P \<^emph> Q \<le> R \<longleftrightarrow> P \<le> Q \<midarrow>\<^emph> R\<close>
-  using sepconj_def sepimp_def by fastforce
-
-lemma sepcoimp_septract_galois: \<open>P \<odot>\<midarrow> Q \<le> R \<longleftrightarrow> P \<le> Q \<sim>\<^emph> R\<close>
-  unfolding sepcoimp_def septract_rev_def le_fun_def
-  using disjoint_symm partial_add_commute by fastforce
-
-lemma emp_sepconj_unit[simp]: \<open>emp \<^emph> P = P\<close>
-  by (simp add: emp_def sepconj_def)
-
-lemma emp_sepconj_unit_right[simp]: \<open>P \<^emph> emp = P\<close>
-  by (simp add: emp_def sepconj_def)
-
-lemma sepcoimp_curry: \<open>P \<sim>\<^emph> Q \<sim>\<^emph> R = P \<^emph> Q \<sim>\<^emph> R\<close>
-  unfolding sepcoimp_def sepconj_def
-  apply (intro ext iffI; clarsimp)
-   apply (metis disjoint_add_left partial_add_assoc)
-  apply (metis disjoint_add_right partial_add_assoc)
-  done
-
-lemma sepconj_left_mono:
-  \<open>P \<le> Q \<Longrightarrow> P \<^emph> R \<le> Q \<^emph> R\<close>
-  using sepconj_def by auto
-
-lemma sepconj_right_mono:
-  \<open>Q \<le> R \<Longrightarrow> P \<^emph> Q \<le> P \<^emph> R\<close>
-  using sepconj_def by auto
-
-lemma sepconj_comm_imp:
-  \<open>P \<^emph> Q \<le> Q \<^emph> P\<close>
-  by (simp add: sepconj_comm)
-
-
-definition precise :: \<open>('a \<Rightarrow> bool) \<Rightarrow> bool\<close> where
-  \<open>precise P \<equiv> \<forall>h h1. h1\<le>h \<longrightarrow> P h1 \<longrightarrow> (\<forall>h2\<le>h. P h2 \<longrightarrow> h1 = h2)\<close>
-
-lemma strong_sepcoimp_imp_sepconj:
-  \<open>(P \<^emph> \<^bold>T) \<^bold>\<and> (P \<sim>\<^emph> Q) \<le> P \<^emph> Q\<close>
-  by (force simp add: sepconj_def sepcoimp_def precise_def le_fun_def le_iff_sepadd pred_conj_def pred_true_def)
-
-lemma secoimp_imp_sepconj:
-  \<open>P \<^bold>\<and> (P \<sim>\<^emph> Q) \<le> P \<^emph> (Q \<^bold>\<and> emp)\<close>
-  unfolding pred_conj_def sepcoimp_def sepconj_def le_fun_def le_bool_def emp_def
-  by (metis disjoint_empty_right sep_add_0_right)
-
-lemma sepcoimp_conj_distrib_left:
-  \<open>P \<sim>\<^emph> (Q \<^bold>\<and> Q') = (P \<sim>\<^emph> Q) \<^bold>\<and> (P \<sim>\<^emph> Q')\<close>
-  by (force simp add: pred_conj_def sepcoimp_def)
-
-lemma not_coimp_emp:
-  \<open>h \<noteq> 0 \<Longrightarrow> (\<^bold>\<not> (\<^bold>T \<sim>\<^emph> emp)) h\<close>
-  apply (clarsimp simp add: pred_true_def pred_neg_def sepcoimp_def emp_def)
-  apply (rule_tac x=0 in exI, force)
-  done
-
-lemma sepconj_distrib_conj_eq_strong_sepcoimp:
-  shows \<open>(\<forall>Q Q'. P \<^emph> (Q \<^bold>\<and> Q') = (P \<^emph> Q) \<^bold>\<and> (P \<^emph> Q')) \<longleftrightarrow> (\<forall>Q. P \<^emph> Q = (P \<^emph> \<^bold>T) \<^bold>\<and> (P \<sim>\<^emph> Q))\<close>
-  apply (clarsimp simp add: sepconj_def sepcoimp_def precise_def le_fun_def le_iff_sepadd pred_conj_def pred_true_def)
-  apply (intro iffI)
-   apply (rule allI)
-   apply (rule ext)
-   apply (rule iffI)
-    apply (rule conjI)
-     apply blast
-    apply clarsimp
-    apply (drule_tac x=\<open>Q\<close> in spec)
-    apply (drule_tac x=\<open>(=) h2a\<close> in spec)
-    apply (drule_tac x=\<open>h1a + h2a\<close> in cong[OF _ refl])
-    apply fastforce
-   apply fastforce
-
-  apply clarsimp
-  apply (rule ext)
-  apply (rule iffI)
-   apply blast
-  apply clarsimp
-  apply (frule_tac x=Q in spec, drule_tac x=\<open>h1a + h2a\<close> in cong[OF _ refl])
-  apply (drule_tac x=Q' in spec, drule_tac x=\<open>h1a + h2a\<close> in cong[OF _ refl])
-  apply metis
-  done
-
-end
-
-
-class right_cancel_seplogic = seplogic +
-  assumes partial_right_cancel: \<open>\<And>a b c. a \<currency> b \<Longrightarrow> a \<currency> c \<Longrightarrow> (b + a = c + a) = (b = c)\<close>
-begin
-
-lemma precise_iff_conj_distrib:
-  shows \<open>precise P \<longleftrightarrow> (\<forall>Q Q'. P \<^emph> (Q \<^bold>\<and> Q') = (P \<^emph> Q) \<^bold>\<and> (P \<^emph> Q'))\<close>
-proof (rule iffI)
-  assume distrib_assm: \<open>\<forall>Q Q'. P \<^emph> (Q \<^bold>\<and> Q') = (P \<^emph> Q) \<^bold>\<and> (P \<^emph> Q')\<close>
-  show \<open>precise P\<close>
-  proof (clarsimp simp add: precise_def le_iff_sepadd)
-    fix h1 h1' h2 h2'
-    presume precise_assms:
-      \<open>h1 + h1' = h2 + h2'\<close>
-      \<open>h1 \<currency> h1'\<close>
-      \<open>h2 \<currency> h2'\<close>
-      \<open>P h1\<close>
-      \<open>P h2\<close>
-
-    have \<open>(P \<^emph> ((=) h1')) (h2+h2')\<close>
-      using precise_assms partial_add_commute disjoint_symm sepconj_def
-      by auto
-    moreover have \<open>(P \<^emph> ((=) h2')) (h2+h2')\<close>
-      using precise_assms partial_add_commute disjoint_symm sepconj_def
-      by auto
-    ultimately have \<open>(P \<^emph> (\<lambda>h. h1' = h \<and> h2' = h)) (h2+h2')\<close>
-      using distrib_assm precise_assms
-      by (simp add: pred_conj_def)
-    then show \<open>h1 = h2\<close>
-      using precise_assms disjoint_symm partial_right_cancel
-      unfolding sepconj_def
-      by fastforce
-  qed
-next
-  presume precise_assm:  \<open>precise P\<close>
-  then show \<open>\<forall>Q Q'. P \<^emph> (Q \<^bold>\<and> Q') = (P \<^emph> Q) \<^bold>\<and> (P \<^emph> Q')\<close>
-    apply (auto simp add: sepconj_def precise_def pred_conj_def fun_eq_iff le_iff_sepadd)
-    apply (metis partial_add_commute partial_right_cancel)
-    done
-qed
-
-lemma precise_iff_all_sepconj_imp_sepcoimp:
-  shows \<open>precise P \<longleftrightarrow> (\<forall>Q. P \<^emph> Q \<le> P \<sim>\<^emph> Q)\<close>
-  apply (clarsimp simp add: sepconj_def sepcoimp_def precise_def le_fun_def le_iff_sepadd)
-  apply (rule iffI)
-   apply (metis partial_right_cancel partial_add_commute)
-  apply clarsimp
-  apply (rename_tac a b c d)
-  apply (drule_tac x=\<open>(=) b\<close> in spec, metis partial_right_cancel disjoint_symm)
-  done
-
-lemma precise_sepconj_eq_strong_sepcoimp:
-  shows \<open>precise P \<Longrightarrow> P \<^emph> Q = (P \<^emph> \<^bold>T) \<^bold>\<and> (P \<sim>\<^emph> Q)\<close>
-  apply (clarsimp simp add: sepconj_def sepcoimp_def precise_def le_fun_def le_iff_sepadd pred_conj_def pred_true_def)
-  apply (rule ext)
-  apply (rule iffI)
-   apply (metis partial_right_cancel partial_add_commute)
-  apply metis
-  done
-
-end
-
-section \<open> Concurrent Separation Logic \<close>
+section \<open> Concurrent Separation Logic Language \<close>
 
 (* Based on
     Precision and the Conjunction Rule in Concurrent Separation Logic
     Alexey Gotsman, Josh Berdine, Byron Cook
 *)
 
-datatype 'v iexpr =
-  IEVar 'v
-  | IELit nat
-  | IEAdd \<open>'v iexpr\<close> \<open>'v iexpr\<close>
-  | IENull
 
-datatype 'v bexpr =
-  IBEq \<open>'v iexpr\<close> \<open>'v iexpr\<close>
-  | IBNeg \<open>'v bexpr\<close>
-
-datatype 'v ram_comm =
-  CSkip
-  | CAssign 'v  \<open>'v iexpr\<close>
-  | CHeapR 'v  \<open>'v iexpr\<close>
-  | CHeapW  \<open>'v iexpr\<close>  \<open>'v iexpr\<close>
-  | CHeapNew 'v
-  | CHeapDel \<open>'v iexpr\<close>
-  | CAssume \<open>'v bexpr\<close>
-
-
-datatype 'v comm =
-  CRam \<open>'v ram_comm\<close>
-  | CSeq \<open>'v comm\<close> \<open>'v comm\<close> (infixr \<open>;;\<close> 84)
-  | CNDet \<open>'v comm\<close> \<open>'v comm\<close> (infixr \<open>\<box>\<close> 86)
-  | CLoop \<open>'v comm\<close> (\<open>(_)\<^sup>\<star>\<close> 88)
-  | CAcquire nat
-  | CRelease nat
-
-type_synonym 'v prog = \<open>'v comm list\<close>
+subsection \<open> State \<close>
 
 datatype 'v varenv = VarEnv (the_varenv: \<open>'v \<rightharpoonup> nat\<close>)
 datatype heap = Heap (the_heap: \<open>nat \<rightharpoonup> nat\<close>)
@@ -477,127 +58,6 @@ lemma the_resources_inject:
 
 type_synonym 'v state = \<open>'v varenv \<times> heap \<times> resources\<close>
 
-fun denot_iexpr :: \<open>'v iexpr \<Rightarrow> (('v \<rightharpoonup> nat) \<rightharpoonup> nat)\<close> (\<open>\<lbrakk>_\<rbrakk>\<^sub>I _\<close> [51,51] 51) where
-  \<open>\<lbrakk> IEVar x \<rbrakk>\<^sub>I \<sigma> = \<sigma> x\<close>
-| \<open>\<lbrakk> IELit k \<rbrakk>\<^sub>I \<sigma> = Some k\<close>
-| \<open>\<lbrakk> IEAdd a b \<rbrakk>\<^sub>I \<sigma> =
-    (case (\<lbrakk>a\<rbrakk>\<^sub>I \<sigma>, \<lbrakk>b\<rbrakk>\<^sub>I \<sigma>) of
-      (Some a, Some b) \<Rightarrow> Some (a + b)
-    | _ \<Rightarrow> None
-    )
-  \<close>
-| \<open>\<lbrakk> IENull \<rbrakk>\<^sub>I \<sigma> = None\<close> (* TODO: is this correct? *)
-
-fun denot_bexpr :: \<open>'v bexpr \<Rightarrow> (('v \<rightharpoonup> nat) \<rightharpoonup> bool)\<close> (\<open>(\<lbrakk>_\<rbrakk>\<^sub>B) _\<close> [80,80] 80) where
-  \<open>\<lbrakk> IBEq a b \<rbrakk>\<^sub>B \<sigma> =
-    (case (\<lbrakk>a\<rbrakk>\<^sub>I \<sigma>, \<lbrakk>b\<rbrakk>\<^sub>I \<sigma>) of
-      (Some a, Some b) \<Rightarrow> Some (a = b)
-    | _ \<Rightarrow> None
-    )
-  \<close>
-| \<open>\<lbrakk> IBNeg b \<rbrakk>\<^sub>B \<sigma> = map_option HOL.Not (\<lbrakk> b \<rbrakk>\<^sub>B \<sigma>)\<close>
-
-inductive opsem_ram_comm :: \<open>'v state \<Rightarrow> 'v ram_comm \<Rightarrow> 'v state option \<Rightarrow> bool\<close> (\<open>_, _ \<leadsto> _\<close> [80,80,80] 80) where
-  \<open>s, CSkip \<leadsto> Some s\<close>
-| \<open>(VarEnv s, h, r), CAssign x e \<leadsto> Some (VarEnv (s(x := \<lbrakk>e\<rbrakk>\<^sub>I s)), h, r)\<close>
-| \<open>\<lbrakk>ep\<rbrakk>\<^sub>I s = Some p \<Longrightarrow> (VarEnv s, h, r), CHeapR x ep \<leadsto> Some (VarEnv (s(x := the_heap h p)), h, r)\<close>
-| \<open>\<lbrakk>ep\<rbrakk>\<^sub>I s = None   \<Longrightarrow> (VarEnv s, h, r), CHeapR x ep \<leadsto> None\<close>
-| \<open>\<lbrakk>ep\<rbrakk>\<^sub>I s = Some p \<Longrightarrow> (VarEnv s, Heap h, r), CHeapW ep e \<leadsto> Some (VarEnv s, Heap (h(p := \<lbrakk>e\<rbrakk>\<^sub>I s)), r)\<close>
-| \<open>\<lbrakk>ep\<rbrakk>\<^sub>I s = None   \<Longrightarrow> (VarEnv s, h, r), CHeapW ep e \<leadsto> None\<close>
-| \<open>h p = None \<Longrightarrow> (VarEnv s, Heap h, r), CHeapNew x \<leadsto> Some (VarEnv (s(x \<mapsto> p)), Heap (h(p \<mapsto> undefined)), r)\<close>
-| \<open>h p \<noteq> None \<Longrightarrow> (VarEnv s, Heap h, r), CHeapNew x \<leadsto> None\<close>
-| \<open>\<lbrakk>e\<rbrakk>\<^sub>I s = Some p \<Longrightarrow> h p \<noteq> None \<Longrightarrow> (VarEnv s, Heap h, r), CHeapDel e \<leadsto> Some (VarEnv s, Heap (h(p := None)), r)\<close>
-| \<open>\<lbrakk>e\<rbrakk>\<^sub>I s = Some p \<Longrightarrow> h p = None \<Longrightarrow> (VarEnv s, Heap h, r), CHeapDel e \<leadsto> None\<close>
-| \<open>\<lbrakk>e\<rbrakk>\<^sub>I s = None \<Longrightarrow> (VarEnv s, Heap h, r), CHeapDel e \<leadsto> None\<close>
-| \<open>\<lbrakk>b\<rbrakk>\<^sub>B s = Some True \<Longrightarrow> (VarEnv s, h, r), CAssume b \<leadsto> Some (VarEnv s, h, r)\<close>
-
-inductive_cases opsem_ram_comm_CSkipE[elim!]: \<open>s, CSkip \<leadsto> s'\<close>
-inductive_cases opsem_ram_comm_CAssignE[elim!]: \<open>s, CAssign x e \<leadsto> s'\<close>
-inductive_cases opsem_ram_comm_CHeapRE[elim]: \<open>s, CHeapR x e \<leadsto> s'\<close>
-inductive_cases opsem_ram_comm_CHeapWE[elim!]: \<open>s, CHeapW ep e \<leadsto> s'\<close>
-inductive_cases opsem_ram_comm_CHeapNewE[elim]: \<open>s, CHeapNew x \<leadsto> s'\<close>
-inductive_cases opsem_ram_comm_CHeapDelE[elim]: \<open>s, CHeapDel e \<leadsto> s'\<close>
-inductive_cases opsem_ram_comm_CAssumeE[elim!]: \<open>s, CAssume b \<leadsto> s'\<close>
-
-lemma opsem_ram_comm_simps:
-  \<open>s, CSkip \<leadsto> os' \<longleftrightarrow> os' = Some s\<close>
-  \<open>s, CAssign x e \<leadsto> os' \<longleftrightarrow>
-    (\<exists>v h r. s = (VarEnv v, h, r) \<and> os' = Some (VarEnv (v(x := \<lbrakk>e\<rbrakk>\<^sub>I v)), h, r))\<close>
-  \<open>s, CHeapR x ep \<leadsto> os' \<longleftrightarrow>
-    (\<exists>v h r. s = (VarEnv v, h, r) \<and>
-    (case \<lbrakk>ep\<rbrakk>\<^sub>I v of
-      Some p \<Rightarrow> os' = Some (VarEnv (v(x := the_heap h p)), h, r)
-    | None \<Rightarrow> os' = None))\<close>
-  \<open>s, CHeapW ep e \<leadsto> os' \<longleftrightarrow>
-    (\<exists>v h r. s = (VarEnv v, Heap h, r) \<and>
-    (case \<lbrakk>ep\<rbrakk>\<^sub>I v of
-      Some p \<Rightarrow> os' = Some (VarEnv v, Heap (h(p := \<lbrakk>e\<rbrakk>\<^sub>I v)), r)
-    | None \<Rightarrow> os' = None))\<close>
-  \<open>s, CHeapNew x \<leadsto> os' \<longleftrightarrow>
-    (\<exists>v h r p. s = (VarEnv v, Heap h, r) \<and>
-    (case h p of
-      Some _ \<Rightarrow> os' = None
-    | None \<Rightarrow> os' = Some (VarEnv (v(x \<mapsto> p)), Heap (h(p \<mapsto> undefined)), r)))\<close>
-  \<open>s, CHeapDel e \<leadsto> os' \<longleftrightarrow>
-    (\<exists>v h r. s = (VarEnv v, Heap h, r) \<and>
-    (case \<lbrakk>e\<rbrakk>\<^sub>I v of
-      Some p \<Rightarrow> (case h p of
-          Some _ \<Rightarrow> os' = Some (VarEnv v, Heap (h(p := None)), r)
-        | None \<Rightarrow> os' = None
-        )
-    | None \<Rightarrow> os' = None))\<close>
-  \<open>s, CAssume b \<leadsto> os' \<longleftrightarrow>
-    (\<exists>v h r. s = (VarEnv v, h, r) \<and> \<lbrakk>b\<rbrakk>\<^sub>B v = Some True \<and> os' = Some (VarEnv v, h, r))\<close>
-proof -
-  show \<open>s, CHeapW ep e \<leadsto> os' =
-    (\<exists>v h r.
-        s = (VarEnv v, Heap h, r) \<and>
-        (case \<lbrakk>ep\<rbrakk>\<^sub>I v of None \<Rightarrow> os' = None
-        | Some p \<Rightarrow> os' = Some (VarEnv v, Heap (h(p := \<lbrakk>e\<rbrakk>\<^sub>I v)), r)))\<close>
-    by (fastforce simp add: Heap_always_ex intro: opsem_ram_comm.intros split: option.splits)
-  show \<open>s, CHeapNew x \<leadsto> os' =
-    (\<exists>v h r p.
-        s = (VarEnv v, Heap h, r) \<and>
-        (case h p of None \<Rightarrow> os' = Some (VarEnv (v(x \<mapsto> p)), Heap (h(p \<mapsto> undefined)), r)
-         | Some x \<Rightarrow> os' = None))\<close>
-    by (force simp add: opsem_ram_comm.simps split: option.splits)
-  show \<open>s, CHeapDel e \<leadsto> os' =
-    (\<exists>v h r.
-        s = (VarEnv v, Heap h, r) \<and>
-        (case \<lbrakk>e\<rbrakk>\<^sub>I v of None \<Rightarrow> os' = None
-         | Some p \<Rightarrow>
-            (case h p of None \<Rightarrow> os' = None
-            | Some x \<Rightarrow> os' = Some (VarEnv v, Heap (h(p := None)), r))))\<close>
-    apply (simp split: option.splits)
-    apply (rule iffI)
-      (* Part 1 *)
-     apply (erule opsem_ram_comm_CHeapDelE)
-       apply (clarsimp, metis not_Some_eq option.inject)
-      apply (force simp add: the_heap_eq_iff[symmetric] split: option.splits)
-    apply (metis Heap_always_ex option.simps(3))
-      (* Part 2 *)
-    apply clarsimp
-    apply (case_tac \<open>\<lbrakk>e\<rbrakk>\<^sub>I v\<close>; clarsimp simp add: opsem_ram_comm.intros)
-    apply (case_tac \<open>h a\<close>; simp add: opsem_ram_comm.intros all_conj_distrib)
-    done
-qed (fastforce intro: opsem_ram_comm.intros split: option.splits)+
-
-
-lemma opsem_ram_comm_mostly_deterministic:
-  \<open>s, c \<leadsto> s0 \<Longrightarrow> s, c \<leadsto> s1 \<Longrightarrow> \<forall>x. c \<noteq> CHeapNew x \<Longrightarrow> s0 = s1\<close>
-  by (induct arbitrary: s1 rule: opsem_ram_comm.inducts) fastforce+
-
-lemma opsem_ram_comm_success_mono:
-  \<open>s, c \<leadsto> os' \<Longrightarrow>
-  P \<le> Q \<Longrightarrow>
-  P s \<Longrightarrow>
-  \<exists>s. Q s \<and> s, c \<leadsto> os'\<close>
-  by (induct rule: opsem_ram_comm.inducts)
-    (fastforce simp add: le_fun_def intro: opsem_ram_comm.intros)+
-
-lemma opsem_ram_comm_same_resources:
-  \<open>s, c \<leadsto> os' \<Longrightarrow> os' = Some s' \<Longrightarrow> snd (snd s) = snd (snd s')\<close>
-  by (induct arbitrary: s' rule: opsem_ram_comm.inducts) force+
 
 
 subsubsection \<open>Seplogic Instances\<close>
@@ -876,6 +336,253 @@ end
 
 
 
+subsection \<open> Syntax \<close>
+
+datatype 'v iexpr =
+  IEVar 'v
+  | IELit nat
+  | IEAdd \<open>'v iexpr\<close> \<open>'v iexpr\<close>
+  | IENull
+
+datatype 'v bexpr =
+  IBEq \<open>'v iexpr\<close> \<open>'v iexpr\<close>
+  | IBNeg \<open>'v bexpr\<close>
+
+datatype 'v ram_comm =
+  CSkip
+  | CAssign 'v  \<open>'v iexpr\<close>
+  | CHeapR 'v  \<open>'v iexpr\<close>
+  | CHeapW  \<open>'v iexpr\<close>  \<open>'v iexpr\<close>
+  | CHeapNew 'v
+  | CHeapDel \<open>'v iexpr\<close>
+  | CAssume \<open>'v bexpr\<close>
+
+datatype 'v comm =
+  CRam \<open>'v ram_comm\<close>
+  | CSeq \<open>'v comm\<close> \<open>'v comm\<close> (infixr \<open>;;\<close> 84)
+  | CNDet \<open>'v comm\<close> \<open>'v comm\<close> (infixr \<open>\<box>\<close> 86)
+  | CLoop \<open>'v comm\<close> (\<open>(_)\<^sup>\<star>\<close> 88)
+  | CAcquire nat
+  | CRelease nat
+
+type_synonym 'v prog = \<open>'v comm list\<close>
+
+fun denot_iexpr :: \<open>'v iexpr \<Rightarrow> (('v \<rightharpoonup> nat) \<rightharpoonup> nat)\<close> (\<open>\<lbrakk>_\<rbrakk>\<^sub>I _\<close> [60,200] 60) where
+  \<open>\<lbrakk> IEVar x \<rbrakk>\<^sub>I \<sigma> = \<sigma> x\<close>
+| \<open>\<lbrakk> IELit k \<rbrakk>\<^sub>I \<sigma> = Some k\<close>
+| \<open>\<lbrakk> IEAdd a b \<rbrakk>\<^sub>I \<sigma> = 
+    (case (\<lbrakk>a\<rbrakk>\<^sub>I \<sigma>, \<lbrakk>b\<rbrakk>\<^sub>I \<sigma>) of
+      (Some a, Some b) \<Rightarrow> Some (a + b)
+    | _ \<Rightarrow> None
+    )
+  \<close>
+| \<open>\<lbrakk> IENull \<rbrakk>\<^sub>I \<sigma> = None\<close> (* TODO: is this correct? *)
+
+fun ivars :: \<open>'v iexpr \<Rightarrow> 'v set\<close> where
+  \<open>ivars (IEVar x) = {x}\<close>
+| \<open>ivars (IELit k) = {}\<close>
+| \<open>ivars (IEAdd a b) = ivars a \<union> ivars b\<close>
+| \<open>ivars IENull = {}\<close>
+
+lemma iexpr_success_imp_goodvars:
+  \<open>\<lbrakk>e\<rbrakk>\<^sub>I v = Some a \<Longrightarrow> ivars e \<subseteq> dom v\<close>
+  by (induct e arbitrary: a)
+    (force split: option.splits)+
+
+
+fun denot_bexpr :: \<open>'v bexpr \<Rightarrow> (('v \<rightharpoonup> nat) \<rightharpoonup> bool)\<close> (\<open>\<lbrakk>_\<rbrakk>\<^sub>B _\<close> [60,200] 60) where
+  \<open>\<lbrakk> IBEq a b \<rbrakk>\<^sub>B \<sigma> =
+    (case (\<lbrakk>a\<rbrakk>\<^sub>I \<sigma>, \<lbrakk>b\<rbrakk>\<^sub>I \<sigma>) of
+      (Some a, Some b) \<Rightarrow> Some (a = b)
+    | _ \<Rightarrow> None
+    )
+  \<close>
+| \<open>\<lbrakk> IBNeg b \<rbrakk>\<^sub>B \<sigma> = map_option HOL.Not (\<lbrakk> b \<rbrakk>\<^sub>B \<sigma>)\<close>
+
+fun bvars :: \<open>'v bexpr \<Rightarrow> 'v set\<close> where
+  \<open>bvars (IBEq a b) = ivars a \<union> ivars b\<close>
+| \<open>bvars (IBNeg b) = bvars b\<close>
+
+lemma bexpr_success_imp_goodvars:
+  \<open>\<lbrakk>e\<rbrakk>\<^sub>B v = Some a \<Longrightarrow> bvars e \<subseteq> dom v\<close>
+  by (induct e arbitrary: a)
+    (force dest: iexpr_success_imp_goodvars split: option.splits)+
+
+
+inductive opsem_ram_comm :: \<open>'v state \<Rightarrow> 'v ram_comm \<Rightarrow> 'v state option \<Rightarrow> bool\<close> (\<open>_, _ \<leadsto> _\<close> [80,80,80] 80) where
+  \<open>s, CSkip \<leadsto> Some s\<close>
+
+| \<open>s x \<noteq> None \<Longrightarrow> \<lbrakk>e\<rbrakk>\<^sub>I s = Some v \<Longrightarrow> (VarEnv s, h, r), CAssign x e \<leadsto> Some (VarEnv (s(x \<mapsto> v)), h, r)\<close>
+| \<open>s x = None \<Longrightarrow> (VarEnv s, h, r), CAssign x e \<leadsto> None\<close>
+| \<open>s x \<noteq> None \<Longrightarrow> \<lbrakk>e\<rbrakk>\<^sub>I s = None \<Longrightarrow> (VarEnv s, h, r), CAssign x e \<leadsto> None\<close>
+
+| \<open>s x \<noteq> None \<Longrightarrow> \<lbrakk>ep\<rbrakk>\<^sub>I s = Some p \<Longrightarrow> (VarEnv s, h, r), CHeapR x ep \<leadsto> Some (VarEnv (s(x := the_heap h p)), h, r)\<close>
+| \<open>s x = None \<Longrightarrow> (VarEnv s, h, r), CHeapR x ep \<leadsto> None\<close>
+| \<open>s x \<noteq> None \<Longrightarrow> \<lbrakk>ep\<rbrakk>\<^sub>I s = None   \<Longrightarrow> (VarEnv s, h, r), CHeapR x ep \<leadsto> None\<close>
+
+| \<open>\<lbrakk>ep\<rbrakk>\<^sub>I s = Some p \<Longrightarrow> h p \<noteq> None \<Longrightarrow> (VarEnv s, Heap h, r), CHeapW ep e \<leadsto> Some (VarEnv s, Heap (h(p := \<lbrakk>e\<rbrakk>\<^sub>I s)), r)\<close>
+| \<open>\<lbrakk>ep\<rbrakk>\<^sub>I s = Some p \<Longrightarrow> h p = None \<Longrightarrow> (VarEnv s, Heap h, r), CHeapW ep e \<leadsto> None\<close>
+| \<open>\<lbrakk>ep\<rbrakk>\<^sub>I s = None   \<Longrightarrow> (VarEnv s, h, r), CHeapW ep e \<leadsto> None\<close>
+
+| \<open>s x \<noteq> None \<Longrightarrow> h p = None \<Longrightarrow> (VarEnv s, Heap h, r), CHeapNew x \<leadsto> Some (VarEnv (s(x \<mapsto> p)), Heap (h(p \<mapsto> undefined)), r)\<close>
+| \<open>s x = None \<Longrightarrow> (VarEnv s, Heap h, r), CHeapNew x \<leadsto> None\<close>
+| \<open>s x \<noteq> None \<Longrightarrow> h p \<noteq> None \<Longrightarrow> (VarEnv s, Heap h, r), CHeapNew x \<leadsto> None\<close>
+
+| \<open>\<lbrakk>e\<rbrakk>\<^sub>I s = Some p \<Longrightarrow> h p \<noteq> None \<Longrightarrow> (VarEnv s, Heap h, r), CHeapDel e \<leadsto> Some (VarEnv s, Heap (h(p := None)), r)\<close>
+| \<open>\<lbrakk>e\<rbrakk>\<^sub>I s = Some p \<Longrightarrow> h p = None \<Longrightarrow> (VarEnv s, Heap h, r), CHeapDel e \<leadsto> None\<close>
+| \<open>\<lbrakk>e\<rbrakk>\<^sub>I s = None \<Longrightarrow> (VarEnv s, Heap h, r), CHeapDel e \<leadsto> None\<close>
+
+| \<open>\<lbrakk>b\<rbrakk>\<^sub>B s = Some True \<Longrightarrow> (VarEnv s, h, r), CAssume b \<leadsto> Some (VarEnv s, h, r)\<close>
+
+inductive_cases opsem_ram_comm_CSkipE[elim!]: \<open>s, CSkip \<leadsto> s'\<close>
+inductive_cases opsem_ram_comm_CAssignE[elim!]: \<open>s, CAssign x e \<leadsto> s'\<close>
+inductive_cases opsem_ram_comm_CHeapRE[elim]: \<open>s, CHeapR x e \<leadsto> s'\<close>
+inductive_cases opsem_ram_comm_CHeapWE[elim!]: \<open>s, CHeapW ep e \<leadsto> s'\<close>
+inductive_cases opsem_ram_comm_CHeapNewE[elim]: \<open>s, CHeapNew x \<leadsto> s'\<close>
+inductive_cases opsem_ram_comm_CHeapDelE[elim]: \<open>s, CHeapDel e \<leadsto> s'\<close>
+inductive_cases opsem_ram_comm_CAssumeE[elim!]: \<open>s, CAssume b \<leadsto> s'\<close>
+
+lemma opsem_ram_comm_simps:
+  \<open>s, CSkip \<leadsto> os' \<longleftrightarrow> os' = Some s\<close>
+  \<open>s, CAssign x e \<leadsto> os' \<longleftrightarrow>
+    (\<exists>v h r vx. s = (VarEnv v, h, r) \<and>
+      (if v x = None
+      then os' = None
+      else case \<lbrakk>e\<rbrakk>\<^sub>I v of
+        None \<Rightarrow> os' = None
+      | Some vx \<Rightarrow> os' = Some (VarEnv (v(x \<mapsto> vx)), h, r)))\<close> (is ?CAssign)
+  \<open>s, CHeapR x ep \<leadsto> os' \<longleftrightarrow>
+    (\<exists>v h r. s = (VarEnv v, h, r) \<and>
+    (if v x = None
+    then os' = None
+    else case \<lbrakk>ep\<rbrakk>\<^sub>I v of
+      Some p \<Rightarrow> os' = Some (VarEnv (v(x := the_heap h p)), h, r)
+    | None \<Rightarrow> os' = None))\<close> (is ?CHeapR)
+  \<open>s, CHeapW ep e \<leadsto> os' \<longleftrightarrow>
+    (\<exists>v h r. s = (VarEnv v, Heap h, r) \<and>
+    (case \<lbrakk>ep\<rbrakk>\<^sub>I v of
+      Some p \<Rightarrow>
+        if h p = None
+        then os' = None
+        else os' = Some (VarEnv v, Heap (h(p := \<lbrakk>e\<rbrakk>\<^sub>I v)), r)
+    | None \<Rightarrow> os' = None))\<close> (is ?CHeapW)
+  \<open>s, CHeapNew x \<leadsto> os' \<longleftrightarrow>
+    (\<exists>v h r p. s = (VarEnv v, Heap h, r) \<and>
+      (if v x = None
+       then os' = None
+       else (case h p of
+          Some _ \<Rightarrow> os' = None
+        | None \<Rightarrow> os' = Some (VarEnv (v(x \<mapsto> p)), Heap (h(p \<mapsto> undefined)), r))))\<close> (is ?CHeapNew)
+  \<open>s, CHeapDel e \<leadsto> os' \<longleftrightarrow>
+    (\<exists>v h r. s = (VarEnv v, Heap h, r) \<and>
+    (case \<lbrakk>e\<rbrakk>\<^sub>I v of
+      Some p \<Rightarrow> (case h p of
+          Some _ \<Rightarrow> os' = Some (VarEnv v, Heap (h(p := None)), r)
+        | None \<Rightarrow> os' = None
+        )
+    | None \<Rightarrow> os' = None))\<close>
+  \<open>s, CAssume b \<leadsto> os' \<longleftrightarrow>
+    (\<exists>v h r. s = (VarEnv v, h, r) \<and> \<lbrakk>b\<rbrakk>\<^sub>B v = Some True \<and> os' = Some (VarEnv v, h, r))\<close> (is ?CAssume)
+proof -
+  show \<open>s, CSkip \<leadsto> os' = (os' = Some s)\<close>
+    by (simp add: opsem_ram_comm.simps split: option.splits)
+  show \<open>?CAssign\<close>
+    by (simp add: opsem_ram_comm.simps split: option.splits, fastforce)
+  show \<open>?CHeapR\<close>
+    by (simp add: opsem_ram_comm.simps split: option.splits, fastforce)
+  show \<open>?CHeapW\<close>
+    apply (simp add: opsem_ram_comm.simps split: option.splits)
+    apply (rule iffI)
+     defer
+     apply (metis not_None_eq)
+    apply (elim disjE)
+      apply fastforce
+     apply fastforce
+    apply clarsimp
+    apply (metis heap.exhaust_sel option.distinct(1))
+    done
+  show \<open>?CHeapNew\<close>
+    by (force simp add: opsem_ram_comm.simps split: option.splits)
+  show \<open>s, CHeapDel e \<leadsto> os' =
+    (\<exists>v h r.
+        s = (VarEnv v, Heap h, r) \<and>
+        (case \<lbrakk>e\<rbrakk>\<^sub>I v of None \<Rightarrow> os' = None
+         | Some p \<Rightarrow>
+            (case h p of None \<Rightarrow> os' = None
+            | Some x \<Rightarrow> os' = Some (VarEnv v, Heap (h(p := None)), r))))\<close>
+    apply (clarsimp simp add: opsem_ram_comm.simps split: option.splits)
+    apply (case_tac s, rename_tac v h r, case_tac v, case_tac h, case_tac r)
+    apply clarsimp
+    apply (rule iffI)
+     apply (metis (no_types, hide_lams) not_None_eq option.inject)
+    apply (metis not_Some_eq)
+    done
+  show \<open>?CAssume\<close>
+    by (force simp add: opsem_ram_comm.simps split: option.splits)
+qed
+
+fun rc_write_vars :: \<open>'v ram_comm \<Rightarrow> 'v set\<close> where
+  \<open>rc_write_vars CSkip = {}\<close>
+| \<open>rc_write_vars (CAssign x e) = {x}\<close>
+| \<open>rc_write_vars (CHeapR x e) = {x}\<close>
+| \<open>rc_write_vars (CHeapW _ _) = {}\<close>
+| \<open>rc_write_vars (CHeapNew x) = {x}\<close>
+| \<open>rc_write_vars (CHeapDel _) = {}\<close>
+| \<open>rc_write_vars (CAssume _) = {}\<close>
+
+fun rc_read_hvars :: \<open>'v varenv \<Rightarrow> 'v ram_comm \<Rightarrow> nat set\<close> where
+  \<open>rc_read_hvars _ CSkip = {}\<close>
+| \<open>rc_read_hvars _ (CAssign x e) = {}\<close>
+| \<open>rc_read_hvars v (CHeapR x ep) = (case \<lbrakk>ep\<rbrakk>\<^sub>I (the_varenv v) of Some p \<Rightarrow> {p} | None \<Rightarrow> {})\<close>
+| \<open>rc_read_hvars _ (CHeapW ep ev) = {}\<close>
+| \<open>rc_read_hvars _ (CHeapNew x) = {}\<close>
+| \<open>rc_read_hvars _ (CHeapDel ep) = {}\<close>
+| \<open>rc_read_hvars _ (CAssume _) = {}\<close>
+
+fun rc_write_hvars :: \<open>'v varenv \<Rightarrow> 'v ram_comm \<Rightarrow> nat set\<close> where
+  \<open>rc_write_hvars _ CSkip = {}\<close>
+| \<open>rc_write_hvars _ (CAssign x e) = {}\<close>
+| \<open>rc_write_hvars _ (CHeapR x e) = {}\<close>
+| \<open>rc_write_hvars v (CHeapW ep ev) = (case \<lbrakk>ep\<rbrakk>\<^sub>I (the_varenv v) of Some p \<Rightarrow> {p} | None \<Rightarrow> {})\<close>
+| \<open>rc_write_hvars _ (CHeapNew x) = {}\<close>
+| \<open>rc_write_hvars v (CHeapDel ep) = (case \<lbrakk>ep\<rbrakk>\<^sub>I (the_varenv v) of Some p \<Rightarrow> {p} | None \<Rightarrow> {})\<close>
+| \<open>rc_write_hvars _ (CAssume _) = {}\<close>
+
+
+fun rc_read_vars :: \<open>'v ram_comm \<Rightarrow> 'v set\<close> where
+  \<open>rc_read_vars CSkip = {}\<close>
+| \<open>rc_read_vars (CAssign x e) = ivars e\<close>
+| \<open>rc_read_vars (CHeapR x e) = ivars e\<close>
+| \<open>rc_read_vars (CHeapW ex ev) = ivars ex \<union> ivars ev\<close>
+| \<open>rc_read_vars (CHeapNew x) = {}\<close>
+| \<open>rc_read_vars (CHeapDel ex) = ivars ex\<close>
+| \<open>rc_read_vars (CAssume bv) = bvars bv\<close>
+
+fun c_write_vars :: \<open>'v comm \<Rightarrow> 'v set\<close> where
+  \<open>c_write_vars (CRam rc) = rc_write_vars rc\<close>
+| \<open>c_write_vars (CSeq c0 c1) = c_write_vars c0 \<union> c_write_vars c1\<close>
+| \<open>c_write_vars (CNDet c0 c1) = c_write_vars c0 \<union> c_write_vars c1\<close>
+| \<open>c_write_vars (CLoop c) = c_write_vars c\<close>
+| \<open>c_write_vars (CAcquire k) = {}\<close>
+| \<open>c_write_vars (CRelease k) = {}\<close>
+
+
+lemma opsem_ram_comm_mostly_deterministic:
+  \<open>s, c \<leadsto> s0 \<Longrightarrow> s, c \<leadsto> s1 \<Longrightarrow> \<forall>x. c \<noteq> CHeapNew x \<Longrightarrow> s0 = s1\<close>
+  by (induct arbitrary: s1 rule: opsem_ram_comm.inducts) fastforce+
+
+lemma opsem_ram_comm_success_mono:
+  \<open>s, c \<leadsto> os' \<Longrightarrow>
+  P \<le> Q \<Longrightarrow>
+  P s \<Longrightarrow>
+  \<exists>s. Q s \<and> s, c \<leadsto> os'\<close>
+  by (induct rule: opsem_ram_comm.inducts)
+    (fastforce simp add: le_fun_def intro: opsem_ram_comm.intros)+
+
+lemma opsem_ram_comm_same_resources:
+  \<open>s, c \<leadsto> os' \<Longrightarrow> os' = Some s' \<Longrightarrow> snd (snd s) = snd (snd s')\<close>
+  by (induct arbitrary: s' rule: opsem_ram_comm.inducts) force+
+
 lemma varenv_disjoint_map_appendI:
   \<open>VarEnv v1 \<currency> v2 \<Longrightarrow> x \<notin> dom (the_varenv v2) \<Longrightarrow> VarEnv (v1(x := a)) \<currency> v2\<close>
   by (simp add: disjoint_varenv_def Diff_Int_distrib2 subset_singleton_iff)
@@ -893,22 +600,32 @@ lemma ram_comm_step_iff_forward:
 lemma ram_comm_forward_simps:
   \<open>ram_comm_forward CSkip P = P\<close>
   \<open>ram_comm_forward (CAssign x e0) P =
-    (\<lambda>(v, h, r). \<exists>v'. v = VarEnv ((the_varenv v')(x := \<lbrakk>e0\<rbrakk>\<^sub>I (the_varenv v'))) \<and> P (v', h, r))\<close>
+    (\<lambda>(v, h, r). \<exists>vinit ex.
+       P (vinit, h, r) \<and>
+      the_varenv vinit x \<noteq> None \<and> \<lbrakk>e0\<rbrakk>\<^sub>I (the_varenv vinit) = Some ex \<and>
+      v = VarEnv ((the_varenv vinit)(x \<mapsto> ex)))\<close> (is ?CAssign)
   \<open>ram_comm_forward (CHeapR x ep) P =
     (\<lambda>(v, h, r). \<exists>v' p.
-      \<lbrakk>ep\<rbrakk>\<^sub>I (the_varenv v') = Some p \<and> v = VarEnv ((the_varenv v')(x := the_heap h p)) \<and> P (v', h, r)
-    )\<close>
+      P (v', h, r) \<and>
+      the_varenv v' x \<noteq> None \<and>
+      \<lbrakk>ep\<rbrakk>\<^sub>I (the_varenv v') = Some p \<and>
+      v = VarEnv ((the_varenv v')(x := the_heap h p))
+    )\<close> (is ?CHeapR)
   \<open>ram_comm_forward (CHeapW ep e) P =
-    (\<lambda>(v, h, r). \<exists>h' p.
-      \<lbrakk>ep\<rbrakk>\<^sub>I (the_varenv v) = Some p \<and> h = Heap ((the_heap h')(p := \<lbrakk>e\<rbrakk>\<^sub>I (the_varenv v))) \<and> P (v, h', r)
-    )\<close>
+    (\<lambda>(v, h, r). \<exists>h' p ex.
+      P (v, h', r) \<and>
+      the_heap h' p \<noteq> None \<and>
+      \<lbrakk>ep\<rbrakk>\<^sub>I (the_varenv v) = Some p \<and>
+      h = Heap ((the_heap h')(p := \<lbrakk>e\<rbrakk>\<^sub>I (the_varenv v)))
+    )\<close> (is ?CHeapW)
   \<open>ram_comm_forward (CHeapNew x) P =
     (\<lambda>(v', h', r). \<exists>v h p.
-      P (VarEnv v, Heap h, r) \<and>
-      h p = None \<and>
-      v' = VarEnv (v(x \<mapsto> p)) \<and>
-      h' = Heap (h(p \<mapsto> undefined))
-    )\<close>
+      P (v, h, r) \<and>
+      the_varenv v x \<noteq> None \<and> 
+      the_heap h p = None \<and>
+      v' = VarEnv ((the_varenv v)(x \<mapsto> p)) \<and>
+      h' = Heap ((the_heap h)(p \<mapsto> undefined))
+    )\<close> (is ?CHeapNew)
   \<open>ram_comm_forward (CHeapDel e) P =
     (\<lambda>(v, h', r).
       \<exists>h p.
@@ -918,6 +635,31 @@ lemma ram_comm_forward_simps:
         h' = Heap ((the_heap h)(p := None)))\<close>
   \<open>ram_comm_forward (CAssume be) P = (\<lambda>(s, h, r). P (s, h, r) \<and> (\<lbrakk> be \<rbrakk>\<^sub>B (the_varenv s) = Some True))\<close>
 proof -
+  show ?CAssign
+    apply (intro ext)
+    apply (clarsimp simp add: ram_comm_forward_def)
+    apply (subst opsem_ram_comm_simps)
+    apply (force split: option.splits)
+    done
+  show ?CHeapNew
+    apply (intro ext)
+    apply (clarsimp simp add: ram_comm_forward_def)
+    apply (subst opsem_ram_comm_simps)
+    apply (force split: option.splits)
+    done
+  show ?CHeapR
+    apply (intro ext)
+    apply (clarsimp simp add: ram_comm_forward_def)
+    apply (subst opsem_ram_comm_simps)
+    apply (simp split: option.splits, fastforce)
+    done
+  show ?CHeapW
+    apply (intro ext)
+    apply (clarsimp simp add: ram_comm_forward_def)
+    apply (subst opsem_ram_comm_simps)
+    apply (force split: option.splits)
+    done
+
   {
     fix v' h' r'
     have \<open>
@@ -959,6 +701,7 @@ proof -
     by (force simp add: s0 fun_eq_iff opsem_ram_comm_simps split: option.splits)
 qed (force simp add: ram_comm_forward_def fun_eq_iff opsem_ram_comm_simps split: option.splits)+
 
+
 subsection \<open>Healthiness Conditions\<close>
 
 lemma ram_comm_forward_mono:
@@ -967,20 +710,97 @@ lemma ram_comm_forward_mono:
   by (simp, metis)
 
 lemma ram_comm_forward_conj:
-  \<open>ram_comm_forward c (P \<^bold>\<and> Q) \<le> (ram_comm_forward c P \<^bold>\<and> ram_comm_forward c Q)\<close>
-  by (induct c)
-     (force split: prod.splits simp add: ram_comm_forward_simps pred_conj_def)+
+  \<open>ram_comm_forward c (P \<^bold>\<and> Q) \<le> ram_comm_forward c P \<^bold>\<and> ram_comm_forward c Q\<close>
+proof (induct c)
+  case CHeapW then show ?case
+    by (clarsimp intro!: ext split: prod.splits simp add: pred_conj_def ram_comm_forward_def, metis)
+qed (force intro!: ext split: prod.splits simp add: ram_comm_forward_simps pred_conj_def)+
 
 lemma ram_comm_forward_disj:
-  \<open>ram_comm_forward c (P \<^bold>\<or> Q) = (ram_comm_forward c P \<^bold>\<or> ram_comm_forward c Q)\<close>
-  by (induct c)
-     (force simp add: ram_comm_forward_simps pred_disj_def)+
+  \<open>ram_comm_forward c (P \<^bold>\<or> Q) = ram_comm_forward c P \<^bold>\<or> ram_comm_forward c Q\<close>
+proof (induct c)
+  case CHeapW then show ?case
+    by (clarsimp intro!: ext split: prod.splits simp add: pred_disj_def ram_comm_forward_def, metis)
+qed (force intro!: ext split: prod.splits simp add: ram_comm_forward_simps pred_disj_def)+
 
 lemma ram_comm_forward_false:
   \<open>ram_comm_forward c \<^bold>F = \<^bold>F\<close>
-  by (induct c)
-     (force simp add: ram_comm_forward_simps pred_false_def)+
+proof (induct c)
+  case CHeapW then show ?case
+    by (force intro!: ext split: prod.splits simp add: ram_comm_forward_def pred_false_def)
+qed (force intro!: ext split: prod.splits simp add: ram_comm_forward_simps pred_false_def)+
 
+
+section \<open> Frame \<close>
+
+lemma iexpr_right_frame:
+  \<open>dom va \<inter> dom vb = {} \<Longrightarrow> ivars e \<inter> dom vb = {} \<Longrightarrow> \<lbrakk>e\<rbrakk>\<^sub>I (va ++ vb) = \<lbrakk>e\<rbrakk>\<^sub>I va\<close>
+  by (induct e)
+    (force simp add: map_add_dom_app_simps Int_Un_distrib2 option.case_eq_if)+
+
+lemma iexpr_left_frame:
+  \<open>dom va \<inter> dom vb = {} \<Longrightarrow> ivars e \<inter> dom vb = {}  \<Longrightarrow> \<lbrakk>e\<rbrakk>\<^sub>I (vb ++ va) = \<lbrakk>e\<rbrakk>\<^sub>I va\<close>
+  by (metis iexpr_right_frame map_add_comm)
+
+lemma bexpr_right_frame:
+  \<open>dom va \<inter> dom vb = {} \<Longrightarrow> bvars e \<inter> dom vb = {} \<Longrightarrow> \<lbrakk>e\<rbrakk>\<^sub>B (va ++ vb) = \<lbrakk>e\<rbrakk>\<^sub>B va\<close>
+  by (induct e)
+   (force simp add: iexpr_right_frame map_add_dom_app_simps Int_Un_distrib2 option.case_eq_if)+
+
+lemma bexpr_left_frame:
+  \<open>dom va \<inter> dom vb = {} \<Longrightarrow> bvars e \<inter> dom vb = {} \<Longrightarrow> \<lbrakk>e\<rbrakk>\<^sub>B (vb ++ va) = \<lbrakk>e\<rbrakk>\<^sub>B va\<close>
+  by (metis bexpr_right_frame map_add_comm)
+
+lemma ram_comm_forward_frame:
+  assumes \<open>ram_comm_forward rc P \<le> Q\<close>
+    and \<open>\<And>s::'v state. R s \<Longrightarrow> rc_read_vars rc \<inter> dom (the_varenv (fst s)) = {}\<close>
+    and \<open>\<And>s::'v state. R s \<Longrightarrow> rc_write_vars rc \<inter> dom (the_varenv (fst s)) = {}\<close>
+(*
+    and \<open>\<And>s::'v state. R s \<Longrightarrow> rc_read_hvars (fst s) rc \<inter> dom (the_heap (fst (snd s))) = {}\<close>
+    and \<open>\<And>s::'v state. R s \<Longrightarrow> rc_write_hvars (fst s) rc \<inter> dom (the_heap (fst (snd s))) = {}\<close>
+*)
+  shows \<open>ram_comm_forward rc (R \<^emph> P) \<le> R \<^emph> Q\<close>
+  using assms
+   apply (cases rc)
+        apply (force simp add: ram_comm_forward_simps dest: predicate1D[OF sepconj_right_mono])
+
+       apply (rename_tac x0 x1)
+       apply (clarsimp simp add: ram_comm_forward_simps le_fun_def if_bool_eq_conj pred_true_def)
+       apply (clarsimp simp add: sepconj_def)
+       apply (rename_tac va ha ra vb hb rb)
+       apply (rule_tac x=va in exI)
+       apply (rule_tac x=ha in exI)
+       apply (rule_tac x=ra in exI)
+       apply (rule_tac x=\<open>VarEnv (the_varenv vb(x0 \<mapsto> ex))\<close> in exI)
+       apply (clarsimp simp add: plus_varenv_def disjoint_varenv_def)
+       apply (subst (asm) iexpr_left_frame, blast)
+        apply (drule_tac x=va in meta_spec)
+        apply (drule_tac x=ha in meta_spec)
+        apply (drule_tac x=ra in meta_spec)
+        apply (drule meta_mp; blast)
+       apply blast
+
+      apply (rename_tac x0 x1)
+      apply (clarsimp simp add: ram_comm_forward_simps le_fun_def if_bool_eq_conj pred_true_def)
+      apply (clarsimp simp add: sepconj_def simp del: ex_simps)
+      apply (rename_tac va ha ra vb hb rb)
+      apply (rule_tac x=va in exI)
+      apply (rule_tac x=ha in exI)
+      apply (rule_tac x=ra in exI)
+      apply (rule_tac x=\<open>VarEnv ((the_varenv vb)(x0 := the_heap hb p))\<close> in exI)
+      apply (rule_tac x=hb in exI)
+      apply (rule_tac x=rb in exI)
+      apply (clarsimp simp add: plus_varenv_def disjoint_varenv_def)
+      apply (subst (asm) iexpr_left_frame, blast, blast)
+
+      apply (simp add: Int_Un_distrib Diff_Int_distrib)
+      apply (intro conjI impI)
+         apply (drule meta_spec, drule meta_spec, drule meta_spec, drule meta_mp, assumption)
+         apply (drule meta_spec, drule meta_spec, drule meta_spec, drule meta_mp, assumption)
+         apply (drule meta_spec, drule meta_spec, drule meta_spec, drule meta_mp, assumption)
+         apply (simp split: option.splits)
+
+  sorry
 
 section \<open>Operational Semantics\<close>
 
@@ -1866,609 +1686,6 @@ next
         by auto
     qed
   qed
-qed
-
-
-
-
-section \<open>Hoare Logic (Original)\<close>
-
-definition logic_prog ::
-  \<open>'l set \<Rightarrow> ('v state \<Rightarrow> bool) list \<Rightarrow> ('v state \<Rightarrow> bool) \<Rightarrow> 'v comm \<Rightarrow> ('v state \<Rightarrow> bool) \<Rightarrow> bool\<close>
-  (\<open>_, _ \<turnstile>\<^sub>c \<lbrace> _ \<rbrace> _ \<lbrace> _ \<rbrace>\<close> [80,80,80,80,80] 80)
-  where
-    \<open>L, I \<turnstile>\<^sub>c \<lbrace> P \<rbrace> c \<lbrace> Q \<rbrace> \<equiv> (
-      \<exists>G T. \<exists>s e.
-        cfg c T s e \<and>
-        L = transition_labels T \<and>
-        (\<forall>(l,c',l')\<in>T. case c' of
-          CRam cr' \<Rightarrow> ram_comm_forward cr' (G l) \<le> G l'
-        | CAcquire r \<Rightarrow> r < length I \<and> I ! r \<^emph> G l \<le> G l'
-        | CRelease r \<Rightarrow> r < length I \<and> G l \<le> I ! r \<^emph> G l'
-        ) \<and>
-        P = G s \<and>
-        G e \<le> Q
-    )\<close>
-
-lemma logic_prog_seq:
-  assumes
-    \<open>L1 \<inter> L2 = {}\<close>
-    \<open>L1, I \<turnstile>\<^sub>c \<lbrace> P \<rbrace> c1 \<lbrace> Q \<rbrace>\<close>
-    \<open>L2, I \<turnstile>\<^sub>c \<lbrace> Q \<rbrace> c2 \<lbrace> R \<rbrace>\<close>
-  shows
-    \<open>\<exists>L12. L1 \<subseteq> L12 \<and> L2 \<subseteq> L12 \<and> L12, I \<turnstile>\<^sub>c \<lbrace> P \<rbrace> c1 ;; c2 \<lbrace> R \<rbrace>\<close>
-proof -
-  obtain T1 T2 G1 G2 s1 e1 s2 e2
-    where unfolded_triples:
-      \<open>cfg c1 T1 s1 e1\<close>
-      \<open>cfg c2 T2 s2 e2\<close>
-      \<open>L1 = transition_labels T1\<close>
-      \<open>L2 = transition_labels T2\<close>
-      \<open>\<forall>x\<in>T1. case x of (l, CRam cr', l') \<Rightarrow> ram_comm_forward cr' (G1 l) \<le> G1 l'
-              | (l, CAcquire r, l') \<Rightarrow> r < length I \<and> I ! r \<^emph> G1 l \<le> G1 l'
-              | (l, CRelease r, l') \<Rightarrow> r < length I \<and> G1 l \<le> I ! r \<^emph> G1 l'\<close>
-      \<open>\<forall>x\<in>T2.
-          case x of (l, CRam cr', l') \<Rightarrow> ram_comm_forward cr' (G2 l) \<le> G2 l'
-          | (l, CAcquire r, l') \<Rightarrow> r < length I \<and> I ! r \<^emph> G2 l \<le> G2 l'
-          | (l, CRelease r, l') \<Rightarrow> r < length I \<and> G2 l \<le> I ! r \<^emph> G2 l'\<close>
-      \<open>G1 e1 \<le> G2 s2\<close>
-      \<open>P = G1 s1\<close>
-      \<open>G2 e2 \<le> R\<close>
-      \<open>Q = G2 s2\<close>
-    using assms
-    by (clarsimp simp add: logic_prog_def)
-
-  have T2_separate_T1:
-    \<open>\<And>l. l \<in> transition_labels T2 \<Longrightarrow> l \<notin> transition_labels T1\<close>
-    using assms unfolded_triples by auto
-
-  show ?thesis
-    using unfolded_triples T2_separate_T1
-    apply (clarsimp simp add: logic_prog_def cfg_simps)
-    apply (rule exI[where x=\<open>transition_labels (insert (e1, CRam CSkip, s2) (T1 \<union> T2))\<close>], clarsimp)
-    apply (rule conjI, blast)
-    apply (rule conjI, blast)
-
-    apply (rule_tac x=\<open>\<lambda>l. if l \<in> transition_labels T1 then G1 l else G2 l\<close> in exI)
-    apply (rule_tac x=\<open>insert (e1, CRam CSkip, s2) (T1 \<union> T2)\<close> in exI)
-    apply (rule_tac x=s1 in exI)
-    apply (rule_tac x=e2 in exI)
-    apply (simp add: cfg_transition_labels_include_start cfg_transition_labels_include_end ram_comm_forward_simps)
-    apply (intro conjI impI)
-     apply blast
-    apply (clarsimp, force dest: transition_labels_include_startend)
-    done
-qed
-
-lemma logic_prog_ndet:
-  assumes
-    \<open>L1 \<inter> L2 = {}\<close>
-    \<open>s \<notin> L1\<close> \<open>s \<notin> L2\<close>
-    \<open>e \<notin> L1\<close> \<open>e \<notin> L2\<close>
-    \<open>s \<noteq> e\<close>
-    \<open>L1, I \<turnstile>\<^sub>c \<lbrace> P1 \<rbrace> c1 \<lbrace> Q1 \<rbrace>\<close>
-    \<open>L2, I \<turnstile>\<^sub>c \<lbrace> P2 \<rbrace> c2 \<lbrace> Q2 \<rbrace>\<close>
-  shows
-    \<open>\<exists>L12. L1 \<subseteq> L12 \<and> L2 \<subseteq> L12 \<and> L12, I \<turnstile>\<^sub>c \<lbrace> P1 \<^bold>\<and> P2 \<rbrace> c1 \<box> c2 \<lbrace> Q1 \<^bold>\<or> Q2 \<rbrace>\<close>
-proof -
-  obtain T1 T2 G1 G2 s1 e1 s2 e2
-    where unfolded_triples:
-      \<open>cfg c1 T1 s1 e1\<close>
-      \<open>cfg c2 T2 s2 e2\<close>
-      \<open>L1 = transition_labels T1\<close>
-      \<open>L2 = transition_labels T2\<close>
-      \<open>\<forall>x\<in>T1. case x of (l, CRam cr', l') \<Rightarrow> ram_comm_forward cr' (G1 l) \<le> G1 l'
-              | (l, CAcquire r, l') \<Rightarrow> r < length I \<and> I ! r \<^emph> G1 l \<le> G1 l'
-              | (l, CRelease r, l') \<Rightarrow> r < length I \<and> G1 l \<le> I ! r \<^emph> G1 l'\<close>
-      \<open>\<forall>x\<in>T2.
-          case x of (l, CRam cr', l') \<Rightarrow> ram_comm_forward cr' (G2 l) \<le> G2 l'
-          | (l, CAcquire r, l') \<Rightarrow> r < length I \<and> I ! r \<^emph> G2 l \<le> G2 l'
-          | (l, CRelease r, l') \<Rightarrow> r < length I \<and> G2 l \<le> I ! r \<^emph> G2 l'\<close>
-      \<open>G1 e1 \<le> Q1\<close>
-      \<open>P1 = G1 s1\<close>
-      \<open>G2 e2 \<le> Q2\<close>
-      \<open>P2 = G2 s2\<close>
-    using assms
-    by (clarsimp simp add: logic_prog_def)
-
-  let ?T = \<open>insert (s, CRam CSkip, s1) (insert (s, CRam CSkip, s2)
-           (insert (e1, CRam CSkip, e) (insert (e2, CRam CSkip, e) (T1 \<union> T2))))\<close>
-  let ?G = \<open>\<lambda>l. if l = s then P1 \<^bold>\<and> P2
-                else if l = e then Q1 \<^bold>\<or> Q2
-                else if l \<in> transition_labels T1 then G1 l
-                else G2 l\<close>
-
-  have transition_labels_not_in:
-    \<open>e1 \<in> transition_labels T1\<close>
-    \<open>e2 \<in> transition_labels T2\<close>
-    \<open>s1 \<in> transition_labels T1\<close>
-    \<open>s2 \<in> transition_labels T2\<close>
-    \<open>s \<notin> transition_labels T1\<close>
-    \<open>s \<notin> transition_labels T2\<close>
-    \<open>e \<notin> transition_labels T1\<close>
-    \<open>e \<notin> transition_labels T2\<close>
-    using assms unfolded_triples
-    by (force dest: cfg_transition_labels_include_start cfg_transition_labels_include_end
-        simp add: disjoint_iff)+
-
-  have transition_labels_not_in_general:
-    \<open>\<And>l. l \<in> transition_labels T1 \<Longrightarrow> l \<notin> transition_labels T2\<close>
-    \<open>\<And>l. l \<in> transition_labels T2 \<Longrightarrow> l \<notin> transition_labels T1\<close>
-    using assms unfolded_triples by blast+
-
-  have transition_labels_not_eq:
-    \<open>\<And>l. l \<in> transition_labels T1 \<Longrightarrow> l \<noteq> s\<close> \<open>\<And>l. l \<in> transition_labels T2 \<Longrightarrow> l \<noteq> s\<close>
-    \<open>\<And>l. l \<in> transition_labels T1 \<Longrightarrow> l \<noteq> e\<close> \<open>\<And>l. l \<in> transition_labels T2 \<Longrightarrow> l \<noteq> e\<close>
-    \<open>e \<noteq> s\<close>
-    using assms transition_labels_not_in by force+
-
-  show ?thesis
-    using unfolded_triples
-    apply (clarsimp simp add: logic_prog_def cfg_simps)
-    apply (rule exI[where x=\<open>transition_labels ?T\<close>], simp)
-    apply (rule conjI, blast)
-    apply (rule conjI, blast)
-
-    apply (rule_tac x=\<open>?G\<close> in exI)
-    apply (rule_tac x=\<open>?T\<close> in exI)
-    apply (rule_tac x=s in exI)
-    apply (rule_tac x=e in exI)
-    apply (simp only: assms HOL.simp_thms)
-    apply (intro conjI)
-        apply (rule_tac x=T1 in exI)
-        apply (rule_tac x=T2 in exI)
-        apply (metis assms(1-5) unfolded_triples(1-4))
-       apply simp
-
-    apply (intro conjI ballI)
-
-      apply (simp add: transition_labels_not_in ram_comm_forward_simps)
-      apply (elim disjE; force simp add:
-        transition_labels_include_startend transition_labels_not_in
-        transition_labels_not_eq transition_labels_not_in_general
-        ram_comm_forward_simps pred_conj_def pred_disj_def)
-
-     apply force
-    apply (force simp add: transition_labels_not_eq)
-    done
-qed
-
-lemma logic_prog_conj:
-  assumes
-    \<open>L1, I \<turnstile>\<^sub>c \<lbrace> P1 \<rbrace> c \<lbrace> Q1 \<rbrace>\<close>
-    \<open>L2, I \<turnstile>\<^sub>c \<lbrace> P2 \<rbrace> c \<lbrace> Q2 \<rbrace>\<close>
-    \<open>L1 \<inter> L2 = {}\<close>
-  and invariant_precision:
-    \<open>\<And>i P Q. i < length I \<Longrightarrow> I ! i \<^emph> (P \<^bold>\<and> Q)  = (I ! i \<^emph> P) \<^bold>\<and> (I ! i \<^emph> Q)\<close>
-  shows
-    \<open>L1, I \<turnstile>\<^sub>c \<lbrace> P1 \<^bold>\<and> P2 \<rbrace> c \<lbrace> Q1 \<^bold>\<and> Q2 \<rbrace>\<close>
-proof -
-  obtain G1 G2 T1 T2 s1 s2 e1 e2
-    where unfolded_triples:
-      \<open>transition_labels T1 \<inter> transition_labels T2 = {}\<close>
-      \<open>cfg c T1 s1 e1\<close>
-      \<open>cfg c T2 s2 e2\<close>
-      \<open>L1 = transition_labels T1\<close>
-      \<open>L2 = transition_labels T2\<close>
-      \<open>\<forall>x\<in>T1. case x of
-          (l, CRam cr', l') \<Rightarrow> ram_comm_forward cr' (G1 l) \<le> G1 l'
-        | (l, CAcquire r, l') \<Rightarrow> r < length I \<and> I ! r \<^emph> G1 l \<le> G1 l'
-        | (l, CRelease r, l') \<Rightarrow> r < length I \<and> G1 l \<le> I ! r \<^emph> G1 l'\<close>
-      \<open>\<forall>x\<in>T2. case x of
-          (l, CRam cr', l') \<Rightarrow> ram_comm_forward cr' (G2 l) \<le> G2 l'
-        | (l, CAcquire r, l') \<Rightarrow> r < length I \<and> I ! r \<^emph> G2 l \<le> G2 l'
-        | (l, CRelease r, l') \<Rightarrow> r < length I \<and> G2 l \<le> I ! r \<^emph> G2 l'\<close>
-      \<open>G1 e1 \<le> Q1\<close>
-      \<open>P1 = G1 s1\<close>
-      \<open>G2 e2 \<le> Q2\<close>
-      \<open>P2 = G2 s2\<close>
-    using assms
-    by (clarsimp simp add: logic_prog_def cfg_simps)
-
-  obtain f
-    where cfg_isomorphism:
-    \<open>bij_betw (\<lambda>(la, c, lb). (f la, c, f lb)) T1 T2\<close>
-    \<open>bij_betw f (transition_labels T1) (transition_labels T2)\<close>
-    \<open>f s1 = s2\<close>
-    \<open>f e1 = e2\<close>
-    using unfolded_triples(2-3)
-    by (force simp add: cfg_iso_def dest: cfg_same_label_bij)
-
-  show ?thesis
-    using unfolded_triples cfg_isomorphism
-    apply (clarsimp simp add: logic_prog_def cfg_simps)
-    apply (rule_tac x=\<open>\<lambda>l. G1 l \<^bold>\<and> G2 (f l)\<close> in exI)
-    apply (rule_tac x=T1 in exI)
-    apply (rule_tac x=s1 in exI)
-    apply (rule_tac x=e1 in exI)
-    apply (intro conjI)
-        apply simp
-       apply simp
-      apply (intro ballI impI)
-      apply (drule bspec)
-       apply blast
-      apply clarsimp
-      apply (rename_tac lx cc ly)
-      apply (drule_tac x=\<open>(f lx, cc, f ly)\<close> in bspec)
-       apply (force dest: bij_betwE)
-      apply (clarsimp split: comm.splits)
-        apply (force simp add: pred_conj_simp dest!: predicate1D[OF ram_comm_forward_conj])
-      (* Here is the first application of precision *)
-       apply (subst (asm) invariant_precision, blast)
-       apply (force simp add: pred_conj_simp)
-      (* and the second is here *)
-      apply (subst invariant_precision, blast)
-      apply (force simp add: pred_conj_simp)
-     apply blast
-    apply (simp add: le_fun_def pred_conj_simp)
-    done
-qed
-
-
-
-
-
-section \<open>Hoare Logic (Alternative)\<close>
-
-definition altsepconj :: \<open>('v state \<Rightarrow> bool) \<Rightarrow> ('v state \<Rightarrow> bool) \<Rightarrow> ('v state \<Rightarrow> bool)\<close> where
-  \<open>altsepconj P Q \<equiv> (P \<^emph> \<^bold>T) \<^bold>\<and> (P \<sim>\<^emph> Q)\<close>
-
-
-lemma pred_abac_eq_abc: \<open>(A \<^bold>\<and> B) \<^bold>\<and> A \<^bold>\<and> C = A \<^bold>\<and> B \<^bold>\<and> C\<close>
-  by (force simp add: pred_conj_def)
-
-lemma altsepconj_conj_distrib_left:
-  \<open>altsepconj P (Q \<^bold>\<and> Q') = (altsepconj P Q) \<^bold>\<and> (altsepconj P Q')\<close>
-  by (simp add: altsepconj_def sepcoimp_conj_distrib_left pred_abac_eq_abc)
-
-definition logic_prog2 ::
-  \<open>'l set \<Rightarrow> ('v state \<Rightarrow> bool) list \<Rightarrow> ('v state \<Rightarrow> bool) \<Rightarrow> 'v comm \<Rightarrow> ('v state \<Rightarrow> bool) \<Rightarrow> bool\<close>
-  (\<open>_, _ 2\<turnstile>\<^sub>c \<lbrace> _ \<rbrace> _ \<lbrace> _ \<rbrace>\<close> [80,80,80,80,80] 80)
-  where
-    \<open>L, I 2\<turnstile>\<^sub>c \<lbrace> P \<rbrace> c \<lbrace> Q \<rbrace> \<equiv> (
-      \<exists>G T. \<exists>s e.
-        cfg c T s e \<and>
-        L = transition_labels T \<and>
-        (\<forall>(l,c',l')\<in>T. case c' of
-          CRam cr' \<Rightarrow> ram_comm_forward cr' (G l) \<le> G l'
-        | CAcquire r \<Rightarrow> r < length I \<and> altsepconj (I ! r) (G l) \<le> G l'
-        | CRelease r \<Rightarrow> r < length I \<and> G l \<le> altsepconj (I ! r) (G l')
-        ) \<and>
-        P = G s \<and>
-        G e \<le> Q
-    )\<close>
-
-lemma logic_prog2_seq:
-  assumes
-    \<open>L1 \<inter> L2 = {}\<close>
-    \<open>L1, I 2\<turnstile>\<^sub>c \<lbrace> P \<rbrace> c1 \<lbrace> Q \<rbrace>\<close>
-    \<open>L2, I 2\<turnstile>\<^sub>c \<lbrace> Q \<rbrace> c2 \<lbrace> R \<rbrace>\<close>
-  shows
-    \<open>\<exists>L12. L1 \<subseteq> L12 \<and> L2 \<subseteq> L12 \<and> L12, I 2\<turnstile>\<^sub>c \<lbrace> P \<rbrace> c1 ;; c2 \<lbrace> R \<rbrace>\<close>
-proof -
-  obtain T1 T2 G1 G2 s1 e1 s2 e2
-    where unfolded_triples:
-      \<open>cfg c1 T1 s1 e1\<close>
-      \<open>cfg c2 T2 s2 e2\<close>
-      \<open>L1 = transition_labels T1\<close>
-      \<open>L2 = transition_labels T2\<close>
-      \<open>\<forall>x\<in>T1. case x of (l, CRam cr', l') \<Rightarrow> ram_comm_forward cr' (G1 l) \<le> G1 l'
-              | (l, CAcquire r, l') \<Rightarrow> r < length I \<and> altsepconj (I ! r) (G1 l) \<le> G1 l'
-              | (l, CRelease r, l') \<Rightarrow> r < length I \<and> G1 l \<le> altsepconj (I ! r) (G1 l')\<close>
-      \<open>\<forall>x\<in>T2.
-          case x of (l, CRam cr', l') \<Rightarrow> ram_comm_forward cr' (G2 l) \<le> G2 l'
-          | (l, CAcquire r, l') \<Rightarrow> r < length I \<and> altsepconj (I ! r) (G2 l) \<le> G2 l'
-          | (l, CRelease r, l') \<Rightarrow> r < length I \<and> G2 l \<le> altsepconj (I ! r) (G2 l')\<close>
-      \<open>G1 e1 \<le> G2 s2\<close>
-      \<open>P = G1 s1\<close>
-      \<open>G2 e2 \<le> R\<close>
-      \<open>Q = G2 s2\<close>
-    using assms
-    by (clarsimp simp add: logic_prog2_def)
-
-  have T2_separate_T1:
-    \<open>\<And>l. l \<in> transition_labels T2 \<Longrightarrow> l \<notin> transition_labels T1\<close>
-    using assms unfolded_triples by auto
-
-  show ?thesis
-    using unfolded_triples T2_separate_T1
-    apply (clarsimp simp add: logic_prog2_def cfg_simps)
-    apply (rule exI[where x=\<open>transition_labels (insert (e1, CRam CSkip, s2) (T1 \<union> T2))\<close>], clarsimp)
-    apply (rule conjI, blast)
-    apply (rule conjI, blast)
-
-    apply (rule_tac x=\<open>\<lambda>l. if l \<in> transition_labels T1 then G1 l else G2 l\<close> in exI)
-    apply (rule_tac x=\<open>insert (e1, CRam CSkip, s2) (T1 \<union> T2)\<close> in exI)
-    apply (rule_tac x=s1 in exI)
-    apply (rule_tac x=e2 in exI)
-    apply (simp add: cfg_transition_labels_include_start cfg_transition_labels_include_end ram_comm_forward_simps)
-    apply (intro conjI impI)
-     apply blast
-    apply (clarsimp, force dest: transition_labels_include_startend)
-    done
-qed
-
-lemma logic_prog2_ndet:
-  assumes
-    \<open>L1 \<inter> L2 = {}\<close>
-    \<open>s \<notin> L1\<close> \<open>s \<notin> L2\<close>
-    \<open>e \<notin> L1\<close> \<open>e \<notin> L2\<close>
-    \<open>s \<noteq> e\<close>
-    \<open>L1, I 2\<turnstile>\<^sub>c \<lbrace> P1 \<rbrace> c1 \<lbrace> Q1 \<rbrace>\<close>
-    \<open>L2, I 2\<turnstile>\<^sub>c \<lbrace> P2 \<rbrace> c2 \<lbrace> Q2 \<rbrace>\<close>
-  shows
-    \<open>\<exists>L12. L1 \<subseteq> L12 \<and> L2 \<subseteq> L12 \<and> L12, I 2\<turnstile>\<^sub>c \<lbrace> P1 \<^bold>\<and> P2 \<rbrace> c1 \<box> c2 \<lbrace> Q1 \<^bold>\<or> Q2 \<rbrace>\<close>
-proof -
-  obtain T1 T2 G1 G2 s1 e1 s2 e2
-    where unfolded_triples:
-      \<open>cfg c1 T1 s1 e1\<close>
-      \<open>cfg c2 T2 s2 e2\<close>
-      \<open>L1 = transition_labels T1\<close>
-      \<open>L2 = transition_labels T2\<close>
-      \<open>\<forall>x\<in>T1. case x of (l, CRam cr', l') \<Rightarrow> ram_comm_forward cr' (G1 l) \<le> G1 l'
-              | (l, CAcquire r, l') \<Rightarrow> r < length I \<and> altsepconj (I ! r) (G1 l) \<le> G1 l'
-              | (l, CRelease r, l') \<Rightarrow> r < length I \<and> G1 l \<le> altsepconj (I ! r) (G1 l')\<close>
-      \<open>\<forall>x\<in>T2.
-          case x of (l, CRam cr', l') \<Rightarrow> ram_comm_forward cr' (G2 l) \<le> G2 l'
-          | (l, CAcquire r, l') \<Rightarrow> r < length I \<and> altsepconj (I ! r) (G2 l) \<le> G2 l'
-          | (l, CRelease r, l') \<Rightarrow> r < length I \<and> G2 l \<le> altsepconj (I ! r) (G2 l')\<close>
-      \<open>G1 e1 \<le> Q1\<close>
-      \<open>P1 = G1 s1\<close>
-      \<open>G2 e2 \<le> Q2\<close>
-      \<open>P2 = G2 s2\<close>
-    using assms
-    by (clarsimp simp add: logic_prog2_def)
-
-  let ?T = \<open>insert (s, CRam CSkip, s1) (insert (s, CRam CSkip, s2)
-           (insert (e1, CRam CSkip, e) (insert (e2, CRam CSkip, e) (T1 \<union> T2))))\<close>
-  let ?G = \<open>\<lambda>l. if l = s then P1 \<^bold>\<and> P2
-                else if l = e then Q1 \<^bold>\<or> Q2
-                else if l \<in> transition_labels T1 then G1 l
-                else G2 l\<close>
-
-  have transition_labels_not_in:
-    \<open>e1 \<in> transition_labels T1\<close>
-    \<open>e2 \<in> transition_labels T2\<close>
-    \<open>s1 \<in> transition_labels T1\<close>
-    \<open>s2 \<in> transition_labels T2\<close>
-    \<open>s \<notin> transition_labels T1\<close>
-    \<open>s \<notin> transition_labels T2\<close>
-    \<open>e \<notin> transition_labels T1\<close>
-    \<open>e \<notin> transition_labels T2\<close>
-    using assms unfolded_triples
-    by (force dest: cfg_transition_labels_include_start cfg_transition_labels_include_end
-        simp add: disjoint_iff)+
-
-  have transition_labels_not_in_general:
-    \<open>\<And>l. l \<in> transition_labels T1 \<Longrightarrow> l \<notin> transition_labels T2\<close>
-    \<open>\<And>l. l \<in> transition_labels T2 \<Longrightarrow> l \<notin> transition_labels T1\<close>
-    using assms unfolded_triples by blast+
-
-  have transition_labels_not_eq:
-    \<open>\<And>l. l \<in> transition_labels T1 \<Longrightarrow> l \<noteq> s\<close> \<open>\<And>l. l \<in> transition_labels T2 \<Longrightarrow> l \<noteq> s\<close>
-    \<open>\<And>l. l \<in> transition_labels T1 \<Longrightarrow> l \<noteq> e\<close> \<open>\<And>l. l \<in> transition_labels T2 \<Longrightarrow> l \<noteq> e\<close>
-    \<open>e \<noteq> s\<close>
-    using assms transition_labels_not_in by force+
-
-  show ?thesis
-    using unfolded_triples
-    apply (clarsimp simp add: logic_prog2_def cfg_simps)
-    apply (rule exI[where x=\<open>transition_labels ?T\<close>], simp)
-    apply (rule conjI, blast)
-    apply (rule conjI, blast)
-
-    apply (rule_tac x=\<open>?G\<close> in exI)
-    apply (rule_tac x=\<open>?T\<close> in exI)
-    apply (rule_tac x=s in exI)
-    apply (rule_tac x=e in exI)
-    apply (simp only: assms HOL.simp_thms)
-    apply (intro conjI)
-        apply (rule_tac x=T1 in exI)
-        apply (rule_tac x=T2 in exI)
-        apply (metis assms(1-5) unfolded_triples(1-4))
-       apply simp
-
-    apply (intro conjI ballI)
-
-      apply (simp add: transition_labels_not_in ram_comm_forward_simps)
-      apply (elim disjE; force simp add:
-        transition_labels_include_startend transition_labels_not_in
-        transition_labels_not_eq transition_labels_not_in_general
-        ram_comm_forward_simps pred_conj_def pred_disj_def)
-
-     apply force
-    apply (force simp add: transition_labels_not_eq)
-    done
-qed
-
-
-lemma logic_prog2_conj:
-  assumes
-    \<open>L1, I 2\<turnstile>\<^sub>c \<lbrace> P1 \<rbrace> c \<lbrace> Q1 \<rbrace>\<close>
-    \<open>L2, I 2\<turnstile>\<^sub>c \<lbrace> P2 \<rbrace> c \<lbrace> Q2 \<rbrace>\<close>
-    \<open>L1 \<inter> L2 = {}\<close>
-  shows
-    \<open>L1, I 2\<turnstile>\<^sub>c \<lbrace> P1 \<^bold>\<and> P2 \<rbrace> c \<lbrace> Q1 \<^bold>\<and> Q2 \<rbrace>\<close>
-proof -
-  obtain G1 G2 T1 T2 s1 s2 e1 e2
-    where unfolded_triples:
-      \<open>transition_labels T1 \<inter> transition_labels T2 = {}\<close>
-      \<open>cfg c T1 s1 e1\<close>
-      \<open>cfg c T2 s2 e2\<close>
-      \<open>L1 = transition_labels T1\<close>
-      \<open>L2 = transition_labels T2\<close>
-      \<open>\<forall>x\<in>T1. case x of
-          (l, CRam cr', l') \<Rightarrow> ram_comm_forward cr' (G1 l) \<le> G1 l'
-        | (l, CAcquire r, l') \<Rightarrow> r < length I \<and> altsepconj (I ! r) (G1 l) \<le> G1 l'
-        | (l, CRelease r, l') \<Rightarrow> r < length I \<and> G1 l \<le> altsepconj (I ! r) (G1 l')\<close>
-      \<open>\<forall>x\<in>T2. case x of
-          (l, CRam cr', l') \<Rightarrow> ram_comm_forward cr' (G2 l) \<le> G2 l'
-        | (l, CAcquire r, l') \<Rightarrow> r < length I \<and> altsepconj (I ! r) (G2 l) \<le> G2 l'
-        | (l, CRelease r, l') \<Rightarrow> r < length I \<and> G2 l \<le> altsepconj (I ! r) (G2 l')\<close>
-      \<open>G1 e1 \<le> Q1\<close>
-      \<open>P1 = G1 s1\<close>
-      \<open>G2 e2 \<le> Q2\<close>
-      \<open>P2 = G2 s2\<close>
-    using assms
-    by (clarsimp simp add: logic_prog2_def cfg_simps)
-
-  obtain f
-    where cfg_isomorphism:
-    \<open>bij_betw (\<lambda>(la, c, lb). (f la, c, f lb)) T1 T2\<close>
-    \<open>bij_betw f (transition_labels T1) (transition_labels T2)\<close>
-    \<open>f s1 = s2\<close>
-    \<open>f e1 = e2\<close>
-    using unfolded_triples(2-3)
-    by (force simp add: cfg_iso_def dest: cfg_same_label_bij)
-
-  show ?thesis
-    using unfolded_triples cfg_isomorphism
-    apply (clarsimp simp add: logic_prog2_def cfg_simps)
-    apply (rule_tac x=\<open>\<lambda>l. G1 l \<^bold>\<and> G2 (f l)\<close> in exI)
-    apply (rule_tac x=T1 in exI)
-    apply (rule_tac x=s1 in exI)
-    apply (rule_tac x=e1 in exI)
-    apply (intro conjI)
-        apply force
-       apply force
-      apply (intro ballI impI)
-      apply (drule bspec, blast)
-      apply clarsimp
-      apply (rename_tac lx cc ly)
-      apply (drule_tac x=\<open>(f lx, cc, f ly)\<close> in bspec)
-       apply (force dest: bij_betwE)
-      apply (clarsimp split: comm.splits)
-        apply (force simp add: pred_conj_simp dest!: predicate1D[OF ram_comm_forward_conj])
-       apply (simp add: pred_conjD altsepconj_conj_distrib_left)
-      apply (simp add: pred_conjD altsepconj_conj_distrib_left)
-     apply (simp add: le_fun_def pred_conj_simp)
-    apply (simp add: le_fun_def pred_conj_simp)
-    done
-qed
-
-
-lemma csl2_network_soundness:
-  assumes invariant_sepconj_distrib_conj:
-    \<open>\<And>i. i < length I \<Longrightarrow>
-      (\<forall>P Q::'a varenv \<times> heap \<times> resources \<Rightarrow> bool. I ! i \<^emph> (P \<^bold>\<and> Q)  = (I ! i \<^emph> P) \<^bold>\<and> (I ! i \<^emph> Q))\<close>
-    and new_conditions:
-    \<open>\<forall>(l,cr,l')\<in>T. case cr of
-        CRam cr' \<Rightarrow> ram_comm_forward cr' (G l) \<le> G l'
-      | CAcquire r \<Rightarrow> r < length I \<and> altsepconj (I ! r) (G l) \<le> G l'
-      | CRelease r \<Rightarrow> r < length I \<and> G l \<le> altsepconj (I ! r) (G l')
-      \<close>
-  shows \<open>
-    (\<forall>(l,cr,l')\<in>T. case cr of
-      CRam cr' \<Rightarrow> ram_comm_forward cr' (G l) \<le> G l'
-    | CAcquire r \<Rightarrow> r < length I \<and> I ! r \<^emph> G l \<le> G l'
-    | CRelease r \<Rightarrow> r < length I \<and> G l \<le> I ! r \<^emph> G l'
-    )\<close>
-  using new_conditions
-    iffD1[
-      OF sepconj_distrib_conj_eq_strong_sepcoimp invariant_sepconj_distrib_conj,
-      THEN spec[where x=\<open>G l\<close> for l]]
-  apply -
-  apply clarsimp
-  apply (rename_tac l1 cr l2)
-  apply (drule bspec, blast)
-  apply clarsimp
-  apply (case_tac cr; simp add: altsepconj_def)
-  done
-
-lemma csl2_network_completeness:
-  assumes invariant_sepconj_distrib_conj:
-    \<open>\<And>i. i < length I \<Longrightarrow>
-      (\<forall>P Q::'a varenv \<times> heap \<times> resources \<Rightarrow> bool. I ! i \<^emph> (P \<^bold>\<and> Q)  = (I ! i \<^emph> P) \<^bold>\<and> (I ! i \<^emph> Q))\<close>
-    and old_conditions:
-    \<open>\<forall>(l,c',l')\<in>T. case c' of
-      CRam cr' \<Rightarrow> ram_comm_forward cr' (G l) \<le> G l'
-    | CAcquire r \<Rightarrow> r < length I \<and> I ! r \<^emph> G l \<le> G l'
-    | CRelease r \<Rightarrow> r < length I \<and> G l \<le> I ! r \<^emph> G l'
-    \<close>
-  shows
-    \<open>\<forall>(l,c',l')\<in>T. case c' of
-       CRam cr' \<Rightarrow> ram_comm_forward cr' (G l) \<le> G l'
-     | CAcquire r \<Rightarrow> r < length I \<and> altsepconj (I ! r) (G l) \<le> G l'
-     | CRelease r \<Rightarrow> r < length I \<and> G l \<le> altsepconj (I ! r) (G l')
-     \<close>
-  using old_conditions
-    iffD1[
-      OF sepconj_distrib_conj_eq_strong_sepcoimp invariant_sepconj_distrib_conj,
-      THEN spec[where x=\<open>G l\<close> for l]]
-  apply -
-  apply clarsimp
-  apply (rename_tac l1 cr l2)
-  apply (drule bspec, blast)
-  apply clarsimp
-  apply (case_tac cr; force simp add: altsepconj_def)
-  done
-
-
-lemma csl2_soundness:
-  assumes invariant_sepconj_distrib_conj:
-    \<open>\<And>i. i < length I \<Longrightarrow>
-      (\<forall>P Q::'a varenv \<times> heap \<times> resources \<Rightarrow> bool. I ! i \<^emph> (P \<^bold>\<and> Q)  = (I ! i \<^emph> P) \<^bold>\<and> (I ! i \<^emph> Q))\<close>
-    and new_triple: \<open>L, I 2\<turnstile>\<^sub>c \<lbrace> P \<rbrace> c \<lbrace> Q \<rbrace>\<close>
-  shows \<open>L, I \<turnstile>\<^sub>c \<lbrace> P \<rbrace> c \<lbrace> Q \<rbrace>\<close>
-proof -
-  obtain G T s e
-    where new_triple_facts:
-      \<open>cfg c T s e\<close>
-      \<open>L = transition_labels T\<close>
-      \<open>(\<forall>(l, c', l')\<in>T.
-           case c' of CRam cr' \<Rightarrow> ram_comm_forward cr' (G l) \<le> G l'
-        | CAcquire r \<Rightarrow> r < length I \<and> altsepconj (I ! r) (G l) \<le> G l'
-        | CRelease r \<Rightarrow> r < length I \<and> G l \<le> altsepconj (I ! r) (G l'))\<close>
-      \<open>P = G s\<close>
-      \<open>G e \<le> Q\<close>
-    using new_triple
-    by (clarsimp simp add: logic_prog2_def)
-  moreover then have
-    \<open>\<forall>(l, c', l')\<in>T.
-       case c' of CRam cr' \<Rightarrow> ram_comm_forward cr' (G l) \<le> G l'
-    | CAcquire r \<Rightarrow> r < length I \<and> I ! r \<^emph> G l \<le> G l'
-    | CRelease r \<Rightarrow> r < length I \<and> G l \<le> I ! r \<^emph> G l'\<close>
-    using csl2_network_soundness[where G=G and I=I and T=T] invariant_sepconj_distrib_conj
-    by fastforce
-  ultimately show ?thesis
-    apply (clarsimp simp add: logic_prog_def)
-    apply (rule_tac x=G in exI, rule_tac x=T in exI)
-    apply (fastforce simp add: split_def)
-    done
-qed
-
-lemma csl2_completeness:
-  assumes invariant_sepconj_distrib_conj:
-    \<open>\<And>i. i < length I \<Longrightarrow>
-      (\<forall>P Q::'a varenv \<times> heap \<times> resources \<Rightarrow> bool. I ! i \<^emph> (P \<^bold>\<and> Q)  = (I ! i \<^emph> P) \<^bold>\<and> (I ! i \<^emph> Q))\<close>
-    and old_triple: \<open>L, I \<turnstile>\<^sub>c \<lbrace> P \<rbrace> c \<lbrace> Q \<rbrace>\<close>
-  shows \<open>L, I 2\<turnstile>\<^sub>c \<lbrace> P \<rbrace> c \<lbrace> Q \<rbrace>\<close>
-proof -
-
-  obtain G T s e
-    where new_triple_facts:
-      \<open>cfg c T s e\<close>
-      \<open>L = transition_labels T\<close>
-      \<open>(\<forall>(l, c', l')\<in>T.
-           case c' of CRam cr' \<Rightarrow> ram_comm_forward cr' (G l) \<le> G l'
-        | CAcquire r \<Rightarrow> r < length I \<and> I ! r \<^emph> G l \<le> G l'
-        | CRelease r \<Rightarrow> r < length I \<and> G l \<le> I ! r \<^emph> G l')\<close>
-      \<open>P = G s\<close>
-      \<open>G e \<le> Q\<close>
-    using old_triple
-    by (clarsimp simp add: logic_prog_def)
-  moreover then have
-    \<open>\<forall>(l, c', l')\<in>T.
-       case c' of CRam cr' \<Rightarrow> ram_comm_forward cr' (G l) \<le> G l'
-    | CAcquire r \<Rightarrow> r < length I \<and> altsepconj (I ! r) (G l) \<le> G l'
-    | CRelease r \<Rightarrow> r < length I \<and> G l \<le> altsepconj (I ! r) (G l')\<close>
-    using csl2_network_completeness[where G=G and I=I and T=T] invariant_sepconj_distrib_conj
-    by fastforce
-  ultimately show ?thesis
-    apply (clarsimp simp add: logic_prog2_def)
-    apply (rule_tac x=G in exI, rule_tac x=T in exI)
-    apply (fastforce simp add: split_def)
-    done
 qed
 
 end
