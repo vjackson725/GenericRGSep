@@ -2,6 +2,7 @@ theory SepLogic
   imports Main "HOL-Library.Lattice_Syntax"
 begin
 
+
 lemma bool_left_mp[simp]: \<open>P \<and> (P \<longrightarrow> Q) \<longleftrightarrow> P \<and> Q\<close>
   by blast
 
@@ -140,6 +141,106 @@ lemma pred_abac_eq_abc: \<open>(A \<^bold>\<and> B) \<^bold>\<and> A \<^bold>\<a
   by (force simp add: pred_conj_def)
 
 
+section \<open> mfault \<close>
+
+
+datatype 'a mfault =
+  Success (the_success: 'a)
+  | Fault
+
+instantiation mfault :: (ord) ord
+begin
+
+fun less_eq_mfault :: \<open>'a mfault \<Rightarrow> 'a mfault \<Rightarrow> bool\<close> where
+  \<open>less_eq_mfault _ Fault = True\<close>
+| \<open>less_eq_mfault Fault (Success b) = False\<close>
+| \<open>less_eq_mfault (Success a) (Success b) = (a \<le> b)\<close>
+
+lemma less_eq_mfault_def:
+  \<open>a \<le> b =
+    (case b of
+      Fault \<Rightarrow> True
+    | Success b \<Rightarrow>
+      (case a of
+        Fault \<Rightarrow> False
+      | Success a \<Rightarrow> a \<le> b))\<close>
+  by (cases a; cases b; force)
+
+fun less_mfault :: \<open>'a mfault \<Rightarrow> 'a mfault \<Rightarrow> bool\<close> where
+  \<open>less_mfault Fault _ = False\<close>
+| \<open>less_mfault (Success a) Fault = True\<close>
+| \<open>less_mfault (Success a) (Success b) = (a < b)\<close>
+
+lemma less_mfault_def:
+  \<open>a < b =
+    (case a of
+      Fault \<Rightarrow> False
+    | Success a \<Rightarrow>
+      (case b of
+        Fault \<Rightarrow> True
+      | Success b \<Rightarrow> a < b))\<close>
+  by (cases a; cases b; force)
+
+instance proof qed
+
+end
+
+instantiation mfault :: (preorder) preorder
+begin
+
+instance proof
+  fix x y z :: \<open>'a :: preorder mfault\<close>
+  show \<open>(x < y) = (x \<le> y \<and> \<not> y \<le> x)\<close>
+    by (simp add: less_eq_mfault_def less_mfault_def mfault.case_eq_if less_le_not_le)
+  show \<open>x \<le> x\<close>
+    by (simp add: less_eq_mfault_def mfault.case_eq_if)
+  show \<open>x \<le> y \<Longrightarrow> y \<le> z \<Longrightarrow> x \<le> z\<close>
+    by (force dest: order_trans simp add: less_eq_mfault_def split: mfault.splits)
+qed
+
+end
+
+
+instantiation mfault :: (order) order_top
+begin
+
+definition \<open>top_mfault \<equiv> Fault\<close>
+
+instance proof
+  fix x y z :: \<open>'a :: order mfault\<close>
+  show \<open>x \<le> y \<Longrightarrow> y \<le> x \<Longrightarrow> x = y\<close>
+    by (simp add: less_eq_mfault_def split: mfault.splits)
+  show \<open>x \<le> top\<close>
+    by (simp add: top_mfault_def)
+qed
+
+end
+
+instantiation mfault :: (linorder) linorder
+begin
+
+instance proof
+  fix x y z :: \<open>'a :: linorder mfault\<close>
+  show \<open>x \<le> y \<or> y \<le> x\<close>
+    by (cases x; cases y; force)
+qed
+
+end
+
+instantiation mfault :: (order_bot) order_bot
+begin
+
+definition \<open>bot_mfault = Success bot\<close>
+
+instance proof
+  fix a :: \<open>'a :: order_bot mfault\<close>
+  show \<open>\<bottom> \<le> a\<close>
+    by (simp add: bot_mfault_def less_eq_mfault_def mfault.case_eq_if)
+qed
+
+end
+
+
 section \<open> Separation Logic \<close>
 
 class seplogic = plus + zero + order_bot +
@@ -194,10 +295,6 @@ lemma le_plus2: \<open>a \<currency> b \<Longrightarrow> b \<le> a + b\<close>
   by (metis le_plus disjoint_symm partial_add_commute)
 
 
-lemma exists_intersection_heap:
-  \<open>\<exists>ab. ab \<le> a \<and> ab \<le> b \<and> (\<forall>ab'. ab' \<le> a \<longrightarrow> ab' \<le> b \<longrightarrow> ab' \<le> ab)\<close>
-  oops
-
 (*
 lemma disjoint_impl_int_empty: \<open>a \<currency> b \<Longrightarrow> a \<sqinter> b = 0\<close>
   by (metis disjoint_add_right le_nonzero_not_disjoint inf.cobounded1 inf_le2 le_iff_sepadd)
@@ -225,6 +322,18 @@ lemma plus_eq_plus_split:
 definition sepconj :: \<open>('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool)\<close> (infixl \<open>\<^emph>\<close> 88) where
   \<open>P \<^emph> Q \<equiv> \<lambda>h. \<exists>h1 h2. h1 \<currency> h2 \<and> h = h1 + h2 \<and> P h1 \<and> Q h2\<close>
 
+definition sepconj_mfault ::
+  \<open>('a \<Rightarrow> bool) mfault \<Rightarrow> ('a \<Rightarrow> bool) mfault \<Rightarrow> ('a \<Rightarrow> bool) mfault\<close> (infixl \<open>\<^emph>\<^sub>f\<close> 88)
+  where
+    \<open>P \<^emph>\<^sub>f Q \<equiv>
+      case P of
+        Fault \<Rightarrow> Fault
+      | Success P \<Rightarrow>
+        (case Q of
+          Fault \<Rightarrow> Fault
+        | Success Q \<Rightarrow> Success (\<lambda>h. \<exists>h1 h2. h1 \<currency> h2 \<and> h = h1 + h2 \<and> P h1 \<and> Q h2))\<close>
+
+
 definition subheapexist :: \<open>('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool)\<close> where
   \<open>subheapexist P \<equiv> \<lambda>h. \<exists>h1. h1 \<le> h \<and> P h1\<close>
 
@@ -242,6 +351,10 @@ definition septract_rev :: \<open>('a \<Rightarrow> bool) \<Rightarrow> ('a \<Ri
 
 definition emp :: \<open>'a \<Rightarrow> bool\<close> where
   \<open>emp \<equiv> (\<lambda>h. h = 0)\<close>
+
+definition emp_mfault :: \<open>('a \<Rightarrow> bool) mfault\<close> ("emp\<^sub>f") where
+  \<open>emp\<^sub>f \<equiv> Success emp\<close>
+
 
 fun iterated_sepconj :: \<open>('a \<Rightarrow> bool) list \<Rightarrow> ('a \<Rightarrow> bool)\<close> where
   \<open>iterated_sepconj (P # Ps) = P \<^emph> iterated_sepconj Ps\<close>
@@ -374,14 +487,29 @@ lemma sepconj_middle_monotone_left: \<open>A1 \<^emph> A2 \<le> B \<Longrightarr
 lemma sepconj_middle_monotone_right: \<open>A \<le> B1 \<^emph> B2 \<Longrightarrow> C \<^emph> A \<le> B1 \<^emph> C \<^emph> B2\<close>
   by (metis sepconj_assoc sepconj_comm sepconj_left_mono)
 
-
 end
 
 
 
 class right_cancel_seplogic = seplogic +
-  assumes partial_right_cancel: \<open>\<And>a b c. a \<currency> b \<Longrightarrow> a \<currency> c \<Longrightarrow> (b + a = c + a) = (b = c)\<close>
+  assumes partial_right_cancel: \<open>\<And>a b c. a \<currency> c \<Longrightarrow> b \<currency> c \<Longrightarrow> (a + c = b + c) = (a = b)\<close>
 begin
+
+lemma partial_right_cancel2:
+  \<open>c \<currency> a \<Longrightarrow> c \<currency> b \<Longrightarrow> (a + c = b + c) = (a = b)\<close>
+  using partial_right_cancel disjoint_symm
+  by force
+
+
+lemma partial_left_cancel:
+  \<open>a \<currency> c \<Longrightarrow> b \<currency> c \<Longrightarrow> (c + a = c + b) = (a = b)\<close>
+  by (metis partial_add_commute partial_right_cancel)
+
+lemma partial_left_cancel2:
+  \<open>c \<currency> a \<Longrightarrow> c \<currency> b \<Longrightarrow> (c + a = c + b) = (a = b)\<close>
+  using partial_left_cancel disjoint_symm
+  by force
+
 
 lemma precise_iff_conj_distrib:
   shows \<open>precise P \<longleftrightarrow> (\<forall>Q Q'. P \<^emph> (Q \<^bold>\<and> Q') = (P \<^emph> Q) \<^bold>\<and> (P \<^emph> Q'))\<close>
@@ -412,21 +540,20 @@ proof (rule iffI)
       by fastforce
   qed
 next
-  presume precise_assm:  \<open>precise P\<close>
+  presume precise_assm: \<open>precise P\<close>
   then show \<open>\<forall>Q Q'. P \<^emph> (Q \<^bold>\<and> Q') = (P \<^emph> Q) \<^bold>\<and> (P \<^emph> Q')\<close>
-    apply (auto simp add: sepconj_def precise_def pred_conj_def fun_eq_iff le_iff_sepadd)
-    apply (metis partial_add_commute partial_right_cancel)
-    done
+    by (clarsimp simp add: sepconj_def precise_def pred_conj_def fun_eq_iff le_iff_sepadd,
+        metis partial_left_cancel2)
 qed
 
 lemma precise_iff_all_sepconj_imp_sepcoimp:
   shows \<open>precise P \<longleftrightarrow> (\<forall>Q. P \<^emph> Q \<le> P \<sim>\<^emph> Q)\<close>
   apply (clarsimp simp add: sepconj_def sepcoimp_def precise_def le_fun_def le_iff_sepadd)
   apply (rule iffI)
-   apply (metis partial_right_cancel partial_add_commute)
+   apply (metis partial_right_cancel2 partial_add_commute)
   apply clarsimp
   apply (rename_tac a b c d)
-  apply (drule_tac x=\<open>(=) b\<close> in spec, metis partial_right_cancel disjoint_symm)
+  apply (drule_tac x=\<open>(=) b\<close> in spec, metis partial_right_cancel)
   done
 
 lemma precise_sepconj_eq_strong_sepcoimp:
@@ -434,10 +561,11 @@ lemma precise_sepconj_eq_strong_sepcoimp:
   apply (clarsimp simp add: sepconj_def sepcoimp_def precise_def le_fun_def le_iff_sepadd pred_conj_def pred_true_def)
   apply (rule ext)
   apply (rule iffI)
-   apply (metis partial_right_cancel partial_add_commute)
+   apply (metis partial_left_cancel2)
   apply metis
   done
 
 end
+
 
 end

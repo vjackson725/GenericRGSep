@@ -301,9 +301,16 @@ proof -
 qed
 
 
-lemma logic_prog2_frame:
+lemma logic_prog_frame:
   assumes \<open>L, I \<turnstile>\<^sub>c \<lbrace> Q \<rbrace> c \<lbrace> R \<rbrace>\<close>
-  and no_write_to_R: \<open>\<forall>s. R s \<longrightarrow> dom (the_varenv (fst s)) \<inter> c_write_vars c = {}\<close>
+  and no_read_P: \<open>\<forall>s. P s \<longrightarrow> c_read_vars c \<inter> dom (the_varenv (fst s)) = {}\<close>
+  and no_write_P: \<open>\<forall>s. P s \<longrightarrow> c_write_vars c \<inter> dom (the_varenv (fst s)) = {}\<close>
+(* the next two could be made more precise if we had access to the intermediate annotations.
+ *)
+  and no_hread_P: \<open>\<forall>sa sp. P sp \<longrightarrow> sa \<currency> sp \<longrightarrow>
+    c_read_hvars (fst sa + fst sp) c \<inter> dom (the_varenv (fst (snd s))) = {}\<close>
+  and no_hwrite_P: \<open>\<forall>sa sp. P sp \<longrightarrow> sa \<currency> sp \<longrightarrow>
+    c_write_hvars (fst sa + fst sp) c \<inter> dom (the_varenv (fst (snd s))) = {}\<close>
 shows \<open>L, I \<turnstile>\<^sub>c \<lbrace> P \<^emph> Q \<rbrace> c \<lbrace> P \<^emph> R \<rbrace>\<close>
 proof -
   obtain G T s e
@@ -333,6 +340,12 @@ proof -
       defer
       apply (force dest: predicate1D[OF sepconj_middle_monotone_left])
      apply (force dest: predicate1D[OF sepconj_middle_monotone_right])
+    apply (drule rev_predicate1D[OF _ ram_comm_forward_frame_left])
+        defer
+        defer
+        defer
+        defer
+        apply (meson predicate1D sepconj_right_mono)
     sorry
   then show ?thesis
     using unfolded_triples
@@ -341,8 +354,11 @@ proof -
     apply (rule_tac x=T in exI)
     apply (rule_tac x=s in exI)
     apply (rule_tac x=e in exI)
-    apply (simp add: sepconj_right_mono)
-    sorry
+    apply (simp add: sepconj_right_mono sepconj_assoc)
+    apply (subst sepconj_assoc[symmetric])
+    apply (subst sepconj_assoc[symmetric])
+    apply force
+    done
 qed
 
 

@@ -289,9 +289,9 @@ begin
 instance
 proof
   fix a b c :: \<open>'a varenv\<close>
-  show \<open>a \<currency> b \<Longrightarrow> a \<currency> c \<Longrightarrow> (b + a = c + a) = (b = c)\<close>
+  show \<open>a \<currency> c \<Longrightarrow> b \<currency> c \<Longrightarrow> (a + c = b + c) = (a = b)\<close>
     unfolding disjoint_varenv_def plus_varenv_def
-    by (metis inf_commute map_disjoint_dom_cancel_right varenv.expand varenv.inject)
+    by (metis map_disjoint_dom_cancel_right varenv.expand varenv.inject)
 qed
 
 end
@@ -302,7 +302,7 @@ begin
 instance
 proof
   fix a b c :: heap
-  show \<open>a \<currency> b \<Longrightarrow> a \<currency> c \<Longrightarrow> (b + a = c + a) = (b = c)\<close>
+  show \<open>a \<currency> c \<Longrightarrow> b \<currency> c \<Longrightarrow> (a + c = b + c) = (a = b)\<close>
     unfolding disjoint_heap_def plus_heap_def
     by (metis heap.expand heap.inject inf_commute map_disjoint_dom_cancel_right)
 qed
@@ -315,7 +315,7 @@ begin
 instance
 proof
   fix a b c :: resources
-  show \<open>a \<currency> b \<Longrightarrow> a \<currency> c \<Longrightarrow> (b + a = c + a) = (b = c)\<close>
+  show \<open>a \<currency> c \<Longrightarrow> b \<currency> c \<Longrightarrow> (a + c = b + c) = (a = b)\<close>
     unfolding disjoint_resources_def plus_resources_def
     by (metis Int_Un_distrib Un_Int_eq(3) inf_commute resources.expand resources.inject)
 qed
@@ -328,12 +328,11 @@ begin
 instance
 proof
   fix a b c :: \<open>'a \<times> 'b\<close>
-  show \<open>a \<currency> b \<Longrightarrow> a \<currency> c \<Longrightarrow> (b + a = c + a) = (b = c)\<close>
+  show \<open>a \<currency> c \<Longrightarrow> b \<currency> c \<Longrightarrow> (a + c = b + c) = (a = b)\<close>
     by (simp add: partial_right_cancel prod_eq_iff)
 qed
 
 end
-
 
 
 subsection \<open> Syntax \<close>
@@ -342,7 +341,6 @@ datatype 'v iexpr =
   IEVar 'v
   | IELit nat
   | IEAdd \<open>'v iexpr\<close> \<open>'v iexpr\<close>
-  | IENull
 
 datatype 'v bexpr =
   IBEq \<open>'v iexpr\<close> \<open>'v iexpr\<close>
@@ -376,17 +374,29 @@ fun denot_iexpr :: \<open>'v iexpr \<Rightarrow> (('v \<rightharpoonup> nat) \<r
     | _ \<Rightarrow> None
     )
   \<close>
-| \<open>\<lbrakk> IENull \<rbrakk>\<^sub>I \<sigma> = None\<close> (* TODO: is this correct? *)
 
 fun ivars :: \<open>'v iexpr \<Rightarrow> 'v set\<close> where
   \<open>ivars (IEVar x) = {x}\<close>
 | \<open>ivars (IELit k) = {}\<close>
 | \<open>ivars (IEAdd a b) = ivars a \<union> ivars b\<close>
-| \<open>ivars IENull = {}\<close>
+
+lemma iexpr_success_iff_goodvars:
+  \<open>(\<exists>a. \<lbrakk>e\<rbrakk>\<^sub>I v = Some a) \<longleftrightarrow> ivars e \<subseteq> dom v\<close>
+  by (induct e)
+    (force split: option.splits)+
+
+lemma goodvars_imp_iexpr_success:
+  \<open>ivars e \<subseteq> dom v \<Longrightarrow> \<exists>a. \<lbrakk>e\<rbrakk>\<^sub>I v = Some a\<close>
+  by (simp add: iexpr_success_iff_goodvars)
 
 lemma iexpr_success_imp_goodvars:
   \<open>\<lbrakk>e\<rbrakk>\<^sub>I v = Some a \<Longrightarrow> ivars e \<subseteq> dom v\<close>
-  by (induct e arbitrary: a)
+  by (metis iexpr_success_iff_goodvars)
+  
+
+lemma iexpr_failure_iff_missingvars:
+  \<open>\<lbrakk>e\<rbrakk>\<^sub>I v = None \<longleftrightarrow> ivars e - dom v \<noteq> {}\<close>
+  by (induct e)
     (force split: option.splits)+
 
 
@@ -409,18 +419,20 @@ lemma bexpr_success_imp_goodvars:
     (force dest: iexpr_success_imp_goodvars split: option.splits)+
 
 
-inductive opsem_ram_comm :: \<open>'v state \<Rightarrow> 'v ram_comm \<Rightarrow> 'v state option \<Rightarrow> bool\<close> (\<open>_, _ \<leadsto> _\<close> [80,80,80] 80) where
+inductive opsem_ram_comm :: \<open>'v state \<Rightarrow> 'v ram_comm \<Rightarrow> 'v state option \<Rightarrow> bool\<close> (\<open>_, _ \<leadsto> _\<close> [60,60,60] 60) where
   \<open>s, CSkip \<leadsto> Some s\<close>
 
 | \<open>s x \<noteq> None \<Longrightarrow> \<lbrakk>e\<rbrakk>\<^sub>I s = Some v \<Longrightarrow> (VarEnv s, h, r), CAssign x e \<leadsto> Some (VarEnv (s(x \<mapsto> v)), h, r)\<close>
 | \<open>s x = None \<Longrightarrow> (VarEnv s, h, r), CAssign x e \<leadsto> None\<close>
 | \<open>s x \<noteq> None \<Longrightarrow> \<lbrakk>e\<rbrakk>\<^sub>I s = None \<Longrightarrow> (VarEnv s, h, r), CAssign x e \<leadsto> None\<close>
 
-| \<open>s x \<noteq> None \<Longrightarrow> \<lbrakk>ep\<rbrakk>\<^sub>I s = Some p \<Longrightarrow> (VarEnv s, h, r), CHeapR x ep \<leadsto> Some (VarEnv (s(x := the_heap h p)), h, r)\<close>
+| \<open>s x \<noteq> None \<Longrightarrow> \<lbrakk>ep\<rbrakk>\<^sub>I s = Some p \<Longrightarrow> the_heap h p = Some val \<Longrightarrow> (VarEnv s, h, r), CHeapR x ep \<leadsto> Some (VarEnv (s(x \<mapsto> val)), h, r)\<close>
 | \<open>s x = None \<Longrightarrow> (VarEnv s, h, r), CHeapR x ep \<leadsto> None\<close>
 | \<open>s x \<noteq> None \<Longrightarrow> \<lbrakk>ep\<rbrakk>\<^sub>I s = None   \<Longrightarrow> (VarEnv s, h, r), CHeapR x ep \<leadsto> None\<close>
+| \<open>s x \<noteq> None \<Longrightarrow> \<lbrakk>ep\<rbrakk>\<^sub>I s = Some p \<Longrightarrow> the_heap h p = None \<Longrightarrow> (VarEnv s, h, r), CHeapR x ep \<leadsto> None\<close>
 
-| \<open>\<lbrakk>ep\<rbrakk>\<^sub>I s = Some p \<Longrightarrow> h p \<noteq> None \<Longrightarrow> (VarEnv s, Heap h, r), CHeapW ep e \<leadsto> Some (VarEnv s, Heap (h(p := \<lbrakk>e\<rbrakk>\<^sub>I s)), r)\<close>
+| \<open>\<lbrakk>ep\<rbrakk>\<^sub>I s = Some p \<Longrightarrow> h p \<noteq> None \<Longrightarrow> \<lbrakk>e\<rbrakk>\<^sub>I s = Some val \<Longrightarrow> (VarEnv s, Heap h, r), CHeapW ep e \<leadsto> Some (VarEnv s, Heap (h(p \<mapsto> val)), r)\<close>
+| \<open>\<lbrakk>ep\<rbrakk>\<^sub>I s = Some p \<Longrightarrow> h p \<noteq> None \<Longrightarrow> \<lbrakk>e\<rbrakk>\<^sub>I s = None \<Longrightarrow> (VarEnv s, Heap h, r), CHeapW ep e \<leadsto> None\<close>
 | \<open>\<lbrakk>ep\<rbrakk>\<^sub>I s = Some p \<Longrightarrow> h p = None \<Longrightarrow> (VarEnv s, Heap h, r), CHeapW ep e \<leadsto> None\<close>
 | \<open>\<lbrakk>ep\<rbrakk>\<^sub>I s = None   \<Longrightarrow> (VarEnv s, h, r), CHeapW ep e \<leadsto> None\<close>
 
@@ -456,7 +468,9 @@ lemma opsem_ram_comm_simps:
     (if v x = None
     then os' = None
     else case \<lbrakk>ep\<rbrakk>\<^sub>I v of
-      Some p \<Rightarrow> os' = Some (VarEnv (v(x := the_heap h p)), h, r)
+      Some p \<Rightarrow> (case the_heap h p of
+        Some val \<Rightarrow> os' = Some (VarEnv (v(x \<mapsto> val)), h, r)
+      | None \<Rightarrow> os' = None)
     | None \<Rightarrow> os' = None))\<close> (is ?CHeapR)
   \<open>s, CHeapW ep e \<leadsto> os' \<longleftrightarrow>
     (\<exists>v h r. s = (VarEnv v, Heap h, r) \<and>
@@ -464,7 +478,9 @@ lemma opsem_ram_comm_simps:
       Some p \<Rightarrow>
         if h p = None
         then os' = None
-        else os' = Some (VarEnv v, Heap (h(p := \<lbrakk>e\<rbrakk>\<^sub>I v)), r)
+        else (case  \<lbrakk>e\<rbrakk>\<^sub>I v of
+            Some val \<Rightarrow> os' = Some (VarEnv v, Heap (h(p \<mapsto> val)), r)
+          | None \<Rightarrow> os' = None)
     | None \<Rightarrow> os' = None))\<close> (is ?CHeapW)
   \<open>s, CHeapNew x \<leadsto> os' \<longleftrightarrow>
     (\<exists>v h r p. s = (VarEnv v, Heap h, r) \<and>
@@ -489,17 +505,14 @@ proof -
   show \<open>?CAssign\<close>
     by (simp add: opsem_ram_comm.simps split: option.splits, fastforce)
   show \<open>?CHeapR\<close>
-    by (simp add: opsem_ram_comm.simps split: option.splits, fastforce)
+    apply (simp add: opsem_ram_comm.simps option.case_eq_if)
+    apply (rule_tac iffI)
+     apply (safe; force)
+    apply (safe; fastforce)
+    done
   show \<open>?CHeapW\<close>
     apply (simp add: opsem_ram_comm.simps split: option.splits)
-    apply (rule iffI)
-     defer
-     apply (metis not_None_eq)
-    apply (elim disjE)
-      apply fastforce
-     apply fastforce
-    apply clarsimp
-    apply (metis heap.exhaust_sel option.distinct(1))
+    apply (fastforce simp add: the_heap_eq_iff[symmetric])
     done
   show \<open>?CHeapNew\<close>
     by (force simp add: opsem_ram_comm.simps split: option.splits)
@@ -520,6 +533,16 @@ proof -
   show \<open>?CAssume\<close>
     by (force simp add: opsem_ram_comm.simps split: option.splits)
 qed
+
+
+fun rc_read_vars :: \<open>'v ram_comm \<Rightarrow> 'v set\<close> where
+  \<open>rc_read_vars CSkip = {}\<close>
+| \<open>rc_read_vars (CAssign x e) = ivars e\<close>
+| \<open>rc_read_vars (CHeapR x e) = ivars e\<close>
+| \<open>rc_read_vars (CHeapW ex ev) = ivars ex \<union> ivars ev\<close>
+| \<open>rc_read_vars (CHeapNew x) = {}\<close>
+| \<open>rc_read_vars (CHeapDel ex) = ivars ex\<close>
+| \<open>rc_read_vars (CAssume bv) = bvars bv\<close>
 
 fun rc_write_vars :: \<open>'v ram_comm \<Rightarrow> 'v set\<close> where
   \<open>rc_write_vars CSkip = {}\<close>
@@ -549,14 +572,13 @@ fun rc_write_hvars :: \<open>'v varenv \<Rightarrow> 'v ram_comm \<Rightarrow> n
 | \<open>rc_write_hvars _ (CAssume _) = {}\<close>
 
 
-fun rc_read_vars :: \<open>'v ram_comm \<Rightarrow> 'v set\<close> where
-  \<open>rc_read_vars CSkip = {}\<close>
-| \<open>rc_read_vars (CAssign x e) = ivars e\<close>
-| \<open>rc_read_vars (CHeapR x e) = ivars e\<close>
-| \<open>rc_read_vars (CHeapW ex ev) = ivars ex \<union> ivars ev\<close>
-| \<open>rc_read_vars (CHeapNew x) = {}\<close>
-| \<open>rc_read_vars (CHeapDel ex) = ivars ex\<close>
-| \<open>rc_read_vars (CAssume bv) = bvars bv\<close>
+fun c_read_vars :: \<open>'v comm \<Rightarrow> 'v set\<close> where
+  \<open>c_read_vars (CRam rc) = rc_read_vars rc\<close>
+| \<open>c_read_vars (CSeq c0 c1) = c_read_vars c0 \<union> c_read_vars c1\<close>
+| \<open>c_read_vars (CNDet c0 c1) = c_read_vars c0 \<union> c_read_vars c1\<close>
+| \<open>c_read_vars (CLoop c) = c_read_vars c\<close>
+| \<open>c_read_vars (CAcquire k) = {}\<close>
+| \<open>c_read_vars (CRelease k) = {}\<close>
 
 fun c_write_vars :: \<open>'v comm \<Rightarrow> 'v set\<close> where
   \<open>c_write_vars (CRam rc) = rc_write_vars rc\<close>
@@ -565,6 +587,23 @@ fun c_write_vars :: \<open>'v comm \<Rightarrow> 'v set\<close> where
 | \<open>c_write_vars (CLoop c) = c_write_vars c\<close>
 | \<open>c_write_vars (CAcquire k) = {}\<close>
 | \<open>c_write_vars (CRelease k) = {}\<close>
+
+
+fun c_read_hvars :: \<open>'v varenv \<Rightarrow> 'v comm \<Rightarrow> nat set\<close> where
+  \<open>c_read_hvars v (CRam rc) = rc_read_hvars v rc\<close>
+| \<open>c_read_hvars v (CSeq c0 c1) = c_read_hvars v c0 \<union> c_read_hvars v c1\<close>
+| \<open>c_read_hvars v (CNDet c0 c1) = c_read_hvars v c0 \<union> c_read_hvars v c1\<close>
+| \<open>c_read_hvars v (CLoop c) = c_read_hvars v c\<close>
+| \<open>c_read_hvars _ (CAcquire k) = {}\<close>
+| \<open>c_read_hvars _ (CRelease k) = {}\<close>
+
+fun c_write_hvars :: \<open>'v varenv \<Rightarrow> 'v comm \<Rightarrow> nat set\<close> where
+  \<open>c_write_hvars v (CRam rc) = rc_write_hvars v rc\<close>
+| \<open>c_write_hvars v (CSeq c0 c1) = c_write_hvars v c0 \<union> c_write_hvars v c1\<close>
+| \<open>c_write_hvars v (CNDet c0 c1) = c_write_hvars v c0 \<union> c_write_hvars v c1\<close>
+| \<open>c_write_hvars v (CLoop c) = c_write_hvars v c\<close>
+| \<open>c_write_hvars _ (CAcquire k) = {}\<close>
+| \<open>c_write_hvars _ (CRelease k) = {}\<close>
 
 
 lemma opsem_ram_comm_mostly_deterministic:
@@ -583,12 +622,12 @@ lemma opsem_ram_comm_same_resources:
   \<open>s, c \<leadsto> os' \<Longrightarrow> os' = Some s' \<Longrightarrow> snd (snd s) = snd (snd s')\<close>
   by (induct arbitrary: s' rule: opsem_ram_comm.inducts) force+
 
-lemma varenv_disjoint_map_appendI:
-  \<open>VarEnv v1 \<currency> v2 \<Longrightarrow> x \<notin> dom (the_varenv v2) \<Longrightarrow> VarEnv (v1(x := a)) \<currency> v2\<close>
-  by (simp add: disjoint_varenv_def Diff_Int_distrib2 subset_singleton_iff)
+lemma opsem_ram_comm_same_dom_varenv:
+  \<open>s, c \<leadsto> os' \<Longrightarrow> os' = Some s' \<Longrightarrow> dom (the_varenv (fst s)) = dom (the_varenv (fst s'))\<close>
+  by (induct arbitrary: s' rule: opsem_ram_comm.inducts) force+
 
 
-section \<open>ram_comm Forward predicate transformer\<close>
+section \<open>ram_comm forwards predicate transformer\<close>
 
 definition ram_comm_forward :: \<open>'v ram_comm \<Rightarrow> ('v state \<Rightarrow> bool) \<Rightarrow> ('v state \<Rightarrow> bool)\<close> where
   \<open>ram_comm_forward c \<equiv> \<lambda>P. \<lambda>s'. \<exists>s. P s \<and> s, c \<leadsto> Some s'\<close>
@@ -605,18 +644,20 @@ lemma ram_comm_forward_simps:
       the_varenv vinit x \<noteq> None \<and> \<lbrakk>e0\<rbrakk>\<^sub>I (the_varenv vinit) = Some ex \<and>
       v = VarEnv ((the_varenv vinit)(x \<mapsto> ex)))\<close> (is ?CAssign)
   \<open>ram_comm_forward (CHeapR x ep) P =
-    (\<lambda>(v, h, r). \<exists>v' p.
+    (\<lambda>(v, h, r). \<exists>v' p val.
       P (v', h, r) \<and>
       the_varenv v' x \<noteq> None \<and>
       \<lbrakk>ep\<rbrakk>\<^sub>I (the_varenv v') = Some p \<and>
-      v = VarEnv ((the_varenv v')(x := the_heap h p))
+      the_heap h p = Some val \<and>
+      v = VarEnv ((the_varenv v')(x \<mapsto> val))
     )\<close> (is ?CHeapR)
   \<open>ram_comm_forward (CHeapW ep e) P =
-    (\<lambda>(v, h, r). \<exists>h' p ex.
+    (\<lambda>(v, h, r). \<exists>h' p ex val.
       P (v, h', r) \<and>
       the_heap h' p \<noteq> None \<and>
       \<lbrakk>ep\<rbrakk>\<^sub>I (the_varenv v) = Some p \<and>
-      h = Heap ((the_heap h')(p := \<lbrakk>e\<rbrakk>\<^sub>I (the_varenv v)))
+      \<lbrakk>e\<rbrakk>\<^sub>I (the_varenv v) = Some val \<and>
+      h = Heap ((the_heap h')(p \<mapsto> val))
     )\<close> (is ?CHeapW)
   \<open>ram_comm_forward (CHeapNew x) P =
     (\<lambda>(v', h', r). \<exists>v h p.
@@ -742,65 +783,364 @@ lemma iexpr_left_frame:
   \<open>dom va \<inter> dom vb = {} \<Longrightarrow> ivars e \<inter> dom vb = {}  \<Longrightarrow> \<lbrakk>e\<rbrakk>\<^sub>I (vb ++ va) = \<lbrakk>e\<rbrakk>\<^sub>I va\<close>
   by (metis iexpr_right_frame map_add_comm)
 
+lemma iexpr_right_frame_goodvars:
+  \<open>dom va \<inter> dom vb = {} \<Longrightarrow> ivars e \<subseteq> dom va \<Longrightarrow> \<lbrakk>e\<rbrakk>\<^sub>I (va ++ vb) = \<lbrakk>e\<rbrakk>\<^sub>I va\<close>
+  by (meson iexpr_right_frame disjoint_eq_subset_Compl subset_trans)
+
+lemma iexpr_right_frame_goodeval:
+  \<open>dom va \<inter> dom vb = {} \<Longrightarrow> \<lbrakk>e\<rbrakk>\<^sub>I va = Some x \<Longrightarrow> \<lbrakk>e\<rbrakk>\<^sub>I (va ++ vb) = \<lbrakk>e\<rbrakk>\<^sub>I va\<close>
+  by (simp add: iexpr_right_frame_goodvars iexpr_success_imp_goodvars)
+
+(* n.b. this is a dangerous simp rule, because the rhs shape unifies with the lhs shape.
+ * I recommend using this with 'only'.
+ *)
+lemma iexpr_novars_iff:
+  \<open>ivars e \<inter> dom v = {} \<Longrightarrow> \<lbrakk>e\<rbrakk>\<^sub>I v = x \<longleftrightarrow> \<lbrakk>e\<rbrakk>\<^sub>I Map.empty = x\<close>
+  by (metis dom_empty empty_map_add iexpr_left_frame inf_bot_left map_add_comm)
+
+lemma iexpr_some_imp_none_or_all:
+  \<open>dom v0 \<inter> dom v1 = {} \<Longrightarrow> \<lbrakk>e\<rbrakk>\<^sub>I v0 = Some y \<Longrightarrow> \<lbrakk>e\<rbrakk>\<^sub>I v1 = None \<or> (\<forall>v. \<lbrakk>e\<rbrakk>\<^sub>I v \<noteq> None)\<close>
+  by (force dest: iexpr_success_imp_goodvars
+      simp add: iexpr_failure_iff_missingvars disjoint_iff subset_iff)
+
+
 lemma bexpr_right_frame:
   \<open>dom va \<inter> dom vb = {} \<Longrightarrow> bvars e \<inter> dom vb = {} \<Longrightarrow> \<lbrakk>e\<rbrakk>\<^sub>B (va ++ vb) = \<lbrakk>e\<rbrakk>\<^sub>B va\<close>
   by (induct e)
    (force simp add: iexpr_right_frame map_add_dom_app_simps Int_Un_distrib2 option.case_eq_if)+
 
+lemma bexpr_right_frame_goodeval:
+  \<open>dom va \<inter> dom vb = {} \<Longrightarrow> \<lbrakk>e\<rbrakk>\<^sub>B va = Some x \<Longrightarrow> \<lbrakk>e\<rbrakk>\<^sub>B (va ++ vb) = \<lbrakk>e\<rbrakk>\<^sub>B va\<close>
+  by (meson bexpr_right_frame bexpr_success_imp_goodvars disjoint_eq_subset_Compl subset_trans)
+
 lemma bexpr_left_frame:
   \<open>dom va \<inter> dom vb = {} \<Longrightarrow> bvars e \<inter> dom vb = {} \<Longrightarrow> \<lbrakk>e\<rbrakk>\<^sub>B (vb ++ va) = \<lbrakk>e\<rbrakk>\<^sub>B va\<close>
   by (metis bexpr_right_frame map_add_comm)
 
-lemma ram_comm_forward_frame:
-  assumes \<open>ram_comm_forward rc P \<le> Q\<close>
-    and \<open>\<And>s::'v state. R s \<Longrightarrow> rc_read_vars rc \<inter> dom (the_varenv (fst s)) = {}\<close>
-    and \<open>\<And>s::'v state. R s \<Longrightarrow> rc_write_vars rc \<inter> dom (the_varenv (fst s)) = {}\<close>
-(*
-    and \<open>\<And>s::'v state. R s \<Longrightarrow> rc_read_hvars (fst s) rc \<inter> dom (the_heap (fst (snd s))) = {}\<close>
-    and \<open>\<And>s::'v state. R s \<Longrightarrow> rc_write_hvars (fst s) rc \<inter> dom (the_heap (fst (snd s))) = {}\<close>
-*)
-  shows \<open>ram_comm_forward rc (R \<^emph> P) \<le> R \<^emph> Q\<close>
+
+lemma map_add_fun_upd_left:
+  \<open>m \<notin> dom e2 \<Longrightarrow> e1(m := u) ++ e2 = (e1 ++ e2)(m := u)\<close>
+  by (force simp add: map_add_def option.case_eq_if map_add_dom_app_simps)
+
+lemma map_add_fun_upd_left_None:
+  \<open>e2 m = None \<Longrightarrow> e1(m := u) ++ e2 = (e1 ++ e2)(m := u)\<close>
+  by (simp add: domIff map_add_fun_upd_left)
+
+
+lemma the_varenv_plus_lookup:
+  \<open>the_varenv (a + b) x = (the_varenv a ++ the_varenv b) x\<close>
+  by (simp add: plus_varenv_def)
+
+lemma the_heap_plus_lookup:
+  \<open>the_heap (a + b) x = (the_heap a ++ the_heap b) x\<close>
+  by (simp add: plus_heap_def)
+
+lemma the_varenv_add_app_simps:
+  \<open>the_varenv b x = Some z \<Longrightarrow> the_varenv (a + b) x = Some z\<close>
+  \<open>the_varenv b x = Some z \<Longrightarrow> a \<currency> b \<Longrightarrow> the_varenv (b + a) x = Some z\<close>
+  \<open>the_varenv b x = None \<Longrightarrow> the_varenv (a + b) x = the_varenv a x\<close>
+  \<open>the_varenv a x = None \<Longrightarrow> the_varenv (a + b) x = the_varenv b x\<close>
+     by (simp add: domIff plus_varenv_def disjoint_varenv_def map_add_comm inf_commute
+      map_add_dom_app_simps)+
+
+lemma the_heap_add_app_simps:
+  \<open>the_heap b x = Some z \<Longrightarrow> the_heap (a + b) x = Some z\<close>
+  \<open>the_heap b x = Some z \<Longrightarrow> a \<currency> b \<Longrightarrow> the_heap (b + a) x = Some z\<close>
+  \<open>the_heap b x = None \<Longrightarrow> the_heap (a + b) x = the_heap a x\<close>
+  \<open>the_heap a x = None \<Longrightarrow> the_heap (a + b) x = the_heap b x\<close>
+     by (simp add: domIff plus_heap_def disjoint_heap_def map_add_comm inf_commute
+      map_add_dom_app_simps)+
+
+lemma ex_eqVarEnv_invert:
+  \<open>(\<exists>v0. v = VarEnv v0 \<and> P v0) \<longleftrightarrow> P (the_varenv v)\<close>
+  by force
+
+lemma ex_eqHeap_invert:
+  \<open>(\<exists>h1. h = Heap h1 \<and> P h1) \<longleftrightarrow> P (the_heap h)\<close>
+  by force
+
+lemma plus_and_disjoint_nice_triple_split_ex:
+  \<open>(\<exists>b. a = b + c \<and> b \<currency> c) \<longleftrightarrow>
+    (case a of (a0,a1,a2) \<Rightarrow>
+      (case c of (c0,c1,c2) \<Rightarrow>
+        (\<exists>b0. a0 = b0 + c0 \<and> b0 \<currency> c0) \<and>
+        (\<exists>b1. a1 = b1 + c1 \<and> b1 \<currency> c1) \<and>
+        (\<exists>b2. a2 = b2 + c2 \<and> b2 \<currency> c2)))\<close>
+  by force
+
+lemma not_UNIV_iff_some_elem_notin:
+  \<open>A \<noteq> UNIV \<longleftrightarrow> (\<exists>a. a \<notin> A)\<close>
+  by blast
+
+lemma disjoint_maps_asome_imp_bnone:
+  \<open>e1 x = Some a \<Longrightarrow> dom e1 \<inter> dom e2 = {} \<Longrightarrow> e2 x = None\<close>
+  by blast
+
+lemma map_add_right_disjoint_upd_left:
+  \<open>e1 m = Some a \<Longrightarrow> dom e1 \<inter> dom e2 = {} \<Longrightarrow> e1(m \<mapsto> u1) ++ e2 = (e1 ++ e2)(m \<mapsto> u1)\<close>
+  by (simp add: disjoint_iff domI map_add_upd_left)
+
+lemmas disjoint_the_varenv_asome_imp_bnone =
+  disjoint_maps_asome_imp_bnone[where ?e1.0=\<open>the_varenv _\<close> and ?e2.0=\<open>the_varenv _\<close>]
+
+lemma map_upd_eq: \<open>a(b \<mapsto> c1) = a(b \<mapsto> c2) \<longleftrightarrow> c1 = c2\<close>
+  by (meson map_upd_eqD1)
+
+
+lemma ram_comm_step_extend:
+  assumes
+    \<open>sa, c \<leadsto> Some sb\<close>
+    \<open>sa \<currency> sc\<close>
+    \<open>\<And>p. c \<noteq> CHeapNew p\<close>
+  shows
+    \<open>sa + sc, c \<leadsto> Some (sb + sc) \<and> sb \<currency> sc\<close>
   using assms
-   apply (cases rc)
-        apply (force simp add: ram_comm_forward_simps dest: predicate1D[OF sepconj_right_mono])
+  apply -
+  apply (cases sa, cases sb, cases sc, clarsimp simp del: ex_simps)
+  apply (rename_tac va ha ra vb hb rb vc hc rc)
+  apply (cases c)
+        apply (force intro: opsem_ram_comm.intros)
 
-       apply (rename_tac x0 x1)
-       apply (clarsimp simp add: ram_comm_forward_simps le_fun_def if_bool_eq_conj pred_true_def)
-       apply (clarsimp simp add: sepconj_def)
-       apply (rename_tac va ha ra vb hb rb)
-       apply (rule_tac x=va in exI)
-       apply (rule_tac x=ha in exI)
-       apply (rule_tac x=ra in exI)
-       apply (rule_tac x=\<open>VarEnv (the_varenv vb(x0 \<mapsto> ex))\<close> in exI)
-       apply (clarsimp simp add: plus_varenv_def disjoint_varenv_def)
-       apply (subst (asm) iexpr_left_frame, blast)
-        apply (drule_tac x=va in meta_spec)
-        apply (drule_tac x=ha in meta_spec)
-        apply (drule_tac x=ra in meta_spec)
-        apply (drule meta_mp; blast)
-       apply blast
+       apply clarsimp
+       apply (subst (asm) opsem_ram_comm_simps, subst opsem_ram_comm_simps)
+       apply (clarsimp simp add: option.case_eq_if verit_ite_simplify(11) cong: if_cong)
+        apply (force simp add: iexpr_right_frame_goodeval disjoint_varenv_def plus_varenv_def
+      domIff map_add_Some_iff domI map_add_upd_left disjoint_iff)
 
-      apply (rename_tac x0 x1)
-      apply (clarsimp simp add: ram_comm_forward_simps le_fun_def if_bool_eq_conj pred_true_def)
-      apply (clarsimp simp add: sepconj_def simp del: ex_simps)
-      apply (rename_tac va ha ra vb hb rb)
-      apply (rule_tac x=va in exI)
-      apply (rule_tac x=ha in exI)
-      apply (rule_tac x=ra in exI)
-      apply (rule_tac x=\<open>VarEnv ((the_varenv vb)(x0 := the_heap hb p))\<close> in exI)
-      apply (rule_tac x=hb in exI)
-      apply (rule_tac x=rb in exI)
-      apply (clarsimp simp add: plus_varenv_def disjoint_varenv_def)
-      apply (subst (asm) iexpr_left_frame, blast, blast)
+      apply (clarsimp simp add: opsem_ram_comm_simps option.case_eq_if verit_ite_simplify(11)
+      cong: if_cong)
+       apply (force simp add: map_add_fun_upd_left iexpr_right_frame_goodeval
+      disjoint_heap_def plus_varenv_def plus_heap_def disjoint_varenv_def
+      disjoint_iff domIff map_add_dom_app_simps(3) domI)
 
-      apply (simp add: Int_Un_distrib Diff_Int_distrib)
-      apply (intro conjI impI)
-         apply (drule meta_spec, drule meta_spec, drule meta_spec, drule meta_mp, assumption)
-         apply (drule meta_spec, drule meta_spec, drule meta_spec, drule meta_mp, assumption)
-         apply (drule meta_spec, drule meta_spec, drule meta_spec, drule meta_mp, assumption)
-         apply (simp split: option.splits)
+     apply (clarsimp simp add: opsem_ram_comm_simps option.case_eq_if verit_ite_simplify(11)
+      cong: if_cong)
+     apply (force simp add: disjoint_heap_def disjoint_varenv_def plus_heap_def plus_varenv_def
+      iexpr_right_frame_goodeval  map_add_upd_left domIff disjoint_iff map_add_dom_app_simps(3))
 
-  sorry
+    apply force
+
+   apply (clarsimp simp add: opsem_ram_comm_simps option.case_eq_if verit_ite_simplify(10-11)
+      cong: if_cong)
+   apply (force simp add: disjoint_varenv_def plus_varenv_def disjoint_heap_def plus_heap_def
+      iexpr_right_frame_goodeval map_add_fun_upd_left_None)
+
+  apply (force simp add: opsem_ram_comm_simps option.case_eq_if verit_ite_simplify(10-11)
+      plus_varenv_def disjoint_varenv_def bexpr_right_frame_goodeval cong: if_cong)
+
+  done
+
+
+lemma ram_comm_step_safety_mono:
+  assumes
+    \<open>sa, c \<leadsto> Some sb\<close>
+    \<open>the_heap (fst (snd sc)) p = None\<close>
+    \<open>the_heap (fst (snd sa)) p = None\<close>
+    \<open>sa \<currency> sc\<close>
+  shows \<open>\<exists>so. sa + sc, c \<leadsto> Some so\<close>
+  using assms
+  apply -
+  apply (cases sa, cases sb, cases sc)
+  apply (rename_tac va ha ra vb hb rb vc hc rc)
+  apply (cases c)
+        apply (simp add: opsem_ram_comm_simps)
+       apply (meson ram_comm.distinct ram_comm_step_extend)
+      apply (meson ram_comm.distinct ram_comm_step_extend)
+     apply (meson ram_comm.distinct ram_comm_step_extend)
+    apply (force simp add: opsem_ram_comm_simps verit_ite_simplify(1-12) option.case_eq_if
+      ex_eqVarEnv_invert ex_eqHeap_invert plus_heap_def disjoint_iff disjoint_varenv_def domIff
+      the_varenv_add_app_simps cong: if_cong)
+   apply (meson ram_comm.distinct ram_comm_step_extend)
+  apply (meson ram_comm.distinct ram_comm_step_extend)
+  done
+
+
+lemma ram_comm_step_shrink:
+  assumes
+    \<open>sa + sc, c \<leadsto> Some (sb + sc)\<close>
+    \<open>sa \<currency> sc\<close>
+    \<open>sb \<currency> sc\<close>
+    \<open>rc_read_vars c \<inter> dom (the_varenv (fst sc)) = {}\<close>
+    \<open>rc_write_vars c \<inter> dom (the_varenv (fst sc)) = {}\<close>
+    \<open>rc_read_hvars (fst (sa + sc)) c \<inter> dom (the_heap (fst (snd sc))) = {}\<close>
+    \<open>rc_write_hvars (fst (sa + sc)) c \<inter> dom (the_heap (fst (snd sc))) = {}\<close>
+  shows \<open>sa, c \<leadsto> Some sb\<close>
+  using assms
+  apply -
+  apply (cases sa, cases sb, cases sc, clarsimp simp del: ex_simps)
+  apply (cases c)
+        apply (clarsimp simp add: opsem_ram_comm_simps disjoint_symm partial_right_cancel)
+
+       apply (simp, subst (asm) opsem_ram_comm_simps, subst opsem_ram_comm_simps)
+       apply (simp add: if_distrib if_distribR verit_ite_simplify(1-12) option.case_eq_if
+      opsem_ram_comm_simps ex_eqVarEnv_invert partial_right_cancel cong: if_cong)
+       apply (force simp add: map_add_fun_upd_left_None[symmetric] insert_dom
+      map_disjoint_dom_cancel_right map_add_Some_iff iexpr_right_frame
+      plus_varenv_def disjoint_varenv_def the_varenv_add_app_simps the_varenv_eq_iff)
+
+      apply (simp add: if_distrib if_distribR verit_ite_simplify(1-12) option.case_eq_if
+      opsem_ram_comm_simps ex_eqVarEnv_invert cong: if_cong)
+      apply (elim conjE exE, simp add: plus_varenv_def disjoint_varenv_def
+      partial_right_cancel the_heap_plus_lookup iexpr_right_frame map_add_dom_app_simps
+      map_disjoint_dom_cancel_right the_varenv_eq_iff[symmetric] map_add_upd_left[symmetric])
+
+     apply (simp add: if_distrib if_distribR verit_ite_simplify(1-12) option.case_eq_if
+      opsem_ram_comm_simps ex_eqVarEnv_invert ex_eqHeap_invert cong: if_cong)
+     apply (force simp add: plus_varenv_def disjoint_varenv_def plus_heap_def disjoint_heap_def
+      partial_right_cancel iexpr_right_frame map_disjoint_dom_cancel_right inf_sup_distrib2
+      the_varenv_eq_iff[symmetric] the_heap_eq_iff[symmetric] map_add_upd_left[symmetric]
+      the_varenv_inject)
+
+    apply (simp add: if_distrib if_distribR verit_ite_simplify(1-12) option.case_eq_if
+      opsem_ram_comm_simps ex_eqVarEnv_invert ex_eqHeap_invert cong: if_cong)
+    apply (fastforce simp add: plus_varenv_def disjoint_varenv_def plus_heap_def disjoint_heap_def
+      partial_right_cancel map_disjoint_dom_cancel_right domIff the_varenv_eq_iff[symmetric]
+      the_heap_eq_iff[symmetric] map_add_upd_left[symmetric])
+
+   apply (simp add: if_distrib if_distribR verit_ite_simplify(1-12) option.case_eq_if
+      opsem_ram_comm_simps ex_eqVarEnv_invert ex_eqHeap_invert cong: if_cong)
+   apply (fastforce simp add: plus_varenv_def disjoint_varenv_def plus_heap_def disjoint_heap_def
+      partial_right_cancel iexpr_right_frame the_varenv_inject the_heap_eq_iff[symmetric]
+      map_add_fun_upd_left[symmetric] domIff map_disjoint_dom_cancel_right Diff_Int_distrib2
+      map_add_Some_iff)
+
+  apply (simp add: if_distrib if_distribR verit_ite_simplify(1-12) option.case_eq_if
+      opsem_ram_comm_simps ex_eqVarEnv_invert ex_eqHeap_invert cong: if_cong)
+  apply (fastforce simp add: plus_varenv_def disjoint_varenv_def the_varenv_inject the_heap_inject
+      partial_right_cancel map_disjoint_dom_cancel_right bexpr_right_frame )
+
+  done
+
+lemmas ram_comm_step_shrink2 =
+  ram_comm_step_shrink[
+    where sa=\<open>(va,ha,ra)\<close> and sb=\<open>(vb,hb,rb)\<close> and sc=\<open>(vc,hc,rc)\<close>
+    for va ha ra vb hb rb vc hc rc, simplified]
+
+lemma ram_comm_step_split_in_split_out:
+  assumes
+    \<open>sa + sc, c \<leadsto> Some so\<close>
+    \<open>sa \<currency> sc\<close>
+    \<open>rc_read_vars c \<inter> dom (the_varenv (fst sc)) = {}\<close>
+    \<open>rc_write_vars c \<inter> dom (the_varenv (fst sc)) = {}\<close>
+    \<open>rc_read_hvars (fst (sa + sc)) c \<inter> dom (the_heap (fst (snd sc))) = {}\<close>
+    \<open>rc_write_hvars (fst (sa + sc)) c \<inter> dom (the_heap (fst (snd sc))) = {}\<close>
+  shows
+    \<open>\<exists>sb. so = sb + sc \<and> sb \<currency> sc\<close>
+  using assms
+  apply -
+  apply (simp only: plus_and_disjoint_nice_triple_split_ex)
+  apply (cases sa, cases sc, cases so, clarsimp)
+  apply (rename_tac va ha ra vc hc rc vo ho ro)
+  apply (cases c)
+        apply (force simp add: opsem_ram_comm_simps)
+
+       apply (simp, subst (asm) opsem_ram_comm_simps)
+       apply (clarsimp simp add: verit_ite_simplify(1-12) option.case_eq_if ex_eqVarEnv_invert ex_eqHeap_invert
+      domIff cong: if_cong)
+       apply (rename_tac x e y0 y1)
+       apply (rule conjI)
+        apply (rule_tac x=\<open>VarEnv (_(x \<mapsto> _))\<close> in exI)
+        apply (force simp add: plus_varenv_def disjoint_varenv_def map_add_fun_upd_left_None)
+       apply force
+
+      apply (clarsimp simp add: opsem_ram_comm_simps verit_ite_simplify(1-12) option.case_eq_if
+      ex_eqVarEnv_invert ex_eqHeap_invert domIff cong: if_cong)
+      apply (rename_tac x e y0 y1 y2)
+      apply (rule conjI)
+       apply (rule_tac x=\<open>VarEnv (_(x \<mapsto> _))\<close> in exI)
+       apply (force simp add: plus_varenv_def disjoint_varenv_def map_add_fun_upd_left_None)
+      apply force
+
+     apply (clarsimp simp add: opsem_ram_comm_simps verit_ite_simplify(1-12) option.case_eq_if
+      ex_eqVarEnv_invert ex_eqHeap_invert domIff cong: if_cong)
+     apply (rename_tac x e yp y1 y2)
+     apply (rule conjI, force)
+     apply (rule conjI)
+      apply (rule_tac x=\<open>Heap (_(yp \<mapsto> _))\<close> in exI)
+      apply (force simp add: plus_heap_def disjoint_heap_def map_add_fun_upd_left_None)
+     apply force
+
+    apply (clarsimp simp add: opsem_ram_comm_simps verit_ite_simplify(1-12) option.case_eq_if
+      ex_eqVarEnv_invert ex_eqHeap_invert domIff cong: if_cong)
+    apply (rename_tac x y p)
+    apply (rule conjI)
+     apply (rule_tac x=\<open>VarEnv (_(x \<mapsto> _))\<close> in exI)
+     apply (force simp add: plus_varenv_def disjoint_varenv_def map_add_fun_upd_left_None)
+    apply (rule conjI)
+     apply (rule_tac x=\<open>Heap (_(p \<mapsto> _))\<close> in exI)
+     apply (force simp add: plus_heap_def disjoint_heap_def map_add_fun_upd_left_None)
+    apply force
+
+   apply (clarsimp simp add: opsem_ram_comm_simps verit_ite_simplify(1-12) option.case_eq_if
+      ex_eqVarEnv_invert ex_eqHeap_invert domIff cong: if_cong)
+   apply (rename_tac x y0 y1)
+   apply (rule conjI, force)
+   apply (rule conjI)
+    apply (rule_tac x=\<open>Heap (_(y0 := _))\<close> in exI)
+    apply (force simp add: plus_heap_def disjoint_heap_def map_add_fun_upd_left_None)
+   apply force
+
+  apply force
+
+  done
+
+lemmas ram_comm_step_split_in_split_out2 =
+  ram_comm_step_split_in_split_out
+    [where sa=\<open>(va,ha,ra)\<close> and sc=\<open>(vc,hc,rc)\<close> for va ha ra vc hc rc, simplified]
+
+
+lemma ram_comm_step_shrinkD:
+  assumes
+    \<open>sa + sc, c \<leadsto> Some so\<close>
+    \<open>sa \<currency> sc\<close>
+    \<open>rc_read_vars c \<inter> dom (the_varenv (fst sc)) = {}\<close>
+    \<open>rc_write_vars c \<inter> dom (the_varenv (fst sc)) = {}\<close>
+    \<open>rc_read_hvars (fst sa + fst sc) c \<inter> dom (the_heap (fst (snd sc))) = {}\<close>
+    \<open>rc_write_hvars (fst sa + fst sc) c \<inter> dom (the_heap (fst (snd sc))) = {}\<close>
+  shows \<open>\<exists>sb. sa, c \<leadsto> Some sb \<and> so = sb + sc \<and> sb \<currency> sc\<close>
+  using assms
+  apply -
+  apply clarsimp
+  apply (frule ram_comm_step_split_in_split_out2, force, force, force, force, force)
+  apply clarify
+  apply (drule ram_comm_step_shrink2, force, force, force, force, force, force)
+  apply force
+  done
+
+lemmas ram_comm_step_shrinkD2 =
+  ram_comm_step_shrinkD[
+    where sa=\<open>(va,ha,ra)\<close> and sc=\<open>(vc,hc,rc)\<close>
+    for va ha ra vc hc rc, simplified]
+
+
+lemma ram_comm_forward_frame_right:
+  assumes
+    \<open>\<And>s. P s \<Longrightarrow> rc_read_vars c \<inter> dom (the_varenv (fst s)) = {}\<close>
+    \<open>\<And>s. P s \<Longrightarrow> rc_write_vars c \<inter> dom (the_varenv (fst s)) = {}\<close>
+    \<open>\<And>sq sp. Q sq \<Longrightarrow> P sp \<Longrightarrow> sq \<currency> sp \<Longrightarrow> rc_read_hvars (fst sq + fst sp) c \<inter> dom (the_heap (fst (snd sp))) = {}\<close>
+    \<open>\<And>sq sp. Q sq \<Longrightarrow> P sp \<Longrightarrow> sq \<currency> sp \<Longrightarrow> rc_write_hvars (fst sq + fst sp) c \<inter> dom (the_heap (fst (snd sp))) = {}\<close>
+  shows
+    \<open>ram_comm_forward c (Q \<^emph> P) \<le> ram_comm_forward c Q \<^emph> P\<close>
+  using assms
+  apply -
+  apply (clarsimp simp add: ram_comm_forward_def le_fun_def sepconj_def)
+  apply (drule ram_comm_step_shrinkD2, force, force, force, force, force)
+  apply blast
+  done
+
+lemma ram_comm_forward_frame_left:
+  assumes
+    \<open>\<And>s. P s \<Longrightarrow> rc_read_vars c \<inter> dom (the_varenv (fst s)) = {}\<close>
+    \<open>\<And>s. P s \<Longrightarrow> rc_write_vars c \<inter> dom (the_varenv (fst s)) = {}\<close>
+    \<open>\<And>sq sp. Q sq \<Longrightarrow> P sp \<Longrightarrow> sp \<currency> sq \<Longrightarrow> rc_read_hvars (fst sp + fst sq) c \<inter> dom (the_heap (fst (snd sp))) = {}\<close>
+    \<open>\<And>sq sp. Q sq \<Longrightarrow> P sp \<Longrightarrow> sp \<currency> sq \<Longrightarrow> rc_write_hvars (fst sp + fst sq) c \<inter> dom (the_heap (fst (snd sp))) = {}\<close>
+  shows
+    \<open>ram_comm_forward c (P \<^emph> Q) \<le> P \<^emph> ram_comm_forward c Q\<close>
+  using assms
+  apply (simp add: sepconj_comm[where P=P])
+  apply (rule ram_comm_forward_frame_right[where P=P and Q=Q])
+     apply (simp add: disjoint_symm partial_add_commute)+
+  done
 
 section \<open>Operational Semantics\<close>
 
