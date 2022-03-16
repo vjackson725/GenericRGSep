@@ -143,7 +143,6 @@ lemma pred_abac_eq_abc: \<open>(A \<^bold>\<and> B) \<^bold>\<and> A \<^bold>\<a
 
 section \<open> mfault \<close>
 
-
 datatype 'a mfault =
   Success (the_success: 'a)
   | Fault
@@ -245,36 +244,24 @@ section \<open> Separation Logic \<close>
 
 class seplogic = plus + zero + order_bot +
   fixes disjoint :: \<open>'a \<Rightarrow> 'a \<Rightarrow> bool\<close> (infix \<open>\<currency>\<close> 70)
-  assumes disjoint_refl_only_zero: \<open>a \<currency> a \<Longrightarrow> a = 0\<close>
   assumes disjoint_symm: \<open>a \<currency> b = b \<currency> a\<close>
   assumes disjoint_empty[simp]: \<open>0 \<currency> a\<close>
+  assumes disjoint_refl_only_zero: \<open>a \<currency> a \<Longrightarrow> a = 0\<close>
   assumes disjoint_add_left[simp]: \<open>a \<currency> (b + c) \<longleftrightarrow> a \<currency> b \<and> a \<currency> c\<close>
   assumes le_iff_sepadd: \<open>a \<le> b \<longleftrightarrow> (\<exists>c. a \<currency> c \<and> b = a + c)\<close>
   (* partial commutative monoid *)
   assumes partial_add_assoc:
-    "a \<currency> b \<Longrightarrow> b \<currency> c \<Longrightarrow> a \<currency> c \<Longrightarrow> (a + b) + c = a + (b + c)"
+    \<open>a \<currency> b \<Longrightarrow> b \<currency> c \<Longrightarrow> a \<currency> c \<Longrightarrow> (a + b) + c = a + (b + c)\<close>
   assumes partial_add_commute: \<open>a \<currency> b \<Longrightarrow> a + b = b + a\<close>
-  assumes partial_add_0[simp]: "0 + a = a"
+  assumes partial_add_0[simp]: \<open>0 + a = a\<close>
 (*
   fixes bad :: 'a
   assumes \<open>\<not> (a \<currency> b) \<Longrightarrow> a + b = bad\<close>
 *)
 begin
 
-
 lemma disjoint_add_right[simp]: \<open>(a + b) \<currency> c \<longleftrightarrow> a \<currency> c \<and> b \<currency> c\<close>
   by (simp add: disjoint_symm)
-
-(*
-lemma inf_plus_distrib_right: \<open>a \<currency> b \<Longrightarrow> (a + b) \<sqinter> c = a \<sqinter> c + b \<sqinter> c\<close>
-  by (simp add: inf_commute inf_plus_distrib_left)
-*)
-
-lemma disjoint_empty_right[simp]: \<open>h \<currency> 0\<close>
-  using disjoint_symm by fastforce
-
-lemma sep_add_0_right[simp]: "a + 0 = a"
-  by (metis disjoint_empty partial_add_0 partial_add_commute)
 
 lemma zero_le[simp]: \<open>0 \<le> a\<close>
   by (simp add: le_iff_sepadd)
@@ -285,6 +272,12 @@ lemma le_zero_eq: \<open>a \<le> 0 \<longleftrightarrow> a = 0\<close>
 lemma bot_eq_zero: \<open>bot = 0\<close>
   by (simp add: antisym)
 
+lemma disjoint_empty_right[simp]: \<open>h \<currency> 0\<close>
+  using disjoint_symm by fastforce
+
+lemma sep_add_0_right[simp]: "a + 0 = a"
+  by (metis disjoint_empty partial_add_0 partial_add_commute)
+
 lemma le_nonzero_not_disjoint: \<open>a \<le> b \<Longrightarrow> a \<noteq> 0 \<Longrightarrow> \<not> (a \<currency> b)\<close>
   using disjoint_refl_only_zero le_iff_sepadd by force
 
@@ -294,33 +287,26 @@ lemma le_plus: \<open>a \<currency> b \<Longrightarrow> a \<le> a + b\<close>
 lemma le_plus2: \<open>a \<currency> b \<Longrightarrow> b \<le> a + b\<close>
   by (metis le_plus disjoint_symm partial_add_commute)
 
-
-(*
-lemma disjoint_impl_int_empty: \<open>a \<currency> b \<Longrightarrow> a \<sqinter> b = 0\<close>
-  by (metis disjoint_add_right le_nonzero_not_disjoint inf.cobounded1 inf_le2 le_iff_sepadd)
-  thm le_nonzero_not_disjoint disjoint_add_left disjoint_symm inf.cobounded2 inf_le1 le_iff_sepadd
-  thm disjoint_add_right le_nonzero_not_disjoint inf.cobounded1 inf_le2 le_iff_sepadd
-*)
-
-(*
-lemma plus_eq_plus_split:
-  \<open>a \<currency> b \<Longrightarrow> c \<currency> d \<Longrightarrow> a + b = c + d \<longleftrightarrow> (\<exists>ac bc ad bd. a = ac + ad \<and> b = bc + bd \<and> c = ac + bc \<and> d = ad + bd)\<close>
-  apply (rule iffI)
-   apply (rule_tac x=\<open>a \<sqinter> c\<close> in exI)
-   apply (rule_tac x=\<open>b \<sqinter> c\<close> in exI)
-   apply (rule_tac x=\<open>a \<sqinter> d\<close> in exI)
-   apply (rule_tac x=\<open>b \<sqinter> d\<close> in exI)
-   apply (intro conjI)
-      apply (metis inf.orderE inf_plus_distrib_left le_iff_sepadd)
-     apply (metis disjoint_symm inf.orderE inf_plus_distrib_left le_iff_sepadd partial_add_commute)
-    apply (metis inf.commute inf.orderE inf_plus_distrib_left le_iff_sepadd)
-   apply (metis inf_plus_distrib_right disjoint_symm inf.absorb_iff2 le_iff_sepadd partial_add_commute)
-  using disjoint_symm partial_add_assoc partial_add_commute apply force
-  done
-*)
+subsection \<open> Seplogic connectives \<close>
 
 definition sepconj :: \<open>('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool)\<close> (infixl \<open>\<^emph>\<close> 88) where
   \<open>P \<^emph> Q \<equiv> \<lambda>h. \<exists>h1 h2. h1 \<currency> h2 \<and> h = h1 + h2 \<and> P h1 \<and> Q h2\<close>
+
+definition sepimp :: \<open>('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool)\<close> (infixr \<open>\<midarrow>\<^emph>\<close> 85) where
+  \<open>P \<midarrow>\<^emph> Q \<equiv> \<lambda>h. \<forall>h1. h \<currency> h1 \<longrightarrow> P h1 \<longrightarrow> Q (h + h1)\<close>
+
+definition sepcoimp :: \<open>('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool)\<close> (infixr \<open>\<sim>\<^emph>\<close> 85) where
+  \<open>P \<sim>\<^emph> Q \<equiv> \<lambda>h. \<forall>h1 h2. h1 \<currency> h2 \<longrightarrow> h = h1 + h2 \<longrightarrow> P h1 \<longrightarrow> Q h2\<close>
+
+definition septract :: \<open>('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool)\<close> (infixr \<open>\<midarrow>\<odot>\<close> 86) where
+  \<open>P \<midarrow>\<odot> Q \<equiv> \<lambda>h. \<exists>h1. h \<currency> h1 \<and> P h1 \<and> Q (h + h1)\<close>
+
+definition septract_rev :: \<open>('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool)\<close> (infixr \<open>\<odot>\<midarrow>\<close> 86) where
+  \<open>P \<odot>\<midarrow> Q \<equiv> \<lambda>h. \<exists>h'. h \<currency> h' \<and> P (h + h') \<and> Q h'\<close>
+
+lemma septract_reverse: \<open>P \<midarrow>\<odot> Q = Q \<odot>\<midarrow> P\<close>
+  by (force simp add: septract_def septract_rev_def)
+
 
 definition sepconj_mfault ::
   \<open>('a \<Rightarrow> bool) mfault \<Rightarrow> ('a \<Rightarrow> bool) mfault \<Rightarrow> ('a \<Rightarrow> bool) mfault\<close> (infixl \<open>\<^emph>\<^sub>f\<close> 88)
@@ -337,17 +323,6 @@ definition sepconj_mfault ::
 definition subheapexist :: \<open>('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool)\<close> where
   \<open>subheapexist P \<equiv> \<lambda>h. \<exists>h1. h1 \<le> h \<and> P h1\<close>
 
-definition sepimp :: \<open>('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool)\<close> (infixr \<open>\<midarrow>\<^emph>\<close> 85) where
-  \<open>P \<midarrow>\<^emph> Q \<equiv> \<lambda>h. \<forall>h1. h \<currency> h1 \<longrightarrow> P h1 \<longrightarrow> Q (h + h1)\<close>
-
-definition sepcoimp :: \<open>('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool)\<close> (infixr \<open>\<sim>\<^emph>\<close> 85) where
-  \<open>P \<sim>\<^emph> Q \<equiv> \<lambda>h. \<forall>h1 h2. h1 \<currency> h2 \<longrightarrow> h = h1 + h2 \<longrightarrow> P h1 \<longrightarrow> Q h2\<close>
-
-definition septract :: \<open>('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool)\<close> (infixr \<open>\<midarrow>\<odot>\<close> 86) where
-  \<open>P \<midarrow>\<odot> Q \<equiv> \<lambda>h. \<exists>h1. h \<currency> h1 \<and> P h1 \<and> Q (h + h1)\<close>
-
-definition septract_rev :: \<open>('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool)\<close> (infixr \<open>\<odot>\<midarrow>\<close> 86) where
-  \<open>P \<odot>\<midarrow> Q \<equiv> \<lambda>h. \<exists>h'. h \<currency> h' \<and> P (h + h') \<and> Q h'\<close>
 
 definition emp :: \<open>'a \<Rightarrow> bool\<close> where
   \<open>emp \<equiv> (\<lambda>h. h = 0)\<close>
@@ -361,8 +336,6 @@ fun iterated_sepconj :: \<open>('a \<Rightarrow> bool) list \<Rightarrow> ('a \<
 | \<open>iterated_sepconj [] = emp\<close>
 
 
-lemma septract_reverse: \<open>P \<midarrow>\<odot> Q = Q \<odot>\<midarrow> P\<close>
-  by (force simp add: septract_def septract_rev_def)
 
 lemma sepconj_assoc: \<open>(P \<^emph> Q) \<^emph> R = P \<^emph> (Q \<^emph> R)\<close>
   by (force simp add: sepconj_def ex_simps[symmetric] partial_add_assoc simp del: ex_simps)
@@ -377,6 +350,15 @@ lemma sepconj_left_comm: \<open>Q \<^emph> (P \<^emph> R) = P \<^emph> (Q \<^emp
   done
 
 lemmas sepconj_ac = sepconj_assoc sepconj_comm sepconj_left_comm
+
+(*
+
+\<^emph>   < ~ >  \<midarrow>\<^emph>
+|           |
+\<sim>\<^emph>  < ~ > \<midarrow>\<odot>
+
+*)
+
 
 lemma septract_sepimp_dual: \<open>P \<midarrow>\<odot> Q = \<^bold>\<not>(P \<midarrow>\<^emph> \<^bold>\<not> Q)\<close>
   unfolding septract_def sepimp_def pred_neg_def
@@ -420,7 +402,7 @@ lemma sepconj_comm_imp:
 
 
 definition precise :: \<open>('a \<Rightarrow> bool) \<Rightarrow> bool\<close> where
-  \<open>precise P \<equiv> \<forall>h h1. h1\<le>h \<longrightarrow> P h1 \<longrightarrow> (\<forall>h2\<le>h. P h2 \<longrightarrow> h1 = h2)\<close>
+  \<open>precise P \<equiv> \<forall>h. \<forall>h1\<le>h. P h1 \<longrightarrow> (\<forall>h2\<le>h. P h2 \<longrightarrow> h1 = h2)\<close>
 
 definition intuitionistic :: \<open>('a \<Rightarrow> bool) \<Rightarrow> bool\<close> where
   \<open>intuitionistic P \<equiv> \<forall>h h'. P h \<and> h \<le> h' \<longrightarrow> P h'\<close>
@@ -486,6 +468,26 @@ lemma sepconj_middle_monotone_left: \<open>A1 \<^emph> A2 \<le> B \<Longrightarr
 
 lemma sepconj_middle_monotone_right: \<open>A \<le> B1 \<^emph> B2 \<Longrightarrow> C \<^emph> A \<le> B1 \<^emph> C \<^emph> B2\<close>
   by (metis sepconj_assoc sepconj_comm sepconj_left_mono)
+
+
+definition supported :: \<open>('a \<Rightarrow> bool) \<Rightarrow> bool\<close> where
+  \<open>supported P \<equiv> \<forall>s. P s \<longrightarrow> (\<exists>hp. P hp \<and> hp \<le> s \<and> (\<forall>s'. hp \<le> s' \<longrightarrow> s' \<le> s \<longrightarrow> P s'))\<close>
+
+lemma precise_to_supported:
+  \<open>precise P \<Longrightarrow> supported (P \<^emph> \<^bold>T)\<close>
+  by (metis eq_iff supported_def)
+
+lemma precise_to_intuitionistic:
+  \<open>precise P \<Longrightarrow> intuitionistic (P \<^emph> \<^bold>T)\<close>
+  apply (simp add: sepconj_def pred_true_def precise_def intuitionistic_def)
+  by (meson dual_order.trans le_iff_sepadd)
+
+
+lemma supported_intuitionistic_to_precise:
+  \<open>supported P \<Longrightarrow> intuitionistic P \<Longrightarrow> precise (P \<^bold>\<and> \<^bold>\<not> (P \<^emph> \<^bold>\<not> emp))\<close>
+  apply (simp add: sepconj_def pred_true_def pred_neg_def emp_def pred_conj_def)
+  apply (simp add: precise_def intuitionistic_def supported_def)
+  oops
 
 end
 
@@ -566,6 +568,5 @@ lemma precise_sepconj_eq_strong_sepcoimp:
   done
 
 end
-
 
 end

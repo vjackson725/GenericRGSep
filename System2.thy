@@ -61,7 +61,10 @@ lemma altsepconj_disj_distrib_left:
   using assms
   unfolding altsepconj_def sepconj_def pred_true_def pred_disj_def pred_conj_def sepcoimp_def
     le_fun_def precise_def
+(*
   by (intro ext, metis le_plus partial_add_commute partial_right_cancel)
+*)
+  sorry
 
 lemma altsepconj_disj_distrib_left_iff_precise:
   fixes P Q Q' :: \<open>('a :: right_cancel_seplogic) \<Rightarrow> bool\<close>

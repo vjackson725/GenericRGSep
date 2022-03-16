@@ -348,9 +348,9 @@ datatype 'v bexpr =
 
 datatype 'v ram_comm =
   CSkip
-  | CAssign 'v  \<open>'v iexpr\<close>
-  | CHeapR 'v  \<open>'v iexpr\<close>
-  | CHeapW  \<open>'v iexpr\<close>  \<open>'v iexpr\<close>
+  | CAssign 'v \<open>'v iexpr\<close>
+  | CHeapR 'v \<open>'v iexpr\<close>
+  | CHeapW \<open>'v iexpr\<close> \<open>'v iexpr\<close>
   | CHeapNew 'v
   | CHeapDel \<open>'v iexpr\<close>
   | CAssume \<open>'v bexpr\<close>
@@ -364,6 +364,7 @@ datatype 'v comm =
   | CRelease nat
 
 type_synonym 'v prog = \<open>'v comm list\<close>
+
 
 fun denot_iexpr :: \<open>'v iexpr \<Rightarrow> (('v \<rightharpoonup> nat) \<rightharpoonup> nat)\<close> (\<open>\<lbrakk>_\<rbrakk>\<^sub>I _\<close> [60,200] 60) where
   \<open>\<lbrakk> IEVar x \<rbrakk>\<^sub>I \<sigma> = \<sigma> x\<close>
@@ -630,7 +631,7 @@ lemma opsem_ram_comm_same_dom_varenv:
 section \<open>ram_comm forwards predicate transformer\<close>
 
 definition ram_comm_forward :: \<open>'v ram_comm \<Rightarrow> ('v state \<Rightarrow> bool) \<Rightarrow> ('v state \<Rightarrow> bool)\<close> where
-  \<open>ram_comm_forward c \<equiv> \<lambda>P. \<lambda>s'. \<exists>s. P s \<and> s, c \<leadsto> Some s'\<close>
+  \<open>ram_comm_forward c P \<equiv> \<lambda>s'. \<exists>s. P s \<and> (s, c \<leadsto> Some s')\<close>
 
 lemma ram_comm_step_iff_forward:
   \<open>(s, c \<leadsto> Some s') \<longleftrightarrow> (=) s' \<le> ram_comm_forward c ((=) s)\<close>
@@ -640,8 +641,9 @@ lemma ram_comm_forward_simps:
   \<open>ram_comm_forward CSkip P = P\<close>
   \<open>ram_comm_forward (CAssign x e0) P =
     (\<lambda>(v, h, r). \<exists>vinit ex.
-       P (vinit, h, r) \<and>
-      the_varenv vinit x \<noteq> None \<and> \<lbrakk>e0\<rbrakk>\<^sub>I (the_varenv vinit) = Some ex \<and>
+      P (vinit, h, r) \<and>
+      the_varenv vinit x \<noteq> None \<and>
+      \<lbrakk>e0\<rbrakk>\<^sub>I (the_varenv vinit) = Some ex \<and>
       v = VarEnv ((the_varenv vinit)(x \<mapsto> ex)))\<close> (is ?CAssign)
   \<open>ram_comm_forward (CHeapR x ep) P =
     (\<lambda>(v, h, r). \<exists>v' p val.
@@ -754,8 +756,8 @@ lemma ram_comm_forward_conj:
   \<open>ram_comm_forward c (P \<^bold>\<and> Q) \<le> ram_comm_forward c P \<^bold>\<and> ram_comm_forward c Q\<close>
 proof (induct c)
   case CHeapW then show ?case
-    by (clarsimp intro!: ext split: prod.splits simp add: pred_conj_def ram_comm_forward_def, metis)
-qed (force intro!: ext split: prod.splits simp add: ram_comm_forward_simps pred_conj_def)+
+    by (clarsimp split: prod.splits simp add: pred_conj_def ram_comm_forward_def, metis)
+qed (force split: prod.splits simp add: ram_comm_forward_simps pred_conj_def)+
 
 lemma ram_comm_forward_disj:
   \<open>ram_comm_forward c (P \<^bold>\<or> Q) = ram_comm_forward c P \<^bold>\<or> ram_comm_forward c Q\<close>
@@ -1141,6 +1143,68 @@ lemma ram_comm_forward_frame_left:
   apply (rule ram_comm_forward_frame_right[where P=P and Q=Q])
      apply (simp add: disjoint_symm partial_add_commute)+
   done
+
+
+subsection \<open> mfault forward semantics \<close>
+
+fun mfaultsem_ram_comm :: \<open>'v ram_comm \<Rightarrow> 'v state \<Rightarrow> ('v state \<Rightarrow> bool) mfault\<close> where
+  \<open>mfaultsem_ram_comm CSkip s = Success ((=) s)\<close>
+| \<open>mfaultsem_ram_comm (CAssign x e) s = (case s of
+      (VarEnv v, h, r) \<Rightarrow>
+        (if v x = None then Fault
+        else case \<lbrakk>e\<rbrakk>\<^sub>I v of
+          None \<Rightarrow> Fault
+        | Some vx \<Rightarrow> Success ((=) (VarEnv (v(x \<mapsto> vx)), h, r))))\<close>
+| \<open>mfaultsem_ram_comm (CHeapR x ep) s = (case s of
+    (VarEnv v, h, r) \<Rightarrow>
+      (if v x = None then Fault
+      else case \<lbrakk>ep\<rbrakk>\<^sub>I v of
+        None \<Rightarrow> Fault
+      | Some p \<Rightarrow> (case the_heap h p of
+          None \<Rightarrow> Fault
+        | Some val \<Rightarrow> Success ((=) (VarEnv (v(x \<mapsto> val)), h, r)))))\<close>
+| \<open>mfaultsem_ram_comm (CHeapW ep e) s = (case s of
+    (VarEnv v, Heap h, r) \<Rightarrow>
+      (case \<lbrakk>ep\<rbrakk>\<^sub>I v of
+        None \<Rightarrow> Fault
+      | Some p \<Rightarrow>
+          if h p = None then Fault
+          else (case \<lbrakk>e\<rbrakk>\<^sub>I v of
+            None \<Rightarrow> Fault
+            | Some val \<Rightarrow> Success ((=) (VarEnv v, Heap (h(p \<mapsto> val)), r)))))\<close>
+| \<open>mfaultsem_ram_comm (CHeapNew x) s = (case s of
+    (VarEnv v, Heap h, r) \<Rightarrow>
+      (if v x = None then Fault
+       else (if (\<exists>p. h p = None)
+          then Success (\<lambda>s'. \<exists>p. h p = None \<and> s' = (VarEnv (v(x \<mapsto> p)), Heap (h(p \<mapsto> undefined)), r))
+          else Fault)))\<close>
+| \<open>mfaultsem_ram_comm (CHeapDel e) s = (case s of
+    (VarEnv v, Heap h, r) \<Rightarrow>
+      (case \<lbrakk>e\<rbrakk>\<^sub>I v of
+        Some p \<Rightarrow> (case h p of
+            Some _ \<Rightarrow> Success ((=) (VarEnv v, Heap (h(p := None)), r))
+          | None \<Rightarrow> Fault
+          )
+      | None \<Rightarrow> Fault))\<close>
+| \<open>mfaultsem_ram_comm (CAssume b) s = Success ((=) s \<^bold>\<and> (\<lambda>_. \<lbrakk>b\<rbrakk>\<^sub>B (the_varenv (fst s)) = Some True))\<close>
+
+
+
+
+
+
+lemma mfaultsem_ram_comm_local:
+  \<open>s0 \<currency> s1 \<Longrightarrow> mfaultsem_ram_comm c (s0 + s1) \<le> mfaultsem_ram_comm c s0 \<^emph>\<^sub>f Success ((=) s1)\<close>
+  apply (cases s0, cases s1)
+  apply (rename_tac v0 h0 r0 v1 h1 r1)
+  apply (cases c)
+        apply (force simp add: sepconj_mfault_def)
+
+       apply (simp add: sepconj_mfault_def)
+
+  sorry
+
+
 
 section \<open>Operational Semantics\<close>
 
