@@ -248,10 +248,10 @@ lemma zero_le[simp]: \<open>0 \<le> a\<close>
   by (simp add: le_iff_sepadd)
 
 lemma le_zero_eq: \<open>a \<le> 0 \<longleftrightarrow> a = 0\<close>
-  by (simp add: local.antisym_conv)
+  by (simp add: antisym_conv)
 
 lemma bot_eq_zero: \<open>bot = 0\<close>
-  using local.bot_least local.le_zero_eq by blast
+  using bot_least le_zero_eq by blast
 
 lemma disjoint_empty_right[simp]: \<open>h \<currency> 0\<close>
   using disjoint_symm by fastforce
@@ -545,6 +545,23 @@ lemma precise_sepconj_eq_strong_sepcoimp:
   apply (blast dest: partial_left_cancel2)
   apply blast
   done
+
+
+lemma \<open>(a \<^emph> \<top>) \<sqinter> (b \<^emph> \<top>) \<le> ((a \<^emph> b) \<squnion> (a \<sqinter> b)) \<^emph> \<top>\<close>
+  nitpick[card=4]
+  oops
+
+lemma \<open>((a \<^emph> b) \<squnion> (a \<sqinter> b)) \<^emph> \<top> \<le> (a \<^emph> \<top>) \<sqinter> (b \<^emph> \<top>)\<close>
+proof -
+  have F1: \<open>((a \<^emph> b) \<squnion> (a \<sqinter> b)) \<^emph> \<top> = (a \<^emph> b) \<^emph> \<top> \<squnion> (a \<sqinter> b) \<^emph> \<top>\<close>
+    by (simp add: sepconj_comm sepconj_pdisj_distrib_left)
+  moreover have \<open>a \<^emph> b \<^emph> \<top> \<le> (a \<^emph> \<top>) \<sqinter> (b \<^emph> \<top>)\<close>
+    by (metis le_infI sepconj_comm sepconj_middle_monotone_left top_greatest)
+  moreover have \<open>(a \<sqinter> b) \<^emph> \<top> \<le> (a \<^emph> \<top>) \<sqinter> (b \<^emph> \<top>)\<close>
+    by (simp add: local.sepconj_left_mono)
+  ultimately show ?thesis
+    by simp
+qed
 
 end
 
