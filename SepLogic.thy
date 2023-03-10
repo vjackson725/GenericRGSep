@@ -368,7 +368,6 @@ definition septract_rev :: \<open>('a \<Rightarrow> bool) \<Rightarrow> ('a \<Ri
 lemma septract_reverse: \<open>P \<midarrow>\<odot> Q = Q \<odot>\<midarrow> P\<close>
   by (force simp add: septract_def septract_rev_def)
 
-
 definition sepconj_mfault ::
   \<open>('a \<Rightarrow> bool) mfault \<Rightarrow> ('a \<Rightarrow> bool) mfault \<Rightarrow> ('a \<Rightarrow> bool) mfault\<close> (infixl \<open>\<^emph>\<^sub>f\<close> 88)
   where
