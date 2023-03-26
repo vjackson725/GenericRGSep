@@ -4,6 +4,8 @@ begin
 
 unbundle lattice_syntax
 
+section \<open>Helpers\<close>
+
 lemma bool_left_mp[simp]: \<open>P \<and> (P \<longrightarrow> Q) \<longleftrightarrow> P \<and> Q\<close>
   by blast
 
@@ -91,6 +93,18 @@ lemma map_disjoint_dom_cancel_left:
   using assms
   by (metis (no_types, lifting) Int_Un_distrib Int_commute Un_Int_eq(3)
       disjoint_ac dom_map_add map_add_comm map_le_iff_map_add_commute map_le_restrict_eq)
+
+subsection \<open>Sets\<close>
+
+lemma disjoint_equiv_iff_eq:
+  \<open>(\<forall>C. A \<inter> C = {} \<longleftrightarrow> B \<inter> C = {}) \<longleftrightarrow> A = B\<close>
+  by blast
+
+lemma surj_disjoint_equiv_iff_eq:
+  \<open>surj f \<Longrightarrow> (\<forall>x. A \<inter> f x = {} \<longleftrightarrow> B \<inter> f x = {}) \<longleftrightarrow> A = B\<close>
+  by (metis disjoint_equiv_iff_eq surjD)
+
+
 
 
 section \<open>Predicate Logic\<close>
@@ -224,66 +238,132 @@ end
 section \<open> Separation Logic \<close>
 
 class seplogic = plus + zero + order_bot +
-  fixes disjoint :: \<open>'a \<Rightarrow> 'a \<Rightarrow> bool\<close> (infix \<open>\<currency>\<close> 70)
-  assumes disjoint_symm: \<open>a \<currency> b = b \<currency> a\<close>
-  assumes disjoint_empty[simp]: \<open>0 \<currency> a\<close>
-  assumes disjoint_refl_only_zero: \<open>a \<currency> a \<Longrightarrow> a = 0\<close>
-  assumes disjoint_add_left[simp]: \<open>a \<currency> (b + c) \<longleftrightarrow> a \<currency> b \<and> a \<currency> c\<close>
-  assumes le_iff_sepadd: \<open>a \<le> b \<longleftrightarrow> (\<exists>c. a \<currency> c \<and> b = a + c)\<close>
+  fixes disjoint :: \<open>'a \<Rightarrow> 'a \<Rightarrow> bool\<close> (infix \<open>##\<close> 70)
+  assumes disjoint_symm: \<open>a ## b = b ## a\<close>
+  assumes disjoint_refl_only_zero: \<open>a ## a \<Longrightarrow> a = 0\<close>
+  assumes disjoint_add_left[simp]: \<open>a ## (b + c) \<longleftrightarrow> a ## b \<and> a ## c\<close>
+  assumes le_iff_sepadd: \<open>a \<le> b \<longleftrightarrow> (\<exists>c. a ## c \<and> b = a + c)\<close>
   (* partial commutative monoid *)
   assumes partial_add_assoc:
-    \<open>a \<currency> b \<Longrightarrow> b \<currency> c \<Longrightarrow> a \<currency> c \<Longrightarrow> (a + b) + c = a + (b + c)\<close>
-  assumes partial_add_commute: \<open>a \<currency> b \<Longrightarrow> a + b = b + a\<close>
+    \<open>a ## b \<Longrightarrow> b ## c \<Longrightarrow> a ## c \<Longrightarrow> (a + b) + c = a + (b + c)\<close>
+  assumes partial_add_commute: \<open>a ## b \<Longrightarrow> a + b = b + a\<close>
   assumes partial_add_0[simp]: \<open>0 + a = a\<close>
-(*
-  fixes bad :: 'a
-  assumes \<open>\<not> (a \<currency> b) \<Longrightarrow> a + b = bad\<close>
-*)
 begin
 
-lemma disjoint_add_right[simp]: \<open>(a + b) \<currency> c \<longleftrightarrow> a \<currency> c \<and> b \<currency> c\<close>
+subsection \<open>partial canonically_ordered_monoid_add lemmas\<close>
+
+lemma zero_le[simp]: "0 \<le> x"
+  by (metis disjoint_add_left disjoint_symm le_iff_sepadd order.refl partial_add_0)
+
+lemma zero_sep[simp]: "0 ## x"
+  using le_iff_sepadd partial_add_0 zero_le
+  by presburger
+
+lemma le_zero_eq[simp]: "n \<le> 0 \<longleftrightarrow> n = 0"
+  by (auto intro: order.antisym)
+
+lemma not_less_zero[simp]: "\<not> n < 0"
+  by (auto simp: less_le)
+
+lemma zero_less_iff_neq_zero: "0 < n \<longleftrightarrow> n \<noteq> 0"
+  by (auto simp: less_le)
+
+text \<open>This theorem is useful with \<open>blast\<close>\<close>
+lemma gr_zeroI: "(n = 0 \<Longrightarrow> False) \<Longrightarrow> 0 < n"
+  by (rule zero_less_iff_neq_zero[THEN iffD2]) iprover
+
+lemma not_gr_zero[simp]: "\<not> 0 < n \<longleftrightarrow> n = 0"
+  by (simp add: zero_less_iff_neq_zero)
+
+lemma gr_implies_not_zero: "m < n \<Longrightarrow> n \<noteq> 0"
+  by auto
+
+lemma sepadd_eq_0_iff_both_eq_0[simp]: "x ## y \<Longrightarrow> x + y = 0 \<longleftrightarrow> x = 0 \<and> y = 0"
+  by (metis le_iff_sepadd le_zero_eq partial_add_0)
+
+lemma zero_eq_sepadd_iff_both_eq_0[simp]: "x ## y \<Longrightarrow> 0 = x + y \<longleftrightarrow> x = 0 \<and> y = 0"
+  using sepadd_eq_0_iff_both_eq_0[of x y] unfolding eq_commute[of 0] .
+
+lemma less_eqE:
+  assumes \<open>a \<le> b\<close>
+  obtains c where \<open>b = a + c\<close>
+  using assms
+  by (auto simp add: le_iff_sepadd)
+
+lemma lessE:
+  assumes \<open>a < b\<close>
+  obtains c where \<open>b = a + c\<close> \<open>a ## c\<close> and \<open>c \<noteq> 0\<close>
+proof -
+  from assms have \<open>a \<le> b\<close> \<open>a \<noteq> b\<close>
+    by simp_all
+  from \<open>a \<le> b\<close> obtain c where \<open>b = a + c\<close> \<open>a ## c\<close>
+    by (force simp add: le_iff_sepadd)
+  moreover have \<open>c \<noteq> 0\<close> using \<open>a \<noteq> b\<close> \<open>b = a + c\<close>
+    by (metis partial_add_0 partial_add_commute zero_sep)
+  ultimately show ?thesis
+    by (rule that)
+qed
+
+lemmas zero_order = zero_le le_zero_eq not_less_zero zero_less_iff_neq_zero not_gr_zero
+  \<comment> \<open>This should be attributed with \<open>[iff]\<close>, but then \<open>blast\<close> fails in \<open>Set\<close>.\<close>
+
+subsection \<open>Misc\<close>
+
+lemma disjoint_add_right[simp]: \<open>(a + b) ## c \<longleftrightarrow> a ## c \<and> b ## c\<close>
   by (simp add: disjoint_symm)
 
-lemma zero_le[simp]: \<open>0 \<le> a\<close>
-  by (simp add: le_iff_sepadd)
-
-lemma le_zero_eq: \<open>a \<le> 0 \<longleftrightarrow> a = 0\<close>
-  by (simp add: antisym_conv)
-
-lemma bot_eq_zero: \<open>bot = 0\<close>
-  using bot_least le_zero_eq by blast
-
-lemma disjoint_empty_right[simp]: \<open>h \<currency> 0\<close>
+lemma disjoint_empty_right[simp]: \<open>h ## 0\<close>
   using disjoint_symm by fastforce
 
 lemma sep_add_0_right[simp]: "a + 0 = a"
-  by (metis disjoint_empty partial_add_0 partial_add_commute)
+  by (metis disjoint_empty_right partial_add_0 partial_add_commute)
 
-lemma le_nonzero_not_disjoint: \<open>a \<le> b \<Longrightarrow> a \<noteq> 0 \<Longrightarrow> \<not> (a \<currency> b)\<close>
+lemma le_nonzero_not_disjoint: \<open>a \<le> b \<Longrightarrow> a \<noteq> 0 \<Longrightarrow> \<not> (a ## b)\<close>
   using disjoint_refl_only_zero le_iff_sepadd by force
 
-lemma le_plus: \<open>a \<currency> b \<Longrightarrow> a \<le> a + b\<close>
+lemma le_plus: \<open>a ## b \<Longrightarrow> a \<le> a + b\<close>
   using le_iff_sepadd by auto
 
-lemma le_plus2: \<open>a \<currency> b \<Longrightarrow> b \<le> a + b\<close>
+lemma le_plus2: \<open>a ## b \<Longrightarrow> b \<le> a + b\<close>
   by (metis le_plus disjoint_symm partial_add_commute)
+
+subsection \<open>sepdomeq\<close>
+
+definition \<open>sepdomeq a b \<equiv> \<forall>c. a ## c = b ## c\<close>
+
+lemma sepdomeq_reflp:
+  \<open>reflp sepdomeq\<close>
+  by (simp add: reflpI sepdomeq_def)
+
+lemma sepdomeq_symp:
+  \<open>symp sepdomeq\<close>
+  by (metis sepdomeq_def sympI)
+
+lemma sepdomeq_transp:
+  \<open>transp sepdomeq\<close>
+  by (simp add: sepdomeq_def transp_def)
+
+
+lemma same_sepdom_disjoint_leftD:
+  \<open>sepdomeq a b \<Longrightarrow> a ## c \<Longrightarrow> b ## c\<close>
+  by (simp add: sepdomeq_def)
 
 subsection \<open> Seplogic connectives \<close>
 
 definition sepconj :: \<open>('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool)\<close> (infixl \<open>\<^emph>\<close> 88) where
-  \<open>P \<^emph> Q \<equiv> \<lambda>h. \<exists>h1 h2. h1 \<currency> h2 \<and> h = h1 + h2 \<and> P h1 \<and> Q h2\<close>
+  \<open>P \<^emph> Q \<equiv> \<lambda>h. \<exists>h1 h2. h1 ## h2 \<and> h = h1 + h2 \<and> P h1 \<and> Q h2\<close>
 
 definition sepimp :: \<open>('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool)\<close> (infixr \<open>\<midarrow>\<^emph>\<close> 85) where
-  \<open>P \<midarrow>\<^emph> Q \<equiv> \<lambda>h. \<forall>h1. h \<currency> h1 \<longrightarrow> P h1 \<longrightarrow> Q (h + h1)\<close>
+  \<open>P \<midarrow>\<^emph> Q \<equiv> \<lambda>h. \<forall>h1. h ## h1 \<longrightarrow> P h1 \<longrightarrow> Q (h + h1)\<close>
 
 definition sepcoimp :: \<open>('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool)\<close> (infixr \<open>\<sim>\<^emph>\<close> 85) where
-  \<open>P \<sim>\<^emph> Q \<equiv> \<lambda>h. \<forall>h1 h2. h1 \<currency> h2 \<longrightarrow> h = h1 + h2 \<longrightarrow> P h1 \<longrightarrow> Q h2\<close>
+  \<open>P \<sim>\<^emph> Q \<equiv> \<lambda>h. \<forall>h1 h2. h1 ## h2 \<longrightarrow> h = h1 + h2 \<longrightarrow> P h1 \<longrightarrow> Q h2\<close>
 
 definition septract :: \<open>('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool)\<close> (infixr \<open>\<midarrow>\<odot>\<close> 86) where
-  \<open>P \<midarrow>\<odot> Q \<equiv> \<lambda>h. \<exists>h1. h \<currency> h1 \<and> P h1 \<and> Q (h + h1)\<close>
+  \<open>P \<midarrow>\<odot> Q \<equiv> \<lambda>h. \<exists>h1. h ## h1 \<and> P h1 \<and> Q (h + h1)\<close>
 
 definition septract_rev :: \<open>('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool)\<close> (infixr \<open>\<odot>\<midarrow>\<close> 86) where
-  \<open>P \<odot>\<midarrow> Q \<equiv> \<lambda>h. \<exists>h'. h \<currency> h' \<and> P (h + h') \<and> Q h'\<close>
+  \<open>P \<odot>\<midarrow> Q \<equiv> \<lambda>h. \<exists>h'. h ## h' \<and> P (h + h') \<and> Q h'\<close>
 
 lemma septract_reverse: \<open>P \<midarrow>\<odot> Q = Q \<odot>\<midarrow> P\<close>
   by (force simp add: septract_def septract_rev_def)
@@ -298,7 +378,7 @@ definition sepconj_mfault ::
       | Success P \<Rightarrow>
         (case Q of
           Fault \<Rightarrow> Fault
-        | Success Q \<Rightarrow> Success (\<lambda>h. \<exists>h1 h2. h1 \<currency> h2 \<and> h = h1 + h2 \<and> P h1 \<and> Q h2))\<close>
+        | Success Q \<Rightarrow> Success (\<lambda>h. \<exists>h1 h2. h1 ## h2 \<and> h = h1 + h2 \<and> P h1 \<and> Q h2))\<close>
 
 
 definition subheapexist :: \<open>('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool)\<close> where
@@ -471,23 +551,22 @@ lemma supported_intuitionistic_to_precise:
 end
 
 
-
 class right_cancel_seplogic = seplogic +
-  assumes partial_right_cancel: \<open>\<And>a b c. a \<currency> c \<Longrightarrow> b \<currency> c \<Longrightarrow> (a + c = b + c) = (a = b)\<close>
+  assumes partial_right_cancel: \<open>\<And>a b c. a ## c \<Longrightarrow> b ## c \<Longrightarrow> (a + c = b + c) = (a = b)\<close>
 begin
 
 lemma partial_right_cancel2:
-  \<open>c \<currency> a \<Longrightarrow> c \<currency> b \<Longrightarrow> (a + c = b + c) = (a = b)\<close>
+  \<open>c ## a \<Longrightarrow> c ## b \<Longrightarrow> (a + c = b + c) = (a = b)\<close>
   using partial_right_cancel disjoint_symm
   by force
 
 
 lemma partial_left_cancel:
-  \<open>a \<currency> c \<Longrightarrow> b \<currency> c \<Longrightarrow> (c + a = c + b) = (a = b)\<close>
+  \<open>a ## c \<Longrightarrow> b ## c \<Longrightarrow> (c + a = c + b) = (a = b)\<close>
   by (metis partial_add_commute partial_right_cancel)
 
 lemma partial_left_cancel2:
-  \<open>c \<currency> a \<Longrightarrow> c \<currency> b \<Longrightarrow> (c + a = c + b) = (a = b)\<close>
+  \<open>c ## a \<Longrightarrow> c ## b \<Longrightarrow> (c + a = c + b) = (a = b)\<close>
   using partial_left_cancel disjoint_symm
   by force
 
@@ -501,8 +580,8 @@ proof (rule iffI)
     fix h1 h1' h2 h2'
     presume precise_assms:
       \<open>h1 + h1' = h2 + h2'\<close>
-      \<open>h1 \<currency> h1'\<close>
-      \<open>h2 \<currency> h2'\<close>
+      \<open>h1 ## h1'\<close>
+      \<open>h2 ## h2'\<close>
       \<open>P h1\<close>
       \<open>P h2\<close>
 
@@ -558,7 +637,7 @@ proof -
   moreover have \<open>a \<^emph> b \<^emph> \<top> \<le> (a \<^emph> \<top>) \<sqinter> (b \<^emph> \<top>)\<close>
     by (metis le_infI sepconj_comm sepconj_middle_monotone_left top_greatest)
   moreover have \<open>(a \<sqinter> b) \<^emph> \<top> \<le> (a \<^emph> \<top>) \<sqinter> (b \<^emph> \<top>)\<close>
-    by (simp add: local.sepconj_left_mono)
+    by (simp add: sepconj_left_mono)
   ultimately show ?thesis
     by simp
 qed
@@ -582,10 +661,217 @@ lemma exmiddle2:
 lemma
   fixes a p :: \<open>'a \<Rightarrow> bool\<close>
   shows \<open>a \<le> (-p \<squnion> a) \<sqinter> (p \<squnion> a)\<close>
-  apply (clarsimp simp add: sepconj_def le_fun_def)
+  by (clarsimp simp add: sepconj_def le_fun_def)
 
-  sorry
+end
 
+section \<open>A cancellative seplogic\<close>
+
+class cancel_seplogic = seplogic + minus +
+  assumes sepadd_diff_cancel_left'[simp]: "a ## b \<Longrightarrow> (a + b) - a = b"
+  assumes diff_diff_sepadd[simp]: "b ## c \<Longrightarrow> a - b - c = a - (b + c)"
+  (* seplogic specific *)
+  assumes restricted_by_disjoint: \<open>b ## (a - b)\<close>
+  assumes state_minus_basic_split: \<open>(a - b) + (a - (a - b)) = a\<close>
+  assumes state_minus_generic_split:
+    \<open>a1 ## a2 \<Longrightarrow> sepdomeq (a1 + a2) b \<Longrightarrow> b = (b - a1) + (b - a2)\<close>
+(*
+  assumes unique_disjoint_sup:
+    \<open>\<exists>!c. c ## b \<and> c \<le> a \<and> (\<forall>c'. c' ## b \<longrightarrow> c' \<le> a \<longrightarrow> c' \<le> c)\<close>
+*)
+begin
+
+subclass right_cancel_seplogic
+  apply standard
+  apply (metis disjoint_symm partial_add_commute sepadd_diff_cancel_left')
+  done
+
+subsection \<open>partial cancel_comm_monoid_add lemmas\<close>
+
+lemma sepadd_diff_cancel_right'[simp]: "a ## b \<Longrightarrow> (a + b) - b = a"
+  by (metis sepadd_diff_cancel_left' disjoint_symm partial_add_commute)
+
+lemma sepadd_diff_cancel_left [simp]: "c ## a \<Longrightarrow> c ## b \<Longrightarrow> (c + a) - (c + b) = a - b"
+  by (metis diff_diff_sepadd sepadd_diff_cancel_left')
+
+lemma sepadd_diff_cancel_right [simp]: "a ## c \<Longrightarrow> b ## c \<Longrightarrow> (a + c) - (b + c) = a - b"
+  by (metis sepadd_diff_cancel_left disjoint_symm partial_add_commute)
+
+lemma diff_right_commute: "b ## c \<Longrightarrow> a - c - b = a - b - c"
+  by (simp add: disjoint_symm partial_add_commute)
+
+subsection \<open>partial cancel_comm_monoid_add lemmas\<close>
+
+lemma diff_zero[simp]: "a - 0 = a"
+  using sepadd_diff_cancel_right'[of a 0] by simp
+
+lemma diff_cancel[simp]: "a - a = 0"
+  by (metis diff_zero disjoint_symm le_nonzero_not_disjoint le_plus2 restricted_by_disjoint
+      state_minus_basic_split)
+
+lemma sepadd_implies_diff:
+  \<open>c ## b \<Longrightarrow> c + b = a \<Longrightarrow> c = a - b\<close>
+  by force
+
+lemma sepadd_cancel_right_right[simp]: "a ## b \<Longrightarrow> a = a + b \<longleftrightarrow> b = 0"
+  using sepadd_diff_cancel_left' by fastforce
+
+lemma sepadd_cancel_right_left[simp]: "b ## a \<Longrightarrow> a = b + a \<longleftrightarrow> b = 0"
+  by (simp add: disjoint_symm partial_add_commute)
+
+lemma sepadd_cancel_left_right[simp]: "a ## b \<Longrightarrow> a + b = a \<longleftrightarrow> b = 0"
+  by (auto dest: sym)
+
+lemma sepadd_cancel_left_left[simp]: "b ## a \<Longrightarrow> b + a = a \<longleftrightarrow> b = 0"
+  by (auto dest: sym)
+
+subsection \<open>partial comm_monoid_diff\<close>
+
+lemma zero_diff[simp]: "0 - a = 0"
+  by (metis le_plus le_zero_eq restricted_by_disjoint state_minus_basic_split)
+
+lemma diff_add_zero[simp]: "a ## b \<Longrightarrow> a - (a + b) = 0"
+  by (metis diff_diff_sepadd disjoint_empty_right sep_add_0_right sepadd_diff_cancel_left'
+      zero_diff)
+
+subsection \<open>ordered_ab_semigroup_add\<close>
+
+lemma sepadd_left_mono: "c ## a \<Longrightarrow> c ## b \<Longrightarrow> a \<le> b \<Longrightarrow> c + a \<le> c + b"
+  using le_iff_sepadd partial_add_assoc by auto
+
+lemma sepadd_right_mono: "a ## c \<Longrightarrow> b ## c \<Longrightarrow> a \<le> b \<Longrightarrow> a + c \<le> b + c"
+  by (metis disjoint_symm partial_add_commute sepadd_left_mono)
+
+lemma sepadd_mono:
+  assumes \<open>a ## c\<close> \<open>b ## d\<close> \<open>a \<le> b\<close> \<open>c \<le> d\<close>
+  shows \<open>a + c \<le> b + d\<close>
+proof -
+  have \<open>b ## c\<close>
+    using assms le_iff_sepadd by force
+  then show ?thesis
+    using assms sepadd_left_mono[of b c d] sepadd_right_mono[of a c b]
+    by simp
+qed
+
+subsection \<open>partial ordered_cancel_ab_semigroup_add\<close>
+
+lemma sepadd_strict_left_mono: "c ## a \<Longrightarrow> c ## b \<Longrightarrow> a < b \<Longrightarrow> c + a < c + b"
+  by (simp add: order.strict_iff_order partial_left_cancel2 sepadd_left_mono)
+
+lemma sepadd_strict_right_mono: "a ## c \<Longrightarrow> b ## c \<Longrightarrow> a < b \<Longrightarrow> a + c < b + c"
+  by (metis disjoint_symm partial_add_commute sepadd_strict_left_mono)
+
+lemma sepadd_less_le_mono:
+  assumes \<open>a ## c\<close> \<open>b ## d\<close> \<open>a < b\<close> \<open>c \<le> d\<close>
+  shows \<open>a + c < b + d\<close>
+proof -
+  have \<open>b ## c\<close>
+    using assms le_iff_sepadd by fastforce
+  then show ?thesis
+    using assms sepadd_left_mono[of b c d] sepadd_strict_right_mono[of a c b]
+      order.strict_trans1
+    by force
+qed
+
+lemma sepadd_le_less_mono: "a ## c \<Longrightarrow> b ## d \<Longrightarrow> a \<le> b \<Longrightarrow> c < d \<Longrightarrow> a + c < b + d"
+  by (metis order.strict_iff_order sepadd_less_le_mono sepadd_strict_left_mono)
+
+subsection \<open>partial ordered_ab_semigroup_add_imp_le\<close>
+
+lemma sepadd_le_imp_le_left: "c ## a \<Longrightarrow> c ## b \<Longrightarrow> c + a \<le> c + b \<Longrightarrow> a \<le> b"
+  by (simp add: le_iff_sepadd, metis disjoint_add_left partial_add_assoc
+      sepadd_diff_cancel_left')
+
+lemma sepadd_less_imp_less_left:
+  \<open>c ## a \<Longrightarrow> c ## b \<Longrightarrow> c + a < c + b \<Longrightarrow> a < b\<close>
+  by (force dest: sepadd_le_imp_le_left order.antisym simp add: less_le_not_le)
+
+lemma sepadd_less_imp_less_right: "a ## c \<Longrightarrow> b ## c \<Longrightarrow> a + c < b + c \<Longrightarrow> a < b"
+  by (simp add: disjoint_symm partial_add_commute sepadd_less_imp_less_left)
+
+lemma sepadd_less_cancel_left [simp]: "a ## c \<Longrightarrow> b ## c \<Longrightarrow> c + a < c + b \<longleftrightarrow> a < b"
+  by (meson disjoint_symm sepadd_less_imp_less_left sepadd_strict_left_mono)
+
+lemma sepadd_less_cancel_right [simp]: "a ## c \<Longrightarrow> b ## c \<Longrightarrow> a + c < b + c \<longleftrightarrow> a < b"
+  by (metis partial_add_commute sepadd_less_cancel_left)
+
+lemma add_le_cancel_left [simp]: "c ## a \<Longrightarrow> c ## b \<Longrightarrow> c + a \<le> c + b \<longleftrightarrow> a \<le> b"
+  using sepadd_le_imp_le_left sepadd_left_mono by blast
+
+lemma add_le_cancel_right [simp]: "a ## c \<Longrightarrow> b ## c \<Longrightarrow> a + c \<le> b + c \<longleftrightarrow> a \<le> b"
+  by (metis disjoint_symm partial_add_commute sepadd_le_imp_le_left sepadd_right_mono)
+
+lemma add_le_imp_le_right: "a ## c \<Longrightarrow> b ## c \<Longrightarrow> a + c \<le> b + c \<Longrightarrow> a \<le> b"
+  by simp
+
+lemma max_add_distrib_left: "x ## z \<Longrightarrow> y ## z \<Longrightarrow> max x y + z = max (x + z) (y + z)"
+  unfolding max_def by auto
+
+lemma min_add_distrib_left: "x ## z \<Longrightarrow> y ## z \<Longrightarrow> min x y + z = min (x + z) (y + z)"
+  unfolding min_def by auto
+
+lemma max_add_distrib_right: "x ## y \<Longrightarrow> x ## z \<Longrightarrow> x + max y z = max (x + y) (x + z)"
+  unfolding max_def by auto
+
+lemma min_add_distrib_right: "x ## y \<Longrightarrow> x ## z \<Longrightarrow> x + min y z = min (x + y) (x + z)"
+  unfolding min_def by auto
+
+subsection \<open>partial ordered_comm_monoid_add\<close>
+
+lemma sepadd_nonpos_nonpos: "a \<le> 0 \<Longrightarrow> b \<le> 0 \<Longrightarrow> a + b \<le> 0"
+  using disjoint_empty_right by fastforce
+
+lemma sepadd_nonneg_eq_0_iff: "0 \<le> x \<Longrightarrow> 0 \<le> y \<Longrightarrow> x + y = 0 \<longleftrightarrow> x = 0 \<and> y = 0"
+  using disjoint_empty_right by fastforce
+
+lemma sepadd_nonpos_eq_0_iff: "x \<le> 0 \<Longrightarrow> y \<le> 0 \<Longrightarrow> x + y = 0 \<longleftrightarrow> x = 0 \<and> y = 0"
+  using disjoint_empty_right by fastforce
+
+lemma sepadd_increasing: "a ## c \<Longrightarrow> 0 \<le> a \<Longrightarrow> b \<le> c \<Longrightarrow> b \<le> a + c"
+  using sepadd_mono [of 0 b a c] by simp
+
+lemma sepadd_increasing2: "a ## c \<Longrightarrow> 0 \<le> c \<Longrightarrow> b \<le> a \<Longrightarrow> b \<le> a + c"
+  using sepadd_mono[of 0 b c a]
+  by (simp add: sepadd_increasing partial_add_commute disjoint_symm)
+
+lemma sepadd_decreasing: "a ## c \<Longrightarrow> a \<le> 0 \<Longrightarrow> c \<le> b \<Longrightarrow> a + c \<le> b"
+  using sepadd_mono[of a c 0 b] by simp
+
+lemma sepadd_decreasing2: "c \<le> 0 \<Longrightarrow> a \<le> b \<Longrightarrow> a + c \<le> b"
+  using sepadd_mono[of a c b 0] by simp
+
+lemma sepadd_pos_nonneg: "a ## b \<Longrightarrow> 0 < a \<Longrightarrow> 0 \<le> b \<Longrightarrow> 0 < a + b"
+  using less_le_trans[of 0 a "a + b"] by (simp add: sepadd_increasing2)
+
+lemma sepadd_pos_pos: "a ## b \<Longrightarrow> 0 < a \<Longrightarrow> 0 < b \<Longrightarrow> 0 < a + b"
+  by (intro sepadd_pos_nonneg less_imp_le)
+
+lemma sepadd_nonneg_pos: "a ## b \<Longrightarrow> 0 \<le> a \<Longrightarrow> 0 < b \<Longrightarrow> 0 < a + b"
+  using sepadd_pos_nonneg[of b a] by (simp add: partial_add_commute disjoint_symm)
+
+lemma sepadd_neg_nonpos: "a ## b \<Longrightarrow> a < 0 \<Longrightarrow> b \<le> 0 \<Longrightarrow> a + b < 0"
+  using le_less_trans[of "a + b" a 0] by (simp add: add_decreasing2)
+
+lemma sepadd_neg_neg: "a ## b \<Longrightarrow> a < 0 \<Longrightarrow> b < 0 \<Longrightarrow> a + b < 0"
+  by (intro sepadd_neg_nonpos less_imp_le)
+
+lemma sepadd_nonpos_neg: "a ## b \<Longrightarrow> a \<le> 0 \<Longrightarrow> b < 0 \<Longrightarrow> a + b < 0"
+  using sepadd_neg_nonpos[of b a] by (simp add: partial_add_commute)
+
+subsection \<open>new laws\<close>
+
+lemma symmdiff_disjoint:\<open>(a - b) ## (b - a)\<close>
+  by (metis disjoint_add_left disjoint_symm restricted_by_disjoint
+      state_minus_basic_split)
+
+lemma restricted_state_a_substate: \<open>a - b \<le> a\<close>
+  by (metis le_plus restricted_by_disjoint state_minus_basic_split)
+
+lemma minus_expansion1: \<open>a - b = a - (a - (a - b))\<close>
+  by (metis restricted_by_disjoint state_minus_basic_split sepadd_diff_cancel_right')
+
+lemma subtract_less_zero: \<open>a' \<le> a \<Longrightarrow> a' - a = 0\<close>
+  by (metis diff_cancel diff_diff_sepadd le_iff_sepadd le_zero_eq restricted_state_a_substate)
 
 end
 
