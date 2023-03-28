@@ -145,24 +145,54 @@ lemma restrict_heap_ge_dom_eq[simp]: \<open>dom_heap h \<subseteq> A \<Longright
   by (simp add: dom_heap.rep_eq restrict_heap_def eq_Abs_heap_iff,
       metis inf.absorb_iff1 map_le_refl map_le_restrict_eq restrict_restrict)
 
-lemma restrict_disjoint_dom[simp]: \<open>a ## b \<Longrightarrow> a |`\<^sub>h dom_heap b = 0\<close>
+lemma restrict_disjoint_dom[simp]:
+  \<open>a ## b \<Longrightarrow> a |`\<^sub>h dom_heap b = 0\<close>
+  \<open>a ## b \<Longrightarrow> b |`\<^sub>h dom_heap a = 0\<close>
   by (simp add: dom_heap_def restrict_heap_def disjoint_heap_def zero_heap_def Abs_heap_inject,
-      force simp add: restrict_map_def fun_eq_iff domIff)
+      force simp add: restrict_map_def fun_eq_iff domIff)+
 
+lemma heap_restrict_Compl_disjoint[simp]:
+  \<open>a |`\<^sub>h A ## a |`\<^sub>h (- A)\<close>
+  by (simp add: restrict_heap_def disjoint_heap_def Abs_heap_inverse)
+
+lemma heap_restrict_Compl_plus_eq[simp]:
+  \<open>a |`\<^sub>h A + a |`\<^sub>h (- A) = a\<close>
+  by (simp add: restrict_heap_def disjoint_heap_def plus_heap_def
+      Abs_heap_inverse Rep_heap_inverse map_restrict_un_eq[symmetric] dom_subset_restrict_eq)
+
+lemma restrict_Coml_dom_eq[simp]:
+  \<open>a |`\<^sub>h (- dom_heap a) = 0\<close>
+  by (metis heap_restrict_Compl_disjoint heap_restrict_Compl_plus_eq order_refl
+      restrict_heap_ge_dom_eq sepadd_cancel_right_right)
+
+lemma restrict_Compl_disjoint_heap[simp]:
+  \<open>a ## b \<Longrightarrow> a |`\<^sub>h (- dom_heap b) = a\<close>
+  \<open>a ## b \<Longrightarrow> b |`\<^sub>h (- dom_heap a) = b\<close>
+  by (simp add: disjoint_eq_subset_Compl disjoint_heap.rep_eq dom_heap.rep_eq compl_le_swap1)+
 
 section \<open>Stabilisation\<close>
 
+(* strongest weaker stable predicate *)
 definition swstable_pred
   :: \<open>('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> 'a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool)\<close>
   ("\<lfloor> _ \<rfloor>\<^bsub>_\<^esub>" [0,0] 90)
   where
   \<open>\<lfloor> P \<rfloor>\<^bsub>R\<^esub> \<equiv> \<lambda>s. \<forall>s'. R\<^sup>*\<^sup>* s s' \<longrightarrow> P s'\<close>
 
+(* weakest stronger stable predicate *)
 definition wsstable_pred
   :: \<open>('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> 'a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool)\<close>
   ("\<lceil> _ \<rceil>\<^bsub>_\<^esub>" [0,0] 90)
   where
   \<open>\<lceil> P \<rceil>\<^bsub>R\<^esub> \<equiv> \<lambda>s'. \<exists>s. R\<^sup>*\<^sup>* s s' \<and> P s\<close>
+
+
+
+(*
+acc(p, Write) * acc(q, Read)
+
+\s s'. s p = s' p \<and> s q = s' q
+*)
 
 subsection \<open>basic logical properties\<close>
 
@@ -254,7 +284,8 @@ lemma
 lemma swstable_sepconj_semidistrib:
   fixes P Q :: \<open>'a \<Rightarrow> bool\<close>
   assumes rely_additivity_of_update:
-    \<open>\<And>a1 a2 b. a1 ## a2 \<Longrightarrow> R\<^sup>*\<^sup>* (a1 + a2) b \<Longrightarrow> \<exists>b1 b2. b1 ## b2 \<and> b = b1 + b2 \<and> R\<^sup>*\<^sup>* a1 b1 \<and> R\<^sup>*\<^sup>* a2 b2\<close>
+    \<open>\<And>a1 a2 b. a1 ## a2 \<Longrightarrow> R\<^sup>*\<^sup>* (a1 + a2) b \<Longrightarrow>
+        \<exists>b1 b2. b1 ## b2 \<and> b = b1 + b2 \<and> R\<^sup>*\<^sup>* a1 b1 \<and> R\<^sup>*\<^sup>* a2 b2\<close>
   shows \<open>(\<lfloor> P \<rfloor>\<^bsub>R\<^esub> \<^emph> \<lfloor> Q \<rfloor>\<^bsub>R\<^esub>) s \<Longrightarrow> (\<lfloor> P \<^emph> Q \<rfloor>\<^bsub>R\<^esub>) s\<close>
   using rely_additivity_of_update
   by (simp add: swstable_pred_def sepconj_def le_fun_def, metis)
@@ -263,7 +294,6 @@ lemma wsstable_sepconj_semidistrib:
   fixes P Q :: \<open>'a \<Rightarrow> bool\<close>
   assumes rely_additivity_of_update:
     \<open>\<And>a1 a2 b. a1 ## a2 \<Longrightarrow> R\<^sup>*\<^sup>* (a1 + a2) b \<Longrightarrow> \<exists>b1 b2. b1 ## b2 \<and> b = b1 + b2 \<and> R\<^sup>*\<^sup>* a1 b1 \<and> R\<^sup>*\<^sup>* a2 b2\<close>
-  assumes rely_same_dom: \<open>\<And>a b. R\<^sup>*\<^sup>* a b \<Longrightarrow> sepdomeq a b\<close>
   shows \<open>\<lceil> P \<^emph> Q \<rceil>\<^bsub>R\<^esub> \<le> \<lceil> P \<rceil>\<^bsub>R\<^esub> \<^emph> \<lceil> Q \<rceil>\<^bsub>R\<^esub>\<close>
   using rely_additivity_of_update
   by (simp add: wsstable_pred_def sepconj_def le_fun_def, metis)
@@ -273,48 +303,44 @@ end
 
 section \<open>Seplogic stabilisation\<close>
 
+lemma rely_additivity_impl_rely_consistent_subheap:
+  fixes a b :: \<open>('a,'v) heap\<close>
+  assumes rely_additivity_of_update:
+    \<open>\<And>a1 a2 b. a1 ## a2 \<Longrightarrow> R\<^sup>*\<^sup>* (a1 + a2) b \<Longrightarrow> \<exists>b1 b2. b1 ## b2 \<and> b = b1 + b2 \<and> R\<^sup>*\<^sup>* a1 b1 \<and> R\<^sup>*\<^sup>* a2 b2\<close>
+  shows
+    \<open>R\<^sup>*\<^sup>* a b \<Longrightarrow> \<exists>B. R\<^sup>*\<^sup>* (a |`\<^sub>h A) (b |`\<^sub>h B) \<and> R\<^sup>*\<^sup>* (a |`\<^sub>h (- A)) (b |`\<^sub>h (- B))\<close>
+  using rely_additivity_of_update[of \<open>a |`\<^sub>h A\<close> \<open>a |`\<^sub>h (- A)\<close> b]
+  by (clarsimp, rule_tac x=\<open>dom_heap b1\<close> in exI, simp)
+
+lemma rely_consistent_Compl_subheaps_impl_rely_additivity:
+  fixes a b :: \<open>('a,'v) heap\<close>
+  assumes rely_consistent_subheap:
+    \<open>\<And>a b A. R\<^sup>*\<^sup>* a b \<Longrightarrow> \<exists>B. R\<^sup>*\<^sup>* (a |`\<^sub>h A) (b |`\<^sub>h B) \<and> R\<^sup>*\<^sup>* (a |`\<^sub>h (- A)) (b |`\<^sub>h (- B))\<close>
+  shows
+    \<open>a1 ## a2 \<Longrightarrow> R\<^sup>*\<^sup>* (a1 + a2) b \<Longrightarrow> \<exists>b1 b2. b1 ## b2 \<and> b = b1 + b2 \<and> R\<^sup>*\<^sup>* a1 b1 \<and> R\<^sup>*\<^sup>* a2 b2\<close>
+  using rely_consistent_subheap[of \<open>a1 + a2\<close> b \<open>dom_heap a1\<close>]
+  using set_eq_subset by fastforce
+
+
+
+
 lemma swstable_sepconj_semidistrib:
   fixes P Q :: \<open>('a,'b) heap \<Rightarrow> bool\<close>
-  assumes rely_restrict_consistent: \<open>\<And>a b A. R\<^sup>*\<^sup>* a b \<Longrightarrow> R\<^sup>*\<^sup>* (a |`\<^sub>h A) (b |`\<^sub>h A)\<close>
-  assumes rely_same_dom: \<open>\<And>a b. R\<^sup>*\<^sup>* a b \<Longrightarrow> dom_heap a = dom_heap b\<close>
+  assumes rely_consistent_Compl_subheaps:
+    \<open>\<And>a b A. R\<^sup>*\<^sup>* a b \<Longrightarrow> \<exists>B. R\<^sup>*\<^sup>* (a |`\<^sub>h A) (b |`\<^sub>h B) \<and> R\<^sup>*\<^sup>* (a |`\<^sub>h (- A)) (b |`\<^sub>h (- B))\<close>
   shows \<open>\<lfloor> P \<rfloor>\<^bsub>R\<^esub> \<^emph> \<lfloor> Q \<rfloor>\<^bsub>R\<^esub> \<le> \<lfloor> P \<^emph> Q \<rfloor>\<^bsub>R\<^esub>\<close>
-proof -
-  have rely_additivity:
-    \<open>\<And>a1 a2 b. a1 ## a2 \<Longrightarrow> R\<^sup>*\<^sup>* (a1 + a2) b \<Longrightarrow> \<exists>b1 b2. R\<^sup>*\<^sup>* a1 b1 \<and> R\<^sup>*\<^sup>* a2 b2 \<and> b = b1 + b2 \<and> b1 ## b2\<close>
-    apply (frule rely_same_dom)
-    apply (rule_tac x=\<open>b |`\<^sub>h dom_heap a1\<close> in exI)
-    apply (rule_tac x=\<open>b |`\<^sub>h dom_heap a2\<close> in exI)
-    apply (intro conjI)
-       apply (drule_tac A=\<open>dom_heap a1\<close> in rely_restrict_consistent, simp add: disjoint_symm; fail)
-      apply (drule_tac A=\<open>dom_heap a2\<close> in rely_restrict_consistent, simp add: disjoint_symm; fail)
-     apply (simp add: restrict_heap_def plus_heap_def dom_heap_def Abs_heap_inverse eq_Abs_heap_iff
-        map_restrict_un_eq[symmetric] dom_subset_restrict_eq sup_commute; fail)
-    apply (force simp add: restrict_heap_def  dom_heap_def disjoint_heap_def Abs_heap_inverse)
-    done
-  then show ?thesis
-    by (metis predicate1I swstable_sepconj_semidistrib)
-qed
+  using assms
+  by (force intro!: swstable_sepconj_semidistrib rely_consistent_Compl_subheaps_impl_rely_additivity)
 
 lemma wsstable_sepconj_semidistrib:
   fixes P Q :: \<open>('a,'b) heap \<Rightarrow> bool\<close>
-  assumes rely_restrict_consistent: \<open>\<And>a b A. R\<^sup>*\<^sup>* a b \<Longrightarrow> R\<^sup>*\<^sup>* (a |`\<^sub>h A) (b |`\<^sub>h A)\<close>
-  assumes rely_same_dom: \<open>\<And>a b. R\<^sup>*\<^sup>* a b \<Longrightarrow> dom_heap a = dom_heap b\<close>
+  assumes rely_consistent_Compl_subheaps:
+    \<open>\<And>a b A. R\<^sup>*\<^sup>* a b \<Longrightarrow> \<exists>B. R\<^sup>*\<^sup>* (a |`\<^sub>h A) (b |`\<^sub>h B) \<and> R\<^sup>*\<^sup>* (a |`\<^sub>h (- A)) (b |`\<^sub>h (- B))\<close>
   shows \<open>\<lceil> P \<^emph> Q \<rceil>\<^bsub>R\<^esub> \<le> \<lceil> P \<rceil>\<^bsub>R\<^esub> \<^emph> \<lceil> Q \<rceil>\<^bsub>R\<^esub>\<close>
-  apply (clarsimp simp add: wsstable_pred_def sepconj_def le_fun_def)
-  apply (rename_tac s' h1 h2)
-  apply (rule_tac x=\<open>s' |`\<^sub>h dom_heap h1\<close> in exI)
-  apply (rule_tac x=\<open>s' |`\<^sub>h dom_heap h2\<close> in exI)
-  apply (frule rely_same_dom)
-  apply (frule_tac A=\<open>dom_heap h1\<close> in rely_restrict_consistent)
-  apply (frule_tac A=\<open>dom_heap h2\<close> in rely_restrict_consistent)
-  apply (simp add: restrict_heap_def disjoint_heap_def dom_heap_def plus_heap_def
-      Abs_heap_inverse eq_Abs_heap_iff)
-  apply (intro conjI)
-     apply blast
-    apply (metis dom_subset_restrict_eq dual_order.refl map_restrict_un_eq sup_commute)
-   apply (metis Rep_heap_inverse map_add_comm map_le_iff_map_add_commute map_le_restrict_eq)
-  apply (metis Rep_heap_inverse map_le_map_add map_le_restrict_eq)
-  done
+  using assms
+  by (force intro!: wsstable_sepconj_semidistrib rely_consistent_Compl_subheaps_impl_rely_additivity)
+
+
 
 context cancel_seplogic
 begin
