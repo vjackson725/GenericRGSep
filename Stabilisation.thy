@@ -40,6 +40,124 @@ lemma rel_le_rtranscp_relcompp_absorb:
   apply force
   done
 
+
+section \<open>Stabilisation\<close>
+
+(* strongest weaker stable predicate *)
+definition swstable_pred
+  :: \<open>('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> 'a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool)\<close>
+  ("\<lfloor> _ \<rfloor>\<^bsub>_\<^esub>" [0,0] 90)
+  where
+  \<open>\<lfloor> P \<rfloor>\<^bsub>R\<^esub> \<equiv> \<lambda>s. \<forall>s'. R\<^sup>*\<^sup>* s s' \<longrightarrow> P s'\<close>
+
+(* weakest stronger stable predicate *)
+definition wsstable_pred
+  :: \<open>('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> 'a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool)\<close>
+  ("\<lceil> _ \<rceil>\<^bsub>_\<^esub>" [0,0] 90)
+  where
+  \<open>\<lceil> P \<rceil>\<^bsub>R\<^esub> \<equiv> \<lambda>s'. \<exists>s. R\<^sup>*\<^sup>* s s' \<and> P s\<close>
+
+subsection \<open>basic logical properties\<close>
+
+lemma swstable_weaker: \<open>\<lfloor> P \<rfloor>\<^bsub>R\<^esub> \<le> P\<close>
+  by (force simp add: swstable_pred_def)
+
+lemma wsstable_stronger: \<open>P \<le> \<lceil> P \<rceil>\<^bsub>R\<^esub>\<close>
+  by (force simp add: wsstable_pred_def)
+
+subsection \<open>(semi)distributivity properties\<close>
+
+lemma swstable_conj_distrib: \<open>\<lfloor> P \<sqinter> Q \<rfloor>\<^bsub>R\<^esub> = \<lfloor> P \<rfloor>\<^bsub>R\<^esub> \<sqinter> \<lfloor> Q \<rfloor>\<^bsub>R\<^esub>\<close>
+  by (force simp add: swstable_pred_def)
+
+lemma swstable_disj_semidistrib: \<open>\<lfloor> P \<rfloor>\<^bsub>R\<^esub> \<squnion> \<lfloor> Q \<rfloor>\<^bsub>R\<^esub> \<le> \<lfloor> P \<squnion> Q \<rfloor>\<^bsub>R\<^esub>\<close>
+  by (force simp add: swstable_pred_def)
+
+lemma wsstable_disj_distrib: \<open>\<lceil> P \<squnion> Q \<rceil>\<^bsub>R\<^esub> = \<lceil> P \<rceil>\<^bsub>R\<^esub> \<squnion> \<lceil> Q \<rceil>\<^bsub>R\<^esub>\<close>
+  by (force simp add: wsstable_pred_def)
+
+lemma wsstable_conj_semidistrib: \<open>\<lceil> P \<sqinter> Q \<rceil>\<^bsub>R\<^esub> \<le> \<lceil> P \<rceil>\<^bsub>R\<^esub> \<sqinter> \<lceil> Q \<rceil>\<^bsub>R\<^esub>\<close>
+  by (force simp add: wsstable_pred_def)
+
+subsection \<open>Rely Monotonicity\<close>
+
+lemma swstable_rely_antimono: \<open>R \<le> S \<Longrightarrow> \<lfloor> P \<rfloor>\<^bsub>S\<^esub> \<le> \<lfloor> P \<rfloor>\<^bsub>R\<^esub>\<close>
+  using mono_rtranclp
+  by (force simp add: swstable_pred_def le_fun_def)
+
+lemma wsstable_rely_mono: \<open>R \<le> S \<Longrightarrow> \<lceil> P \<rceil>\<^bsub>R\<^esub> \<le> \<lceil> P \<rceil>\<^bsub>S\<^esub>\<close>
+  using mono_rtranclp
+  by (force simp add: wsstable_pred_def le_fun_def)
+
+subsection \<open>nested stabilisation\<close>
+
+lemma wsstable_absorb[simp]:
+  assumes \<open>R\<^sup>*\<^sup>* = Ra\<^sup>*\<^sup>* OO Rb\<^sup>*\<^sup>*\<close>
+  shows \<open>\<lceil> \<lceil> P \<rceil>\<^bsub>Ra\<^esub> \<rceil>\<^bsub>Rb\<^esub> = \<lceil> P \<rceil>\<^bsub>R\<^esub>\<close>
+  by (force simp add: assms wsstable_pred_def relcompp_apply fun_eq_iff)
+
+lemma wsstable_absorb1[simp]: \<open>R \<le> R' \<Longrightarrow> \<lceil> \<lceil> P \<rceil>\<^bsub>R\<^esub> \<rceil>\<^bsub>R'\<^esub> = \<lceil> P \<rceil>\<^bsub>R'\<^esub>\<close>
+  by (simp add: rel_le_rtranscp_relcompp_absorb)
+
+lemma wsstable_absorb2[simp]: \<open>R \<le> R' \<Longrightarrow> \<lceil> \<lceil> P \<rceil>\<^bsub>R'\<^esub> \<rceil>\<^bsub>R\<^esub> = \<lceil> P \<rceil>\<^bsub>R'\<^esub>\<close>
+  by (simp add: rel_le_rtranscp_relcompp_absorb)
+
+lemma swstable_absorb[simp]:
+  \<open>R\<^sup>*\<^sup>* = Rb\<^sup>*\<^sup>* OO Ra\<^sup>*\<^sup>* \<Longrightarrow> \<lfloor> \<lfloor> P \<rfloor>\<^bsub>Ra\<^esub> \<rfloor>\<^bsub>Rb\<^esub> = \<lfloor> P \<rfloor>\<^bsub>R\<^esub>\<close>
+  by (force simp add: swstable_pred_def relcompp_apply imp_ex imp_conjL fun_eq_iff)
+
+lemma swstable_absorb1[simp]: \<open>R \<le> R' \<Longrightarrow> \<lfloor> \<lfloor> P \<rfloor>\<^bsub>R\<^esub> \<rfloor>\<^bsub>R'\<^esub> = \<lfloor> P \<rfloor>\<^bsub>R'\<^esub>\<close>
+  by (simp add: rel_le_rtranscp_relcompp_absorb)
+
+lemma swstable_absorb2[simp]: \<open>R \<le> R' \<Longrightarrow> \<lfloor> \<lfloor> P \<rfloor>\<^bsub>R'\<^esub> \<rfloor>\<^bsub>R\<^esub> = \<lfloor> P \<rfloor>\<^bsub>R'\<^esub>\<close>
+  by (simp add: rel_le_rtranscp_relcompp_absorb)
+
+
+lemma wsstable_swstable_absorb[simp]: \<open>R \<le> R' \<Longrightarrow> \<lceil> \<lfloor> P \<rfloor>\<^bsub>R'\<^esub> \<rceil>\<^bsub>R\<^esub> = \<lfloor> P \<rfloor>\<^bsub>R'\<^esub>\<close>
+  unfolding wsstable_pred_def swstable_pred_def
+  by (metis (opaque_lifting) predicate2D rtranclp.rtrancl_refl rtranclp_trans rtranclp_mono)
+
+lemma swstable_wsstable_absorb[simp]: \<open>R \<le> R' \<Longrightarrow> \<lfloor> \<lceil> P \<rceil>\<^bsub>R'\<^esub> \<rfloor>\<^bsub>R\<^esub> = \<lceil> P \<rceil>\<^bsub>R'\<^esub>\<close>
+  unfolding wsstable_pred_def swstable_pred_def
+  by (metis (opaque_lifting) predicate2D rtranclp.rtrancl_refl rtranclp_trans rtranclp_mono)
+
+
+context seplogic
+begin
+
+(*
+assumes rely_substate_result_consistent:
+  \<open>\<And>a b b'. R\<^sup>*\<^sup>* a b \<Longrightarrow> R\<^sup>*\<^sup>* a b' \<Longrightarrow> b' \<le> b \<Longrightarrow> b' = b\<close>
+
+lemma
+  assumes rely_same_dom: \<open>\<And>a b. R\<^sup>*\<^sup>* a b \<Longrightarrow> sepdomeq a b\<close>
+  assumes rely_additivity_of_update:
+    \<open>\<And>a1 a2 b. a1 ## a2 \<Longrightarrow> R\<^sup>*\<^sup>* (a1 + a2) b \<Longrightarrow> \<exists>b1 b2. R\<^sup>*\<^sup>* a1 b1 \<and> R\<^sup>*\<^sup>* a2 b2 \<and> b = b1 + b2 \<and> b1 ## b2\<close>
+  shows
+    \<open>\<And>a b a' b'. R\<^sup>*\<^sup>* a b \<Longrightarrow> a' \<le> a \<Longrightarrow> \<exists>b'\<le> b. R\<^sup>*\<^sup>* a' b' \<and> sepdomeq a' b'\<close>
+  by (simp add: le_iff_sepadd, blast dest: rely_additivity_of_update intro: rely_same_dom)
+*)
+
+lemma swstable_sepconj_semidistrib:
+  fixes P Q :: \<open>'a \<Rightarrow> bool\<close>
+  assumes rely_additivity_of_update:
+    \<open>\<And>a1 a2 b. a1 ## a2 \<Longrightarrow> R\<^sup>*\<^sup>* (a1 + a2) b \<Longrightarrow>
+        \<exists>b1 b2. b1 ## b2 \<and> b = b1 + b2 \<and> R\<^sup>*\<^sup>* a1 b1 \<and> R\<^sup>*\<^sup>* a2 b2\<close>
+  shows \<open>(\<lfloor> P \<rfloor>\<^bsub>R\<^esub> \<^emph> \<lfloor> Q \<rfloor>\<^bsub>R\<^esub>) s \<Longrightarrow> (\<lfloor> P \<^emph> Q \<rfloor>\<^bsub>R\<^esub>) s\<close>
+  using rely_additivity_of_update
+  by (simp add: swstable_pred_def sepconj_def le_fun_def, metis)
+
+lemma wsstable_sepconj_semidistrib:
+  fixes P Q :: \<open>'a \<Rightarrow> bool\<close>
+  assumes rely_additivity_of_update:
+    \<open>\<And>a1 a2 b. a1 ## a2 \<Longrightarrow> R\<^sup>*\<^sup>* (a1 + a2) b \<Longrightarrow> \<exists>b1 b2. b1 ## b2 \<and> b = b1 + b2 \<and> R\<^sup>*\<^sup>* a1 b1 \<and> R\<^sup>*\<^sup>* a2 b2\<close>
+  shows \<open>\<lceil> P \<^emph> Q \<rceil>\<^bsub>R\<^esub> \<le> \<lceil> P \<rceil>\<^bsub>R\<^esub> \<^emph> \<lceil> Q \<rceil>\<^bsub>R\<^esub>\<close>
+  using rely_additivity_of_update
+  by (simp add: wsstable_pred_def sepconj_def le_fun_def, metis)
+
+end
+
+
 section \<open>Finite Heaps\<close>
 
 typedef ('p,'v) heap = \<open>{h::'p \<rightharpoonup> 'v. finite (dom h)}\<close>
@@ -60,7 +178,6 @@ lemma eq_Abs_heap_iff:
 lemma finite_dom_Rep_heap[simp]:
   \<open>finite (dom (Rep_heap a))\<close>
   using eq_Rep_heap_iff by auto
-
 
 instantiation heap :: (type,type) cancel_seplogic
 begin
@@ -170,138 +287,16 @@ lemma restrict_Compl_disjoint_heap[simp]:
   \<open>a ## b \<Longrightarrow> b |`\<^sub>h (- dom_heap a) = b\<close>
   by (simp add: disjoint_eq_subset_Compl disjoint_heap.rep_eq dom_heap.rep_eq compl_le_swap1)+
 
-section \<open>Stabilisation\<close>
 
-(* strongest weaker stable predicate *)
-definition swstable_pred
-  :: \<open>('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> 'a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool)\<close>
-  ("\<lfloor> _ \<rfloor>\<^bsub>_\<^esub>" [0,0] 90)
-  where
-  \<open>\<lfloor> P \<rfloor>\<^bsub>R\<^esub> \<equiv> \<lambda>s. \<forall>s'. R\<^sup>*\<^sup>* s s' \<longrightarrow> P s'\<close>
+lemma heap_separating_trichotomy:
+  fixes a b :: \<open>('a,'v) heap\<close>
+  shows \<open>sepdomsubseteq a b \<or> sepdomsubseteq b a \<or> a ## b\<close>
+  apply (simp add: sepdomsubseteq_def)
+  nitpick
 
-(* weakest stronger stable predicate *)
-definition wsstable_pred
-  :: \<open>('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> 'a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool)\<close>
-  ("\<lceil> _ \<rceil>\<^bsub>_\<^esub>" [0,0] 90)
-  where
-  \<open>\<lceil> P \<rceil>\<^bsub>R\<^esub> \<equiv> \<lambda>s'. \<exists>s. R\<^sup>*\<^sup>* s s' \<and> P s\<close>
+  oops
 
-
-
-(*
-acc(p, Write) * acc(q, Read)
-
-\s s'. s p = s' p \<and> s q = s' q
-*)
-
-subsection \<open>basic logical properties\<close>
-
-lemma swstable_weaker: \<open>\<lfloor> P \<rfloor>\<^bsub>R\<^esub> \<le> P\<close>
-  by (force simp add: swstable_pred_def)
-
-lemma wsstable_stronger: \<open>P \<le> \<lceil> P \<rceil>\<^bsub>R\<^esub>\<close>
-  by (force simp add: wsstable_pred_def)
-
-subsection \<open>(semi)distributivity properties\<close>
-
-lemma swstable_conj_distrib: \<open>\<lfloor> P \<sqinter> Q \<rfloor>\<^bsub>R\<^esub> = \<lfloor> P \<rfloor>\<^bsub>R\<^esub> \<sqinter> \<lfloor> Q \<rfloor>\<^bsub>R\<^esub>\<close>
-  by (force simp add: swstable_pred_def)
-
-lemma swstable_disj_semidistrib: \<open>\<lfloor> P \<rfloor>\<^bsub>R\<^esub> \<squnion> \<lfloor> Q \<rfloor>\<^bsub>R\<^esub> \<le> \<lfloor> P \<squnion> Q \<rfloor>\<^bsub>R\<^esub>\<close>
-  by (force simp add: swstable_pred_def)
-
-lemma wsstable_disj_distrib: \<open>\<lceil> P \<squnion> Q \<rceil>\<^bsub>R\<^esub> = \<lceil> P \<rceil>\<^bsub>R\<^esub> \<squnion> \<lceil> Q \<rceil>\<^bsub>R\<^esub>\<close>
-  by (force simp add: wsstable_pred_def)
-
-lemma wsstable_conj_semidistrib: \<open>\<lceil> P \<sqinter> Q \<rceil>\<^bsub>R\<^esub> \<le> \<lceil> P \<rceil>\<^bsub>R\<^esub> \<sqinter> \<lceil> Q \<rceil>\<^bsub>R\<^esub>\<close>
-  by (force simp add: wsstable_pred_def)
-
-subsection \<open>Rely Monotonicity\<close>
-
-lemma swstable_rely_antimono: \<open>R \<le> S \<Longrightarrow> \<lfloor> P \<rfloor>\<^bsub>S\<^esub> \<le> \<lfloor> P \<rfloor>\<^bsub>R\<^esub>\<close>
-  using mono_rtranclp
-  by (force simp add: swstable_pred_def le_fun_def)
-
-lemma wsstable_rely_mono: \<open>R \<le> S \<Longrightarrow> \<lceil> P \<rceil>\<^bsub>R\<^esub> \<le> \<lceil> P \<rceil>\<^bsub>S\<^esub>\<close>
-  using mono_rtranclp
-  by (force simp add: wsstable_pred_def le_fun_def)
-
-subsection \<open>nested stabilisation\<close>
-
-lemma wsstable_absorb[simp]:
-  assumes \<open>R\<^sup>*\<^sup>* = Ra\<^sup>*\<^sup>* OO Rb\<^sup>*\<^sup>*\<close>
-  shows \<open>\<lceil> \<lceil> P \<rceil>\<^bsub>Ra\<^esub> \<rceil>\<^bsub>Rb\<^esub> = \<lceil> P \<rceil>\<^bsub>R\<^esub>\<close>
-  by (force simp add: assms wsstable_pred_def relcompp_apply fun_eq_iff)
-
-lemma wsstable_absorb1[simp]: \<open>R \<le> R' \<Longrightarrow> \<lceil> \<lceil> P \<rceil>\<^bsub>R\<^esub> \<rceil>\<^bsub>R'\<^esub> = \<lceil> P \<rceil>\<^bsub>R'\<^esub>\<close>
-  by (simp add: rel_le_rtranscp_relcompp_absorb)
-
-lemma wsstable_absorb2[simp]: \<open>R \<le> R' \<Longrightarrow> \<lceil> \<lceil> P \<rceil>\<^bsub>R'\<^esub> \<rceil>\<^bsub>R\<^esub> = \<lceil> P \<rceil>\<^bsub>R'\<^esub>\<close>
-  by (simp add: rel_le_rtranscp_relcompp_absorb)
-
-lemma swstable_absorb[simp]:
-  \<open>R\<^sup>*\<^sup>* = Rb\<^sup>*\<^sup>* OO Ra\<^sup>*\<^sup>* \<Longrightarrow> \<lfloor> \<lfloor> P \<rfloor>\<^bsub>Ra\<^esub> \<rfloor>\<^bsub>Rb\<^esub> = \<lfloor> P \<rfloor>\<^bsub>R\<^esub>\<close>
-  by (force simp add: swstable_pred_def relcompp_apply imp_ex imp_conjL fun_eq_iff)
-
-lemma swstable_absorb1[simp]: \<open>R \<le> R' \<Longrightarrow> \<lfloor> \<lfloor> P \<rfloor>\<^bsub>R\<^esub> \<rfloor>\<^bsub>R'\<^esub> = \<lfloor> P \<rfloor>\<^bsub>R'\<^esub>\<close>
-  by (simp add: rel_le_rtranscp_relcompp_absorb)
-
-lemma swstable_absorb2[simp]: \<open>R \<le> R' \<Longrightarrow> \<lfloor> \<lfloor> P \<rfloor>\<^bsub>R'\<^esub> \<rfloor>\<^bsub>R\<^esub> = \<lfloor> P \<rfloor>\<^bsub>R'\<^esub>\<close>
-  by (simp add: rel_le_rtranscp_relcompp_absorb)
-
-
-lemma wsstable_swstable_absorb[simp]: \<open>R \<le> R' \<Longrightarrow> \<lceil> \<lfloor> P \<rfloor>\<^bsub>R'\<^esub> \<rceil>\<^bsub>R\<^esub> = \<lfloor> P \<rfloor>\<^bsub>R'\<^esub>\<close>
-  unfolding wsstable_pred_def swstable_pred_def
-  by (metis (opaque_lifting) predicate2D rtranclp.rtrancl_refl rtranclp_trans rtranclp_mono)
-
-lemma swstable_wsstable_absorb[simp]: \<open>R \<le> R' \<Longrightarrow> \<lfloor> \<lceil> P \<rceil>\<^bsub>R'\<^esub> \<rfloor>\<^bsub>R\<^esub> = \<lceil> P \<rceil>\<^bsub>R'\<^esub>\<close>
-  unfolding wsstable_pred_def swstable_pred_def
-  by (metis (opaque_lifting) predicate2D rtranclp.rtrancl_refl rtranclp_trans rtranclp_mono)
-
-
-context seplogic
-begin
-
-(*
-
-(* should this be true? *)
-lemma sepdomeq_substates_equal:
-  \<open>\<And>a a1 a2. a1 \<le> a \<Longrightarrow> a2 \<le> a \<Longrightarrow> sepdomeq a1 a2 \<Longrightarrow> a1 = a2\<close>
-  oops                                                                
-
-assumes rely_substate_result_consistent:
-  \<open>\<And>a b b'. R\<^sup>*\<^sup>* a b \<Longrightarrow> R\<^sup>*\<^sup>* a b' \<Longrightarrow> b' \<le> b \<Longrightarrow> b' = b\<close>
-
-lemma
-  assumes rely_same_dom: \<open>\<And>a b. R\<^sup>*\<^sup>* a b \<Longrightarrow> sepdomeq a b\<close>
-  assumes rely_additivity_of_update:
-    \<open>\<And>a1 a2 b. a1 ## a2 \<Longrightarrow> R\<^sup>*\<^sup>* (a1 + a2) b \<Longrightarrow> \<exists>b1 b2. R\<^sup>*\<^sup>* a1 b1 \<and> R\<^sup>*\<^sup>* a2 b2 \<and> b = b1 + b2 \<and> b1 ## b2\<close>
-  shows
-    \<open>\<And>a b a' b'. R\<^sup>*\<^sup>* a b \<Longrightarrow> a' \<le> a \<Longrightarrow> \<exists>b'\<le> b. R\<^sup>*\<^sup>* a' b' \<and> sepdomeq a' b'\<close>
-  by (simp add: le_iff_sepadd, blast dest: rely_additivity_of_update intro: rely_same_dom)
-*)
-
-lemma swstable_sepconj_semidistrib:
-  fixes P Q :: \<open>'a \<Rightarrow> bool\<close>
-  assumes rely_additivity_of_update:
-    \<open>\<And>a1 a2 b. a1 ## a2 \<Longrightarrow> R\<^sup>*\<^sup>* (a1 + a2) b \<Longrightarrow>
-        \<exists>b1 b2. b1 ## b2 \<and> b = b1 + b2 \<and> R\<^sup>*\<^sup>* a1 b1 \<and> R\<^sup>*\<^sup>* a2 b2\<close>
-  shows \<open>(\<lfloor> P \<rfloor>\<^bsub>R\<^esub> \<^emph> \<lfloor> Q \<rfloor>\<^bsub>R\<^esub>) s \<Longrightarrow> (\<lfloor> P \<^emph> Q \<rfloor>\<^bsub>R\<^esub>) s\<close>
-  using rely_additivity_of_update
-  by (simp add: swstable_pred_def sepconj_def le_fun_def, metis)
-
-lemma wsstable_sepconj_semidistrib:
-  fixes P Q :: \<open>'a \<Rightarrow> bool\<close>
-  assumes rely_additivity_of_update:
-    \<open>\<And>a1 a2 b. a1 ## a2 \<Longrightarrow> R\<^sup>*\<^sup>* (a1 + a2) b \<Longrightarrow> \<exists>b1 b2. b1 ## b2 \<and> b = b1 + b2 \<and> R\<^sup>*\<^sup>* a1 b1 \<and> R\<^sup>*\<^sup>* a2 b2\<close>
-  shows \<open>\<lceil> P \<^emph> Q \<rceil>\<^bsub>R\<^esub> \<le> \<lceil> P \<rceil>\<^bsub>R\<^esub> \<^emph> \<lceil> Q \<rceil>\<^bsub>R\<^esub>\<close>
-  using rely_additivity_of_update
-  by (simp add: wsstable_pred_def sepconj_def le_fun_def, metis)
-
-end
-
-
-section \<open>Seplogic stabilisation\<close>
+subsection \<open>Heap Stabilisation\<close>
 
 lemma rely_additivity_impl_rely_consistent_subheap:
   fixes a b :: \<open>('a,'v) heap\<close>

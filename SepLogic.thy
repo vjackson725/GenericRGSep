@@ -327,6 +327,14 @@ lemma le_plus: \<open>a ## b \<Longrightarrow> a \<le> a + b\<close>
 lemma le_plus2: \<open>a ## b \<Longrightarrow> b \<le> a + b\<close>
   by (metis le_plus disjoint_symm partial_add_commute)
 
+lemma self_disjoint_iff[simp]:
+  \<open>a ## a \<longleftrightarrow> a = 0\<close>
+  using disjoint_empty_right disjoint_refl_only_zero by blast
+
+lemma all_disjoint_iff[simp]:
+  \<open>(\<forall>b. a ## b) \<longleftrightarrow> a = 0\<close>
+  using disjoint_refl_only_zero zero_sep by blast
+
 subsection \<open>sepdomeq\<close>
 
 definition \<open>sepdomeq a b \<equiv> \<forall>c. a ## c = b ## c\<close>
@@ -343,10 +351,36 @@ lemma sepdomeq_transp:
   \<open>transp sepdomeq\<close>
   by (simp add: sepdomeq_def transp_def)
 
-
 lemma same_sepdom_disjoint_leftD:
   \<open>sepdomeq a b \<Longrightarrow> a ## c \<Longrightarrow> b ## c\<close>
   by (simp add: sepdomeq_def)
+
+lemma sepdomeq_disjoint_rightD:
+  \<open>sepdomeq a b \<Longrightarrow> b ## c \<Longrightarrow> a ## c\<close>
+  by (simp add: sepdomeq_def)
+
+definition \<open>sepdomsubseteq a b \<equiv> \<forall>c. a ## c \<longrightarrow> b ## c\<close>
+
+lemma sepdomsubseteq_reflp:
+  \<open>reflp sepdomsubseteq\<close>
+  by (simp add: reflpI sepdomsubseteq_def)
+
+lemma sepdomsubseteq_transp:
+  \<open>transp sepdomsubseteq\<close>
+  by (simp add: sepdomsubseteq_def transp_def)
+
+lemma sepdomsubseteq_disjointD:
+  \<open>sepdomsubseteq a b \<Longrightarrow> a ## c \<Longrightarrow> b ## c\<close>
+  by (simp add: sepdomsubseteq_def)
+
+
+lemma trichotomous_sepdomeq_substates_equal:
+  assumes sep_trichotomy: \<open>sepdomsubseteq a b \<or> sepdomsubseteq b a \<or> a ## b\<close>
+  shows \<open>a \<le> c \<Longrightarrow> b \<le> c \<Longrightarrow> sepdomeq a b \<Longrightarrow> a = b\<close>
+  using sep_trichotomy
+  apply (simp add: sepdomeq_def sepdomsubseteq_def)
+  oops
+
 
 subsection \<open> Seplogic connectives \<close>
 
