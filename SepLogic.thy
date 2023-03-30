@@ -240,8 +240,8 @@ section \<open> Separation Logic \<close>
 class seplogic = plus + zero + order_bot +
   fixes disjoint :: \<open>'a \<Rightarrow> 'a \<Rightarrow> bool\<close> (infix \<open>##\<close> 70)
   assumes disjoint_symm: \<open>a ## b = b ## a\<close>
-  assumes disjoint_refl_only_zero: \<open>a ## a \<Longrightarrow> a = 0\<close>
-  assumes disjoint_add_left[simp]: \<open>a ## (b + c) \<longleftrightarrow> a ## b \<and> a ## c\<close>
+  assumes zero_sep[simp]: \<open>0 ## a\<close>
+  assumes disjoint_add_left[simp]: \<open>b ## c \<Longrightarrow> a ## (b + c) \<longleftrightarrow> a ## b \<and> a ## c\<close>
   assumes le_iff_sepadd: \<open>a \<le> b \<longleftrightarrow> (\<exists>c. a ## c \<and> b = a + c)\<close>
   (* partial commutative monoid *)
   assumes partial_add_assoc:
@@ -252,12 +252,11 @@ begin
 
 subsection \<open>partial canonically_ordered_monoid_add lemmas\<close>
 
-lemma zero_le[simp]: "0 \<le> x"
-  by (metis disjoint_add_left disjoint_symm le_iff_sepadd order.refl partial_add_0)
-
-lemma zero_sep[simp]: "0 ## x"
-  using le_iff_sepadd partial_add_0 zero_le
-  by presburger
+lemma zero_sepR[simp]: \<open>x ## 0\<close>
+  using disjoint_symm zero_sep by blast
+  
+lemma zero_le[simp]: \<open>0 \<le> x\<close>
+  by (simp add: le_iff_sepadd)
 
 lemma le_zero_eq[simp]: "n \<le> 0 \<longleftrightarrow> n = 0"
   by (auto intro: order.antisym)
@@ -284,11 +283,16 @@ lemma sepadd_eq_0_iff_both_eq_0[simp]: "x ## y \<Longrightarrow> x + y = 0 \<lon
 lemma zero_eq_sepadd_iff_both_eq_0[simp]: "x ## y \<Longrightarrow> 0 = x + y \<longleftrightarrow> x = 0 \<and> y = 0"
   using sepadd_eq_0_iff_both_eq_0[of x y] unfolding eq_commute[of 0] .
 
+lemma partial_left_commute:
+  \<open>a ## b \<Longrightarrow> b ## c \<Longrightarrow> a ## c \<Longrightarrow> b + (a + c) = a + (b + c)\<close>
+  using disjoint_symm partial_add_assoc partial_add_commute by auto
+
+
 lemma less_eqE:
   assumes \<open>a \<le> b\<close>
   obtains c where \<open>b = a + c\<close>
   using assms
-  by (auto simp add: le_iff_sepadd)
+  by (force simp add: le_iff_sepadd)
 
 lemma lessE:
   assumes \<open>a < b\<close>
@@ -309,31 +313,18 @@ lemmas zero_order = zero_le le_zero_eq not_less_zero zero_less_iff_neq_zero not_
 
 subsection \<open>Misc\<close>
 
-lemma disjoint_add_right[simp]: \<open>(a + b) ## c \<longleftrightarrow> a ## c \<and> b ## c\<close>
+lemma disjoint_add_right[simp]:
+  \<open>a ## b \<Longrightarrow> (a + b) ## c \<longleftrightarrow> a ## c \<and> b ## c\<close>
   by (simp add: disjoint_symm)
 
-lemma disjoint_empty_right[simp]: \<open>h ## 0\<close>
-  using disjoint_symm by fastforce
-
 lemma sep_add_0_right[simp]: "a + 0 = a"
-  by (metis disjoint_empty_right partial_add_0 partial_add_commute)
-
-lemma le_nonzero_not_disjoint: \<open>a \<le> b \<Longrightarrow> a \<noteq> 0 \<Longrightarrow> \<not> (a ## b)\<close>
-  using disjoint_refl_only_zero le_iff_sepadd by force
+  by (metis zero_sepR partial_add_0 partial_add_commute)
 
 lemma le_plus: \<open>a ## b \<Longrightarrow> a \<le> a + b\<close>
   using le_iff_sepadd by auto
 
 lemma le_plus2: \<open>a ## b \<Longrightarrow> b \<le> a + b\<close>
   by (metis le_plus disjoint_symm partial_add_commute)
-
-lemma self_disjoint_iff[simp]:
-  \<open>a ## a \<longleftrightarrow> a = 0\<close>
-  using disjoint_empty_right disjoint_refl_only_zero by blast
-
-lemma all_disjoint_iff[simp]:
-  \<open>(\<forall>b. a ## b) \<longleftrightarrow> a = 0\<close>
-  using disjoint_refl_only_zero zero_sep by blast
 
 subsection \<open>sepdomeq\<close>
 
@@ -442,7 +433,15 @@ lemma sepconj_comm: \<open>P \<^emph> Q = Q \<^emph> P\<close>
 lemma sepconj_left_comm: \<open>Q \<^emph> (P \<^emph> R) = P \<^emph> (Q \<^emph> R)\<close>
   apply (rule ext)
   apply (clarsimp simp add: sepconj_def ex_simps[symmetric] simp del: ex_simps)
-  apply (metis disjoint_symm partial_add_assoc partial_add_commute)
+  apply (rule iffI)
+   apply clarsimp
+   apply (rename_tac h2 h1 h3)
+   apply (rule_tac x=h1 in exI, rule_tac x=h2 in exI, rule_tac x=h3 in exI)
+   apply (simp add: disjoint_symm partial_left_commute)
+  apply clarsimp
+  apply (rename_tac h1 h2 h3)
+  apply (rule_tac x=h2 in exI, rule_tac x=h1 in exI, rule_tac x=h3 in exI)
+  apply (simp add: disjoint_symm partial_left_commute)
   done
 
 lemmas sepconj_ac = sepconj_assoc sepconj_comm sepconj_left_comm
@@ -584,6 +583,18 @@ lemma supported_intuitionistic_to_precise:
 
 end
 
+section \<open>Strongly Separated Separation Logic\<close>
+
+class strong_separated_seplogic = seplogic +
+  assumes only_zero_self_sep: \<open>a ## a \<Longrightarrow> a = 0\<close>
+begin
+
+lemma selfsep_iff: \<open>a ## a \<longleftrightarrow> a = 0\<close>
+  using only_zero_self_sep zero_sep by blast
+
+end
+
+section \<open>Right Cancellative Separation Logic\<close>
 
 class right_cancel_seplogic = seplogic +
   assumes partial_right_cancel: \<open>\<And>a b c. a ## c \<Longrightarrow> b ## c \<Longrightarrow> (a + c = b + c) = (a = b)\<close>
@@ -740,8 +751,7 @@ lemma diff_zero[simp]: "a - 0 = a"
   using sepadd_diff_cancel_right'[of a 0] by simp
 
 lemma diff_cancel[simp]: "a - a = 0"
-  by (metis diff_zero disjoint_symm le_nonzero_not_disjoint le_plus2 restricted_by_disjoint
-      state_minus_basic_split)
+  using sepadd_diff_cancel_left' zero_sepR by fastforce
 
 lemma sepadd_implies_diff:
   \<open>c ## b \<Longrightarrow> c + b = a \<Longrightarrow> c = a - b\<close>
@@ -765,8 +775,7 @@ lemma zero_diff[simp]: "0 - a = 0"
   by (metis le_plus le_zero_eq restricted_by_disjoint state_minus_basic_split)
 
 lemma diff_add_zero[simp]: "a ## b \<Longrightarrow> a - (a + b) = 0"
-  by (metis diff_diff_sepadd disjoint_empty_right sep_add_0_right sepadd_diff_cancel_left'
-      zero_diff)
+  by (metis diff_cancel diff_diff_sepadd zero_diff)
 
 subsection \<open>ordered_ab_semigroup_add\<close>
 
@@ -853,13 +862,15 @@ lemma min_add_distrib_right: "x ## y \<Longrightarrow> x ## z \<Longrightarrow> 
 subsection \<open>partial ordered_comm_monoid_add\<close>
 
 lemma sepadd_nonpos_nonpos: "a \<le> 0 \<Longrightarrow> b \<le> 0 \<Longrightarrow> a + b \<le> 0"
-  using disjoint_empty_right by fastforce
+  by simp
 
+(*
 lemma sepadd_nonneg_eq_0_iff: "0 \<le> x \<Longrightarrow> 0 \<le> y \<Longrightarrow> x + y = 0 \<longleftrightarrow> x = 0 \<and> y = 0"
-  using disjoint_empty_right by fastforce
+  oops
+*)
 
 lemma sepadd_nonpos_eq_0_iff: "x \<le> 0 \<Longrightarrow> y \<le> 0 \<Longrightarrow> x + y = 0 \<longleftrightarrow> x = 0 \<and> y = 0"
-  using disjoint_empty_right by fastforce
+  by simp
 
 lemma sepadd_increasing: "a ## c \<Longrightarrow> 0 \<le> a \<Longrightarrow> b \<le> c \<Longrightarrow> b \<le> a + c"
   using sepadd_mono [of 0 b a c] by simp

@@ -1,8 +1,16 @@
 theory Stabilisation
-  imports SepLogic
+  imports SepLogic HOL.Rat
 begin
 
 section \<open>Helper Lemmas\<close>
+
+lemma conj_imp_distribR:
+  \<open>(p \<longrightarrow> q) \<and> r \<longleftrightarrow> (\<not> p \<and> r) \<or> (q \<and> r)\<close>
+  by force
+
+lemma conj_imp_distribL:
+  \<open>p \<and> (q \<longrightarrow> r) \<longleftrightarrow> (p \<and> \<not> q) \<or> (p \<and> r)\<close>
+  by force
 
 lemma le_map_le_iff_sepadd:
   \<open>(a \<subseteq>\<^sub>m b) = (\<exists>c. dom a \<inter> dom c = {} \<and> b = a ++ c)\<close>
@@ -39,6 +47,12 @@ lemma rel_le_rtranscp_relcompp_absorb:
    apply (simp add: rtranclp_mono transp_subrel_compp_smaller(2))
   apply force
   done
+
+lemma not_Some_prod_eq[iff]: \<open>(\<forall>a b. x \<noteq> Some (a,b)) \<longleftrightarrow> x = None\<close>
+  by (metis option.exhaust option.simps(3) surj_pair)
+
+lemmas rev_finite_subset_Collect =
+  rev_finite_subset[of \<open>Collect P\<close> \<open>Collect Q\<close> for P Q, OF _ iffD2[OF Collect_mono_iff]]
 
 
 section \<open>Stabilisation\<close>
@@ -212,7 +226,7 @@ instance
                apply (force dest: map_le_antisym simp add: less_eq_heap_def Rep_heap_inject)
               apply (simp add: less_eq_heap_def bot_heap_def Abs_heap_inverse; fail)
              apply (force simp add: disjoint_heap_def)
-            apply (simp add: disjoint_heap_def zero_heap_def eq_Abs_heap_iff; fail)
+            apply (simp add: disjoint_heap_def zero_heap_def Abs_heap_inverse; fail)
            apply (simp add: disjoint_heap_def plus_heap_def Abs_heap_inverse
       Int_Un_distrib sup_commute; fail)
           apply (simp add: disjoint_heap_def plus_heap_def less_eq_heap_def eq_Abs_heap_iff
@@ -293,7 +307,6 @@ lemma heap_separating_trichotomy:
   shows \<open>sepdomsubseteq a b \<or> sepdomsubseteq b a \<or> a ## b\<close>
   apply (simp add: sepdomsubseteq_def)
   nitpick
-
   oops
 
 subsection \<open>Heap Stabilisation\<close>
@@ -317,6 +330,23 @@ lemma rely_consistent_Compl_subheaps_impl_rely_additivity:
   using set_eq_subset by fastforce
 
 
+lemma rely_additivity_impl_rely_consistent_subheap2:
+  fixes a b :: \<open>('a,'v) heap\<close>
+  assumes rely_additivity_of_update:
+    \<open>\<And>a1 a2 b. a1 ## a2 \<Longrightarrow> R\<^sup>*\<^sup>* (a1 + a2) b \<Longrightarrow> \<exists>b1 b2. b1 ## b2 \<and> b = b1 + b2 \<and> R\<^sup>*\<^sup>* a1 b1 \<and> R\<^sup>*\<^sup>* a2 b2\<close>
+  shows
+    \<open>R\<^sup>*\<^sup>* a b \<Longrightarrow> \<exists>bx. bx \<le> b \<and> R\<^sup>*\<^sup>* (a |`\<^sub>h A) bx \<and> R\<^sup>*\<^sup>* (a |`\<^sub>h (- A)) (b |`\<^sub>h (- dom_heap bx))\<close>
+  using rely_additivity_of_update[of \<open>a |`\<^sub>h A\<close> \<open>a |`\<^sub>h (- A)\<close> b]
+  by (fastforce intro!: le_plus)
+
+lemma rely_consistent_Compl_subheaps_impl_rely_additivity2:
+  fixes a b :: \<open>('a,'v) heap\<close>
+  assumes rely_consistent_subheap:
+    \<open>\<And>a b A. R\<^sup>*\<^sup>* a b \<Longrightarrow> \<exists>bx. bx \<le> b \<and> R\<^sup>*\<^sup>* (a |`\<^sub>h A) bx \<and> R\<^sup>*\<^sup>* (a |`\<^sub>h (- A)) (b |`\<^sub>h (- dom_heap bx))\<close>
+  shows
+    \<open>a1 ## a2 \<Longrightarrow> R\<^sup>*\<^sup>* (a1 + a2) b \<Longrightarrow> \<exists>b1 b2. b1 ## b2 \<and> b = b1 + b2 \<and> R\<^sup>*\<^sup>* a1 b1 \<and> R\<^sup>*\<^sup>* a2 b2\<close>
+  using rely_consistent_subheap[of \<open>a1 + a2\<close> b \<open>dom_heap a1\<close>]
+  by (force simp add: le_iff_sepadd)
 
 
 lemma swstable_sepconj_semidistrib:
@@ -337,48 +367,278 @@ lemma wsstable_sepconj_semidistrib:
 
 
 
-context cancel_seplogic
+section \<open>(Weak) Permission Heaps\<close>
+
+typedef ('p,'v) pheap =
+  \<open>{h::'p \<rightharpoonup> rat \<times> 'v.
+    finite (dom h) \<and> (\<forall>p c v. h p = Some (c,v) \<longrightarrow> 0 \<le> c \<and> c \<le> 1)}\<close>
+  by (rule exI[where x=Map.empty], force)
+
+print_theorems
+
+setup_lifting type_definition_pheap
+
+lemma eq_Rep_pheap_iff:
+  \<open>a = Rep_pheap a' \<longleftrightarrow> a' = Abs_pheap a \<and> finite (dom a) \<and> (\<forall>p c v. a p = Some (c,v) \<longrightarrow> 0 \<le> c \<and> c \<le> 1)\<close>
+  \<open>Rep_pheap a' = a \<longleftrightarrow> a' = Abs_pheap a \<and> finite (dom a) \<and> (\<forall>p c v. a p = Some (c,v) \<longrightarrow> 0 \<le> c \<and> c \<le> 1)\<close>
+  by (case_tac a' rule: Abs_pheap_cases, force simp add: Abs_pheap_inverse Abs_pheap_inject)+
+
+lemma eq_Abs_pheap_iff:
+  assumes
+    \<open>finite (dom a)\<close>
+    \<open>\<forall>p c v. a p = Some (c,v) \<longrightarrow> 0 \<le> c \<and> c \<le> 1\<close>
+  shows
+    \<open>a' = Abs_pheap a \<longleftrightarrow> a = Rep_pheap a'\<close>
+    \<open>Abs_pheap a = a' \<longleftrightarrow> a = Rep_pheap a'\<close>
+  by (force simp add: assms eq_Rep_pheap_iff)+
+
+lemma Rep_pheap_bounded_permD:
+  \<open>Rep_pheap h x = Some (c, v) \<Longrightarrow> 0 \<le> c\<close>
+  \<open>Rep_pheap h x = Some (c, v) \<Longrightarrow> c \<le> 1\<close>
+  by (metis eq_Rep_pheap_iff(1))+
+
+
+lift_definition dom_pheap :: \<open>('a,'b) pheap \<Rightarrow> 'a set\<close> is \<open>dom\<close> .
+
+lemma finite_dom_Rep_pheap[simp]:
+  \<open>finite (dom (Rep_pheap a))\<close>
+  using eq_Rep_pheap_iff by auto
+
+lemma finite_dom_pheap[simp]:
+  \<open>finite (dom_pheap a)\<close>
+  by (simp add: dom_pheap.rep_eq)
+
+lemma Rep_pheap_Some_prod_set_eq:
+  \<open>{x. \<exists>a1 a2. Rep_pheap h x = Some (a1, a2)} = dom_pheap h\<close>
+  by (simp add: dom_pheap_def dom_def)
+
+lemma Abs_pheap_lookup:
+  \<open>finite (dom m) \<Longrightarrow> \<forall>p c v. m p = Some (c, v) \<longrightarrow> 0 \<le> c \<and> c \<le> 1 \<Longrightarrow>
+    Rep_pheap (Abs_pheap m) x = m x\<close>
+  by (metis eq_Abs_pheap_iff(2))
+
+
+lift_definition perm_dom_pheap :: \<open>('a,'b) pheap \<Rightarrow> 'a set\<close>
+  is \<open>\<lambda>m. {x|x c v. m x = Some (c, v) \<and> c > 0}\<close> .
+
+lemma finite_perm_dom_pheap[simp]:
+  \<open>finite (perm_dom_pheap a)\<close>
+  by (rule rev_finite_subset[of \<open>dom_pheap a\<close>];
+      force simp add: perm_dom_pheap_def dom_pheap_def subset_iff)
+
+
+lift_definition plusdom_pheap :: \<open>('a,'b) pheap \<Rightarrow> ('a,'b) pheap \<Rightarrow> 'a set\<close>
+  is \<open>\<lambda>ma mb. {x|x ca cb v. ma x = Some (ca, v) \<and> mb x = Some (cb, v) \<and> ca + cb \<le> 1}\<close> .
+
+lemma finite_plusdom_pheap[simp]:
+  \<open>finite (plusdom_pheap a b)\<close>
+  by (rule rev_finite_subset[of \<open>dom_pheap a\<close>];
+      force simp add: plusdom_pheap_def dom_pheap_def subset_iff)
+
+
+
+instantiation pheap :: (type,type) cancel_seplogic
 begin
 
-lemma swstable_sepconj_semidistrib:
-  fixes P Q :: \<open>'a \<Rightarrow> bool\<close>
-  assumes rely_restrict_consistent: \<open>\<And>a b c. R\<^sup>*\<^sup>* a b \<Longrightarrow> R\<^sup>*\<^sup>* (a - c) (b - c)\<close>
-  assumes rely_same_dom: \<open>\<And>a b. R\<^sup>*\<^sup>* a b \<Longrightarrow> sepdomeq a b\<close>
-  shows \<open>\<lfloor> P \<rfloor>\<^bsub>R\<^esub> \<^emph> \<lfloor> Q \<rfloor>\<^bsub>R\<^esub> \<le> \<lfloor> P \<^emph> Q \<rfloor>\<^bsub>R\<^esub>\<close>
-  apply (clarsimp simp add: swstable_pred_def sepconj_def le_fun_def)
-  apply (rule_tac x=\<open>s' - h2\<close> in exI)
-  apply (rule_tac x=\<open>s' - h1\<close> in exI)
-  apply (frule_tac c=h1 in rely_restrict_consistent)
-  apply (frule_tac c=h2 in rely_restrict_consistent)
-  apply (intro conjI)
-     apply (force dest: rely_same_dom rely_restrict_consistent simp add: disjoint_symm sepdomeq_def)
-    defer
-    apply force
-   apply force
-  apply (drule rely_same_dom)+
-  apply (simp add: disjoint_symm partial_add_commute state_minus_generic_split[symmetric])
+lift_definition disjoint_pheap :: \<open>('a,'b) pheap \<Rightarrow> ('a,'b) pheap \<Rightarrow> bool\<close> is
+  \<open>\<lambda>a b. \<forall>x c1 c2 v1 v2. a x = Some (c1, v1) \<longrightarrow> b x = Some (c2, v2) \<longrightarrow> c1 + c2 \<le> 1 \<and> v1 = v2\<close> .
+
+lemma disjoint_subset_plusdom_dom:
+  \<open>a ## b \<Longrightarrow> plusdom_pheap a b \<subseteq> dom_pheap a\<close>
+  \<open>a ## b \<Longrightarrow> plusdom_pheap a b \<subseteq> dom_pheap b\<close>
+  by (force simp add: disjoint_pheap_def dom_pheap_def plusdom_pheap_def subset_iff)+
+
+
+lift_definition plus_pheap :: \<open>('a,'b) pheap \<Rightarrow> ('a,'b) pheap \<Rightarrow> ('a,'b) pheap\<close> is
+  \<open>\<lambda>ma mb.
+    (\<lambda>x. case ma x of
+            Some (ca, va) \<Rightarrow>
+              (case mb x of
+                Some (cb, vb) \<Rightarrow>
+                  if ca + cb \<le> 1 \<and> va = vb
+                  then Some (ca + cb, vb)
+                  else None
+                | None \<Rightarrow> None)
+            | None \<Rightarrow> None)\<close>
+  by (force simp add: dom_def split: option.splits)
+
+lemma dom_plus_eq_plusdom[simp]:
+  \<open>dom_pheap (a + b) = plusdom_pheap a b\<close>
+  apply (clarsimp simp add: plus_pheap_def dom_pheap_def plusdom_pheap_def dom_def set_eq_iff)
+  apply (subst Abs_pheap_lookup)
+    apply (simp add: dom_def split: option.splits,
+      force simp add: dom_pheap_def intro: rev_finite_subset[of \<open>dom_pheap a \<inter> dom_pheap b\<close>])
+   apply (clarsimp simp add: Rep_pheap_bounded_permD split: option.splits; fail)
+  apply (clarsimp split: option.splits)
   done
 
-lemma wsstable_sepconj_semidistrib:
-  fixes P Q :: \<open>'a \<Rightarrow> bool\<close>
-  assumes rely_restrict_consistent: \<open>\<And>a b c. R\<^sup>*\<^sup>* a b \<Longrightarrow> R\<^sup>*\<^sup>* (a - c) (b - c)\<close>
-  assumes rely_same_dom: \<open>\<And>a b. R\<^sup>*\<^sup>* a b \<Longrightarrow> sepdomeq a b\<close>
-  shows \<open>\<lceil> P \<^emph> Q \<rceil>\<^bsub>R\<^esub> \<le> \<lceil> P \<rceil>\<^bsub>R\<^esub> \<^emph> \<lceil> Q \<rceil>\<^bsub>R\<^esub>\<close>
-  apply (clarsimp simp add: wsstable_pred_def sepconj_def le_fun_def)
-  apply (rename_tac s' h1 h2)
-  apply (rule_tac x=\<open>s' - h2\<close> in exI)
-  apply (rule_tac x=\<open>s' - h1\<close> in exI)
-  apply (frule_tac c=h1 in rely_restrict_consistent)
-  apply (frule_tac c=h2 in rely_restrict_consistent)
-  apply (intro conjI)
-     apply (force dest: rely_same_dom rely_restrict_consistent simp add: disjoint_symm sepdomeq_def)
-    defer
-    apply force
-   apply force
-  apply (drule rely_same_dom)+
-  apply (simp add: disjoint_symm partial_add_commute state_minus_generic_split[symmetric])
+lemma plusdom_subset_dom_pheap:
+  \<open>plusdom_pheap a b \<subseteq> dom_pheap a\<close>
+  \<open>plusdom_pheap a b \<subseteq> dom_pheap b\<close>
+  by (clarsimp simp add:  dom_pheap_def plusdom_pheap_def)+
+
+lemma plusdom_plusR:
+  \<open>plusdom_pheap a (b + c) \<subseteq> plusdom_pheap a b\<close>
+  \<open>plusdom_pheap a (b + c) \<subseteq> plusdom_pheap a c\<close>
+proof -
+  show \<open>plusdom_pheap a (b + c) \<subseteq> plusdom_pheap a b\<close>
+    apply (clarsimp simp add: plusdom_pheap_def plus_pheap_def)
+    apply (subst (asm) Abs_pheap_inverse)
+     apply (clarsimp simp add: dom_def)
+     apply (rule conjI)
+      apply (simp add: dom_def split: option.splits)
+      apply (rule_tac B=\<open>dom_pheap b\<close> in rev_finite_subset; force simp add: dom_pheap_def)
+     apply (clarsimp split: option.splits,
+        force intro: add_nonneg_nonneg dest: Rep_pheap_bounded_permD)
+    apply (force dest: Rep_pheap_bounded_permD split: if_splits split: option.splits)
+    done
+  show \<open>plusdom_pheap a (b + c) \<subseteq> plusdom_pheap a c\<close>
+    apply (clarsimp simp add: plusdom_pheap_def plus_pheap_def)
+    apply (subst (asm) Abs_pheap_inverse)
+     apply (clarsimp simp add: dom_def)
+     apply (rule conjI)
+      apply (simp add: dom_def split: option.splits)
+      apply (rule_tac B=\<open>dom_pheap b\<close> in rev_finite_subset; force simp add: dom_pheap_def)
+     apply (clarsimp split: option.splits,
+        force intro: add_nonneg_nonneg dest: Rep_pheap_bounded_permD)
+    apply (force dest: Rep_pheap_bounded_permD split: if_splits split: option.splits)
+    done
+qed
+
+lift_definition zero_pheap :: \<open>('a,'b) pheap\<close> is \<open>Map.empty\<close>
+  by simp
+
+lift_definition bot_pheap :: \<open>('a,'b) pheap\<close> is \<open>Map.empty\<close>
+  by simp
+
+lift_definition less_eq_pheap :: \<open>('a,'b) pheap \<Rightarrow> ('a,'b) pheap \<Rightarrow> bool\<close> is
+  \<open>\<lambda>ma mb. \<forall>x ca v. ma x = Some (ca, v) \<longrightarrow> (\<exists>cb\<ge>ca. mb x = Some (cb, v))\<close> .
+
+definition less_pheap :: \<open>('a,'b) pheap \<Rightarrow> ('a,'b) pheap \<Rightarrow> bool\<close> where
+  \<open>less_pheap a b \<equiv> a \<le> b \<and> \<not>(b \<le> a)\<close>
+
+lift_definition minus_pheap :: \<open>('a,'b) pheap \<Rightarrow> ('a,'b) pheap \<Rightarrow> ('a,'b) pheap\<close> is
+  \<open>\<lambda>ma mb.
+    (\<lambda>x. case ma x of
+            Some (ca, va) \<Rightarrow>
+              (case mb x of
+                Some (cb, vb) \<Rightarrow>
+                  if ca > cb \<and> va = vb
+                  then Some (fst (the (ma x)) - fst (the (mb x)), snd (the (ma x)))
+                  else None
+                | None \<Rightarrow> None)
+            | None \<Rightarrow> None)\<close>
+  by (simp add: dom_def split: option.splits, force)
+
+
+instance
+  apply standard
+                  apply (simp add: less_pheap_def; fail)
+                 apply (simp add: less_eq_pheap_def; fail)
+                apply (force intro: map_le_trans simp add: less_eq_pheap_def)
+
+               apply (clarsimp dest: map_le_antisym simp add: less_eq_pheap_def Rep_pheap_inject)
+               apply (rule iffD1[OF Rep_pheap_inject], rule ext)
+               apply (rename_tac ma mb x)
+               apply (drule_tac x=x in spec, drule_tac x=x in spec)
+               apply (case_tac \<open>Rep_pheap ma x\<close>; force)
+
+              apply (simp add: less_eq_pheap_def bot_pheap_def Abs_pheap_inverse; fail)
+             apply (force simp add: disjoint_pheap_def)
+            apply (force simp add: disjoint_pheap_def zero_pheap_def Abs_pheap_inverse)
+
+           apply (clarsimp simp add: disjoint_pheap_def plus_pheap_def)
+           apply (subst Abs_pheap_inverse)
+            apply (clarsimp simp add: dom_def split: option.splits)
+            apply (rule conjI)
+             apply (rule_tac B=\<open>dom_pheap b\<close> in rev_finite_subset; force simp add: dom_pheap_def)
+            apply (force dest: Rep_pheap_bounded_permD intro: add_nonneg_nonneg)
+           apply (simp split: option.splits)
+           apply (rule iffI)
+
+           apply (clarsimp simp del: all_simps simp add: all_simps[symmetric] imp_conjR imp_conjL)
+            apply safe
+  nitpick
+
+           apply (clarsimp simp del: ex_simps simp add: imp_conjL ex_simps[symmetric])
+
+  oops
+          apply (simp add: disjoint_pheap_def plus_pheap_def less_eq_pheap_def eq_Abs_pheap_iff
+      le_map_le_iff_sepadd, metis dom_map_add eq_Rep_pheap_iff finite_Un; fail)
+         apply (simp add: disjoint_pheap_def plus_pheap_def Abs_pheap_inverse; fail)
+        apply (fastforce dest: map_add_comm simp add: disjoint_pheap_def plus_pheap_def)
+           apply (simp add: plus_pheap_def zero_pheap_def Abs_pheap_inverse Rep_pheap_inverse; fail)
+      apply (simp add: plus_pheap_def minus_pheap_def disjoint_pheap_def
+      Abs_pheap_inverse Rep_pheap_inverse
+      disjoint_dom_map_add_restrict_distrib Int_commute dom_disjoint_restrict_eq; fail)
+     apply (simp add: plus_pheap_def minus_pheap_def disjoint_pheap_def
+      Abs_pheap_inverse Int_commute; fail)
+    apply (simp add: plus_pheap_def minus_pheap_def disjoint_pheap_def Abs_pheap_inverse; fail)
+
+   apply (simp add: plus_pheap_def minus_pheap_def disjoint_pheap_def
+      Abs_pheap_inverse eq_Abs_pheap_iff map_restrict_un_eq)
+   apply (metis dom_subset_restrict_eq inf_sup_ord(2) map_restrict_un_eq sup_commute sup_neg_inf)
+
+  apply (simp add: minus_pheap_def plus_pheap_def disjoint_pheap_def eq_Abs_pheap_iff Abs_pheap_inverse,
+      metis Compl_Int dom_disjoint_restrict_eq inf_bot_right map_restrict_un_eq; fail)
   done
 
 end
 
+
+lift_definition restrict_pheap :: \<open>('a,'b) pheap \<Rightarrow> 'a set \<Rightarrow> ('a,'b) pheap\<close>
+  (infixl \<open>|`\<^sub>h\<close> 110) is \<open>(|`)\<close>
+  by simp
+
+lemma restrict_pheap_un_eq: \<open>h |`\<^sub>h (A \<union> B) = h |`\<^sub>h A + h |`\<^sub>h B\<close>
+  by (simp add: restrict_pheap_def plus_pheap_def Abs_pheap_inverse map_restrict_un_eq)
+
+lemma restrict_pheap_add_eq[simp]:
+  \<open>(a + b) |`\<^sub>h A = a |`\<^sub>h A + b |`\<^sub>h A\<close>
+  by (simp add: disjoint_pheap_def restrict_pheap_def plus_pheap_def Abs_pheap_inverse
+      Abs_pheap_inject, simp add: map_add_def restrict_map_def fun_eq_iff)
+
+lemma dom_restrict_pheap_eq[simp]: \<open>dom_pheap (h |`\<^sub>h A) = dom_pheap h \<inter> A\<close>
+  by (simp add: dom_pheap.rep_eq restrict_pheap.rep_eq)
+
+lemma dom_plus_pheap_eq[simp]: \<open>dom_pheap (h1 + h2) = dom_pheap h1 \<union> dom_pheap h2\<close>
+  by (simp add: dom_pheap.rep_eq plus_pheap.rep_eq sup_commute)
+
+lemma restrict_pheap_ge_dom_eq[simp]: \<open>dom_pheap h \<subseteq> A \<Longrightarrow> h |`\<^sub>h A = h\<close>
+  by (simp add: dom_pheap.rep_eq restrict_pheap_def eq_Abs_pheap_iff,
+      metis inf.absorb_iff1 map_le_refl map_le_restrict_eq restrict_restrict)
+
+lemma restrict_disjoint_dom[simp]:
+  \<open>a ## b \<Longrightarrow> a |`\<^sub>h dom_pheap b = 0\<close>
+  \<open>a ## b \<Longrightarrow> b |`\<^sub>h dom_pheap a = 0\<close>
+  by (simp add: dom_pheap_def restrict_pheap_def disjoint_pheap_def zero_pheap_def Abs_pheap_inject,
+      force simp add: restrict_map_def fun_eq_iff domIff)+
+
+lemma pheap_restrict_Compl_disjoint[simp]:
+  \<open>a |`\<^sub>h A ## a |`\<^sub>h (- A)\<close>
+  by (simp add: restrict_pheap_def disjoint_pheap_def Abs_pheap_inverse)
+
+lemma pheap_restrict_Compl_plus_eq[simp]:
+  \<open>a |`\<^sub>h A + a |`\<^sub>h (- A) = a\<close>
+  by (simp add: restrict_pheap_def disjoint_pheap_def plus_pheap_def
+      Abs_pheap_inverse Rep_pheap_inverse map_restrict_un_eq[symmetric] dom_subset_restrict_eq)
+
+lemma restrict_Coml_dom_eq[simp]:
+  \<open>a |`\<^sub>h (- dom_pheap a) = 0\<close>
+  by (metis pheap_restrict_Compl_disjoint pheap_restrict_Compl_plus_eq order_refl
+      restrict_pheap_ge_dom_eq sepadd_cancel_right_right)
+
+lemma restrict_Compl_disjoint_pheap[simp]:
+  \<open>a ## b \<Longrightarrow> a |`\<^sub>h (- dom_pheap b) = a\<close>
+  \<open>a ## b \<Longrightarrow> b |`\<^sub>h (- dom_pheap a) = b\<close>
+  by (simp add: disjoint_eq_subset_Compl disjoint_pheap.rep_eq dom_pheap.rep_eq compl_le_swap1)+
+
+
+lemma pheap_separating_trichotomy:
+  fixes a b :: \<open>('a,'v) pheap\<close>
+  shows \<open>sepdomsubseteq a b \<or> sepdomsubseteq b a \<or> a ## b\<close>
+  apply (simp add: sepdomsubseteq_def)
+  nitpick
+
+  oops
 end
