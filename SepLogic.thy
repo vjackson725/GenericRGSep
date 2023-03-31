@@ -237,11 +237,15 @@ end
 
 section \<open> Separation Logic \<close>
 
-class seplogic = plus + zero + order_bot +
+
+class disjoint =
   fixes disjoint :: \<open>'a \<Rightarrow> 'a \<Rightarrow> bool\<close> (infix \<open>##\<close> 70)
+
+class seplogic = disjoint + plus + zero + order_bot +
   assumes disjoint_symm: \<open>a ## b = b ## a\<close>
   assumes zero_sep[simp]: \<open>0 ## a\<close>
-  assumes disjoint_add_left[simp]: \<open>b ## c \<Longrightarrow> a ## (b + c) \<longleftrightarrow> a ## b \<and> a ## c\<close>
+  assumes disjoint_add_leftL: \<open>b ## c \<Longrightarrow> a ## (b + c) \<Longrightarrow> a ## b\<close>
+  assumes disjoint_add_left_commute: \<open>a ## c \<Longrightarrow> b ## (a + c) \<Longrightarrow> a ## (b + c)\<close>
   assumes le_iff_sepadd: \<open>a \<le> b \<longleftrightarrow> (\<exists>c. a ## c \<and> b = a + c)\<close>
   (* partial commutative monoid *)
   assumes partial_add_assoc:
@@ -283,10 +287,9 @@ lemma sepadd_eq_0_iff_both_eq_0[simp]: "x ## y \<Longrightarrow> x + y = 0 \<lon
 lemma zero_eq_sepadd_iff_both_eq_0[simp]: "x ## y \<Longrightarrow> 0 = x + y \<longleftrightarrow> x = 0 \<and> y = 0"
   using sepadd_eq_0_iff_both_eq_0[of x y] unfolding eq_commute[of 0] .
 
-lemma partial_left_commute:
+lemma partial_add_left_commute:
   \<open>a ## b \<Longrightarrow> b ## c \<Longrightarrow> a ## c \<Longrightarrow> b + (a + c) = a + (b + c)\<close>
-  using disjoint_symm partial_add_assoc partial_add_commute by auto
-
+  by (metis disjoint_symm partial_add_assoc partial_add_commute)
 
 lemma less_eqE:
   assumes \<open>a \<le> b\<close>
@@ -313,9 +316,13 @@ lemmas zero_order = zero_le le_zero_eq not_less_zero zero_less_iff_neq_zero not_
 
 subsection \<open>Misc\<close>
 
+lemma disjoint_add_leftR: \<open>b ## c \<Longrightarrow> a ## (b + c) \<Longrightarrow> a ## c\<close>
+  by (metis disjoint_add_leftL disjoint_symm partial_add_commute)
+(*
 lemma disjoint_add_right[simp]:
   \<open>a ## b \<Longrightarrow> (a + b) ## c \<longleftrightarrow> a ## c \<and> b ## c\<close>
   by (simp add: disjoint_symm)
+*)
 
 lemma sep_add_0_right[simp]: "a + 0 = a"
   by (metis zero_sepR partial_add_0 partial_add_commute)
@@ -424,24 +431,19 @@ fun iterated_sepconj :: \<open>('a \<Rightarrow> bool) list \<Rightarrow> ('a \<
 
 
 lemma sepconj_assoc: \<open>(P \<^emph> Q) \<^emph> R = P \<^emph> (Q \<^emph> R)\<close>
-  by (force simp add: sepconj_def ex_simps[symmetric] partial_add_assoc simp del: ex_simps)
+  apply (clarsimp simp add: sepconj_def ex_simps[symmetric] partial_add_assoc simp del: ex_simps)
+  apply (intro ext iffI)
+  apply (metis disjoint_add_leftR disjoint_add_left_commute disjoint_symm partial_add_assoc partial_add_commute)+
+  done
 
 lemma sepconj_comm: \<open>P \<^emph> Q = Q \<^emph> P\<close>
   unfolding sepconj_def
   by (metis disjoint_symm partial_add_commute)
 
 lemma sepconj_left_comm: \<open>Q \<^emph> (P \<^emph> R) = P \<^emph> (Q \<^emph> R)\<close>
+  apply (clarsimp simp add: sepconj_def ex_simps[symmetric] partial_add_assoc simp del: ex_simps)
   apply (rule ext)
-  apply (clarsimp simp add: sepconj_def ex_simps[symmetric] simp del: ex_simps)
-  apply (rule iffI)
-   apply clarsimp
-   apply (rename_tac h2 h1 h3)
-   apply (rule_tac x=h1 in exI, rule_tac x=h2 in exI, rule_tac x=h3 in exI)
-   apply (simp add: disjoint_symm partial_left_commute)
-  apply clarsimp
-  apply (rename_tac h1 h2 h3)
-  apply (rule_tac x=h2 in exI, rule_tac x=h1 in exI, rule_tac x=h3 in exI)
-  apply (simp add: disjoint_symm partial_left_commute)
+  apply (metis disjoint_add_leftR disjoint_add_leftL disjoint_add_left_commute partial_add_left_commute)
   done
 
 lemmas sepconj_ac = sepconj_assoc sepconj_comm sepconj_left_comm
@@ -477,10 +479,10 @@ lemma emp_sepconj_unit_right[simp]: \<open>P \<^emph> emp = P\<close>
   by (simp add: emp_def sepconj_def)
 
 lemma sepcoimp_curry: \<open>P \<sim>\<^emph> Q \<sim>\<^emph> R = P \<^emph> Q \<sim>\<^emph> R\<close>
-  unfolding sepcoimp_def sepconj_def
+  apply (clarsimp simp add: sepcoimp_def sepconj_def)
   apply (intro ext iffI; clarsimp)
-   apply (metis disjoint_add_left partial_add_assoc)
-  apply (metis disjoint_add_right partial_add_assoc)
+   apply (metis disjoint_add_leftR disjoint_add_left_commute disjoint_symm partial_add_assoc
+      partial_add_commute)+
   done
 
 lemma sepconj_left_mono:
@@ -779,6 +781,7 @@ lemma diff_add_zero[simp]: "a ## b \<Longrightarrow> a - (a + b) = 0"
 
 subsection \<open>ordered_ab_semigroup_add\<close>
 
+(*
 lemma sepadd_left_mono: "c ## a \<Longrightarrow> c ## b \<Longrightarrow> a \<le> b \<Longrightarrow> c + a \<le> c + b"
   using le_iff_sepadd partial_add_assoc by auto
 
@@ -917,7 +920,7 @@ lemma minus_expansion1: \<open>a - b = a - (a - (a - b))\<close>
 
 lemma subtract_less_zero: \<open>a' \<le> a \<Longrightarrow> a' - a = 0\<close>
   by (metis diff_cancel diff_diff_sepadd le_iff_sepadd le_zero_eq restricted_state_a_substate)
-
+*)
 end
 
 end
