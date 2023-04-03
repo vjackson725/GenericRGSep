@@ -420,7 +420,7 @@ definition minus_perm :: \<open>(rat \<times> 'a) option \<Rightarrow> (rat \<ti
   \<open>minus_perm a b \<equiv> case a of
                       Some (c1, v1) \<Rightarrow>
                         (case b of
-                          Some (c2, v2) \<Rightarrow> if v1 = v2 then None else Some (max (c2 - c1) 0, v1)
+                          Some (c2, v2) \<Rightarrow> if v1 = v2 then Some (max (c2 - c1) 0, v1) else None
                         | None \<Rightarrow> Some (c1, v1))
                     | None \<Rightarrow> None\<close>
 
@@ -435,13 +435,27 @@ lemma minus_perm_None[simp]:
 
 lemma minus_perm_SomeR_eq_Some:
   \<open>a \<ominus>\<^sub>p Some (c2, v2) = Some (c, v) \<longleftrightarrow>
-      (\<exists>c1. a = Some (c1, v) \<and> c = max (c2 - c1) 0 \<and> v \<noteq> v2)\<close>
+      (\<exists>c1. a = Some (c1, v) \<and> c = max (c2 - c1) 0 \<and> v = v2)\<close>
   by (force simp add: minus_perm_def max_def split: option.splits)
 
 lemma minus_perm_eq_None[simp]:
   \<open>a \<ominus>\<^sub>p b = None \<longleftrightarrow>
-    (a = None \<or> (\<exists>c1 v. a = Some (c1, v) \<and> (\<exists>c2. b = Some (c2, v))))\<close>
+    (a = None \<or> (\<exists>c1 v1. a = Some (c1, v1) \<and> (\<exists>c2 v2. b = Some (c2, v2) \<and> v1 \<noteq> v2)))\<close>
   by (simp add: minus_perm_def max_def split: option.splits)
+
+
+lemma
+  fixes c1 c2 :: \<open>'a :: linordered_idom\<close>
+  shows
+    \<open>(c2 = min (c1 + max (c1 - c2) 0) m) = (c2 = c1 \<and> c2 \<le> m \<or> c2 \<le> c1 \<and> c2 = m)\<close>
+  by (fastforce simp add: min_le_iff_disj le_max_iff_disj)
+
+lemma perm_eq_plus_minus_iff:
+  \<open>b = a \<oplus>\<^sub>p (b \<ominus>\<^sub>p a) \<longleftrightarrow>
+    a = None \<or>
+      b = a \<and> (\<exists>c v. a = Some (c, v) \<and> c \<le> 1) \<or>
+      (\<exists>v. b = Some (1, v) \<and> (\<exists>c1\<ge>1. a = Some (c1, v)))\<close>
+  by (force simp add: plus_perm_def minus_perm_def split: option.splits)
 
 
 lift_definition app_pheap :: \<open>('a,'b) pheap \<Rightarrow> 'a \<Rightarrow> (rat \<times> 'b) option\<close> (infix \<open>\<bullet>\<close> 990) is
@@ -466,10 +480,16 @@ lemma Abs_pheap_inverse_app[simp]:
   \<open>Abs_pheap (Rep_pheap h) \<bullet> x = h \<bullet> x\<close>
   by (simp add: app_pheap_def Rep_pheap_inverse)
 
+
 lemma Rep_pheap_bounded_permD:
   \<open>Rep_pheap h x = Some (c, v) \<Longrightarrow> 0 \<le> c\<close>
   \<open>Rep_pheap h x = Some (c, v) \<Longrightarrow> c \<le> 1\<close>
   by (metis eq_Rep_pheap_iff(1))+
+
+lemma app_pheap_bounded_permD:
+  \<open>a \<bullet> x = Some (c, v) \<Longrightarrow> 0 \<le> c\<close>
+  \<open>a \<bullet> x = Some (c, v) \<Longrightarrow> c \<le> 1\<close>
+  by (simp add: Rep_pheap_bounded_permD app_pheap.rep_eq)+
 
 
 lift_definition dom_pheap :: \<open>('a,'b) pheap \<Rightarrow> 'a set\<close> is \<open>dom\<close> .
@@ -500,6 +520,7 @@ lemma finite_perm_dom_pheap[simp]:
   by (rule rev_finite_subset[of \<open>dom_pheap a\<close>];
       force simp add: perm_dom_pheap_def dom_pheap_def subset_iff)
 
+text \<open>Define disjointness on pheaps\<close>
 instantiation pheap :: (type,type) disjoint
 begin
 
@@ -510,6 +531,7 @@ instance by standard
 
 end
 
+text \<open>Define plus on pheaps\<close>
 instantiation pheap :: (type, type) plus
 begin
 
@@ -522,6 +544,10 @@ lift_definition plus_pheap :: \<open>('a,'b) pheap \<Rightarrow> ('a,'b) pheap \
   apply (force intro: add_nonneg_nonneg)
   done
 
+instance by standard
+
+end
+
 lemma Rep_add_in_bounds:
   assumes \<open>Rep_pheap a p \<oplus>\<^sub>p Rep_pheap b p = Some (c, v)\<close>
   shows \<open>c \<le> 1\<close> \<open>0 \<le> c\<close>
@@ -529,10 +555,14 @@ lemma Rep_add_in_bounds:
   by (simp add: dom_def plus_pheap_def plus_perm_def
       Rep_pheap_bounded_permD eq_commute[of \<open>min _ _\<close>] split: option.splits prod.splits)+
 
-instance by standard
+lemma app_plus_pheap[simp]:
+  \<open>(a + b) \<bullet> x = a \<bullet> x \<oplus>\<^sub>p b \<bullet> x\<close>
+  apply (simp add: disjoint_pheap_def plus_pheap_def app_pheap_def)
+  apply (subst Abs_pheap_inverse; force simp add: Rep_add_in_bounds)
+  done
 
-end
 
+text \<open>Define minus on pheaps\<close>
 instantiation pheap :: (type, type) minus
 begin
 
@@ -542,6 +572,8 @@ lift_definition minus_pheap :: \<open>('a,'b) pheap \<Rightarrow> ('a,'b) pheap 
 
 instance by standard
 
+end
+
 lemma Rep_minus_in_bounds:
   assumes \<open>Rep_pheap a p \<ominus>\<^sub>p Rep_pheap b p = Some (c, v)\<close>
   shows \<open>c \<le> 1\<close> \<open>0 \<le> c\<close>
@@ -549,20 +581,61 @@ lemma Rep_minus_in_bounds:
   by (clarsimp simp add: dom_def minus_pheap_def minus_perm_def Rep_pheap_bounded_permD
       add_increasing2 diff_le_eq split: option.splits prod.splits if_splits)+
 
-end
-
-
-lemma app_plus_pheap[simp]:
-  \<open>(a + b) \<bullet> x = a \<bullet> x \<oplus>\<^sub>p b \<bullet> x\<close>
-  apply (simp add: disjoint_pheap_def plus_pheap_def app_pheap_def)
-  apply (subst Abs_pheap_inverse; force simp add: Rep_add_in_bounds)
-  done
-
 lemma minus_plus_pheap[simp]:
   \<open>(a - b) \<bullet> x = a \<bullet> x \<ominus>\<^sub>p b \<bullet> x\<close>
   apply (simp add: disjoint_pheap_def minus_pheap_def app_pheap_def)
   apply (subst Abs_pheap_inverse; force simp add: Rep_minus_in_bounds)
   done
+
+lemma pheap_eq_plus_minus_iff:
+  fixes a b :: \<open>('p,'v) pheap\<close>
+  shows \<open>b = a + (b - a) \<longleftrightarrow> (\<forall>x. a \<bullet> x = None \<or> a \<bullet> x = b \<bullet> x)\<close>
+  by (simp add: pheap_eq_iff perm_eq_plus_minus_iff,
+      metis app_pheap_bounded_permD(2) nle_le not_Some_prod_eq)
+
+lemma perm_eq_diff_eq:
+  \<open>Some (c2 - c1, v) = b \<longleftrightarrow> Some (c2, v) = Some (c1, v) \<oplus>\<^sub>p b\<close>
+  apply (rule iffI)
+  apply (simp add: plus_perm_def split: option.splits)
+  prefer 2
+  oops
+
+find_theorems \<open>_ + _ = _\<close> \<open>_ = _ - _ \<longleftrightarrow> _\<close>
+
+
+definition less_eq_perm :: \<open>(rat \<times> 'a) option \<Rightarrow> (rat \<times> 'a) option \<Rightarrow> bool\<close>
+  (infix \<open>\<subseteq>\<^sub>p\<close> 100) where
+  \<open>a \<subseteq>\<^sub>p b \<equiv> \<forall>ca v. a = Some (ca, v) \<longrightarrow> (\<exists>cb\<ge>ca. b = Some (cb, v))\<close>
+
+lemma less_eq_perm_refl[iff]:
+  \<open>a \<subseteq>\<^sub>p a\<close>
+  by (simp add: less_eq_perm_def)
+
+lemma less_eq_perm_trans:
+  \<open>a \<subseteq>\<^sub>p b \<Longrightarrow> b \<subseteq>\<^sub>p c \<Longrightarrow> a \<subseteq>\<^sub>p c\<close>
+  by (force simp add: less_eq_perm_def)
+
+
+text \<open>Define less than and less than or equal on pheaps\<close>
+instantiation pheap :: (type, type) preorder
+begin
+
+lift_definition less_eq_pheap :: \<open>('a,'b) pheap \<Rightarrow> ('a,'b) pheap \<Rightarrow> bool\<close> is
+  \<open>\<lambda>ma mb. \<forall>x. ma x \<subseteq>\<^sub>p mb x\<close> .
+
+definition less_pheap :: \<open>('a,'b) pheap \<Rightarrow> ('a,'b) pheap \<Rightarrow> bool\<close> where
+  \<open>less_pheap a b \<equiv> a \<le> b \<and> \<not>(b \<le> a)\<close>
+
+instance
+  by standard
+    (simp add: less_pheap_def less_eq_pheap.rep_eq; blast dest: less_eq_perm_trans)+
+
+end
+
+lemma pheap_le_iff:
+  \<open>a \<le> b \<longleftrightarrow> (\<forall>x. a \<bullet> x \<subseteq>\<^sub>p b \<bullet> x)\<close>
+  by (simp add: less_eq_pheap_def app_pheap_def)
+
 
 instantiation pheap :: (type,type) cancel_seplogic
 begin
@@ -573,21 +646,19 @@ lift_definition zero_pheap :: \<open>('a,'b) pheap\<close> is \<open>Map.empty\<
 lift_definition bot_pheap :: \<open>('a,'b) pheap\<close> is \<open>Map.empty\<close>
   by simp
 
-lift_definition less_eq_pheap :: \<open>('a,'b) pheap \<Rightarrow> ('a,'b) pheap \<Rightarrow> bool\<close> is
-  \<open>\<lambda>ma mb. \<forall>x ca v. ma x = Some (ca, v) \<longrightarrow> (\<exists>cb\<ge>ca. mb x = Some (cb, v))\<close> .
-
-definition less_pheap :: \<open>('a,'b) pheap \<Rightarrow> ('a,'b) pheap \<Rightarrow> bool\<close> where
-  \<open>less_pheap a b \<equiv> a \<le> b \<and> \<not>(b \<le> a)\<close>
-
-
-lemma perm_eq_plus_minus_iff:
-  \<open>b = a \<oplus>\<^sub>p (b \<ominus>\<^sub>p a) \<longleftrightarrow> a = None \<or> a = b\<close>
-  by (force simp add: plus_perm_def minus_perm_def split: option.splits)
-
-lemma le_iff_minus:
+(* \<open>(a \<le> b) \<Longrightarrow> (a ## (b - a) \<and> b = a + (b - a))\<close> is false! *)
+lemma le_iff_sepadd_helper:
   fixes a b :: \<open>('a,'b) pheap\<close>
-  shows \<open>(a \<le> b) = (a ## (b - a) \<and> b = a + (b - a))\<close>
-  apply (rule iffI)
+  shows \<open>(a \<le> b) = (\<exists>c. a ## c \<and> b = a + c)\<close>
+  apply (intro iffI conjI)
+    prefer 2
+    apply (clarsimp simp add: pheap_le_iff less_eq_perm_def)
+    apply (case_tac \<open>a \<bullet> x\<close>)
+     apply clarsimp
+   apply clarsimp
+    apply (drule spec, drule spec, drule spec, drule mp, blast)
+    apply clarsimp
+
   apply (simp add: less_eq_pheap_def disjoint_pheap_def minus_pheap_def plus_pheap_def)
    apply (subst Abs_pheap_inverse, force simp add: Rep_minus_in_bounds)
    apply (subst Abs_pheap_inverse, force simp add: Rep_minus_in_bounds)
@@ -598,11 +669,12 @@ lemma le_iff_minus:
   apply (rule conjI)
     apply (force simp add: max_def Rep_pheap_bounded_permD)
    apply clarsimp
-   apply safe
-     apply (metis not_Some_prod_eq)
-    apply simp
+   apply (intro conjI impI allI)
+     apply (metis not_Some_prod_eq; elim exE conjE)
+    apply clarsimp
     defer
     apply force
+
    apply (simp add: pheap_eq_iff perm_eq_plus_minus_iff)
   apply (clarsimp simp add: app_pheap_def less_eq_pheap_def)
   apply (metis not_None_eq order_refl)
