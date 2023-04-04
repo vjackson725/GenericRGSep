@@ -58,6 +58,35 @@ lemma not_Some_prod_eq[iff]: \<open>(\<forall>a b. x \<noteq> Some (a,b)) \<long
 lemmas rev_finite_subset_Collect =
   rev_finite_subset[of \<open>Collect P\<close> \<open>Collect Q\<close> for P Q, OF _ iffD2[OF Collect_mono_iff]]
 
+(* We can prove the existence of a map satisfying a relation by showing
+    the relation is nice and that there exists a value for every input.
+*)
+lemma finite_map_choice_iff:
+  shows \<open>(\<exists>f. finite (dom f) \<and> (\<forall>x. P x (f x))) \<longleftrightarrow>
+          (finite {x. (\<exists>y. P x (Some y)) \<and> \<not> P x None} \<and> (\<forall>x. \<exists>y. P x y))\<close>
+  apply -
+  apply (rule iffI)
+  subgoal (* 1 \<Longrightarrow> 2 *)
+    apply (clarsimp simp add: dom_def)
+    apply (subgoal_tac \<open>(\<forall>x. f x = None \<longrightarrow> P x None) \<and> (\<forall>x y. f x = Some y \<longrightarrow> P x (Some y))\<close>)
+     prefer 2
+     apply metis
+    apply (rule conjI)
+     apply (rule rev_finite_subset, assumption)
+     apply blast
+    apply force
+    done
+  subgoal (* 2 \<Longrightarrow> 1 *)
+    apply (clarsimp simp add: dom_def)
+    apply (clarsimp simp add: choice_iff)
+    apply (rule_tac x=\<open>\<lambda>x. if \<exists>y. P x (Some y) \<and> \<not> P x None then f x else None\<close> in exI)
+    apply (rule conjI)
+     apply clarsimp
+     apply (simp add: rev_finite_subset_Collect)
+    apply (simp, metis option.exhaust_sel)
+    done
+  done
+
 
 section \<open>Stabilisation\<close>
 
@@ -377,15 +406,16 @@ section \<open>(Weak) Permission Heaps\<close>
 typedef ('p,'v) pheap =
   \<open>{h::'p \<rightharpoonup> rat \<times> 'v.
     finite (dom h) \<and> (\<forall>p c v. h p = Some (c,v) \<longrightarrow> 0 \<le> c \<and> c \<le> 1)}\<close>
+  morphisms app_pheap Abs_pheap
   by (rule exI[where x=Map.empty], force)
 
-print_theorems
+syntax app_pheap :: \<open>('a,'b) pheap \<Rightarrow> 'a \<Rightarrow> (rat \<times> 'b) option\<close> (infix \<open>\<bullet>\<close> 990)
 
 setup_lifting type_definition_pheap
 
-lemma eq_Rep_pheap_iff:
-  \<open>a = Rep_pheap a' \<longleftrightarrow> a' = Abs_pheap a \<and> finite (dom a) \<and> (\<forall>p c v. a p = Some (c,v) \<longrightarrow> 0 \<le> c \<and> c \<le> 1)\<close>
-  \<open>Rep_pheap a' = a \<longleftrightarrow> a' = Abs_pheap a \<and> finite (dom a) \<and> (\<forall>p c v. a p = Some (c,v) \<longrightarrow> 0 \<le> c \<and> c \<le> 1)\<close>
+lemma eq_app_pheap_iff:
+  \<open>a = app_pheap a' \<longleftrightarrow> a' = Abs_pheap a \<and> finite (dom a) \<and> (\<forall>p c v. a p = Some (c,v) \<longrightarrow> 0 \<le> c \<and> c \<le> 1)\<close>
+  \<open>app_pheap a' = a \<longleftrightarrow> a' = Abs_pheap a \<and> finite (dom a) \<and> (\<forall>p c v. a p = Some (c,v) \<longrightarrow> 0 \<le> c \<and> c \<le> 1)\<close>
   by (case_tac a' rule: Abs_pheap_cases, force simp add: Abs_pheap_inverse Abs_pheap_inject)+
 
 lemma eq_Abs_pheap_iff:
@@ -393,9 +423,9 @@ lemma eq_Abs_pheap_iff:
     \<open>finite (dom a)\<close>
     \<open>\<forall>p c v. a p = Some (c,v) \<longrightarrow> 0 \<le> c \<and> c \<le> 1\<close>
   shows
-    \<open>a' = Abs_pheap a \<longleftrightarrow> a = Rep_pheap a'\<close>
-    \<open>Abs_pheap a = a' \<longleftrightarrow> a = Rep_pheap a'\<close>
-  by (force simp add: assms eq_Rep_pheap_iff)+
+    \<open>a' = Abs_pheap a \<longleftrightarrow> a = app_pheap a'\<close>
+    \<open>Abs_pheap a = a' \<longleftrightarrow> a = app_pheap a'\<close>
+  by (force simp add: assms eq_app_pheap_iff)+
 
 definition plus_perm :: \<open>(rat \<times> 'a) option \<Rightarrow> (rat \<times> 'a) option \<Rightarrow> (rat \<times> 'a) option\<close>
   (infixl \<open>\<oplus>\<^sub>p\<close> 65) where
@@ -413,6 +443,11 @@ lemma plus_perm_None[simp]:
   \<open>a \<oplus>\<^sub>p None = a\<close>
   \<open>None \<oplus>\<^sub>p b = b\<close>
   by (simp add: plus_perm_def split: option.splits)+
+
+lemma plus_perm_Some[simp]:
+  \<open>Some (c1, v1) \<oplus>\<^sub>p Some (c2, v2) = Some (c, v) \<longleftrightarrow> v1 = v \<and> c = min (c1 + c2) 1\<close>
+  by (force simp add: plus_perm_def split: option.splits)
+
 
 
 definition minus_perm :: \<open>(rat \<times> 'a) option \<Rightarrow> (rat \<times> 'a) option \<Rightarrow> (rat \<times> 'a) option\<close>
@@ -457,14 +492,10 @@ lemma perm_eq_plus_minus_iff:
       (\<exists>v. b = Some (1, v) \<and> (\<exists>c1\<ge>1. a = Some (c1, v)))\<close>
   by (force simp add: plus_perm_def minus_perm_def split: option.splits)
 
-
-lift_definition app_pheap :: \<open>('a,'b) pheap \<Rightarrow> 'a \<Rightarrow> (rat \<times> 'b) option\<close> (infix \<open>\<bullet>\<close> 990) is
-  \<open>\<lambda>m x. m x\<close> .
-
 lemma pheap_ext:
   fixes a b :: \<open>('a,'b) pheap\<close>
   shows \<open>(\<And>x. a \<bullet> x = b \<bullet> x) \<Longrightarrow> a = b\<close>
-  by (force intro: iffD1[OF Rep_pheap_inject] simp add: app_pheap_def)
+  by (force intro: iffD1[OF app_pheap_inject])
 
 lemma pheap_eq_iff:
   fixes a b :: \<open>('a,'b) pheap\<close>
@@ -474,41 +505,35 @@ lemma pheap_eq_iff:
 lemma Abs_app_pheap:
   \<open>finite (dom m) \<Longrightarrow> (\<And>p c v. m p = Some (c, v) \<Longrightarrow> 0 \<le> c \<and> c \<le> 1) \<Longrightarrow> (Abs_pheap m) \<bullet> x = m x\<close>
   using Abs_pheap_inverse
-  by (fastforce simp add: app_pheap_def)
+  by fastforce
 
 lemma Abs_pheap_inverse_app[simp]:
-  \<open>Abs_pheap (Rep_pheap h) \<bullet> x = h \<bullet> x\<close>
-  by (simp add: app_pheap_def Rep_pheap_inverse)
+  \<open>Abs_pheap (app_pheap h) \<bullet> x = h \<bullet> x\<close>
+  by (simp add: app_pheap_inverse)
 
-
-lemma Rep_pheap_bounded_permD:
-  \<open>Rep_pheap h x = Some (c, v) \<Longrightarrow> 0 \<le> c\<close>
-  \<open>Rep_pheap h x = Some (c, v) \<Longrightarrow> c \<le> 1\<close>
-  by (metis eq_Rep_pheap_iff(1))+
 
 lemma app_pheap_bounded_permD:
   \<open>a \<bullet> x = Some (c, v) \<Longrightarrow> 0 \<le> c\<close>
   \<open>a \<bullet> x = Some (c, v) \<Longrightarrow> c \<le> 1\<close>
-  by (simp add: Rep_pheap_bounded_permD app_pheap.rep_eq)+
-
+  by (metis eq_app_pheap_iff(1))+
 
 lift_definition dom_pheap :: \<open>('a,'b) pheap \<Rightarrow> 'a set\<close> is \<open>dom\<close> .
 
-lemma finite_dom_Rep_pheap[simp]:
-  \<open>finite (dom (Rep_pheap a))\<close>
-  using eq_Rep_pheap_iff by auto
+lemma finite_dom_app_pheap[simp]:
+  \<open>finite (dom (app_pheap a))\<close>
+  by (metis eq_app_pheap_iff(1))
 
 lemma finite_dom_pheap[simp]:
   \<open>finite (dom_pheap a)\<close>
   by (simp add: dom_pheap.rep_eq)
 
-lemma Rep_pheap_Some_prod_set_eq:
-  \<open>{x. \<exists>a1 a2. Rep_pheap h x = Some (a1, a2)} = dom_pheap h\<close>
+lemma app_pheap_Some_prod_set_eq:
+  \<open>{x. \<exists>a1 a2. app_pheap h x = Some (a1, a2)} = dom_pheap h\<close>
   by (simp add: dom_pheap_def dom_def)
 
 lemma Abs_pheap_lookup:
   \<open>finite (dom m) \<Longrightarrow> \<forall>p c v. m p = Some (c, v) \<longrightarrow> 0 \<le> c \<and> c \<le> 1 \<Longrightarrow>
-    Rep_pheap (Abs_pheap m) x = m x\<close>
+    app_pheap (Abs_pheap m) x = m x\<close>
   by (metis eq_Abs_pheap_iff(2))
 
 
@@ -531,6 +556,7 @@ instance by standard
 
 end
 
+
 text \<open>Define plus on pheaps\<close>
 instantiation pheap :: (type, type) plus
 begin
@@ -549,15 +575,15 @@ instance by standard
 end
 
 lemma Rep_add_in_bounds:
-  assumes \<open>Rep_pheap a p \<oplus>\<^sub>p Rep_pheap b p = Some (c, v)\<close>
+  assumes \<open>app_pheap a p \<oplus>\<^sub>p app_pheap b p = Some (c, v)\<close>
   shows \<open>c \<le> 1\<close> \<open>0 \<le> c\<close>
   using assms
   by (simp add: dom_def plus_pheap_def plus_perm_def
-      Rep_pheap_bounded_permD eq_commute[of \<open>min _ _\<close>] split: option.splits prod.splits)+
+      app_pheap_bounded_permD eq_commute[of \<open>min _ _\<close>] split: option.splits prod.splits)+
 
 lemma app_plus_pheap[simp]:
   \<open>(a + b) \<bullet> x = a \<bullet> x \<oplus>\<^sub>p b \<bullet> x\<close>
-  apply (simp add: disjoint_pheap_def plus_pheap_def app_pheap_def)
+  apply (simp add: disjoint_pheap_def plus_pheap_def)
   apply (subst Abs_pheap_inverse; force simp add: Rep_add_in_bounds)
   done
 
@@ -575,15 +601,15 @@ instance by standard
 end
 
 lemma Rep_minus_in_bounds:
-  assumes \<open>Rep_pheap a p \<ominus>\<^sub>p Rep_pheap b p = Some (c, v)\<close>
+  assumes \<open>app_pheap a p \<ominus>\<^sub>p app_pheap b p = Some (c, v)\<close>
   shows \<open>c \<le> 1\<close> \<open>0 \<le> c\<close>
   using assms
-  by (clarsimp simp add: dom_def minus_pheap_def minus_perm_def Rep_pheap_bounded_permD
+  by (clarsimp simp add: dom_def minus_pheap_def minus_perm_def app_pheap_bounded_permD
       add_increasing2 diff_le_eq split: option.splits prod.splits if_splits)+
 
 lemma minus_plus_pheap[simp]:
   \<open>(a - b) \<bullet> x = a \<bullet> x \<ominus>\<^sub>p b \<bullet> x\<close>
-  apply (simp add: disjoint_pheap_def minus_pheap_def app_pheap_def)
+  apply (simp add: disjoint_pheap_def minus_pheap_def)
   apply (subst Abs_pheap_inverse; force simp add: Rep_minus_in_bounds)
   done
 
@@ -615,6 +641,14 @@ lemma less_eq_perm_trans:
   \<open>a \<subseteq>\<^sub>p b \<Longrightarrow> b \<subseteq>\<^sub>p c \<Longrightarrow> a \<subseteq>\<^sub>p c\<close>
   by (force simp add: less_eq_perm_def)
 
+lemma less_eq_perm_NoneL[iff]:
+  \<open>None \<subseteq>\<^sub>p a\<close>
+  by (force simp add: less_eq_perm_def)
+
+lemma less_eq_perm_NoneR[iff]:
+  \<open>a \<subseteq>\<^sub>p None \<longleftrightarrow> a = None\<close>
+  by (force simp add: less_eq_perm_def)
+
 
 text \<open>Define less than and less than or equal on pheaps\<close>
 instantiation pheap :: (type, type) preorder
@@ -622,6 +656,8 @@ begin
 
 lift_definition less_eq_pheap :: \<open>('a,'b) pheap \<Rightarrow> ('a,'b) pheap \<Rightarrow> bool\<close> is
   \<open>\<lambda>ma mb. \<forall>x. ma x \<subseteq>\<^sub>p mb x\<close> .
+
+lemmas pheap_le_iff = less_eq_pheap.rep_eq
 
 definition less_pheap :: \<open>('a,'b) pheap \<Rightarrow> ('a,'b) pheap \<Rightarrow> bool\<close> where
   \<open>less_pheap a b \<equiv> a \<le> b \<and> \<not>(b \<le> a)\<close>
@@ -632,128 +668,124 @@ instance
 
 end
 
-lemma pheap_le_iff:
-  \<open>a \<le> b \<longleftrightarrow> (\<forall>x. a \<bullet> x \<subseteq>\<^sub>p b \<bullet> x)\<close>
-  by (simp add: less_eq_pheap_def app_pheap_def)
 
-
-instantiation pheap :: (type,type) cancel_seplogic
+instantiation pheap :: (type,type) seplogic
 begin
 
 lift_definition zero_pheap :: \<open>('a,'b) pheap\<close> is \<open>Map.empty\<close>
   by simp
 
+lemma app_zero_pheap[simp]:
+  \<open>0 \<bullet> x = None\<close>
+  by (simp add: zero_pheap.rep_eq)
+
 lift_definition bot_pheap :: \<open>('a,'b) pheap\<close> is \<open>Map.empty\<close>
   by simp
 
-(* \<open>(a \<le> b) \<Longrightarrow> (a ## (b - a) \<and> b = a + (b - a))\<close> is false! *)
+lemma app_bot_pheap[simp]:
+  \<open>\<bottom> \<bullet> x = None\<close>
+  by (simp add: bot_pheap.rep_eq)
+
+lemma bot_pheap_eq_zero_pheap:
+  \<open>(\<bottom> :: ('a,'b) pheap) = 0\<close>
+  by (simp add: zero_pheap.abs_eq bot_pheap.abs_eq)
+
+
+lemma ex_pheap_for_all_vars_iff:
+  fixes c :: \<open>('a,'b) pheap\<close>
+    and P :: \<open>'a \<Rightarrow> (rat \<times> 'b) option \<Rightarrow> bool\<close>
+  shows
+    \<open>(\<exists>c. \<forall>x. P x (c \<bullet> x)) \<longleftrightarrow>
+      finite {x. (\<exists>y. P x (Some y) \<and> 0 \<le> fst y \<and> fst y \<le> 1) \<and> \<not> P x None} \<and>
+      (\<forall>x. \<exists>y. P x y \<and> (\<forall>c v. y = Some (c, v) \<longrightarrow> 0 \<le> c \<and> c \<le> 1))\<close>
+proof -
+  have \<open>(\<exists>c::('a,'b) pheap. \<forall>x. P x (c \<bullet> x)) \<longleftrightarrow>
+          (\<exists>f::'a \<Rightarrow> (rat \<times> 'b) option.
+            \<forall>x. P x (f x) \<and> finite (dom f) \<and> (\<forall>c v. f x = Some (c, v) \<longrightarrow> 0 \<le> c \<and> c \<le> 1))\<close>
+    by (metis eq_app_pheap_iff(1))
+  also have \<open>... \<longleftrightarrow>
+      (\<exists>f. finite (dom f) \<and> (\<forall>x. P x (f x) \<and>
+        (\<forall>c v. f x = Some (c, v) \<longrightarrow> 0 \<le> c \<and> c \<le> 1)))\<close>
+    by blast
+  also have \<open>... \<longleftrightarrow>
+    finite {x. (\<exists>y. P x (Some y) \<and> 0 \<le> fst y \<and> fst y \<le> 1) \<and> \<not> P x None} \<and>
+    (\<forall>x. \<exists>y. P x y \<and> (\<forall>c v. y = Some (c, v) \<longrightarrow> 0 \<le> c \<and> c \<le> 1))\<close>
+    by (subst finite_map_choice_iff, force)
+  finally show ?thesis .
+qed
+
+
+(* TODO: define out the implicit function here *)
 lemma le_iff_sepadd_helper:
   fixes a b :: \<open>('a,'b) pheap\<close>
   shows \<open>(a \<le> b) = (\<exists>c. a ## c \<and> b = a + c)\<close>
   apply (intro iffI conjI)
-    prefer 2
-    apply (clarsimp simp add: pheap_le_iff less_eq_perm_def)
-    apply (case_tac \<open>a \<bullet> x\<close>)
-     apply clarsimp
-   apply clarsimp
-    apply (drule spec, drule spec, drule spec, drule mp, blast)
-    apply clarsimp
-
-  apply (simp add: less_eq_pheap_def disjoint_pheap_def minus_pheap_def plus_pheap_def)
-   apply (subst Abs_pheap_inverse, force simp add: Rep_minus_in_bounds)
-   apply (subst Abs_pheap_inverse, force simp add: Rep_minus_in_bounds)
-   apply (subst eq_Abs_pheap_iff)
-     apply force
-    apply (metis Rep_add_in_bounds minus_pheap.rep_eq)
-   apply (clarsimp simp add: fun_eq_iff plus_perm_def minus_perm_SomeR_eq_Some split: option.splits)
+   prefer 2
+   apply (force simp add: pheap_le_iff less_eq_perm_def plus_perm_def app_pheap_bounded_permD
+      split: option.splits)
+  apply (clarsimp simp add: pheap_le_iff pheap_eq_iff less_eq_perm_def plus_perm_def
+      disjoint_pheap_def split: option.splits)
+  apply (simp add: all_conj_distrib[symmetric])
+  apply (subst ex_pheap_for_all_vars_iff)
   apply (rule conjI)
-    apply (force simp add: max_def Rep_pheap_bounded_permD)
-   apply clarsimp
-   apply (intro conjI impI allI)
-     apply (metis not_Some_prod_eq; elim exE conjE)
-    apply clarsimp
-    defer
-    apply force
-
-   apply (simp add: pheap_eq_iff perm_eq_plus_minus_iff)
-  apply (clarsimp simp add: app_pheap_def less_eq_pheap_def)
-  apply (metis not_None_eq order_refl)
-  oops
+   apply (rule rev_finite_subset[of \<open>dom_pheap b\<close>]; force simp add: all_conj_distrib dom_pheap_def)
+  apply (clarsimp simp add: all_conj_distrib split_option_ex)
+  apply (case_tac \<open>app_pheap a x\<close>; case_tac \<open>app_pheap b x\<close>)
+     apply force
+    apply (force simp add: app_pheap_bounded_permD)
+   apply (force simp add: app_pheap_bounded_permD)
+  apply clarsimp
+  apply (drule spec, drule spec, drule spec, drule mp, assumption)
+  apply (clarsimp simp add: not_le)
+  apply (rename_tac ac v bc)
+  apply (drule_tac x=\<open>bc - ac\<close> in spec, drule mp, force)
+  apply (simp add: app_pheap_bounded_permD add_increasing2 diff_le_eq leD)
+  done
 
 instance
   apply standard
-                   apply (simp add: less_pheap_def; fail)
-                  apply (simp add: less_eq_pheap_def; fail)
-                 apply (force intro: map_le_trans simp add: less_eq_pheap_def)
-
-                apply (clarsimp dest: map_le_antisym simp add: less_eq_pheap_def Rep_pheap_inject)
-                apply (rule iffD1[OF Rep_pheap_inject], rule ext)
-                apply (rename_tac ma mb x)
-                apply (drule_tac x=x in spec, drule_tac x=x in spec)
-                apply (case_tac \<open>Rep_pheap ma x\<close>; force)
-
-               apply (simp add: less_eq_pheap_def bot_pheap_def Abs_pheap_inverse; fail)
+                apply (clarsimp simp add: less_eq_pheap_def less_eq_perm_def pheap_eq_iff)
+  subgoal sorry
+               apply (simp add: less_eq_pheap_def; fail)
               apply (force simp add: disjoint_pheap_def)
-             apply (force simp add: disjoint_pheap_def zero_pheap_def Abs_pheap_inverse)
-(* disjoint_add_leftL *)
-            apply (simp add: disjoint_pheap_def plus_pheap_def)
-            apply (subst (asm) Abs_pheap_inverse, clarsimp)
-             apply (rule conjI)
-              apply (rule_tac B=\<open>dom_pheap b \<union> dom_pheap c\<close> in rev_finite_subset, force)
-              apply (force simp add: dom_pheap_def split: option.splits)
-             apply (clarsimp split: option.splits,
-      force dest: Rep_pheap_bounded_permD intro!: add_nonneg_nonneg)
-            apply clarsimp
-            apply (case_tac \<open>Rep_pheap c x\<close>)
-             apply (force split: option.splits)
-            apply clarsimp
-            apply (drule spec2, drule spec, drule mp, blast)
-            apply (drule spec2, drule spec, drule mp, blast)
-            apply clarsimp
-            apply (meson Rep_pheap_bounded_permD(1) add_left_mono le_add_same_cancel1 order_trans)
-(* disjoint_add_left_commute *)
-           apply (simp add: disjoint_pheap_def plus_pheap_def)
-           apply (subst (asm) Abs_pheap_inverse, clarsimp)
-            apply (rule conjI)
-             apply (rule_tac B=\<open>dom_pheap a \<union> dom_pheap c\<close> in rev_finite_subset, force)
-             apply (force simp add: dom_pheap_def split: option.splits)
-            apply (clarsimp split: option.splits,
-      force dest: Rep_pheap_bounded_permD intro!: add_nonneg_nonneg)
-           apply (subst Abs_pheap_inverse, clarsimp)
-            apply (rule conjI)
-             apply (rule_tac B=\<open>dom_pheap a \<union> dom_pheap b \<union> dom_pheap c\<close> in rev_finite_subset, force)
-             apply (force simp add: dom_pheap_def split: option.splits)
-            apply (force dest: Rep_pheap_bounded_permD split: prod.splits option.splits if_splits)
-           apply clarsimp
-           apply (case_tac \<open>Rep_pheap b x\<close>; case_tac \<open>Rep_pheap c x\<close>)
-              apply force
-             apply force
-            apply force
-           apply (clarsimp split: if_splits)
-            apply (drule spec2, drule spec, drule mp, blast)
-           apply (drule spec2, drule spec, drule mp, blast)
-           apply force
+             apply (force simp add: disjoint_pheap_def)
+  subgoal
+    apply (simp add: disjoint_pheap_def plus_pheap_def)
+    apply (subst (asm) Abs_pheap_inverse)
+     apply (force simp add: Rep_add_in_bounds)
+    sorry
+  subgoal
+    apply (simp add: disjoint_pheap_def plus_pheap_def)
+    apply (subst (asm) Abs_pheap_inverse)
+     apply (force simp add: Rep_add_in_bounds)
+    sorry
+          apply (simp add: le_iff_sepadd_helper; fail)
+  subgoal
+    apply (clarsimp simp add: pheap_eq_iff plus_perm_def split: option.splits)
+    apply (simp add: disjoint_pheap.rep_eq; fail)
+    done
+  subgoal
+    apply (clarsimp simp add: pheap_eq_iff plus_perm_def split: option.splits)
+    apply (simp add: add.commute disjoint_pheap.rep_eq)
+    done
+       apply (simp add: pheap_eq_iff plus_perm_def split: option.splits; fail)
+  done
 
-          apply (simp add: pheap_eq_iff)
+end
 
-          apply (simp add: less_eq_pheap_def plus_pheap_def disjoint_pheap_def split: option.splits)
-          apply (rule iffI)
-           apply (subst eq_Abs_pheap_iff)
-             apply (rule_tac B=\<open>dom_pheap a \<union> dom_pheap c\<close> in rev_finite_subset;
-      force simp add: dom_pheap_def)
-            apply (simp split: option.splits,
-      force dest: Rep_pheap_bounded_permD intro!: add_nonneg_nonneg)
 
-           apply (rule_tac x=\<open>b - a\<close> in exI)
-           apply (clarsimp simp add: fun_eq_iff minus_pheap_def split: option.splits)
-  apply (simp add: Abs_pheap_inverse)
+instantiation pheap :: (type,type) cancel_seplogic
+begin
 
-  oops
-         apply (simp add: disjoint_pheap_def plus_pheap_def Abs_pheap_inverse; fail)
+instance
+  apply standard
+      apply (clarsimp simp add: pheap_eq_iff plus_perm_def minus_perm_def split: option.splits)
+  sorry
+(*
         apply (fastforce dest: map_add_comm simp add: disjoint_pheap_def plus_pheap_def)
-           apply (simp add: plus_pheap_def zero_pheap_def Abs_pheap_inverse Rep_pheap_inverse; fail)
+           apply (simp add: plus_pheap_def zero_pheap_def Abs_pheap_inverse app_pheap_inverse; fail)
       apply (simp add: plus_pheap_def minus_pheap_def disjoint_pheap_def
-      Abs_pheap_inverse Rep_pheap_inverse
+      Abs_pheap_inverse app_pheap_inverse
       disjoint_dom_map_add_restrict_distrib Int_commute dom_disjoint_restrict_eq; fail)
      apply (simp add: plus_pheap_def minus_pheap_def disjoint_pheap_def
       Abs_pheap_inverse Int_commute; fail)
@@ -766,27 +798,33 @@ instance
   apply (simp add: minus_pheap_def plus_pheap_def disjoint_pheap_def eq_Abs_pheap_iff Abs_pheap_inverse,
       metis Compl_Int dom_disjoint_restrict_eq inf_bot_right map_restrict_un_eq; fail)
   done
+*)
 
 end
 
 
 lift_definition restrict_pheap :: \<open>('a,'b) pheap \<Rightarrow> 'a set \<Rightarrow> ('a,'b) pheap\<close>
-  (infixl \<open>|`\<^sub>h\<close> 110) is \<open>(|`)\<close>
-  by simp
+  (infixl \<open>|`\<^sub>p\<close> 110) is \<open>(|`)\<close>
+  by (simp, metis domI domIff restrict_in restrict_out)
 
-lemma restrict_pheap_un_eq: \<open>h |`\<^sub>h (A \<union> B) = h |`\<^sub>h A + h |`\<^sub>h B\<close>
-  by (simp add: restrict_pheap_def plus_pheap_def Abs_pheap_inverse map_restrict_un_eq)
+lemma restrict_app_pheap_iff[simp]:
+  \<open>(a |`\<^sub>p A) \<bullet> x = (if x \<in> A then a \<bullet> x else None)\<close>
+  by (simp add: restrict_pheap.rep_eq)
+
+(* not true:
+lemma restrict_pheap_un_eq: \<open>h |`\<^sub>p (A \<union> B) = h |`\<^sub>p A + h |`\<^sub>p B\<close>
+  by (simp add: pheap_eq_iff)
+*)
 
 lemma restrict_pheap_add_eq[simp]:
-  \<open>(a + b) |`\<^sub>h A = a |`\<^sub>h A + b |`\<^sub>h A\<close>
-  by (simp add: disjoint_pheap_def restrict_pheap_def plus_pheap_def Abs_pheap_inverse
-      Abs_pheap_inject, simp add: map_add_def restrict_map_def fun_eq_iff)
+  \<open>(a + b) |`\<^sub>p A = a |`\<^sub>p A + b |`\<^sub>p A\<close>
+  by (simp add: pheap_eq_iff)
 
-lemma dom_restrict_pheap_eq[simp]: \<open>dom_pheap (h |`\<^sub>h A) = dom_pheap h \<inter> A\<close>
+lemma dom_restrict_pheap_eq[simp]: \<open>dom_pheap (h |`\<^sub>p A) = dom_pheap h \<inter> A\<close>
   by (simp add: dom_pheap.rep_eq restrict_pheap.rep_eq)
 
 lemma dom_plus_pheap_eq[simp]: \<open>dom_pheap (h1 + h2) = dom_pheap h1 \<union> dom_pheap h2\<close>
-  by (simp add: dom_pheap.rep_eq plus_pheap.rep_eq sup_commute)
+  by (simp add: dom_pheap.rep_eq plus_perm_def dom_def set_eq_iff split: option.splits)
 
 lemma restrict_pheap_ge_dom_eq[simp]: \<open>dom_pheap h \<subseteq> A \<Longrightarrow> h |`\<^sub>h A = h\<close>
   by (simp add: dom_pheap.rep_eq restrict_pheap_def eq_Abs_pheap_iff,
@@ -805,7 +843,7 @@ lemma pheap_restrict_Compl_disjoint[simp]:
 lemma pheap_restrict_Compl_plus_eq[simp]:
   \<open>a |`\<^sub>h A + a |`\<^sub>h (- A) = a\<close>
   by (simp add: restrict_pheap_def disjoint_pheap_def plus_pheap_def
-      Abs_pheap_inverse Rep_pheap_inverse map_restrict_un_eq[symmetric] dom_subset_restrict_eq)
+      Abs_pheap_inverse app_pheap_inverse map_restrict_un_eq[symmetric] dom_subset_restrict_eq)
 
 lemma restrict_Coml_dom_eq[simp]:
   \<open>a |`\<^sub>h (- dom_pheap a) = 0\<close>
