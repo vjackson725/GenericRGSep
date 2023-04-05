@@ -431,7 +431,9 @@ definition plus_perm :: \<open>(rat \<times> 'a) option \<Rightarrow> (rat \<tim
   (infixl \<open>\<oplus>\<^sub>p\<close> 65) where
   \<open>plus_perm a b \<equiv> case b of
                     Some (c2, v2) \<Rightarrow>
-                      (case a of Some (c1, v1) \<Rightarrow> Some (min (c1+c2) 1, v1) | None \<Rightarrow> Some (c2, v2))
+                      (case a of
+                        Some (c1, v1) \<Rightarrow> Some (min (c1+c2) 1, v1)
+                        | None \<Rightarrow> Some (c2, v2))
                     | None \<Rightarrow> a\<close>
 
 lemma finite_dom_add[simp]:
@@ -669,6 +671,54 @@ instance
 end
 
 
+definition compl_perm :: \<open>(rat \<times> 'a) option \<Rightarrow> (rat \<times> 'a) option \<Rightarrow> (rat \<times> 'a) option\<close>
+  (infixl \<open>\<oslash>\<^sub>p\<close> 65) where
+  \<open>compl_perm a b \<equiv> case a of
+                      Some (c1, v1) \<Rightarrow>
+                        (case b of
+                          Some (c2, v2) \<Rightarrow>
+                            if c2 = c1
+                            then None
+                            else Some (c2 - c1, v2)
+                        | None \<Rightarrow> Some (c1, v1))
+                    | None \<Rightarrow> b\<close>
+
+lemma compl_pheap_eq[simp]:
+  \<open>None \<oslash>\<^sub>p b = b\<close>
+  \<open>a \<oslash>\<^sub>p None = a\<close>
+  \<open>Some (c, v1) \<oslash>\<^sub>p Some (c, v2) = None\<close>
+  \<open>c1 \<noteq> c2 \<Longrightarrow> Some (c1, v1) \<oslash>\<^sub>p Some (c2, v2) = Some (c2 - c1, v2)\<close>
+  by (force simp add: compl_perm_def split: option.splits)+
+
+
+lemma subheap_plus_compl_pheap_inverse:
+  \<open>a \<bullet> x \<subseteq>\<^sub>p b \<bullet> x \<Longrightarrow> (a \<bullet> x \<oplus>\<^sub>p (b \<bullet> x \<oslash>\<^sub>p a \<bullet> x)) \<subseteq>\<^sub>p b \<bullet> x\<close>
+  apply (clarsimp simp add: plus_perm_def compl_perm_def less_eq_perm_def split: option.splits)
+  apply (intro conjI impI allI)
+     apply force
+    apply force
+   apply (drule_tac spec, drule_tac spec, drule_tac mp, blast)
+  apply clarsimp
+  done
+
+lemma app_Abs_compl_pheap[simp]:
+  \<open>\<forall>x ca v. app_pheap a x = Some (ca, v) \<longrightarrow> (\<exists>cb\<ge>ca. app_pheap b x = Some (cb, v)) \<Longrightarrow>
+    Abs_pheap (\<lambda>x. a \<bullet> x \<oslash>\<^sub>p b \<bullet> x) \<bullet> x = a \<bullet> x \<oslash>\<^sub>p b \<bullet> x\<close>
+  apply (subst Abs_pheap_inverse)
+   apply clarsimp
+   apply (rule conjI)
+    apply (rule rev_finite_subset[of \<open>dom_pheap b\<close>];
+      force simp add: compl_perm_def dom_pheap_def less_eq_perm_def split: option.splits)
+   apply (clarsimp simp add: compl_perm_def dom_pheap_def less_eq_perm_def split: option.splits)
+   apply (intro conjI allI)
+     apply (force simp add: app_pheap_bounded_permD)
+    apply (force simp add: app_pheap_bounded_permD)
+   apply (metis app_pheap_bounded_permD cancel_comm_monoid_add_class.diff_zero diff_mono
+      option.inject prod.inject)
+  apply (force simp add: app_pheap_bounded_permD)
+  done
+
+
 instantiation pheap :: (type,type) seplogic
 begin
 
@@ -714,8 +764,6 @@ proof -
   finally show ?thesis .
 qed
 
-
-(* TODO: define out the implicit function here *)
 lemma le_iff_sepadd_helper:
   fixes a b :: \<open>('a,'b) pheap\<close>
   shows \<open>(a \<le> b) = (\<exists>c. a ## c \<and> b = a + c)\<close>
@@ -723,23 +771,11 @@ lemma le_iff_sepadd_helper:
    prefer 2
    apply (force simp add: pheap_le_iff less_eq_perm_def plus_perm_def app_pheap_bounded_permD
       split: option.splits)
-  apply (clarsimp simp add: pheap_le_iff pheap_eq_iff less_eq_perm_def plus_perm_def
-      disjoint_pheap_def split: option.splits)
-  apply (simp add: all_conj_distrib[symmetric])
-  apply (subst ex_pheap_for_all_vars_iff)
-  apply (rule conjI)
-   apply (rule rev_finite_subset[of \<open>dom_pheap b\<close>]; force simp add: all_conj_distrib dom_pheap_def)
-  apply (clarsimp simp add: all_conj_distrib split_option_ex)
-  apply (case_tac \<open>app_pheap a x\<close>; case_tac \<open>app_pheap b x\<close>)
-     apply force
-    apply (force simp add: app_pheap_bounded_permD)
-   apply (force simp add: app_pheap_bounded_permD)
-  apply clarsimp
-  apply (drule spec, drule spec, drule spec, drule mp, assumption)
-  apply (clarsimp simp add: not_le)
-  apply (rename_tac ac v bc)
-  apply (drule_tac x=\<open>bc - ac\<close> in spec, drule mp, force)
-  apply (simp add: app_pheap_bounded_permD add_increasing2 diff_le_eq leD)
+  apply (clarsimp simp add: pheap_le_iff pheap_eq_iff disjoint_pheap_def less_eq_pheap_def
+      less_eq_perm_def split: option.splits)
+  apply (rule_tac x=\<open>Abs_pheap (\<lambda>x. a \<bullet> x \<oslash>\<^sub>p b \<bullet> x)\<close> in exI)
+  apply simp
+  apply (force simp add: compl_perm_def plus_perm_def app_pheap_bounded_permD split: option.splits)
   done
 
 instance
