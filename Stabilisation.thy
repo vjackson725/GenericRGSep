@@ -740,71 +740,47 @@ lemma bot_pheap_eq_zero_pheap:
   \<open>(\<bottom> :: ('a,'b) pheap) = 0\<close>
   by (simp add: zero_pheap.abs_eq bot_pheap.abs_eq)
 
-
-lemma ex_pheap_for_all_vars_iff:
-  fixes c :: \<open>('a,'b) pheap\<close>
-    and P :: \<open>'a \<Rightarrow> (rat \<times> 'b) option \<Rightarrow> bool\<close>
-  shows
-    \<open>(\<exists>c. \<forall>x. P x (c \<bullet> x)) \<longleftrightarrow>
-      finite {x. (\<exists>y. P x (Some y) \<and> 0 \<le> fst y \<and> fst y \<le> 1) \<and> \<not> P x None} \<and>
-      (\<forall>x. \<exists>y. P x y \<and> (\<forall>c v. y = Some (c, v) \<longrightarrow> 0 \<le> c \<and> c \<le> 1))\<close>
-proof -
-  have \<open>(\<exists>c::('a,'b) pheap. \<forall>x. P x (c \<bullet> x)) \<longleftrightarrow>
-          (\<exists>f::'a \<Rightarrow> (rat \<times> 'b) option.
-            \<forall>x. P x (f x) \<and> finite (dom f) \<and> (\<forall>c v. f x = Some (c, v) \<longrightarrow> 0 \<le> c \<and> c \<le> 1))\<close>
-    by (metis eq_app_pheap_iff(1))
-  also have \<open>... \<longleftrightarrow>
-      (\<exists>f. finite (dom f) \<and> (\<forall>x. P x (f x) \<and>
-        (\<forall>c v. f x = Some (c, v) \<longrightarrow> 0 \<le> c \<and> c \<le> 1)))\<close>
-    by blast
-  also have \<open>... \<longleftrightarrow>
-    finite {x. (\<exists>y. P x (Some y) \<and> 0 \<le> fst y \<and> fst y \<le> 1) \<and> \<not> P x None} \<and>
-    (\<forall>x. \<exists>y. P x y \<and> (\<forall>c v. y = Some (c, v) \<longrightarrow> 0 \<le> c \<and> c \<le> 1))\<close>
-    by (subst finite_map_choice_iff, force)
-  finally show ?thesis .
-qed
-
 lemma le_iff_sepadd_helper:
   fixes a b :: \<open>('a,'b) pheap\<close>
   shows \<open>(a \<le> b) = (\<exists>c. a ## c \<and> b = a + c)\<close>
-  apply (intro iffI conjI)
-   prefer 2
-   apply (force simp add: pheap_le_iff less_eq_perm_def plus_perm_def app_pheap_bounded_permD
-      split: option.splits)
-  apply (clarsimp simp add: pheap_le_iff pheap_eq_iff disjoint_pheap_def less_eq_pheap_def
+  apply (rule iffI)
+   apply (clarsimp simp add: pheap_le_iff pheap_eq_iff disjoint_pheap_def less_eq_pheap_def
       less_eq_perm_def split: option.splits)
-  apply (rule_tac x=\<open>Abs_pheap (\<lambda>x. a \<bullet> x \<oslash>\<^sub>p b \<bullet> x)\<close> in exI)
-  apply simp
-  apply (force simp add: compl_perm_def plus_perm_def app_pheap_bounded_permD split: option.splits)
+   apply (rule_tac x=\<open>Abs_pheap (\<lambda>x. a \<bullet> x \<oslash>\<^sub>p b \<bullet> x)\<close> in exI)
+   apply simp
+   apply (force simp add: compl_perm_def plus_perm_def app_pheap_bounded_permD split: option.splits)
+  apply (force simp add: pheap_le_iff less_eq_perm_def plus_perm_def app_pheap_bounded_permD
+      split: option.splits)
   done
 
 instance
   apply standard
-                apply (clarsimp simp add: less_eq_pheap_def less_eq_perm_def pheap_eq_iff)
-  subgoal sorry
-               apply (simp add: less_eq_pheap_def; fail)
-              apply (force simp add: disjoint_pheap_def)
-             apply (force simp add: disjoint_pheap_def)
+           apply (clarsimp simp add: less_eq_pheap_def less_eq_perm_def pheap_eq_iff)
+           apply (rename_tac a b x)
+           apply (case_tac \<open>app_pheap a x\<close>; case_tac \<open>app_pheap b x\<close>; force)
+          apply (simp add: less_eq_pheap_def; fail)
+         apply (force simp add: disjoint_pheap_def)
+        apply (force simp add: disjoint_pheap_def)
   subgoal
-    apply (simp add: disjoint_pheap_def plus_pheap_def)
-    apply (subst (asm) Abs_pheap_inverse)
-     apply (force simp add: Rep_add_in_bounds)
-    sorry
-  subgoal
-    apply (simp add: disjoint_pheap_def plus_pheap_def)
-    apply (subst (asm) Abs_pheap_inverse)
-     apply (force simp add: Rep_add_in_bounds)
-    sorry
-          apply (simp add: le_iff_sepadd_helper; fail)
-  subgoal
-    apply (clarsimp simp add: pheap_eq_iff plus_perm_def split: option.splits)
-    apply (simp add: disjoint_pheap.rep_eq; fail)
+    apply (clarsimp simp add: disjoint_pheap_def plus_perm_def split: option.splits)
+    apply (drule_tac x=x in spec)+
+    apply (meson add_le_cancel_left app_pheap_bounded_permD(1) le_add_same_cancel1 order_trans)
     done
+  subgoal
+    apply (clarsimp simp add: disjoint_pheap_def)
+    apply (drule_tac x=x in spec)+
+    apply (simp add: plus_perm_def split: option.splits prod.splits)
+    done
+     apply (simp add: le_iff_sepadd_helper; fail)
   subgoal
     apply (clarsimp simp add: pheap_eq_iff plus_perm_def split: option.splits)
     apply (simp add: add.commute disjoint_pheap.rep_eq)
     done
-       apply (simp add: pheap_eq_iff plus_perm_def split: option.splits; fail)
+  subgoal
+    apply (clarsimp simp add: disjoint_pheap_def pheap_eq_iff)
+    apply (force simp add: plus_perm_def eq_iff min_le_iff_disj split: option.splits)
+    done
+  apply (simp add: pheap_eq_iff; fail)
   done
 
 end
