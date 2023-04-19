@@ -2,6 +2,56 @@ theory StableLang
   imports Stabilisation "HOL-Library.BNF_Corec"
 begin
 
+datatype perm = W | R | D
+
+lemma perm_insert_normalise[simp]:
+  \<open>insert R (insert W A) = insert W (insert R A)\<close>
+  \<open>insert D (insert W A) = insert W (insert D A)\<close>
+  \<open>insert D (insert R A) = insert R (insert D A)\<close>
+  by fast+
+
+definition perm_is :: \<open>rat \<times> rat \<Rightarrow> perm set\<close> where
+  \<open>perm_is p =
+    (if fst p \<ge> 1 \<and> snd p \<ge> 1 then {D} else {}) \<union>
+    (if fst p \<ge> 0 then {R} else {}) \<union>
+    (if snd p \<ge> 0 then {R} else {})\<close>
+
+lemmas perm_is_simps[simp] = perm_is_def
+
+
+lemma
+  fixes P :: \<open>(rat \<times> rat) set\<close>
+  assumes \<open>finite P\<close>
+  assumes \<open>(\<forall>x y. (x,y) \<in> P \<longrightarrow> 0 < x \<and> x \<le> 1)\<close>
+  assumes \<open>(\<forall>x y. (x,y) \<in> P \<longrightarrow> 0 \<le> y \<and> y \<le> 1)\<close>
+  assumes \<open>sum fst P = 1\<close> \<open>sum snd P = 1\<close>
+  and \<open>(1,y) \<in> P\<close>
+  shows \<open>y = 1\<close>
+proof -
+  have \<open>sum fst (P - {(1,y)}) = 0\<close>
+    using assms(1,4,6)
+    by (simp add: sum_diff1)
+  then have \<open>P = {(1,y)}\<close>
+    using assms(1,2,6)
+    by (metis DiffD1 finite_Diff insert_Diff less_numeral_extra(3) prod.collapse sum_pos)
+  then show ?thesis
+    using assms
+    by simp
+qed
+
+lemma
+  fixes P :: \<open>(rat \<times> rat) set\<close>
+  assumes \<open>finite P\<close>
+  assumes \<open>P \<noteq> {}\<close>
+  shows \<open>(\<forall>p\<in>P. fst p + sum fst (P - {p}) = 1) \<longleftrightarrow> sum fst P = 1\<close>
+  using assms
+  by (force simp add: sum_diff1)
+
+
+
+
+
+
 notation(input)
   plus (infixl \<open>\<parallel>\<close> 65)
 

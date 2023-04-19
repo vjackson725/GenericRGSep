@@ -1,111 +1,6 @@
 theory SepLogic
-  imports Main
+  imports Util
 begin
-
-unbundle lattice_syntax
-
-section \<open>Helpers\<close>
-
-lemma bool_left_mp[simp]: \<open>P \<and> (P \<longrightarrow> Q) \<longleftrightarrow> P \<and> Q\<close>
-  by blast
-
-lemma bool_right_mp[simp]: \<open>(P \<longrightarrow> Q) \<and> P \<longleftrightarrow> P \<and> Q\<close>
-  by blast
-
-lemma exsome_conj_some_imp:
-  \<open>(\<exists>x. y = Some x) \<and> (\<forall>x. y = Some x \<longrightarrow> P x) \<longleftrightarrow> (\<exists>x. y = Some x \<and> P x)\<close>
-  by blast
-
-lemma prod_eq_decompose:
-  \<open>a = (b,c) \<longleftrightarrow> fst a = b \<and> snd a = c\<close>
-  \<open>(b,c) = a \<longleftrightarrow> fst a = b \<and> snd a = c\<close>
-  by force+
-
-lemma upt_add_eq_append:
-  assumes \<open>i \<le> j\<close> \<open>j \<le> k\<close>
-  shows \<open>[i..<k] = [i..<j] @ [j..<k]\<close>
-  using assms
-proof (induct k arbitrary: i j)
-  case 0 then show ?case by simp
-next
-  case (Suc k)
-  show ?case
-  proof (cases \<open>j \<le> k\<close>)
-    case True
-    have \<open>[i..<Suc k] = [i..<k] @ [k]\<close>
-      using Suc.prems True
-      by simp
-    also have \<open>... = [i..<j] @ [j..<k] @ [k]\<close>
-      using Suc.prems True
-      by (subst Suc.hyps[where j=j]; simp)
-    also have \<open>... = [i..<j] @ [j..<Suc k]\<close>
-      using True
-      by simp
-    finally show ?thesis .
-  next
-    case False
-    then show ?thesis
-      using Suc.prems
-      by (clarsimp simp add: le_Suc_eq)
-  qed
-qed
-
-lemmas bij_betw_disjoint_insert =
-  bij_betw_disjoint_Un[where A=\<open>{b}\<close> and C=\<open>{d}\<close> for b d, simplified]
-
-lemma bij_betw_insert_ignore:
-  \<open>bij_betw f B D \<Longrightarrow> b \<in> B \<Longrightarrow> d \<in> D \<Longrightarrow> bij_betw f (insert b B) (insert d D)\<close>
-  by (simp add: insert_absorb)
-
-lemma bij_betw_singleton:
-  \<open>f a = b \<Longrightarrow> bij_betw f {a} {b}\<close>
-  by (simp add: bij_betw_def)
-
-lemmas bij_betw_combine_insert =
-  bij_betw_combine[where A=\<open>{b}\<close> and B=\<open>{d}\<close> for b d, simplified]
-
-
-lemma map_le_restrict_eq: \<open>ma \<subseteq>\<^sub>m mb \<Longrightarrow> mb |` dom ma = ma\<close>
-  by (rule ext, metis domIff map_le_def restrict_map_def)
-
-lemma map_restrict_un_eq:
-  \<open>m |` (A \<union> B) = m |` A ++ m |` B\<close>
-  by (force simp add: restrict_map_def map_add_def split: option.splits)
-
-lemma map_le_split:
-  assumes \<open>ma \<subseteq>\<^sub>m mb\<close>
-  shows \<open>mb = ma ++ mb |` (- dom ma)\<close>
-  using assms
-  by (subst map_le_restrict_eq[OF assms, symmetric], force simp add: map_restrict_un_eq[symmetric])
-
-lemma map_disjoint_dom_cancel_right:
-  assumes disjoint_ac: \<open>dom a \<inter> dom c = {}\<close>
-    and disjoint_ac: \<open>dom b \<inter> dom c = {}\<close>
-  shows \<open>(a ++ c = b ++ c) \<longleftrightarrow> a = b\<close>
-  using assms
-  by (metis (no_types, lifting) Int_Un_distrib Int_commute Un_Int_eq(3)
-      disjoint_ac dom_map_add map_add_comm map_le_iff_map_add_commute map_le_restrict_eq)
-
-lemma map_disjoint_dom_cancel_left:
-  assumes disjoint_ac: \<open>dom a \<inter> dom b = {}\<close>
-    and disjoint_ac: \<open>dom a \<inter> dom c = {}\<close>
-  shows \<open>(a ++ b = a ++ c) \<longleftrightarrow> b = c\<close>
-  using assms
-  by (metis (no_types, lifting) Int_Un_distrib Int_commute Un_Int_eq(3)
-      disjoint_ac dom_map_add map_add_comm map_le_iff_map_add_commute map_le_restrict_eq)
-
-subsection \<open>Sets\<close>
-
-lemma disjoint_equiv_iff_eq:
-  \<open>(\<forall>C. A \<inter> C = {} \<longleftrightarrow> B \<inter> C = {}) \<longleftrightarrow> A = B\<close>
-  by blast
-
-lemma surj_disjoint_equiv_iff_eq:
-  \<open>surj f \<Longrightarrow> (\<forall>x. A \<inter> f x = {} \<longleftrightarrow> B \<inter> f x = {}) \<longleftrightarrow> A = B\<close>
-  by (metis disjoint_equiv_iff_eq surjD)
-
-
-
 
 section \<open>Predicate Logic\<close>
 
@@ -134,7 +29,6 @@ lemma pred_abac_eq_abc:
   fixes A B C :: \<open>'a :: lattice\<close>
   shows \<open>(A \<sqinter> B) \<sqinter> A \<sqinter> C = A \<sqinter> B \<sqinter> C\<close>
   by (simp add: inf.absorb1)
-
 
 section \<open> mfault \<close>
 
