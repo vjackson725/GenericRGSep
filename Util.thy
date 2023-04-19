@@ -81,6 +81,18 @@ lemma bij_betw_singleton:
 lemmas bij_betw_combine_insert =
   bij_betw_combine[where A=\<open>{b}\<close> and B=\<open>{d}\<close> for b d, simplified]
 
+subsection \<open> Options \<close>
+
+lemma not_eq_None[simp]: \<open>None \<noteq> x \<longleftrightarrow> (\<exists>z. x = Some z)\<close>
+  using option.exhaust_sel by auto
+
+text \<open> We need to do this with cases to avoid infinite simp loops \<close>
+lemma option_eq_iff:
+  \<open>x = y \<longleftrightarrow> (case x of
+                None \<Rightarrow> (case y of None \<Rightarrow> True | Some _ \<Rightarrow> False)
+              | Some x' \<Rightarrow> (case y of None \<Rightarrow> False | Some y' \<Rightarrow> x' = y'))\<close>
+  by (force split: option.splits)
+
 subsection \<open> Partial Maps \<close>
 
 lemma map_le_restrict_eq: \<open>ma \<subseteq>\<^sub>m mb \<Longrightarrow> mb |` dom ma = ma\<close>
