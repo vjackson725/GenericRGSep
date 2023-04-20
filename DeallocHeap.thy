@@ -74,7 +74,7 @@ lemma Abs_dheap_inverse_app[simp]:
   \<open>Abs_dheap (app_dheap h) \<bullet> x = h \<bullet> x\<close>
   by (simp add: app_dheap_inverse)
 
-lemma app_dheap_bounded_permD:
+lemma app_dheap_bounded_iff:
   \<open>a \<bullet> x = Some ((p,s), v) \<Longrightarrow> 1 \<le> p \<longleftrightarrow> p = 1\<close>
   \<open>a \<bullet> x = Some ((p,s), v) \<Longrightarrow> s \<le> 0 \<longleftrightarrow> s = 0\<close>
   \<open>a \<bullet> x = Some ((p,s), v) \<Longrightarrow> 1 \<le> s \<longleftrightarrow> s = 1\<close>
@@ -126,12 +126,12 @@ subsubsection \<open> Map \<close>
 text \<open>change the values of a dheap without changing the domain\<close>
 
 lift_definition map_dheap :: \<open>(rat \<Rightarrow> rat) \<Rightarrow> (rat \<Rightarrow> rat) \<Rightarrow> ('a \<Rightarrow> 'b) \<Rightarrow> ('i,'a) dheap \<Rightarrow> ('i,'b) dheap\<close> is
-  \<open>\<lambda>fp fs fv h. \<lambda>x. map_option (\<lambda>((p,s),v). ((if fp p \<le> 0 then 1 else min 1 (fp p), max 0 (min 1 (fs s))), fv v)) (h x)\<close>
+  \<open>\<lambda>fp fs fv h. \<lambda>x. map_option (map_prod (map_prod (\<lambda>p. if fp p \<le> 0 then 1 else min 1 (fp p)) (\<lambda>s. max 0 (min 1 (fs s)))) fv) (h x)\<close>
   by (force simp add: dom_map_option)
 
 lemma map_app_dheap_eq:
   \<open>map_dheap fp fs fv a \<bullet> x =
-    map_option (\<lambda>((p,s),v). ((if fp p \<le> 0 then 1 else min 1 (fp p), max 0 (min 1 (fs s))), fv v)) (a \<bullet> x)\<close>
+    map_option (map_prod (map_prod (\<lambda>p. if fp p \<le> 0 then 1 else min 1 (fp p)) (\<lambda>s. max 0 (min 1 (fs s)))) fv) (a \<bullet> x)\<close>
   by (metis map_dheap.rep_eq)
 
 lemma map_app_dheap_eq_nice[simp]:
@@ -207,7 +207,39 @@ lemma restrict_sequence_right:
   \<open>(a \<triangleright> b) = (a \<triangleright> b |`\<^sub>d (- dom_dheap a))\<close>
   by (simp add: dheap_eq_iff dom_dheap_iff split: option.splits)
 
+
 section \<open>Operations on permissions\<close>
+
+subsection \<open> less than \<close>
+
+definition subperm_eq :: \<open>((rat \<times> rat) \<times> 'a) option \<Rightarrow> ((rat \<times> rat) \<times> 'a) option \<Rightarrow> bool\<close>
+  (infix \<open>\<subseteq>\<^sub>d\<close> 50) where
+  \<open>subperm_eq a b \<equiv> 
+    \<forall>pa sa v. a  = Some ((pa, sa), v) \<longrightarrow> (\<exists>pb\<ge>pa. \<exists>sb\<ge>sa. b = Some ((pb,sb), v))\<close>
+
+lemma subperm_eq_refl:
+  \<open>a \<subseteq>\<^sub>d a\<close>
+  by (simp add: subperm_eq_def)
+
+lemma subperm_eq_trans:
+  \<open>a \<subseteq>\<^sub>d b \<Longrightarrow> b \<subseteq>\<^sub>d c \<Longrightarrow> a \<subseteq>\<^sub>d c\<close>
+  by (clarsimp simp add: subperm_eq_def)
+
+lemma subperm_eq_antisym:
+  \<open>a \<subseteq>\<^sub>d b \<Longrightarrow> b \<subseteq>\<^sub>d a \<Longrightarrow> a = b\<close>
+  by (cases a; cases b; force simp add: subperm_eq_def)
+
+lemma None_subperm_eq[simp]:
+  \<open>None \<subseteq>\<^sub>d a\<close>
+  by (simp add: subperm_eq_def)
+
+lemma subperm_eq_None[simp]:
+  \<open>a \<subseteq>\<^sub>d None \<longleftrightarrow> a = None\<close>
+  using not_Some_prod_eq
+  by (fastforce simp add: subperm_eq_def)
+
+
+subsection \<open> plus \<close>
 
 definition plus_perm :: \<open>((rat \<times> rat) \<times> 'a) option \<Rightarrow> ((rat \<times> rat) \<times> 'a) option \<Rightarrow> ((rat \<times> rat) \<times> 'a) option\<close>
   (infixl \<open>\<oplus>\<^sub>d\<close> 65) where
@@ -409,7 +441,7 @@ lemma Rep_minus_in_bounds:
   assumes \<open>app_dheap a p \<ominus>\<^sub>d app_dheap b p = Some (c, v)\<close>
   shows \<open>c \<le> 1\<close> \<open>0 \<le> c\<close>
   using assms
-  by (clarsimp simp add: dom_def minus_dheap_def minus_perm_def app_dheap_bounded_permD
+  by (clarsimp simp add: dom_def minus_dheap_def minus_perm_def app_dheap_bounded_iff
       add_increasing2 diff_le_eq split: option.splits prod.splits if_splits)+
 
 lemma minus_plus_dheap[simp]:
@@ -422,24 +454,80 @@ lemma dheap_eq_plus_minus_iff:
   fixes a b :: \<open>('p,'v) dheap\<close>
   shows \<open>b = a + (b - a) \<longleftrightarrow> (\<forall>x. a \<bullet> x = None \<or> a \<bullet> x = b \<bullet> x)\<close>
   by (simp add: dheap_eq_iff perm_eq_plus_minus_iff,
-      metis app_dheap_bounded_permD(2) nle_le not_Some_prod_eq)
+      metis app_dheap_bounded_iff(2) nle_le not_Some_prod_eq)
 *)
 
 text \<open>Define less than and less than or equal on dheaps\<close>
-instantiation dheap :: (type, type) preorder
+
+instantiation dheap :: (type, type) order_bot
 begin
 
 definition less_eq_dheap :: \<open>('a,'b) dheap \<Rightarrow> ('a,'b) dheap \<Rightarrow> bool\<close> where
-  \<open>less_eq_dheap ma mb \<equiv>
-    \<forall>x. \<forall>pa sa v. ma \<bullet> x  = Some ((pa, sa), v) \<longrightarrow> (\<exists>pb\<ge>pa. \<exists>sb\<ge>sa. mb \<bullet> x = Some ((pb,sb), v))\<close>
+  \<open>less_eq_dheap ma mb \<equiv> \<forall>x. ma \<bullet> x \<subseteq>\<^sub>d mb \<bullet> x\<close>
+
+lemma less_eq_dheap_iff:
+  \<open>a \<le> b \<longleftrightarrow> (\<forall>x pa sa v. app_dheap a x = Some ((pa, sa), v) \<longrightarrow>
+                (\<exists>pb\<ge>pa. \<exists>sb\<ge>sa. app_dheap b x = Some ((pb, sb), v)))\<close>
+  by (simp add: less_eq_dheap_def subperm_eq_def)
+
 
 definition less_dheap :: \<open>('a,'b) dheap \<Rightarrow> ('a,'b) dheap \<Rightarrow> bool\<close> where
   \<open>less_dheap a b \<equiv> a \<le> b \<and> \<not>(b \<le> a)\<close>
 
+lift_definition bot_dheap :: \<open>('a,'b) dheap\<close> is \<open>Map.empty\<close>
+  by simp
+
+lemma app_bot_dheap[simp]:
+  \<open>\<bottom> \<bullet> x = None\<close>
+  by (simp add: bot_dheap.rep_eq)
+
 instance
-  by standard (simp add: less_dheap_def less_eq_dheap_def; meson order.trans)+
+  apply standard
+      apply (force simp add: less_dheap_def)
+     apply (force simp add: less_eq_dheap_def intro: subperm_eq_refl)
+    apply (force dest: subperm_eq_trans simp add: less_eq_dheap_def)
+   apply (force dest: subperm_eq_antisym simp add: less_eq_dheap_def dheap_eq_iff)
+  apply (force simp add: less_eq_dheap_def)
+  done
 
 end
+
+lemma subperm_eq_restrictL[simp]: \<open>(a |`\<^sub>d A) \<bullet> x \<subseteq>\<^sub>d b \<bullet> x \<longleftrightarrow> (x \<in> A \<longrightarrow> a \<bullet> x \<subseteq>\<^sub>d b \<bullet> x)\<close>
+  by simp
+
+lemma subperm_eq_restrictR[simp]: \<open>a \<bullet> x \<subseteq>\<^sub>d (b |`\<^sub>d B) \<bullet> x \<longleftrightarrow> (if x \<in> B then a \<bullet> x \<subseteq>\<^sub>d b \<bullet> x else a \<bullet> x = None)\<close>
+  by (simp add: dom_dheap_def domIff)
+
+lemma subperm_eq_seqL[simp]: \<open>(a1 \<triangleright> a2) \<bullet> x \<subseteq>\<^sub>d b \<bullet> x \<longleftrightarrow> a1 \<bullet> x \<subseteq>\<^sub>d b \<bullet> x \<and> (a1 \<bullet> x = None \<longrightarrow> a2 \<bullet> x \<subseteq>\<^sub>d b \<bullet> x)\<close>
+  by (simp add: split: option.splits)
+
+lemma subperm_eq_seqR[simp]: \<open>a \<bullet> x \<subseteq>\<^sub>d (b1 \<triangleright> b2) \<bullet> x \<longleftrightarrow>
+                        (if b1 \<bullet> x = None then a \<bullet> x \<subseteq>\<^sub>d b2 \<bullet> x else a \<bullet> x \<subseteq>\<^sub>d b1 \<bullet> x)\<close>
+  by (clarsimp split: option.splits)
+
+
+lemma le_map_dheapL:
+  \<open>map_dheap fp fs fv a \<le> a \<longleftrightarrow>
+  (\<forall>x p s v. app_dheap a x = Some ((p, s), v) \<longrightarrow>
+    min 1 (fp p) \<le> p \<and> (fp p \<le> 0 \<longrightarrow> 1 \<le> p) \<and>
+    min 1 (fs s) \<le> s \<and> fv v = v)\<close>
+proof -
+  have helper1:
+    \<open>\<And>A P Q R. (A \<longrightarrow> P \<and> Q) \<and> (\<not> A \<longrightarrow> P \<and> R) \<longleftrightarrow> P \<and> (A \<longrightarrow> Q) \<and> (\<not> A \<longrightarrow> R)\<close>
+    by blast
+  have helper2:
+    \<open>\<And>A P Q R. (A \<longrightarrow> Q \<and> P) \<and> (\<not> A \<longrightarrow> R \<and> P) \<longleftrightarrow> P \<and> (A \<longrightarrow> Q) \<and> (\<not> A \<longrightarrow> R)\<close>
+    by blast
+  have helper3:
+    \<open>\<And>A x y z. (A \<longrightarrow> x = y) \<and> (\<not> A \<longrightarrow> z = x) \<longleftrightarrow> x = (if A then y else z)\<close>
+    by force
+  show ?thesis
+    apply (clarsimp simp add: less_eq_dheap_def map_app_dheap_eq subperm_eq_def)
+    apply (rule all_cong1, case_tac \<open>a \<bullet> x\<close>, force)
+    apply (clarsimp simp add: helper1 helper2 helper3 app_dheapD)
+    apply force
+    done
+qed
 
 (*
 definition compl_perm :: \<open>(rat \<times> 'a) option \<Rightarrow> (rat \<times> 'a) option \<Rightarrow> (rat \<times> 'a) option\<close>
@@ -482,11 +570,11 @@ lemma app_Abs_compl_dheap[simp]:
       force simp add: compl_perm_def dom_dheap_def less_eq_perm_def split: option.splits)
    apply (clarsimp simp add: compl_perm_def dom_dheap_def less_eq_perm_def split: option.splits)
    apply (intro conjI allI)
-     apply (force simp add: app_dheap_bounded_permD)
-    apply (force simp add: app_dheap_bounded_permD)
-   apply (metis app_dheap_bounded_permD(1,2) cancel_comm_monoid_add_class.diff_zero diff_mono
+     apply (force simp add: app_dheap_bounded_iff)
+    apply (force simp add: app_dheap_bounded_iff)
+   apply (metis app_dheap_bounded_iff(1,2) cancel_comm_monoid_add_class.diff_zero diff_mono
       option.inject prod.inject)
-  apply (force simp add: app_dheap_bounded_permD)
+  apply (force simp add: app_dheap_bounded_iff)
   done
 *)
 
@@ -500,13 +588,6 @@ lemma app_zero_dheap[simp]:
   \<open>0 \<bullet> x = None\<close>
   by (simp add: zero_dheap.rep_eq)
 
-lift_definition bot_dheap :: \<open>('a,'b) dheap\<close> is \<open>Map.empty\<close>
-  by simp
-
-lemma app_bot_dheap[simp]:
-  \<open>\<bottom> \<bullet> x = None\<close>
-  by (simp add: bot_dheap.rep_eq)
-
 lemma bot_dheap_eq_zero_dheap:
   \<open>(\<bottom> :: ('a,'b) dheap) = 0\<close>
   by (simp add: zero_dheap.abs_eq bot_dheap.abs_eq)
@@ -518,9 +599,9 @@ lemma le_iff_sepadd_helper:
    apply (clarsimp simp add: dheap_eq_iff disjoint_dheap_def' less_eq_dheap_def split: option.splits)
 (*
    apply (rule_tac x=\<open>Abs_dheap (\<lambda>x. a \<bullet> x \<oslash>\<^sub>d b \<bullet> x)\<close> in exI)
-   apply (simp, force simp add: compl_perm_def plus_perm_def app_dheap_bounded_permD
+   apply (simp, force simp add: compl_perm_def plus_perm_def app_dheap_bounded_iff
       split: option.splits)
-  apply (force simp add: less_eq_dheap_def less_eq_perm_def plus_perm_def app_dheap_bounded_permD
+  apply (force simp add: less_eq_dheap_def less_eq_perm_def plus_perm_def app_dheap_bounded_iff
       split: option.splits)
   done
 *)
@@ -529,9 +610,6 @@ lemma le_iff_sepadd_helper:
 
 instance
   apply standard
-           apply (clarsimp simp add: less_eq_dheap_def dheap_eq_iff option_eq_iff)
-           apply (fastforce split: option.splits)
-          apply (simp add: less_eq_dheap_def; fail)
          apply (force simp add: disjoint_dheap_def')
         apply (force simp add: disjoint_dheap_def')
   subgoal
@@ -583,7 +661,7 @@ definition zerodom :: \<open>('a,'b) dheap \<Rightarrow> 'a set\<close> where
 lemma dom_dheap_sep:
   \<open>dom_dheap a = stabledom a \<union> zerodom a\<close>
   by (fastforce simp add: dom_dheap_def stabledom_def zerodom_def dom_def set_eq_iff
-      dest: app_dheap_bounded_permD)
+      dest: app_dheap_bounded_iff)
 
 lemma stabledom_subseteq_dom_dheap:
   \<open>stabledom a \<subseteq> dom_dheap a\<close>
@@ -597,7 +675,7 @@ lemma restrict_stabledom_eq[simp]:
 
 lemma seq_stabledom_eq[simp]:
   \<open>stabledom (a \<triangleright> b) = stabledom a \<union> (stabledom b - zerodom a)\<close>
-  by (fastforce dest: app_dheap_bounded_permD
+  by (fastforce dest: app_dheap_bounded_iff
       simp add: stabledom_def set_eq_iff zerodom_def split: option.splits)
 
 lemma stabledom_plus[simp]:
@@ -607,7 +685,7 @@ lemma stabledom_plus[simp]:
    apply force
   apply (case_tac \<open>app_dheap b x\<close>)
    apply force
-  apply (simp, fastforce dest: app_dheap_bounded_permD)
+  apply (simp, fastforce dest: app_dheap_bounded_iff)
   done
 
 lemma map_stabledom_eq:
@@ -658,7 +736,7 @@ lemma restrict_zerodom_eq[simp]:
 
 lemma seq_zerodom_eq[simp]:
   \<open>zerodom (a \<triangleright> b) = zerodom a \<union> (zerodom b - stabledom a)\<close>
-    by (fastforce dest: app_dheap_bounded_permD
+    by (fastforce dest: app_dheap_bounded_iff
       simp add: stabledom_def set_eq_iff zerodom_def split: option.splits)
 
 lemma map_zerodom_eq:
@@ -669,7 +747,7 @@ lemma map_zerodom_eq:
       apply force
      apply (metis app_dheapD(3) less_eq_rat_def)
     apply (metis app_dheapD(3) less_eq_rat_def)
-   apply (metis app_dheap_bounded_permD(2) leI order_less_irrefl)
+   apply (metis app_dheap_bounded_iff(2) leI order_less_irrefl)
   apply (metis order.strict_trans1 leI nless_le zero_less_one)
   done
 
@@ -731,7 +809,6 @@ lemma stabledom_halve_dheap_eq[simp]:
   \<open>stabledom (halve_dheap a A) = stabledom a\<close>
   by (force simp add: halve_dheap_def dom_dheap_sep)
 
-
 section \<open> Stable rely-relation \<close>
 
 definition stablerel :: \<open>('a,'b) dheap \<Rightarrow> ('a,'b) dheap \<Rightarrow> bool\<close> where
@@ -782,20 +859,11 @@ lemma stablerel_add:
 
 lemma stablerel_subheap:
   \<open>stablerel a b \<Longrightarrow> a' \<le> a \<Longrightarrow> b' \<le> b \<Longrightarrow> stabledom a' \<subseteq> stabledom b' \<Longrightarrow> stablerel a' b'\<close>
-  apply (clarsimp simp add: stablerel_def stabledom_def le_iff_sepadd plus_perm_eq_Some_iff
-      set_eq_iff subset_iff)
-  apply (rename_tac a'' b'' x va' pa' sa')
-  apply (drule_tac x=x in spec)+
-  apply (case_tac \<open>a'' \<bullet> x\<close>; case_tac \<open>b'' \<bullet> x\<close>)
-     apply (force simp add: add_pos_nonneg app_dheap_bounded_permD)
-    apply (force simp add: add_pos_nonneg app_dheap_bounded_permD)
-
-  oops
+  by (fastforce simp add: stablerel_def stabledom_def less_eq_dheap_def subset_iff)
 
 lemma stablerel_impl_subseteq_stabledom:
   \<open>stablerel a b \<Longrightarrow> stabledom a \<subseteq> stabledom b\<close>
   by (force simp add: stablerel_def stabledom_def)
-
 
 lemma stablerel_additivity_of_update:
   assumes
@@ -818,16 +886,24 @@ proof -
     apply -
     apply (rule_tac x=\<open>?b1\<close> in exI, rule_tac x=\<open>?b2\<close> in exI)
     apply (intro conjI)
+       apply (clarsimp simp add: disjoint_dheap_def disjoint_set_dheap_def halve_dheap_app_eq)
+       apply (metis app_dheapD(2) app_dheapD(4) mult.commute)
+      apply (force simp add: dheap_eq_iff halve_dheap_iff app_dheapD(2,4) in_dom_dheap_iff split: option.splits)
+     apply (rule stablerel_subheap, assumption)
+       apply (simp add: le_plus; fail)
+    apply (simp add: halve_dheap_def map_restrict)
+    sorry
+    
        apply (force simp add: disjoint_dheap_def disjoint_set_dheap_def halve_dheap_iff
-        field_All_mult_inverse_iff dom_def stabledom_def dom_dheap_def app_dheap_bounded_permD
+        field_All_mult_inverse_iff dom_def stabledom_def dom_dheap_def app_dheap_bounded_iff
         split: option.splits)
-      apply (force simp add: dheap_eq_iff halve_dheap_iff dom_dheap_iff app_dheap_bounded_permD
+      apply (force simp add: dheap_eq_iff halve_dheap_iff dom_dheap_iff app_dheap_bounded_iff
         split: option.splits)
     subgoal
       apply (rule stablerel_subheap, blast)
         apply (force simp add: le_plus)
        apply (simp add: less_eq_dheap_def less_eq_perm_def, force simp add: halve_dheap_def
-          stabledom_def dom_dheap_iff not_less app_dheap_bounded_permD min.coboundedI2
+          stabledom_def dom_dheap_iff not_less app_dheap_bounded_iff min.coboundedI2
           split: option.splits if_splits)
       apply force
       done
@@ -835,7 +911,7 @@ proof -
       apply (rule stablerel_subheap, blast)
         apply (force simp add: le_plus2)
        apply (simp add: less_eq_dheap_def less_eq_perm_def, force simp add: halve_dheap_def
-          stabledom_def dom_dheap_iff not_less app_dheap_bounded_permD min.coboundedI2
+          stabledom_def dom_dheap_iff not_less app_dheap_bounded_iff min.coboundedI2
           split: option.splits if_splits)
       apply force
       done
