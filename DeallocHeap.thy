@@ -233,11 +233,14 @@ lemma None_subperm_eq[simp]:
   \<open>None \<subseteq>\<^sub>d a\<close>
   by (simp add: subperm_eq_def)
 
-lemma subperm_eq_None[simp]:
+lemma subperm_None_eq[simp]:
   \<open>a \<subseteq>\<^sub>d None \<longleftrightarrow> a = None\<close>
   using not_Some_prod_eq
   by (fastforce simp add: subperm_eq_def)
 
+lemma Some_subperm_eq[simp]:
+  \<open>Some ((da,wa),va) \<subseteq>\<^sub>d b \<longleftrightarrow> (\<exists>db\<ge>da. \<exists>wb\<ge>wa. b = Some ((db,wb), va))\<close>
+  by (clarsimp simp add: subperm_eq_def)
 
 subsection \<open> plus \<close>
 
@@ -529,54 +532,90 @@ proof -
     done
 qed
 
-(*
-definition compl_perm :: \<open>(rat \<times> 'a) option \<Rightarrow> (rat \<times> 'a) option \<Rightarrow> (rat \<times> 'a) option\<close>
-  (infixl \<open>\<oslash>\<^sub>d\<close> 65) where
-  \<open>compl_perm a b \<equiv> case a of
-                      Some (c1, v1) \<Rightarrow>
-                        (case b of
-                          Some (c2, v2) \<Rightarrow>
-                            if c2 = c1
-                            then None
-                            else Some (c2 - c1, v2)
-                        | None \<Rightarrow> Some (c1, v1))
-                    | None \<Rightarrow> b\<close>
+text \<open> if \<open>a \<oplus> b = c\<close>, then \<open>antiplus_perm c b = a\<close> \<close>
+definition antiplus_perm :: \<open>((rat \<times> rat) \<times> 'a) option \<Rightarrow> ((rat \<times> rat) \<times> 'a) option \<Rightarrow> ((rat \<times> rat) \<times> 'a) option\<close> where
+  \<open>antiplus_perm a b \<equiv>
+    case a of
+      Some ((da, wa), va) \<Rightarrow>
+        (case b of
+          Some ((db, wb), vb) \<Rightarrow>
+            Some (
+              ((SOME d. 0 < d \<and> d \<le> 1 \<and> (db \<le> da \<longrightarrow> (d \<le> 1 - da \<longrightarrow> d = db - da) \<and> (db \<noteq> 1 \<longrightarrow> 1 - da \<ge> d) \<and> d \<le> 1 - db)),
+                (SOME w. 0 \<le> w \<and> w \<le> 1 \<and> (wb \<le> wa \<longrightarrow> (w \<le> 1 - wa \<longrightarrow> w = wb - wa) \<and> (wb \<noteq> 1 \<longrightarrow> 1 - wa \<ge> w) \<and> w \<le> 1 - wb))),
+              vb)
+        | None \<Rightarrow> a)
+    | None \<Rightarrow> b\<close>
 
-lemma compl_dheap_eq[simp]:
-  \<open>None \<oslash>\<^sub>d b = b\<close>
-  \<open>a \<oslash>\<^sub>d None = a\<close>
-  \<open>Some (c, v1) \<oslash>\<^sub>d Some (c, v2) = None\<close>
-  \<open>c1 \<noteq> c2 \<Longrightarrow> Some (c1, v1) \<oslash>\<^sub>d Some (c2, v2) = Some (c2 - c1, v2)\<close>
-  by (force simp add: compl_perm_def split: option.splits)+
+lemma antiplus_dheap_eq[simp]:
+  \<open>antiplus_perm a None = a\<close>
+  \<open>antiplus_perm None b = b\<close>
+  \<open>antiplus_perm (Some ((da, wa), va)) (Some ((db, wb), vb)) =
+    Some (
+      ((SOME d. 0 < d \<and> d \<le> 1 \<and> (db \<le> da \<longrightarrow> db = min (da + d) 1 \<and> d \<le> 1 - db)),
+        (SOME w. 0 \<le> w \<and> w \<le> 1 \<and> (wb \<le> wa \<longrightarrow> wb = min (wa + w) 1 \<and> w \<le> 1 - wb))),
+      vb)\<close>
+    apply (simp add: antiplus_perm_def min_def split: option.splits)+
+  apply (rule conjI; rule arg_cong[of _ _ Eps, OF ext])
+   apply force
+  apply force
+  done
 
-
-lemma subheap_plus_compl_dheap_inverse:
-  \<open>a \<bullet> x \<subseteq>\<^sub>d b \<bullet> x \<Longrightarrow> (a \<bullet> x \<oplus>\<^sub>d (b \<bullet> x \<oslash>\<^sub>d a \<bullet> x)) \<subseteq>\<^sub>d b \<bullet> x\<close>
-  apply (clarsimp simp add: plus_perm_def compl_perm_def less_eq_perm_def split: option.splits)
-  apply (intro conjI impI allI)
+lemma plus_antiplus_dheap_eq:
+  \<open>a \<subseteq>\<^sub>d b \<bullet> x \<Longrightarrow> a \<oplus>\<^sub>d antiplus_perm (b \<bullet> x) a = b \<bullet> x\<close>
+  apply (cases a; cases \<open>b \<bullet> x\<close>)
      apply force
     apply force
-   apply (drule_tac spec, drule_tac spec, drule_tac mp, blast)
+   apply force
   apply clarsimp
+  apply (rule conjI)
+   apply (rule someI2_ex)
+  subgoal sorry
+   apply (force simp add: app_dheap_bounded_iff min_le_iff_disj)
+  apply (rule someI2_ex)
+  subgoal sorry
+  apply (simp add: app_dheap_bounded_iff min_def split: if_splits)
   done
 
-lemma app_Abs_compl_dheap[simp]:
-  \<open>\<forall>x ca v. app_dheap a x = Some (ca, v) \<longrightarrow> (\<exists>cb\<ge>ca. app_dheap b x = Some (cb, v)) \<Longrightarrow>
-    Abs_dheap (\<lambda>x. a \<bullet> x \<oslash>\<^sub>d b \<bullet> x) \<bullet> x = a \<bullet> x \<oslash>\<^sub>d b \<bullet> x\<close>
-  apply (subst Abs_dheap_inverse)
+
+lemma app_Abs_antiplus_dheap[simp]:
+  \<open>\<forall>x. b \<bullet> x \<subseteq>\<^sub>d a \<bullet> x \<Longrightarrow> Abs_dheap (\<lambda>x. antiplus_perm (a \<bullet> x) (b \<bullet> x)) \<bullet> x = antiplus_perm (a \<bullet> x) (b \<bullet> x)\<close>
+  apply (subst Abs_dheap_inverse')
+    apply (rule rev_finite_subset[of \<open>dom_dheap a \<union> dom_dheap b\<close>])
+     apply force
+    apply (force simp add: dom_dheap_def antiplus_perm_def split: option.splits)
+   apply (clarsimp simp add: all_conj_distrib[symmetric])
+   apply (case_tac \<open>a \<bullet> x\<close>, force simp add: app_dheap')
+   apply (case_tac \<open>b \<bullet> x\<close>)
+    apply (simp, metis app_dheapD)
+   apply (clarsimp simp add: antiplus_perm_def dom_dheap_def subperm_eq_def split: option.splits)
+   apply (rename_tac da wa va db wb vb)
+   apply (case_tac \<open>da \<le> db\<close>)
+    apply (clarsimp simp add: less_eq_dheap_def subperm_eq_def)
+    apply (drule_tac x=x in spec)
+    apply (rule conjI, rule someI2_ex)
+  subgoal sorry
+     apply force
+    apply clarsimp
+    apply (rule conjI, rule someI2_ex)
+  subgoal sorry
+     apply force
+    apply (rule someI2_ex)
+  subgoal sorry
+    apply force
+   apply clarsimp
+   apply (rule conjI, rule someI2_ex)
+  subgoal sorry
+    apply force
    apply clarsimp
    apply (rule conjI)
-    apply (rule rev_finite_subset[of \<open>dom_dheap b\<close>];
-      force simp add: compl_perm_def dom_dheap_def less_eq_perm_def split: option.splits)
-   apply (clarsimp simp add: compl_perm_def dom_dheap_def less_eq_perm_def split: option.splits)
-   apply (intro conjI allI)
-     apply (force simp add: app_dheap_bounded_iff)
-    apply (force simp add: app_dheap_bounded_iff)
-   apply (metis app_dheap_bounded_iff(1,2) cancel_comm_monoid_add_class.diff_zero diff_mono
-      option.inject prod.inject)
-  apply (force simp add: app_dheap_bounded_iff)
+    apply (rule someI2_ex)
+  subgoal sorry
+    apply force
+   apply (rule someI2_ex)
+  subgoal sorry
+   apply force
+  apply simp
   done
-*)
 
 instantiation dheap :: (type,type) seplogic
 begin
@@ -596,17 +635,25 @@ lemma le_iff_sepadd_helper:
   fixes a b :: \<open>('a,'b) dheap\<close>
   shows \<open>(a \<le> b) = (\<exists>c. a ## c \<and> b = a + c)\<close>
   apply (rule iffI)
-   apply (clarsimp simp add: dheap_eq_iff disjoint_dheap_def' less_eq_dheap_def split: option.splits)
-(*
-   apply (rule_tac x=\<open>Abs_dheap (\<lambda>x. a \<bullet> x \<oslash>\<^sub>d b \<bullet> x)\<close> in exI)
-   apply (simp, force simp add: compl_perm_def plus_perm_def app_dheap_bounded_iff
-      split: option.splits)
-  apply (force simp add: less_eq_dheap_def less_eq_perm_def plus_perm_def app_dheap_bounded_iff
-      split: option.splits)
+   apply (rule exI[of _ \<open>Abs_dheap (\<lambda>x. antiplus_perm (b \<bullet> x) (a \<bullet> x))\<close>])
+   apply (clarsimp simp add: dheap_eq_iff disjoint_dheap_def' less_eq_dheap_def
+      all_conj_distrib[symmetric] split: option.splits)
+   apply (drule_tac x=x in spec)
+   apply (rule conjI)
+    apply clarsimp
+    apply (rule conjI)
+     apply (rule someI2_ex)
+  subgoal sorry
+     apply force
+     apply (rule someI2_ex)
+  subgoal sorry
+   apply force
+   apply (simp add: plus_antiplus_dheap_eq; fail)
+  apply clarsimp
+  apply (clarsimp simp add: less_eq_dheap_def plus_perm_def subperm_eq_def app_dheapD
+      order_less_imp_le[OF app_dheapD(1)]
+      split: option.splits) 
   done
-*)
-  sorry
-
 
 instance
   apply standard
@@ -902,7 +949,7 @@ proof -
     subgoal
       apply (rule stablerel_subheap, blast)
         apply (force simp add: le_plus)
-       apply (simp add: less_eq_dheap_def less_eq_perm_def, force simp add: halve_dheap_def
+       apply (simp add: less_eq_dheap_def subperm_eq_def, force simp add: halve_dheap_def
           stabledom_def dom_dheap_iff not_less app_dheap_bounded_iff min.coboundedI2
           split: option.splits if_splits)
       apply force
@@ -910,7 +957,7 @@ proof -
     subgoal
       apply (rule stablerel_subheap, blast)
         apply (force simp add: le_plus2)
-       apply (simp add: less_eq_dheap_def less_eq_perm_def, force simp add: halve_dheap_def
+       apply (simp add: less_eq_dheap_def subperm_eq_def, force simp add: halve_dheap_def
           stabledom_def dom_dheap_iff not_less app_dheap_bounded_iff min.coboundedI2
           split: option.splits if_splits)
       apply force

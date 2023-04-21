@@ -484,17 +484,17 @@ definition compl_perm :: \<open>(rat \<times> 'a) option \<Rightarrow> (rat \<ti
                       Some (c1, v1) \<Rightarrow>
                         (case b of
                           Some (c2, v2) \<Rightarrow>
-                            if c2 = c1
-                            then None
-                            else Some (c2 - c1, v2)
+                            if c1 \<le> c2
+                            then Some (c2 - c1, v2)
+                            else None
                         | None \<Rightarrow> Some (c1, v1))
                     | None \<Rightarrow> b\<close>
 
 lemma compl_pheap_eq[simp]:
   \<open>None \<oslash>\<^sub>p b = b\<close>
   \<open>a \<oslash>\<^sub>p None = a\<close>
-  \<open>Some (c, v1) \<oslash>\<^sub>p Some (c, v2) = None\<close>
-  \<open>c1 \<noteq> c2 \<Longrightarrow> Some (c1, v1) \<oslash>\<^sub>p Some (c2, v2) = Some (c2 - c1, v2)\<close>
+  \<open>c1 > c2 \<Longrightarrow> Some (c1, v1) \<oslash>\<^sub>p Some (c2, v2) = None\<close>
+  \<open>c1 \<le> c2 \<Longrightarrow> Some (c1, v1) \<oslash>\<^sub>p Some (c2, v2) = Some (c2 - c1, v2)\<close>
   by (force simp add: compl_perm_def split: option.splits)+
 
 
@@ -509,19 +509,17 @@ lemma subheap_plus_compl_pheap_inverse:
   done
 
 lemma app_Abs_compl_pheap[simp]:
-  \<open>\<forall>x ca v. app_pheap a x = Some (ca, v) \<longrightarrow> (\<exists>cb\<ge>ca. app_pheap b x = Some (cb, v)) \<Longrightarrow>
-    Abs_pheap (\<lambda>x. a \<bullet> x \<oslash>\<^sub>p b \<bullet> x) \<bullet> x = a \<bullet> x \<oslash>\<^sub>p b \<bullet> x\<close>
+  \<open>Abs_pheap (\<lambda>x. a \<bullet> x \<oslash>\<^sub>p b \<bullet> x) \<bullet> x = a \<bullet> x \<oslash>\<^sub>p b \<bullet> x\<close>
   apply (subst Abs_pheap_inverse)
    apply clarsimp
    apply (rule conjI)
-    apply (rule rev_finite_subset[of \<open>dom_pheap b\<close>];
+    apply (rule rev_finite_subset[of \<open>dom_pheap a \<union> dom_pheap b\<close>];
       force simp add: compl_perm_def dom_pheap_def less_eq_perm_def split: option.splits)
    apply (clarsimp simp add: compl_perm_def dom_pheap_def less_eq_perm_def split: option.splits)
    apply (intro conjI allI)
      apply (force simp add: app_pheap_bounded_permD)
     apply (force simp add: app_pheap_bounded_permD)
-   apply (metis app_pheap_bounded_permD(1,2) cancel_comm_monoid_add_class.diff_zero diff_mono
-      option.inject prod.inject)
+  apply (meson add_increasing2 app_pheap_bounded_permD(1) app_pheap_bounded_permD(2) diff_le_eq)
   apply (force simp add: app_pheap_bounded_permD)
   done
 

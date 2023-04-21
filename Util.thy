@@ -173,7 +173,10 @@ lemma rel_le_rtranscp_relcompp_absorb:
   done
 
 lemma not_Some_prod_eq[iff]: \<open>(\<forall>a b. x \<noteq> Some (a,b)) \<longleftrightarrow> x = None\<close>
-  by (metis option.exhaust option.simps(3) surj_pair)
+  by (metis not_eq_None prod.collapse)
+
+lemma not_Some_prodprod_eq[iff]: \<open>(\<forall>a b c. x \<noteq> Some ((a,b),c)) \<longleftrightarrow> x = None\<close>
+  by (metis not_eq_None prod.collapse)
 
 lemmas rev_finite_subset_Collect =
   rev_finite_subset[of \<open>Collect P\<close> \<open>Collect Q\<close> for P Q, OF _ iffD2[OF Collect_mono_iff]]
