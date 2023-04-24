@@ -18,25 +18,108 @@ class monoid_seq = seq + skip +
     and add_skip_right[simp]: \<open>a \<triangleright> \<I> = a\<close>
 begin
 
-sublocale add: monoid seq skip
+sublocale monoid seq skip
   by standard (simp add: seq_assoc)+
 
 end
 
+lemma ordered_comm_monoid_add_add_min_assoc:
+  fixes x y z k :: \<open>'a :: ordered_comm_monoid_add\<close>
+  assumes \<open>x \<ge> 0\<close> \<open>z \<ge> 0\<close>
+  shows \<open>min k (min k (x + y) + z) = min k (x + min k (y + z))\<close>
+  using assms
+  by (clarsimp simp add: min_def add.commute add.left_commute add_increasing add_increasing2 eq_iff,
+      metis add.assoc add_increasing2)
+
 
 section \<open>Permission Heaps with unstable reads and deallocation\<close>
 
+typedef perm = \<open>{(d,w)::rat \<times> rat|d w. 0 \<le> d \<and> (0 \<le> w \<and> w \<le> 1)}\<close>
+  using zero_le_one by blast
+setup_lifting type_definition_perm
+
+lemmas Rep_perm_constraints = perm.Rep_perm[simplified mem_Collect_eq]
+
+lemma Rep_perm_constraintsD:
+  \<open>Rep_perm a = (d,w) \<Longrightarrow> 0 \<le> d\<close>
+  \<open>Rep_perm a = (d,w) \<Longrightarrow> 0 \<le> w\<close>
+  \<open>Rep_perm a = (d,w) \<Longrightarrow> w \<le> 1\<close>
+  using Rep_perm_constraints[of a]
+  by simp+
+
+lemma eq_Abs_perm_iff:
+  \<open>0 \<le> fst a' \<Longrightarrow> 0 \<le> snd a' \<Longrightarrow> snd a' \<le> 1 \<Longrightarrow> a = Abs_perm a' \<longleftrightarrow> Rep_perm a = a'\<close>
+  using Abs_perm_inverse Rep_perm_inverse by fastforce
+
+lemma ex_perm_Rep_iff:
+  \<open>(\<exists>a. P (Rep_perm a)) \<longleftrightarrow> (\<exists>a'. P a' \<and> 0 \<le> fst a' \<and> 0 \<le> snd a' \<and> snd a' \<le> 1)\<close>
+  by (metis Rep_perm_constraints eq_Abs_perm_iff fst_conv snd_conv)
+
+
+instantiation perm :: canonically_ordered_monoid_add
+begin
+
+lift_definition zero_perm :: \<open>perm\<close> is \<open>(0,0)\<close>
+  by simp
+
+lemma zero_perm_Abs_inverse[simp]:
+  \<open>Rep_perm (Abs_perm (0,0)) = (0,0)\<close>
+  by (clarsimp simp add: zero_perm_def Rep_perm_constraintsD Abs_perm_inverse)
+
+lift_definition less_eq_perm :: \<open>perm \<Rightarrow> perm \<Rightarrow> bool\<close> is
+  \<open>\<lambda>(da,wa) (db,wb). da \<ge> db \<and> wa \<le> wb\<close> .
+
+lift_definition less_perm :: \<open>perm \<Rightarrow> perm \<Rightarrow> bool\<close> is
+  \<open>\<lambda>(da,wa) (db,wb). (da \<ge> db \<and> wa \<le> wb) \<and> (db < da \<or> wa < wb)\<close> .
+
+lift_definition plus_perm :: \<open>perm \<Rightarrow> perm \<Rightarrow> perm\<close> is
+  \<open>\<lambda>(da,wa) (db,wb). (da+db, min 1 (wa+wb))\<close>
+  by (force split: prod.splits)
+
+lemma plus_perm_Abs_inverse[simp]:
+  \<open>Rep_perm a = (da,wa) \<Longrightarrow>
+    Rep_perm b = (db,wb) \<Longrightarrow>
+    Rep_perm (Abs_perm (da + db, min 1 (wa + wb))) = (da + db, min 1 (wa + wb))\<close>
+  by (clarsimp simp add: Rep_perm_constraintsD Abs_perm_inverse split: prod.splits)
+
+lemma plus_perm_Rep[simp]:
+  \<open>Rep_perm (a + b) = (fst (Rep_perm a) + fst (Rep_perm b), min 1 (snd (Rep_perm a) + snd (Rep_perm b)))\<close>
+  by (clarsimp simp add: plus_perm_def Rep_perm_constraintsD Abs_perm_inverse split: prod.splits)
+
+
+instance
+  apply standard
+         apply (force simp add: plus_perm_def perm.Abs_perm_inject Rep_perm_constraintsD
+      ordered_comm_monoid_add_add_min_assoc split: prod.splits)
+        apply (force simp add: plus_perm_def perm.Abs_perm_inject Rep_perm_constraintsD
+      add.commute split: prod.splits)
+       apply (simp add: zero_perm_def plus_perm_def perm.Abs_perm_inject Rep_perm_constraintsD
+      split: prod.splits, metis Rep_perm_inverse)
+      apply (force simp add: less_perm_def less_eq_perm_def not_le split: prod.splits)
+     apply (force simp add: less_eq_perm_def split: prod.splits)
+    apply (force simp add: less_eq_perm_def split: prod.splits)
+   apply (force simp add: less_eq_perm_def Rep_perm_inject[symmetric] split: prod.splits)
+  apply (clarsimp simp add: less_eq_perm_def plus_perm_def Rep_perm_constraintsD eq_Abs_perm_iff
+      split: prod.splits)
+  apply (subst ex_perm_Rep_iff)
+  apply clarsimp
+  apply (rename_tac da wa db wb)
+  apply (rule iffI)
+   apply (rule_tac x=\<open>db - da\<close> in exI)
+  apply clarsimp
+  oops
+
+end
+
+
 typedef ('a,'b) dheap =
-  \<open>{h::'a \<rightharpoonup> (rat \<times> rat) \<times> 'b.
-    finite (dom h)
-    \<and> (\<forall>x p s v. h x = Some ((p,s),v) \<longrightarrow> 0 < p \<and> p \<le> 1)
-    \<and>  (\<forall>x p s v. h x = Some ((p,s),v) \<longrightarrow> 0 \<le> s \<and> s \<le> 1)}\<close>
+  \<open>{h::'a \<rightharpoonup> perm \<times> 'b. finite (dom h)}\<close>
   morphisms app_dheap Abs_dheap
   by (rule exI[where x=Map.empty], force)
 
 lemmas Abs_dheap_inverse' = Abs_dheap_inverse[OF iffD2[OF mem_Collect_eq], OF conjI]
 
-syntax app_dheap :: \<open>('a,'b) dheap \<Rightarrow> 'a \<Rightarrow> (rat \<times> 'b) option\<close> (infix \<open>\<bullet>\<close> 990)
+syntax app_dheap :: \<open>('a,'b) dheap \<Rightarrow> 'a \<Rightarrow> (perm \<times> 'b) option\<close> (infix \<open>\<bullet>\<close> 990)
 
 setup_lifting type_definition_dheap
 
@@ -212,7 +295,7 @@ section \<open>Operations on permissions\<close>
 
 subsection \<open> strictly less than \<close>
 
-definition subperm :: \<open>((rat \<times> rat) \<times> 'a) option \<Rightarrow> ((rat \<times> rat) \<times> 'a) option \<Rightarrow> bool\<close>
+definition subperm :: \<open>(perm \<times> 'a) option \<Rightarrow> (perm \<times> 'a) option \<Rightarrow> bool\<close>
   (infix \<open>\<subset>\<^sub>d\<close> 50) where
   \<open>subperm a b \<equiv>
     (a = None \<longrightarrow> (\<exists>y. b = Some y)) \<and>
@@ -241,7 +324,7 @@ lemma Some_subperm_eq[simp]:
 
 subsection \<open> less than \<close>
 
-definition subperm_eq :: \<open>((rat \<times> rat) \<times> 'a) option \<Rightarrow> ((rat \<times> rat) \<times> 'a) option \<Rightarrow> bool\<close>
+definition subperm_eq :: \<open>(perm \<times> 'a) option \<Rightarrow> (perm \<times> 'a) option \<Rightarrow> bool\<close>
   (infix \<open>\<subseteq>\<^sub>d\<close> 50) where
   \<open>subperm_eq a b \<equiv> 
     \<forall>da wa v. a  = Some ((da, wa), v) \<longrightarrow> (\<exists>db\<ge>da. \<exists>wb\<ge>wa. b = Some ((db,wb), v))\<close>
@@ -276,7 +359,7 @@ lemma subperm_aa: \<open>a \<subset>\<^sub>d b \<longleftrightarrow> a \<subsete
 
 subsection \<open> plus \<close>
 
-definition plus_perm :: \<open>((rat \<times> rat) \<times> 'a) option \<Rightarrow> ((rat \<times> rat) \<times> 'a) option \<Rightarrow> ((rat \<times> rat) \<times> 'a) option\<close>
+definition plus_perm :: \<open>(perm \<times> 'a) option \<Rightarrow> (perm \<times> 'a) option \<Rightarrow> (perm \<times> 'a) option\<close>
   (infixl \<open>\<oplus>\<^sub>d\<close> 65) where
   \<open>plus_perm a b \<equiv> case b of
                     Some ((p2,s2), v2) \<Rightarrow>
@@ -576,7 +659,7 @@ thm min_def
 *)
 
 text \<open> if \<open>a \<oplus> b = c\<close>, then \<open>antiplus_perm c b = a\<close> \<close>
-definition antiplus_perm :: \<open>((rat \<times> rat) \<times> 'a) option \<Rightarrow> ((rat \<times> rat) \<times> 'a) option \<Rightarrow> ((rat \<times> rat) \<times> 'a) option\<close> where
+definition antiplus_perm :: \<open>(perm \<times> 'a) option \<Rightarrow> (perm \<times> 'a) option \<Rightarrow> (perm \<times> 'a) option\<close> where
   \<open>antiplus_perm a b \<equiv>
     case a of
       Some ((da, wa), va) \<Rightarrow>
