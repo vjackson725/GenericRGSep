@@ -210,12 +210,41 @@ lemma restrict_sequence_right:
 
 section \<open>Operations on permissions\<close>
 
+subsection \<open> strictly less than \<close>
+
+definition subperm :: \<open>((rat \<times> rat) \<times> 'a) option \<Rightarrow> ((rat \<times> rat) \<times> 'a) option \<Rightarrow> bool\<close>
+  (infix \<open>\<subset>\<^sub>d\<close> 50) where
+  \<open>subperm a b \<equiv>
+    (a = None \<longrightarrow> (\<exists>y. b = Some y)) \<and>
+    (\<forall>da wa v. a = Some ((da, wa), v) \<longrightarrow> (\<exists>db wb. da \<le> db \<and> wa \<le> wb \<and> (da < db \<or> wa < wb) \<and> b = Some ((db,wb), v)))\<close>
+
+lemma subperm_not_refl:
+  \<open>a \<subset>\<^sub>d a \<longleftrightarrow> False\<close>
+  by (force simp add: subperm_def)
+
+lemma subperm_trans:
+  \<open>a \<subset>\<^sub>d b \<Longrightarrow> b \<subset>\<^sub>d c \<Longrightarrow> a \<subset>\<^sub>d c\<close>
+  by (fastforce simp add: subperm_def)
+
+lemma None_subperm_eq[simp]:
+  \<open>None \<subset>\<^sub>d a \<longleftrightarrow> (\<exists>y. a = Some y)\<close>
+  by (simp add: subperm_def)
+
+lemma subperm_None_eq[simp]:
+  \<open>a \<subset>\<^sub>d None \<longleftrightarrow> False\<close>
+  using not_Some_prod_eq
+  by (fastforce simp add: subperm_def)
+
+lemma Some_subperm_eq[simp]:
+  \<open>Some ((da,wa),va) \<subset>\<^sub>d b \<longleftrightarrow> (\<exists>db wb. da \<le> db \<and> wa \<le> wb \<and> (da < db \<or> wa < wb) \<and> b = Some ((db,wb), va))\<close>
+  by (clarsimp simp add: subperm_def)
+
 subsection \<open> less than \<close>
 
 definition subperm_eq :: \<open>((rat \<times> rat) \<times> 'a) option \<Rightarrow> ((rat \<times> rat) \<times> 'a) option \<Rightarrow> bool\<close>
   (infix \<open>\<subseteq>\<^sub>d\<close> 50) where
   \<open>subperm_eq a b \<equiv> 
-    \<forall>pa sa v. a  = Some ((pa, sa), v) \<longrightarrow> (\<exists>pb\<ge>pa. \<exists>sb\<ge>sa. b = Some ((pb,sb), v))\<close>
+    \<forall>da wa v. a  = Some ((da, wa), v) \<longrightarrow> (\<exists>db\<ge>da. \<exists>wb\<ge>wa. b = Some ((db,wb), v))\<close>
 
 lemma subperm_eq_refl:
   \<open>a \<subseteq>\<^sub>d a\<close>
@@ -229,18 +258,21 @@ lemma subperm_eq_antisym:
   \<open>a \<subseteq>\<^sub>d b \<Longrightarrow> b \<subseteq>\<^sub>d a \<Longrightarrow> a = b\<close>
   by (cases a; cases b; force simp add: subperm_eq_def)
 
-lemma None_subperm_eq[simp]:
+lemma None_subperm_eq_eq[simp]:
   \<open>None \<subseteq>\<^sub>d a\<close>
   by (simp add: subperm_eq_def)
 
-lemma subperm_None_eq[simp]:
+lemma subperm_eq_None_eq[simp]:
   \<open>a \<subseteq>\<^sub>d None \<longleftrightarrow> a = None\<close>
   using not_Some_prod_eq
   by (fastforce simp add: subperm_eq_def)
 
-lemma Some_subperm_eq[simp]:
+lemma Some_subperm_eq_eq[simp]:
   \<open>Some ((da,wa),va) \<subseteq>\<^sub>d b \<longleftrightarrow> (\<exists>db\<ge>da. \<exists>wb\<ge>wa. b = Some ((db,wb), va))\<close>
   by (clarsimp simp add: subperm_eq_def)
+
+lemma subperm_aa: \<open>a \<subset>\<^sub>d b \<longleftrightarrow> a \<subseteq>\<^sub>d b \<and> \<not>(b \<subseteq>\<^sub>d a)\<close>
+  by (fastforce simp add: subperm_def subperm_eq_def)
 
 subsection \<open> plus \<close>
 
@@ -532,6 +564,17 @@ proof -
     done
 qed
 
+thm min_def
+
+(*
+(SOME d. 0 < d \<and> d \<le> 1 \<and> (db \<le> da \<longrightarrow> (d \<le> 1 - da \<longrightarrow> d = db - da) \<and> (db \<noteq> 1 \<longrightarrow> d \<le> 1 - da) \<and> d \<le> 1 - db))
+
+0 < da \<le> 1 \<Longrightarrow> 0 < db \<le> 1 \<Longrightarrow> da \<le> db \<Longrightarrow> undefined db da = db - da
+0 < da \<le> 1 \<Longrightarrow> da \<le> db \<Longrightarrow> 0 < db \<le> 1 \<Longrightarrow> da + undefined db da \<le> 1
+
+(SOME w. 0 \<le> w \<and> w \<le> 1 \<and> (wb \<le> wa \<longrightarrow> (w \<le> 1 - wa \<longrightarrow> w = wb - wa) \<and> (wb \<noteq> 1 \<longrightarrow> 1 - wa \<ge> w) \<and> w \<le> 1 - wb))
+*)
+
 text \<open> if \<open>a \<oplus> b = c\<close>, then \<open>antiplus_perm c b = a\<close> \<close>
 definition antiplus_perm :: \<open>((rat \<times> rat) \<times> 'a) option \<Rightarrow> ((rat \<times> rat) \<times> 'a) option \<Rightarrow> ((rat \<times> rat) \<times> 'a) option\<close> where
   \<open>antiplus_perm a b \<equiv>
@@ -540,8 +583,8 @@ definition antiplus_perm :: \<open>((rat \<times> rat) \<times> 'a) option \<Rig
         (case b of
           Some ((db, wb), vb) \<Rightarrow>
             Some (
-              ((SOME d. 0 < d \<and> d \<le> 1 \<and> (db \<le> da \<longrightarrow> (d \<le> 1 - da \<longrightarrow> d = db - da) \<and> (db \<noteq> 1 \<longrightarrow> 1 - da \<ge> d) \<and> d \<le> 1 - db)),
-                (SOME w. 0 \<le> w \<and> w \<le> 1 \<and> (wb \<le> wa \<longrightarrow> (w \<le> 1 - wa \<longrightarrow> w = wb - wa) \<and> (wb \<noteq> 1 \<longrightarrow> 1 - wa \<ge> w) \<and> w \<le> 1 - wb))),
+              ((if db \<le> da then min (1 - db) (da - db) else undefined),
+                (if wb \<le> wa then min (1 - wb) (wa - wb) else undefined)),
               vb)
         | None \<Rightarrow> a)
     | None \<Rightarrow> b\<close>
@@ -551,33 +594,35 @@ lemma antiplus_dheap_eq[simp]:
   \<open>antiplus_perm None b = b\<close>
   \<open>antiplus_perm (Some ((da, wa), va)) (Some ((db, wb), vb)) =
     Some (
-      ((SOME d. 0 < d \<and> d \<le> 1 \<and> (db \<le> da \<longrightarrow> db = min (da + d) 1 \<and> d \<le> 1 - db)),
-        (SOME w. 0 \<le> w \<and> w \<le> 1 \<and> (wb \<le> wa \<longrightarrow> wb = min (wa + w) 1 \<and> w \<le> 1 - wb))),
+      (undefined da db,
+        undefined wa wb),
       vb)\<close>
-    apply (simp add: antiplus_perm_def min_def split: option.splits)+
-  apply (rule conjI; rule arg_cong[of _ _ Eps, OF ext])
-   apply force
   apply force
-  done
+  sorry
+(*
+  by (simp add: antiplus_perm_def min_def split: option.splits)+
+*)
 
 lemma plus_antiplus_dheap_eq:
-  \<open>a \<subseteq>\<^sub>d b \<bullet> x \<Longrightarrow> a \<oplus>\<^sub>d antiplus_perm (b \<bullet> x) a = b \<bullet> x\<close>
+  assumes
+    \<open>a \<subseteq>\<^sub>d b \<bullet> x\<close>
+    \<open>a \<oplus>\<^sub>d antiplus_perm (b \<bullet> x) a = Some ((d,w),v)\<close>
+  shows
+    \<open>d = undefined\<close>
+    \<open>w = undefined\<close>
+  using assms
   apply (cases a; cases \<open>b \<bullet> x\<close>)
-     apply force
-    apply force
-   apply force
+     apply force+
   apply clarsimp
-  apply (rule conjI)
-   apply (rule someI2_ex)
-  subgoal sorry
-   apply (force simp add: app_dheap_bounded_iff min_le_iff_disj)
-  apply (rule someI2_ex)
-  subgoal sorry
-  apply (simp add: app_dheap_bounded_iff min_def split: if_splits)
-  done
+  apply safe
+     apply (fastforce dest: app_dheapD)
+    apply (fastforce dest: app_dheapD)
+   defer
+   apply (fastforce dest: app_dheapD)
+  sorry
 
 
-lemma app_Abs_antiplus_dheap[simp]:
+lemma app_Abs_antiplus_dheap:
   \<open>\<forall>x. b \<bullet> x \<subseteq>\<^sub>d a \<bullet> x \<Longrightarrow> Abs_dheap (\<lambda>x. antiplus_perm (a \<bullet> x) (b \<bullet> x)) \<bullet> x = antiplus_perm (a \<bullet> x) (b \<bullet> x)\<close>
   apply (subst Abs_dheap_inverse')
     apply (rule rev_finite_subset[of \<open>dom_dheap a \<union> dom_dheap b\<close>])
@@ -589,9 +634,11 @@ lemma app_Abs_antiplus_dheap[simp]:
     apply (simp, metis app_dheapD)
    apply (clarsimp simp add: antiplus_perm_def dom_dheap_def subperm_eq_def split: option.splits)
    apply (rename_tac da wa va db wb vb)
+
    apply (case_tac \<open>da \<le> db\<close>)
     apply (clarsimp simp add: less_eq_dheap_def subperm_eq_def)
     apply (drule_tac x=x in spec)
+    apply (intro conjI impI)
     apply (rule conjI, rule someI2_ex)
   subgoal sorry
      apply force
@@ -615,7 +662,7 @@ lemma app_Abs_antiplus_dheap[simp]:
   subgoal sorry
    apply force
   apply simp
-  done
+  sorry
 
 instantiation dheap :: (type,type) seplogic
 begin
@@ -635,19 +682,23 @@ lemma le_iff_sepadd_helper:
   fixes a b :: \<open>('a,'b) dheap\<close>
   shows \<open>(a \<le> b) = (\<exists>c. a ## c \<and> b = a + c)\<close>
   apply (rule iffI)
+   apply (clarsimp simp add: dheap_eq_iff less_eq_dheap_def disjoint_dheap_def')
+   apply (subst ex_dheap_by_parts)
+  thm ex_dheap_by_parts
+  
    apply (rule exI[of _ \<open>Abs_dheap (\<lambda>x. antiplus_perm (b \<bullet> x) (a \<bullet> x))\<close>])
    apply (clarsimp simp add: dheap_eq_iff disjoint_dheap_def' less_eq_dheap_def
       all_conj_distrib[symmetric] split: option.splits)
-   apply (drule_tac x=x in spec)
    apply (rule conjI)
     apply clarsimp
-    apply (rule conjI)
-     apply (rule someI2_ex)
-  subgoal sorry
+    apply (subst (asm) app_Abs_antiplus_dheap)
      apply force
-     apply (rule someI2_ex)
-  subgoal sorry
-   apply force
+    apply (drule_tac x=x in spec)
+    apply clarsimp
+    defer
+    apply (subst app_Abs_antiplus_dheap)
+     apply force
+
    apply (simp add: plus_antiplus_dheap_eq; fail)
   apply clarsimp
   apply (clarsimp simp add: less_eq_dheap_def plus_perm_def subperm_eq_def app_dheapD
@@ -906,7 +957,10 @@ lemma stablerel_add:
 
 lemma stablerel_subheap:
   \<open>stablerel a b \<Longrightarrow> a' \<le> a \<Longrightarrow> b' \<le> b \<Longrightarrow> stabledom a' \<subseteq> stabledom b' \<Longrightarrow> stablerel a' b'\<close>
-  by (fastforce simp add: stablerel_def stabledom_def less_eq_dheap_def subset_iff)
+  apply (clarsimp simp add: stablerel_def stabledom_def less_eq_dheap_def subset_iff)
+  apply (drule_tac x=x in spec)+
+  apply fastforce
+  done
 
 lemma stablerel_impl_subseteq_stabledom:
   \<open>stablerel a b \<Longrightarrow> stabledom a \<subseteq> stabledom b\<close>
@@ -936,30 +990,18 @@ proof -
        apply (clarsimp simp add: disjoint_dheap_def disjoint_set_dheap_def halve_dheap_app_eq)
        apply (metis app_dheapD(2) app_dheapD(4) mult.commute)
       apply (force simp add: dheap_eq_iff halve_dheap_iff app_dheapD(2,4) in_dom_dheap_iff split: option.splits)
-     apply (rule stablerel_subheap, assumption)
-       apply (simp add: le_plus; fail)
-    apply (simp add: halve_dheap_def map_restrict)
-    sorry
-    
-       apply (force simp add: disjoint_dheap_def disjoint_set_dheap_def halve_dheap_iff
-        field_All_mult_inverse_iff dom_def stabledom_def dom_dheap_def app_dheap_bounded_iff
-        split: option.splits)
-      apply (force simp add: dheap_eq_iff halve_dheap_iff dom_dheap_iff app_dheap_bounded_iff
-        split: option.splits)
     subgoal
-      apply (rule stablerel_subheap, blast)
+      apply (rule stablerel_subheap, assumption)
         apply (force simp add: le_plus)
-       apply (simp add: less_eq_dheap_def subperm_eq_def, force simp add: halve_dheap_def
-          stabledom_def dom_dheap_iff not_less app_dheap_bounded_iff min.coboundedI2
-          split: option.splits if_splits)
+       apply (clarsimp simp add: halve_dheap_def less_eq_dheap_def app_dheapD order_less_imp_le
+          split: option.splits; fail)
       apply force
       done
     subgoal
       apply (rule stablerel_subheap, blast)
         apply (force simp add: le_plus2)
-       apply (simp add: less_eq_dheap_def subperm_eq_def, force simp add: halve_dheap_def
-          stabledom_def dom_dheap_iff not_less app_dheap_bounded_iff min.coboundedI2
-          split: option.splits if_splits)
+       apply (clarsimp simp add: halve_dheap_def less_eq_dheap_def app_dheapD order_less_imp_le
+          split: option.splits; fail)
       apply force
       done
     done
