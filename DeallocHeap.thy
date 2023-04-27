@@ -2,6 +2,17 @@ theory DeallocHeap
   imports Stabilisation
 begin
 
+lemma ordered_ab_group_add_ge0_le_iff_add:
+  fixes a b :: \<open>'a :: ordered_ab_group_add\<close>
+  shows \<open>(a \<le> b) = (\<exists>c\<ge>0. b = a + c)\<close>
+  by (metis add.commute diff_add_cancel le_add_same_cancel1)
+
+lemma linordered_semidom_ge0_le_iff_add:
+  fixes a b :: \<open>'a :: {linordered_semidom}\<close>
+  shows \<open>(a \<le> b) = (\<exists>c\<ge>0. b = a + c)\<close>
+  by (metis le_add_diff_inverse le_add_same_cancel1)
+
+
 section \<open> Sequencing Algebra \<close>
 
 text \<open> Note this is a subalgebra of a relation algebra. \<close>
@@ -31,6 +42,74 @@ lemma ordered_comm_monoid_add_add_min_assoc:
   by (clarsimp simp add: min_def add.commute add.left_commute add_increasing add_increasing2 eq_iff,
       metis add.assoc add_increasing2)
 
+section \<open>Top Extension\<close>
+
+datatype 'a top_ext =
+    Top | Val 'a
+
+lemma not_Val_eq[simp]: \<open>(\<forall>x. a \<noteq> Val x) \<longleftrightarrow> a = Top\<close>
+  by (meson top_ext.distinct top_ext.exhaust)
+
+instantiation top_ext :: (order) order_top
+begin
+
+definition \<open>top_top_ext \<equiv> Top\<close>
+definition \<open>less_eq_top_ext a b \<equiv> b = Top \<or> (\<exists>b'. b = Val b' \<and> (\<exists>a'. a = Val a' \<and> a' \<le> b'))\<close>
+definition \<open>less_top_ext a b \<equiv> b = Top \<and> a \<noteq> Top \<or> (\<exists>b'. b = Val b' \<and> (\<exists>a'. a = Val a' \<and> a' < b'))\<close>
+
+instance
+  by standard
+    (force simp add: less_eq_top_ext_def less_top_ext_def top_top_ext_def)+
+                      
+lemmas Top_greatest[simp] =
+  HOL.subst[OF meta_eq_to_obj_eq[OF top_top_ext_def], where P=\<open>(\<le>) a\<close> for a, OF top_greatest]
+
+end
+
+instantiation top_ext :: (semigroup_add) semigroup_add
+begin
+definition \<open>plus_top_ext a b \<equiv>
+              case a of
+                Val a' \<Rightarrow> 
+                  (case b of
+                    Val b' \<Rightarrow> Val (a' + b')
+                  | Top \<Rightarrow> Top)
+                | Top \<Rightarrow> Top\<close>
+instance
+  by standard
+    (simp add: plus_top_ext_def add.assoc split: top_ext.splits)+
+end
+
+instantiation top_ext :: (zero) zero
+begin
+definition \<open>zero_top_ext \<equiv> Val 0\<close>
+instance by standard
+end
+
+instance top_ext :: (monoid_add) monoid_add
+  by standard
+    (simp add: plus_top_ext_def zero_top_ext_def split: top_ext.splits)+
+
+instance top_ext :: (ab_semigroup_add) ab_semigroup_add
+  by standard
+    (force simp add: plus_top_ext_def add_ac split: top_ext.splits)+
+
+instance top_ext :: (comm_monoid_add) comm_monoid_add
+  by standard
+    (force simp add: plus_top_ext_def zero_top_ext_def split: top_ext.splits)+
+
+instance top_ext :: (ordered_ab_semigroup_add) ordered_ab_semigroup_add
+  by standard
+    (force simp add: plus_top_ext_def zero_top_ext_def less_eq_top_ext_def add_ac
+      intro: add_left_mono split: top_ext.splits)+
+
+instance top_ext :: (linorder) linorder
+  by (standard, simp add: less_eq_top_ext_def, metis nle_le not_Val_eq)
+
+instance top_ext :: (ordered_comm_monoid_add) ordered_comm_monoid_add
+  by standard
+
+
 
 section \<open>Permission Heaps with unstable reads and deallocation\<close>
 
@@ -56,21 +135,27 @@ lemma ex_perm_Rep_iff:
   by (metis Rep_perm_constraints eq_Abs_perm_iff fst_conv snd_conv)
 
 
-instantiation perm :: canonically_ordered_monoid_add
+instantiation perm :: seplogic
 begin
+
+lift_definition disjoint_perm :: \<open>perm \<Rightarrow> perm \<Rightarrow> bool\<close> is
+  \<open>\<lambda>(da,wa) (db,wb). wa + wb \<le> 1\<close> .
+
+lift_definition bot_perm :: perm is \<open>(0,0)\<close>
+  by simp
 
 lift_definition zero_perm :: \<open>perm\<close> is \<open>(0,0)\<close>
   by simp
 
-lemma zero_perm_Abs_inverse[simp]:
-  \<open>Rep_perm (Abs_perm (0,0)) = (0,0)\<close>
+lemma perm_Abs_inverse[simp]:
+  \<open>x \<ge> 0 \<Longrightarrow> 0 \<le> y \<Longrightarrow> y \<le> 1 \<Longrightarrow> Rep_perm (Abs_perm (x,y)) = (x,y)\<close>
   by (clarsimp simp add: zero_perm_def Rep_perm_constraintsD Abs_perm_inverse)
 
 lift_definition less_eq_perm :: \<open>perm \<Rightarrow> perm \<Rightarrow> bool\<close> is
-  \<open>\<lambda>(da,wa) (db,wb). da \<ge> db \<and> wa \<le> wb\<close> .
+  \<open>\<lambda>(da,wa) (db,wb). da \<le> db \<and> wa \<le> wb\<close> .
 
 lift_definition less_perm :: \<open>perm \<Rightarrow> perm \<Rightarrow> bool\<close> is
-  \<open>\<lambda>(da,wa) (db,wb). (da \<ge> db \<and> wa \<le> wb) \<and> (db < da \<or> wa < wb)\<close> .
+  \<open>\<lambda>(da,wa) (db,wb). (da \<le> db \<and> wa \<le> wb) \<and> (da < db \<or> wa < wb)\<close> .
 
 lift_definition plus_perm :: \<open>perm \<Rightarrow> perm \<Rightarrow> perm\<close> is
   \<open>\<lambda>(da,wa) (db,wb). (da+db, min 1 (wa+wb))\<close>
@@ -86,28 +171,27 @@ lemma plus_perm_Rep[simp]:
   \<open>Rep_perm (a + b) = (fst (Rep_perm a) + fst (Rep_perm b), min 1 (snd (Rep_perm a) + snd (Rep_perm b)))\<close>
   by (clarsimp simp add: plus_perm_def Rep_perm_constraintsD Abs_perm_inverse split: prod.splits)
 
-
 instance
   apply standard
-         apply (force simp add: plus_perm_def perm.Abs_perm_inject Rep_perm_constraintsD
-      ordered_comm_monoid_add_add_min_assoc split: prod.splits)
-        apply (force simp add: plus_perm_def perm.Abs_perm_inject Rep_perm_constraintsD
-      add.commute split: prod.splits)
-       apply (simp add: zero_perm_def plus_perm_def perm.Abs_perm_inject Rep_perm_constraintsD
-      split: prod.splits, metis Rep_perm_inverse)
-      apply (force simp add: less_perm_def less_eq_perm_def not_le split: prod.splits)
-     apply (force simp add: less_eq_perm_def split: prod.splits)
-    apply (force simp add: less_eq_perm_def split: prod.splits)
-   apply (force simp add: less_eq_perm_def Rep_perm_inject[symmetric] split: prod.splits)
-  apply (clarsimp simp add: less_eq_perm_def plus_perm_def Rep_perm_constraintsD eq_Abs_perm_iff
+              apply (force simp add: less_eq_perm_def less_perm_def split: prod.splits)
+             apply (force simp add: less_eq_perm_def)
+            apply (force simp add: less_eq_perm_def)
+           apply (force simp add: less_eq_perm_def intro: iffD1[OF Rep_perm_inject])
+          apply (force simp add: less_eq_perm_def bot_perm_def Rep_perm_constraintsD)
+         apply (force simp add: disjoint_perm_def Rep_perm_constraintsD split: prod.splits)
+        apply (force simp add: disjoint_perm_def zero_perm_def Rep_perm_constraintsD split: prod.splits)
+       apply (simp add: disjoint_perm_def plus_perm_def Rep_perm_constraintsD split: prod.splits)
+       apply (metis Rep_perm_constraintsD(2) add_le_cancel_left dual_order.trans le_add_same_cancel1)
+      apply (force simp add: disjoint_perm_def plus_perm_def Rep_perm_constraintsD)
+     apply (force simp add: disjoint_perm_def plus_perm_def less_eq_perm_def Rep_perm_constraintsD
       split: prod.splits)
-  apply (subst ex_perm_Rep_iff)
-  apply clarsimp
-  apply (rename_tac da wa db wb)
-  apply (rule iffI)
-   apply (rule_tac x=\<open>db - da\<close> in exI)
-  apply clarsimp
-  oops
+    apply (force simp add: plus_perm_def perm.Abs_perm_inject Rep_perm_constraintsD
+      ordered_comm_monoid_add_add_min_assoc split: prod.splits)
+   apply (force simp add: plus_perm_def perm.Abs_perm_inject Rep_perm_constraintsD
+      add.commute split: prod.splits)
+  apply (simp add: zero_perm_def plus_perm_def perm.Abs_perm_inject Rep_perm_constraintsD
+      split: prod.splits, metis Rep_perm_inverse)
+  done
 
 end
 
@@ -117,7 +201,7 @@ typedef ('a,'b) dheap =
   morphisms app_dheap Abs_dheap
   by (rule exI[where x=Map.empty], force)
 
-lemmas Abs_dheap_inverse' = Abs_dheap_inverse[OF iffD2[OF mem_Collect_eq], OF conjI]
+lemmas Abs_dheap_inverse' = Abs_dheap_inverse[OF iffD2[OF mem_Collect_eq]]
 
 syntax app_dheap :: \<open>('a,'b) dheap \<Rightarrow> 'a \<Rightarrow> (perm \<times> 'b) option\<close> (infix \<open>\<bullet>\<close> 990)
 
@@ -135,9 +219,14 @@ lemma dheap_eq_iff:
 
 lemmas app_dheap' = app_dheap[simplified]
 
+lemma Abs_dheap_inverse_app[simp]:
+  \<open>Abs_dheap (app_dheap h) \<bullet> x = h \<bullet> x\<close>
+  by (simp add: app_dheap_inverse)
+
+(*
 lemma app_dheapD:
   assumes
-  \<open>app_dheap h x = Some ((p,s),v)\<close>
+  \<open>app_dheap h x = Some (Abs_perm (p,s),v)\<close>
   shows
     \<open>0 < p\<close> \<open>p \<le> 1\<close>
     \<open>0 \<le> s\<close> \<open>s \<le> 1\<close>
@@ -152,10 +241,6 @@ lemma Abs_app_dheap:
   shows \<open>(Abs_dheap m) \<bullet> x = m x\<close>
   using assms
   by (simp add: Abs_dheap_inverse')
-
-lemma Abs_dheap_inverse_app[simp]:
-  \<open>Abs_dheap (app_dheap h) \<bullet> x = h \<bullet> x\<close>
-  by (simp add: app_dheap_inverse)
 
 lemma app_dheap_bounded_iff:
   \<open>a \<bullet> x = Some ((p,s), v) \<Longrightarrow> 1 \<le> p \<longleftrightarrow> p = 1\<close>
@@ -180,7 +265,7 @@ lemma ex_dheap_by_parts:
   apply (subst finite_map_choice_iff)
   apply (simp add: split_option_ex all_conj_distrib)
   done
-
+*)
 
 subsection \<open>Basic dheap operations\<close>
 
@@ -208,8 +293,8 @@ subsubsection \<open> Map \<close>
 
 text \<open>change the values of a dheap without changing the domain\<close>
 
-lift_definition map_dheap :: \<open>(rat \<Rightarrow> rat) \<Rightarrow> (rat \<Rightarrow> rat) \<Rightarrow> ('a \<Rightarrow> 'b) \<Rightarrow> ('i,'a) dheap \<Rightarrow> ('i,'b) dheap\<close> is
-  \<open>\<lambda>fp fs fv h. \<lambda>x. map_option (map_prod (map_prod (\<lambda>p. if fp p \<le> 0 then 1 else min 1 (fp p)) (\<lambda>s. max 0 (min 1 (fs s)))) fv) (h x)\<close>
+lift_definition map_dheap :: \<open>(perm \<Rightarrow> perm) \<Rightarrow> ('a \<Rightarrow> 'b) \<Rightarrow> ('i,'a) dheap \<Rightarrow> ('i,'b) dheap\<close> is
+  \<open>\<lambda>fp fv h. \<lambda>x. map_option (map_prod fp fv) (h x)\<close>
   by (force simp add: dom_map_option)
 
 lemma map_app_dheap_eq:

@@ -140,7 +140,10 @@ class seplogic = disjoint + plus + zero + order_bot +
   assumes zero_sep[simp]: \<open>0 ## a\<close>
   assumes disjoint_add_leftL: \<open>b ## c \<Longrightarrow> a ## (b + c) \<Longrightarrow> a ## b\<close>
   assumes disjoint_add_left_commute: \<open>a ## c \<Longrightarrow> b ## (a + c) \<Longrightarrow> a ## (b + c)\<close>
+(*
   assumes le_iff_sepadd: \<open>a \<le> b \<longleftrightarrow> (\<exists>c. a ## c \<and> b = a + c)\<close>
+*)
+  assumes le_plus: \<open>a ## b \<Longrightarrow> a \<le> a + b\<close>
   (* partial commutative monoid *)
   assumes partial_add_assoc:
     \<open>a ## b \<Longrightarrow> b ## c \<Longrightarrow> a ## c \<Longrightarrow> (a + b) + c = a + (b + c)\<close>
@@ -148,13 +151,21 @@ class seplogic = disjoint + plus + zero + order_bot +
   assumes partial_add_0[simp]: \<open>0 + a = a\<close>
 begin
 
+(*
+lemma le_plus: \<open>a ## b \<Longrightarrow> a \<le> a + b\<close>
+  using le_iff_sepadd by auto
+*)
+
+lemma le_plus2: \<open>a ## b \<Longrightarrow> b \<le> a + b\<close>
+  by (metis le_plus disjoint_symm partial_add_commute)
+
 subsection \<open>partial canonically_ordered_monoid_add lemmas\<close>
 
 lemma zero_sepR[simp]: \<open>x ## 0\<close>
   using disjoint_symm zero_sep by blast
   
 lemma zero_le[simp]: \<open>0 \<le> x\<close>
-  by (simp add: le_iff_sepadd)
+  by (metis le_plus partial_add_0 zero_sep)
 
 lemma le_zero_eq[simp]: "n \<le> 0 \<longleftrightarrow> n = 0"
   by (auto intro: order.antisym)
@@ -176,7 +187,7 @@ lemma gr_implies_not_zero: "m < n \<Longrightarrow> n \<noteq> 0"
   by auto
 
 lemma sepadd_eq_0_iff_both_eq_0[simp]: "x ## y \<Longrightarrow> x + y = 0 \<longleftrightarrow> x = 0 \<and> y = 0"
-  by (metis le_iff_sepadd le_zero_eq partial_add_0)
+  by (metis le_plus le_zero_eq partial_add_0)
 
 lemma zero_eq_sepadd_iff_both_eq_0[simp]: "x ## y \<Longrightarrow> 0 = x + y \<longleftrightarrow> x = 0 \<and> y = 0"
   using sepadd_eq_0_iff_both_eq_0[of x y] unfolding eq_commute[of 0] .
@@ -185,6 +196,7 @@ lemma partial_add_left_commute:
   \<open>a ## b \<Longrightarrow> b ## c \<Longrightarrow> a ## c \<Longrightarrow> b + (a + c) = a + (b + c)\<close>
   by (metis disjoint_symm partial_add_assoc partial_add_commute)
 
+(*
 lemma less_eqE:
   assumes \<open>a \<le> b\<close>
   obtains c where \<open>b = a + c\<close>
@@ -204,6 +216,7 @@ proof -
   ultimately show ?thesis
     by (rule that)
 qed
+*)
 
 lemmas zero_order = zero_le le_zero_eq not_less_zero zero_less_iff_neq_zero not_gr_zero
   \<comment> \<open>This should be attributed with \<open>[iff]\<close>, but then \<open>blast\<close> fails in \<open>Set\<close>.\<close>
@@ -212,20 +225,9 @@ subsection \<open>Misc\<close>
 
 lemma disjoint_add_leftR: \<open>b ## c \<Longrightarrow> a ## (b + c) \<Longrightarrow> a ## c\<close>
   by (metis disjoint_add_leftL disjoint_symm partial_add_commute)
-(*
-lemma disjoint_add_right[simp]:
-  \<open>a ## b \<Longrightarrow> (a + b) ## c \<longleftrightarrow> a ## c \<and> b ## c\<close>
-  by (simp add: disjoint_symm)
-*)
 
 lemma sep_add_0_right[simp]: "a + 0 = a"
   by (metis zero_sepR partial_add_0 partial_add_commute)
-
-lemma le_plus: \<open>a ## b \<Longrightarrow> a \<le> a + b\<close>
-  using le_iff_sepadd by auto
-
-lemma le_plus2: \<open>a ## b \<Longrightarrow> b \<le> a + b\<close>
-  by (metis le_plus disjoint_symm partial_add_commute)
 
 subsection \<open>sepdomeq\<close>
 
@@ -264,14 +266,6 @@ lemma sepdomsubseteq_transp:
 lemma sepdomsubseteq_disjointD:
   \<open>sepdomsubseteq a b \<Longrightarrow> a ## c \<Longrightarrow> b ## c\<close>
   by (simp add: sepdomsubseteq_def)
-
-
-lemma trichotomous_sepdomeq_substates_equal:
-  assumes sep_trichotomy: \<open>sepdomsubseteq a b \<or> sepdomsubseteq b a \<or> a ## b\<close>
-  shows \<open>a \<le> c \<Longrightarrow> b \<le> c \<Longrightarrow> sepdomeq a b \<Longrightarrow> a = b\<close>
-  using sep_trichotomy
-  apply (simp add: sepdomeq_def sepdomsubseteq_def)
-  oops
 
 
 subsection \<open> Seplogic connectives \<close>
@@ -395,13 +389,17 @@ lemma sepconj_comm_imp:
 definition precise :: \<open>('a \<Rightarrow> bool) \<Rightarrow> bool\<close> where
   \<open>precise P \<equiv> \<forall>h. \<forall>h1\<le>h. P h1 \<longrightarrow> (\<forall>h2\<le>h. P h2 \<longrightarrow> h1 = h2)\<close>
 
+definition precise' :: \<open>('a \<Rightarrow> bool) \<Rightarrow> bool\<close> where
+  \<open>precise' P \<equiv> \<forall>h1. P h1 \<longrightarrow> (\<forall>h2. P h2 \<longrightarrow>
+                    (\<exists>h1' h2'. h1 ## h1' \<and> h2 ## h2' \<and> h1 + h1' = h2 + h2') \<longrightarrow> h1 = h2)\<close>
+
 definition intuitionistic :: \<open>('a \<Rightarrow> bool) \<Rightarrow> bool\<close> where
   \<open>intuitionistic P \<equiv> \<forall>h h'. P h \<and> h \<le> h' \<longrightarrow> P h'\<close>
 
 
 lemma strong_sepcoimp_imp_sepconj:
   \<open>(P \<^emph> \<^bold>T) \<sqinter> (P \<sim>\<^emph> Q) \<le> P \<^emph> Q\<close>
-  by (force simp add: sepconj_def sepcoimp_def precise_def le_fun_def le_iff_sepadd pred_true_def)
+  by (force simp add: sepconj_def sepcoimp_def precise_def le_fun_def pred_true_def)
 
 lemma secoimp_imp_sepconj:
   \<open>P \<sqinter> (P \<sim>\<^emph> Q) \<le> P \<^emph> (Q \<sqinter> emp)\<close>
@@ -423,26 +421,23 @@ lemma not_coimp_emp:
 
 lemma sepconj_distrib_conj_iff_sepconj_eq_strong_sepcoimp:
   shows \<open>(\<forall>Q Q'. P \<^emph> (Q \<sqinter> Q') = (P \<^emph> Q) \<sqinter> (P \<^emph> Q')) \<longleftrightarrow> (\<forall>Q. P \<^emph> Q = (P \<^emph> \<^bold>T) \<sqinter> (P \<sim>\<^emph> Q))\<close>
-  apply (clarsimp simp add: sepconj_def sepcoimp_def precise_def le_fun_def le_iff_sepadd pred_true_def)
+  apply (clarsimp simp add: sepconj_def sepcoimp_def precise_def le_fun_def pred_true_def)
   apply (intro iffI)
-   apply (rule allI)
-   apply (rule ext)
-   apply (rule iffI)
-    apply simp
-    apply (rule conjI)
-     apply blast
-    apply clarsimp
-    apply (drule_tac x=\<open>Q\<close> in spec)
-    apply (drule_tac x=\<open>(=) h2a\<close> in spec)
-    apply (drule_tac x=\<open>h1a + h2a\<close> in cong[OF _ refl])
+  subgoal
+    apply (rule allI)
+    apply (rule ext)
+    apply (rule iffI)
+     apply simp
+     apply (rule conjI)
+      apply blast
+     apply clarsimp
+     apply (drule_tac x=\<open>Q\<close> in spec)
+     apply (drule_tac x=\<open>(=) h2a\<close> in spec)
+     apply (drule_tac x=\<open>h1a + h2a\<close> in cong[OF _ refl])
+     apply fastforce
     apply fastforce
-   apply fastforce
-
-  apply clarsimp
-  apply (rule ext)
-  apply (rule iffI)
-   apply blast
-  apply clarsimp
+    done
+  apply (simp add: fun_eq_iff, blast)
   done
 
 
@@ -466,16 +461,24 @@ lemma precise_to_supported:
   \<open>precise P \<Longrightarrow> supported (P \<^emph> \<^bold>T)\<close>
   by (metis order.eq_iff supported_def)
 
-lemma precise_to_intuitionistic:
-  \<open>precise P \<Longrightarrow> intuitionistic (P \<^emph> \<^bold>T)\<close>
-  apply (simp add: sepconj_def pred_true_def precise_def intuitionistic_def)
-  by (meson dual_order.trans le_iff_sepadd)
 
+lemma le_iff_sepadd:
+  \<open>a \<le> b \<longleftrightarrow> (\<exists>c. b = a + c)\<close>
+  nitpick[card=2]
+  oops
+
+lemma precise_to_intuitionistic:
+  fixes P :: \<open>'a \<Rightarrow> bool\<close>
+  shows \<open>precise' P \<Longrightarrow> intuitionistic (P \<^emph> \<^bold>T)\<close>
+  apply (simp add: sepconj_def pred_true_def precise'_def intuitionistic_def)
+  apply clarsimp
+  oops
 
 lemma supported_intuitionistic_to_precise:
   \<open>supported P \<Longrightarrow> intuitionistic P \<Longrightarrow> precise (P \<sqinter> - (P \<^emph> (-emp)))\<close>
   nitpick[card=4]
   oops
+  (* not actualy true *)
 
 end
 
@@ -501,7 +504,6 @@ lemma partial_right_cancel2:
   using partial_right_cancel disjoint_symm
   by force
 
-
 lemma partial_left_cancel:
   \<open>a ## c \<Longrightarrow> b ## c \<Longrightarrow> (c + a = c + b) = (a = b)\<close>
   by (metis partial_add_commute partial_right_cancel)
@@ -511,15 +513,14 @@ lemma partial_left_cancel2:
   using partial_left_cancel disjoint_symm
   by force
 
-
 lemma precise_iff_conj_distrib:
-  shows \<open>precise P \<longleftrightarrow> (\<forall>Q Q'. P \<^emph> (Q \<sqinter> Q') = (P \<^emph> Q) \<sqinter> (P \<^emph> Q'))\<close>
+  shows \<open>precise' P \<longleftrightarrow> (\<forall>Q Q'. P \<^emph> (Q \<sqinter> Q') = (P \<^emph> Q) \<sqinter> (P \<^emph> Q'))\<close>
 proof (rule iffI)
   assume distrib_assm: \<open>\<forall>Q Q'. P \<^emph> (Q \<sqinter> Q') = (P \<^emph> Q) \<sqinter> (P \<^emph> Q')\<close>
-  show \<open>precise P\<close>
-  proof (clarsimp simp add: precise_def le_iff_sepadd)
+  show \<open>precise' P\<close>
+  proof (clarsimp simp add: precise'_def)
     fix h1 h1' h2 h2'
-    presume precise_assms:
+    assume precise_assms:
       \<open>h1 + h1' = h2 + h2'\<close>
       \<open>h1 ## h1'\<close>
       \<open>h2 ## h2'\<close>
@@ -541,25 +542,23 @@ proof (rule iffI)
       by fastforce
   qed
 next
-  presume precise_assm: \<open>precise P\<close>
+  assume precise_assm: \<open>precise' P\<close>
   then show \<open>\<forall>Q Q'. P \<^emph> (Q \<sqinter> Q') = (P \<^emph> Q) \<sqinter> (P \<^emph> Q')\<close>
-    by (clarsimp simp add: sepconj_def precise_def fun_eq_iff le_iff_sepadd,
-        metis partial_left_cancel2)
+    by (simp add: sepconj_def precise'_def fun_eq_iff, blast dest: partial_left_cancel2)
 qed
 
+
 lemma precise_iff_all_sepconj_imp_sepcoimp:
-  shows \<open>precise P \<longleftrightarrow> (\<forall>Q. P \<^emph> Q \<le> P \<sim>\<^emph> Q)\<close>
-  apply (clarsimp simp add: sepconj_def sepcoimp_def precise_def le_fun_def le_iff_sepadd)
+  shows \<open>precise' P \<longleftrightarrow> (\<forall>Q. P \<^emph> Q \<le> P \<sim>\<^emph> Q)\<close>
+  apply (clarsimp simp add: sepconj_def sepcoimp_def precise'_def le_fun_def)
   apply (rule iffI)
-   apply (metis partial_right_cancel2 partial_add_commute)
-  apply clarsimp
-  apply (rename_tac a b c d)
-  apply (drule_tac x=\<open>(=) b\<close> in spec, metis partial_right_cancel)
+   apply (metis partial_left_cancel2)
+  apply (metis le_less order.irrefl partial_right_cancel)
   done
 
 lemma precise_sepconj_eq_strong_sepcoimp:
-  shows \<open>precise P \<Longrightarrow> P \<^emph> Q = (P \<^emph> \<^bold>T) \<sqinter> (P \<sim>\<^emph> Q)\<close>
-  apply (clarsimp simp add: sepconj_def sepcoimp_def precise_def le_fun_def le_iff_sepadd pred_true_def)
+  shows \<open>precise' P \<Longrightarrow> P \<^emph> Q = (P \<^emph> \<^bold>T) \<sqinter> (P \<sim>\<^emph> Q)\<close>
+  apply (clarsimp simp add: sepconj_def sepcoimp_def precise'_def le_fun_def pred_true_def)
   apply (rule ext)
   apply (rule iffI)
   apply (blast dest: partial_left_cancel2)
