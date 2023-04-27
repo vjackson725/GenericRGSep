@@ -131,19 +131,19 @@ end
 
 section \<open> Separation Logic \<close>
 
-
 class disjoint =
   fixes disjoint :: \<open>'a \<Rightarrow> 'a \<Rightarrow> bool\<close> (infix \<open>##\<close> 70)
 
-class seplogic = disjoint + plus + zero + order_bot +
+class disjoint_zero = disjoint + zero +
+  assumes zero_disjointL[simp]: \<open>0 ## a\<close>
+  assumes zero_disjointR[simp]: \<open>a ## 0\<close>
+
+class seplogic = disjoint_zero + plus + order_bot +
   assumes disjoint_symm: \<open>a ## b = b ## a\<close>
-  assumes zero_sep[simp]: \<open>0 ## a\<close>
   assumes disjoint_add_leftL: \<open>b ## c \<Longrightarrow> a ## (b + c) \<Longrightarrow> a ## b\<close>
   assumes disjoint_add_left_commute: \<open>a ## c \<Longrightarrow> b ## (a + c) \<Longrightarrow> a ## (b + c)\<close>
-(*
   assumes le_iff_sepadd: \<open>a \<le> b \<longleftrightarrow> (\<exists>c. a ## c \<and> b = a + c)\<close>
-*)
-  assumes le_plus: \<open>a ## b \<Longrightarrow> a \<le> a + b\<close>
+(* assumes le_plus: \<open>a ## b \<Longrightarrow> a \<le> a + b\<close> *)
   (* partial commutative monoid *)
   assumes partial_add_assoc:
     \<open>a ## b \<Longrightarrow> b ## c \<Longrightarrow> a ## c \<Longrightarrow> (a + b) + c = a + (b + c)\<close>
@@ -151,21 +151,16 @@ class seplogic = disjoint + plus + zero + order_bot +
   assumes partial_add_0[simp]: \<open>0 + a = a\<close>
 begin
 
-(*
 lemma le_plus: \<open>a ## b \<Longrightarrow> a \<le> a + b\<close>
   using le_iff_sepadd by auto
-*)
 
 lemma le_plus2: \<open>a ## b \<Longrightarrow> b \<le> a + b\<close>
   by (metis le_plus disjoint_symm partial_add_commute)
 
 subsection \<open>partial canonically_ordered_monoid_add lemmas\<close>
 
-lemma zero_sepR[simp]: \<open>x ## 0\<close>
-  using disjoint_symm zero_sep by blast
-  
 lemma zero_le[simp]: \<open>0 \<le> x\<close>
-  by (metis le_plus partial_add_0 zero_sep)
+  by (metis le_plus partial_add_0 zero_disjointL)
 
 lemma le_zero_eq[simp]: "n \<le> 0 \<longleftrightarrow> n = 0"
   by (auto intro: order.antisym)
@@ -212,7 +207,7 @@ proof -
   from \<open>a \<le> b\<close> obtain c where \<open>b = a + c\<close> \<open>a ## c\<close>
     by (force simp add: le_iff_sepadd)
   moreover have \<open>c \<noteq> 0\<close> using \<open>a \<noteq> b\<close> \<open>b = a + c\<close>
-    by (metis partial_add_0 partial_add_commute zero_sep)
+    by (metis partial_add_0 partial_add_commute zero_disjointL)
   ultimately show ?thesis
     by (rule that)
 qed
@@ -227,7 +222,7 @@ lemma disjoint_add_leftR: \<open>b ## c \<Longrightarrow> a ## (b + c) \<Longrig
   by (metis disjoint_add_leftL disjoint_symm partial_add_commute)
 
 lemma sep_add_0_right[simp]: "a + 0 = a"
-  by (metis zero_sepR partial_add_0 partial_add_commute)
+  by (metis zero_disjointR partial_add_0 partial_add_commute)
 
 subsection \<open>sepdomeq\<close>
 
@@ -489,7 +484,7 @@ class strong_separated_seplogic = seplogic +
 begin
 
 lemma selfsep_iff: \<open>a ## a \<longleftrightarrow> a = 0\<close>
-  using only_zero_self_sep zero_sep by blast
+  using only_zero_self_sep zero_disjointL by blast
 
 end
 
@@ -646,7 +641,7 @@ lemma diff_zero[simp]: "a - 0 = a"
   using sepadd_diff_cancel_right'[of a 0] by simp
 
 lemma diff_cancel[simp]: "a - a = 0"
-  using sepadd_diff_cancel_left' zero_sepR by fastforce
+  using sepadd_diff_cancel_left' zero_disjointR by fastforce
 
 lemma sepadd_implies_diff:
   \<open>c ## b \<Longrightarrow> c + b = a \<Longrightarrow> c = a - b\<close>
