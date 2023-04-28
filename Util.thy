@@ -234,6 +234,10 @@ lemma field_All_mult_inverse_iff:
   shows \<open>k \<noteq> 0 \<Longrightarrow> (\<forall>y. x = y * k \<longrightarrow> P y) \<longleftrightarrow> P (x / k)\<close>
   by fastforce
 
+lemma zero_less_plus_positive:
+  fixes a b :: \<open>'a :: {order,monoid_add}\<close>
+  shows \<open>0 < a + b \<Longrightarrow> 0 \<le> a \<Longrightarrow> 0 \<le> b \<Longrightarrow> 0 < a \<or> 0 < b\<close>
+  by force
 
 lemma ordered_ab_group_add_ge0_le_iff_add:
   fixes a b :: \<open>'a :: ordered_ab_group_add\<close>

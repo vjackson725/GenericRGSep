@@ -13,6 +13,17 @@ lift_definition wperm :: \<open>perm \<Rightarrow> rat\<close> is \<open>snd\<cl
 
 lemmas Rep_perm_constraints = perm.Rep_perm[simplified mem_Collect_eq]
 
+lemma dperm_constraints[simp]:
+  \<open>0 \<le> dperm p\<close>
+  \<open>dperm p \<le> 0 \<longleftrightarrow> dperm p = 0\<close>
+  by (metis Rep_perm_constraints dperm.rep_eq fst_conv order_antisym_conv)+
+
+lemma wperm_constraints[simp]:
+  \<open>0 \<le> wperm p\<close>
+  \<open>wperm p \<le> 1\<close>
+  \<open>wperm p \<le> 0 \<longleftrightarrow> wperm p = 0\<close>
+   by (metis Rep_perm_constraints wperm.rep_eq snd_conv order_antisym_conv)+
+
 lemma Rep_perm_constraintsD:
   \<open>Rep_perm a = (d,w) \<Longrightarrow> 0 \<le> d\<close>
   \<open>Rep_perm a = (d,w) \<Longrightarrow> 0 \<le> w\<close>
@@ -60,8 +71,18 @@ lift_definition disjoint_perm :: \<open>perm \<Rightarrow> perm \<Rightarrow> bo
 lift_definition bot_perm :: perm is \<open>(0,0)\<close>
   by simp
 
+lemma dperm_wperm_bot[simp]:
+  \<open>dperm bot = 0\<close>
+  \<open>wperm bot = 0\<close>
+  by (simp add: bot_perm_def dperm_def wperm_def)+
+
 lift_definition zero_perm :: \<open>perm\<close> is \<open>(0,0)\<close>
   by simp
+
+lemma dperm_wperm_zero[simp]:
+  \<open>dperm 0 = 0\<close>
+  \<open>wperm 0 = 0\<close>
+  by (simp add: zero_perm_def dperm_def wperm_def)+
 
 lift_definition less_eq_perm :: \<open>perm \<Rightarrow> perm \<Rightarrow> bool\<close> is
   \<open>\<lambda>(da,wa) (db,wb). da \<le> db \<and> wa \<le> wb\<close> .
@@ -92,6 +113,10 @@ lemma plus_perm_Rep[simp]:
   \<open>Rep_perm (a + b) = (fst (Rep_perm a) + fst (Rep_perm b), min 1 (snd (Rep_perm a) + snd (Rep_perm b)))\<close>
   by (clarsimp simp add: plus_perm_def Rep_perm_constraintsD Abs_perm_inverse split: prod.splits)
 
+lemma dperm_wperm_plus[simp]:
+  \<open>dperm (a + b) = dperm a + dperm b\<close>
+  \<open>wperm (a + b) = min 1 (wperm a + wperm b)\<close>
+  by (simp add: plus_perm_def dperm_def wperm_def split: prod.splits)+
 
 instance
   apply standard
@@ -498,6 +523,15 @@ instance by standard
 end
 
 lemmas disjoint_dheap_def' = disjoint_dheap_def disjoint_set_dheap_def
+
+lemma disjoint_dheap_Some_same_valD:
+  \<open>a ## b \<Longrightarrow> a \<bullet> x = Some (pa,va) \<Longrightarrow>  b \<bullet> x = Some (pb,vb) \<Longrightarrow> va = vb\<close>
+  by (simp add: disjoint_dheap_def disjoint_set_dheap_def)
+
+lemma disjoint_dheap_Some_bounded_oneD:
+  \<open>a ## b \<Longrightarrow> a \<bullet> x = Some (pa,va) \<Longrightarrow> b \<bullet> x = Some (pb,vb) \<Longrightarrow> wperm pa + wperm pb \<le> 1\<close>
+  by (simp add: disjoint_dheap_def disjoint_set_dheap_def disjoint_perm_def
+      less_eq_perm_def wperm_def split: prod.splits, metis prod.collapse)
 
 subsection \<open> Addition \<close>
 
@@ -907,27 +941,29 @@ lemma stablerel_add:
   apply (drule_tac x=x in spec)+
   apply (intro conjI impI allI; simp)
           apply force
-
-  sorry
-        apply force
-       apply (simp add: add_strict_increasing app_dheapD(3); fail)
-      apply (force simp add: disjoint_dheap_def')
-     apply (simp add: add_nonneg_pos app_dheapD(3); fail)
-    apply (force simp add: disjoint_dheap_def')
-   apply (fastforce simp add: disjoint_dheap_def')  
-  apply (metis add.commute add_pos_nonneg app_dheapD(3) nless_le)
+         apply (simp add: add.commute add_nonneg_pos; fail)
+        apply blast
+       apply (force simp add: disjoint_dheap_def')
+      apply (force intro: add_nonneg_pos)
+     apply (force simp add: wperm.rep_eq)
+    apply (clarsimp simp add: not_less)
+    apply (force dest: disjoint_dheap_Some_same_valD)
+   apply (fastforce simp add: disjoint_dheap_def')
+  apply clarsimp
+  apply (metis add_nonneg_eq_0_iff add_nonneg_nonneg order_le_imp_less_or_eq wperm_constraints(1))
   done
 
 lemma stablerel_subheap:
   \<open>stablerel a b \<Longrightarrow> a' \<le> a \<Longrightarrow> b' \<le> b \<Longrightarrow> stabledom a' \<subseteq> stabledom b' \<Longrightarrow> stablerel a' b'\<close>
-  apply (clarsimp simp add: stablerel_def stabledom_def less_eq_dheap_def subset_iff)
+  apply (clarsimp simp add: stablerel_def stabledom_def less_eq_dheap_def subhperm_eq_def
+      less_eq_perm_def subset_iff wperm_def split: prod.splits)
   apply (drule_tac x=x in spec)+
-  apply fastforce
+  apply (force simp add: Rep_perm_all_iff_ex)
   done
 
 lemma stablerel_impl_subseteq_stabledom:
   \<open>stablerel a b \<Longrightarrow> stabledom a \<subseteq> stabledom b\<close>
-  by (force simp add: stablerel_def stabledom_def)
+  by (clarsimp simp add: stablerel_def stabledom_def wperm_def, metis prod.collapse snd_conv)
 
 lemma stablerel_additivity_of_update:
   assumes
