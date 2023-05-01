@@ -169,6 +169,14 @@ lemma map_perm_le_decreasing[simp]:
 
 end
 
+
+lemma perm_positivity:
+  fixes a b :: perm
+  shows \<open>a + b = c \<Longrightarrow> c = 0 \<Longrightarrow> a = 0\<close>
+  by (clarsimp simp add: zero_perm_def plus_perm_def Rep_perm_constraintsD Abs_perm_inject'
+      eq_Abs_perm_iff add_nonneg_eq_0_iff min_eq_k_iff split: prod.splits)
+
+
 typedef ('a,'b) dheap =
   \<open>{h::'a \<rightharpoonup> perm \<times> 'b. finite (dom h)}\<close>
   morphisms app_dheap Abs_dheap

@@ -577,6 +577,11 @@ proof -
     by simp
 qed
 
+
+lemma weak_emp:
+  \<open>a ## a \<and> a + a = a \<longleftrightarrow> a = 0\<close>
+  by (metis sep_add_0_right zero_disjointR partial_left_cancel2)
+
 end
 
 
