@@ -239,6 +239,22 @@ lemma zero_less_plus_positive:
   shows \<open>0 < a + b \<Longrightarrow> 0 \<le> a \<Longrightarrow> 0 \<le> b \<Longrightarrow> 0 < a \<or> 0 < b\<close>
   by force
 
+lemma linordered_field_min_bounded_divide_by:
+  fixes x k :: \<open>'a :: linordered_field\<close>
+  shows \<open>1 \<le> i \<Longrightarrow> i < k \<Longrightarrow> 0 \<le> x \<Longrightarrow> x \<le> i \<Longrightarrow> min i (x / k) = x / k\<close>
+  by (metis leD le_divide_eq_1 min.absorb2 nle_le order_trans)
+
+lemmas min_absorb_plus_divide_left =
+  min.absorb2[OF
+    order.trans[OF
+      add_mono[OF
+        frac_le[of _ _ 1, simplified, OF _ order.refl] order.refl]], rotated 2]
+lemmas min_absorb_plus_divide_right =
+  min.absorb2[OF
+    order.trans[OF
+      add_mono[OF
+        order.refl frac_le[of _ _ 1, simplified, OF _ order.refl]]], rotated 2]
+
 lemma ordered_ab_group_add_ge0_le_iff_add:
   fixes a b :: \<open>'a :: ordered_ab_group_add\<close>
   shows \<open>(a \<le> b) = (\<exists>c\<ge>0. b = a + c)\<close>

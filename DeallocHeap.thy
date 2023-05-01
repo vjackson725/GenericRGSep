@@ -43,9 +43,14 @@ lemma ex_perm_Rep_iff:
   \<open>(\<exists>a. P (Rep_perm a)) \<longleftrightarrow> (\<exists>a'. P a' \<and> 0 \<le> fst a' \<and> 0 \<le> snd a' \<and> snd a' \<le> 1)\<close>
   by (metis Rep_perm_constraints eq_Abs_perm_iff fst_conv snd_conv)
 
-lemma perm_Abs_inverse[simp]:
+lemma Abs_perm_inverse'[simp]:
   \<open>0 \<le> x \<Longrightarrow> 0 \<le> y \<Longrightarrow> y \<le> 1 \<Longrightarrow> Rep_perm (Abs_perm (x,y)) = (x,y)\<close>
   by (clarsimp simp add: Rep_perm_constraintsD Abs_perm_inverse)
+
+lemma Abs_perm_inject':
+  \<open>0 \<le> da \<Longrightarrow> 0 \<le> db \<Longrightarrow> 0 \<le> wa \<Longrightarrow> wa \<le> 1 \<Longrightarrow> 0 \<le> wb \<Longrightarrow> wb \<le> 1 \<Longrightarrow>
+    (Abs_perm (da,wa) = Abs_perm (db,wb)) = ((da,wa) = (db,wb))\<close>
+  by (clarsimp simp add: Abs_perm_inject Sigma_def)
 
 lemma Rep_perm_all_iff_ex:
   \<open>(\<forall>da wa. Rep_perm a = (da, wa) \<longrightarrow> P da wa) \<longleftrightarrow> (\<exists>da wa. Rep_perm a = (da, wa) \<and> P da wa)\<close>
@@ -61,6 +66,9 @@ lemma map_perm_id[simp]: \<open>map_perm id id = id\<close>
   apply (metis Rep_perm_constraintsD(1-3) Rep_perm_inverse max_def min.absorb2)
   done
 
+lemma map_perm_eq:
+  \<open>map_perm fd fw a = Abs_perm (max 0 (fd (dperm a)), max 0 (min 1 (fw (wperm a))))\<close>
+  by (force simp add: map_perm_def dperm_def wperm_def split: prod.splits)
 
 instantiation perm :: seplogic
 begin
@@ -113,6 +121,11 @@ lemma plus_perm_Rep[simp]:
   \<open>Rep_perm (a + b) = (fst (Rep_perm a) + fst (Rep_perm b), min 1 (snd (Rep_perm a) + snd (Rep_perm b)))\<close>
   by (clarsimp simp add: plus_perm_def Rep_perm_constraintsD Abs_perm_inverse split: prod.splits)
 
+lemma Abs_perm_plus[simp]:
+  \<open>0 \<le> da \<Longrightarrow> 0 \<le> db \<Longrightarrow> 0 \<le> wa \<Longrightarrow> 0 \<le> wb \<Longrightarrow> wa + wb \<le> 1 \<Longrightarrow>
+    Abs_perm (da, wa) + Abs_perm (db, wb) = Abs_perm (da + db, wa + wb)\<close>
+  by (clarsimp simp add: plus_perm_def Abs_perm_inject' split: prod.splits)
+
 lemma dperm_wperm_plus[simp]:
   \<open>dperm (a + b) = dperm a + dperm b\<close>
   \<open>wperm (a + b) = min 1 (wperm a + wperm b)\<close>
@@ -149,8 +162,12 @@ instance
       split: prod.splits, metis Rep_perm_inverse)
   done
 
-end
+lemma map_perm_le_decreasing[simp]:
+  \<open>(\<And>x. 0 \<le> x \<Longrightarrow> fd x \<le> x) \<Longrightarrow> (\<And>x. 0 \<le> x \<Longrightarrow> x \<le> 1 \<Longrightarrow> fw x \<le> x) \<Longrightarrow> map_perm fd fw a \<le> a\<close>
+  by (force simp add: map_perm_def less_eq_perm_def Rep_perm_constraintsD min.coboundedI2
+      split: prod.splits)
 
+end
 
 typedef ('a,'b) dheap =
   \<open>{h::'a \<rightharpoonup> perm \<times> 'b. finite (dom h)}\<close>
@@ -987,20 +1004,26 @@ proof -
     apply (rule_tac x=\<open>?b1\<close> in exI, rule_tac x=\<open>?b2\<close> in exI)
     apply (intro conjI)
        apply (clarsimp simp add: disjoint_dheap_def disjoint_set_dheap_def halve_dheap_app_eq)
-       apply (metis app_dheapD(2) app_dheapD(4) mult.commute)
-      apply (force simp add: dheap_eq_iff halve_dheap_iff app_dheapD(2,4) in_dom_dheap_iff split: option.splits)
+       apply (intro conjI impI; force simp add: map_perm_eq disjoint_perm_def
+        linordered_field_min_bounded_divide_by order.trans[OF wperm_constraints(2) one_le_numeral]
+        split: prod.splits)
+      apply (force simp add: halve_dheap_def map_perm_def dom_dheap_def plus_perm_def
+          dheap_eq_iff dom_def Rep_perm_constraintsD
+          order.trans[OF Rep_perm_constraintsD(3) one_le_numeral]
+          linordered_field_min_bounded_divide_by eq_Abs_perm_iff mult.commute
+          split: option.splits prod.splits)
     subgoal
       apply (rule stablerel_subheap, assumption)
         apply (force simp add: le_plus)
-       apply (clarsimp simp add: halve_dheap_def less_eq_dheap_def app_dheapD order_less_imp_le
+       apply (clarsimp simp add: halve_dheap_def less_eq_dheap_def order_less_imp_le
           split: option.splits; fail)
       apply force
       done
     subgoal
       apply (rule stablerel_subheap, blast)
         apply (force simp add: le_plus2)
-       apply (clarsimp simp add: halve_dheap_def less_eq_dheap_def app_dheapD order_less_imp_le
-          split: option.splits; fail)
+       apply (clarsimp simp add: halve_dheap_def less_eq_dheap_def Rep_perm_constraintsD
+          order_less_imp_le split: option.splits; fail)
       apply force
       done
     done
