@@ -138,17 +138,19 @@ class disjoint_zero = disjoint + zero +
   assumes zero_disjointL[simp]: \<open>0 ## a\<close>
   assumes zero_disjointR[simp]: \<open>a ## 0\<close>
 
-class seplogic = disjoint_zero + plus + order_bot +
-  assumes disjoint_symm: \<open>a ## b = b ## a\<close>
-  assumes disjoint_add_leftL: \<open>b ## c \<Longrightarrow> a ## (b + c) \<Longrightarrow> a ## b\<close>
-  assumes disjoint_add_left_commute: \<open>a ## c \<Longrightarrow> b ## (a + c) \<Longrightarrow> a ## (b + c)\<close>
-  assumes le_iff_sepadd: \<open>a \<le> b \<longleftrightarrow> (\<exists>c. a ## c \<and> b = a + c)\<close>
-(* assumes le_plus: \<open>a ## b \<Longrightarrow> a \<le> a + b\<close> *)
+class sepalg = disjoint_zero + plus + order_bot +
   (* partial commutative monoid *)
   assumes partial_add_assoc:
     \<open>a ## b \<Longrightarrow> b ## c \<Longrightarrow> a ## c \<Longrightarrow> (a + b) + c = a + (b + c)\<close>
   assumes partial_add_commute: \<open>a ## b \<Longrightarrow> a + b = b + a\<close>
   assumes partial_add_0[simp]: \<open>0 + a = a\<close>
+  (* separation laws *)
+  assumes disjoint_symm: \<open>a ## b = b ## a\<close>
+  assumes disjoint_add_leftL: \<open>b ## c \<Longrightarrow> a ## (b + c) \<Longrightarrow> a ## b\<close>
+  assumes disjoint_add_left_commute: \<open>a ## c \<Longrightarrow> b ## (a + c) \<Longrightarrow> a ## (b + c)\<close>
+  assumes positivity: \<open>a ## b \<Longrightarrow> a + b = c \<Longrightarrow> c ## c \<Longrightarrow> c + c = c \<Longrightarrow> a ## a \<and> a + a = a\<close>
+  (* order defn *)
+  assumes le_iff_sepadd: \<open>a \<le> b \<longleftrightarrow> (\<exists>c. a ## c \<and> b = a + c)\<close>
 begin
 
 lemma le_plus: \<open>a ## b \<Longrightarrow> a \<le> a + b\<close>
@@ -156,6 +158,9 @@ lemma le_plus: \<open>a ## b \<Longrightarrow> a \<le> a + b\<close>
 
 lemma le_plus2: \<open>a ## b \<Longrightarrow> b \<le> a + b\<close>
   by (metis le_plus disjoint_symm partial_add_commute)
+
+lemma positivity2: \<open>a ## b \<Longrightarrow> a + b = c \<Longrightarrow> c ## c \<Longrightarrow> c + c = c \<Longrightarrow> b ## b \<and> b + b = b\<close>
+  using disjoint_symm partial_add_commute positivity by blast
 
 subsection \<open>partial canonically_ordered_monoid_add lemmas\<close>
 
@@ -479,18 +484,33 @@ end
 
 section \<open>Strongly Separated Separation Logic\<close>
 
-class strong_separated_seplogic = seplogic +
+class strong_separated_seplogic = sepalg +
   assumes only_zero_self_sep: \<open>a ## a \<Longrightarrow> a = 0\<close>
 begin
+
 
 lemma selfsep_iff: \<open>a ## a \<longleftrightarrow> a = 0\<close>
   using only_zero_self_sep zero_disjointL by blast
 
 end
 
+section \<open>Disjointness Separation Algebra\<close>
+
+class disjoint_seplogic = sepalg +
+  assumes disjointness: \<open>a ## a \<Longrightarrow> a + a = b \<Longrightarrow> a = b\<close>
+
+section \<open>Cross-Split Separation Algebra\<close>
+
+class crosssplit_sepalg = sepalg +
+  assumes cross_split:
+  \<open>a ## b \<Longrightarrow> c ## d \<Longrightarrow> a + b = z \<Longrightarrow> c + d = z \<Longrightarrow>
+    \<exists>ac ad bc bd.
+      ac ## ad \<and> bc ## bd \<and> ac ## bc \<and> ad ## bd \<and>
+      ac + ad = a \<and> bc + bd = b \<and> ac + bc = c \<and> ad + bd = d\<close>
+
 section \<open>Right Cancellative Separation Logic\<close>
 
-class right_cancel_seplogic = seplogic +
+class right_cancel_seplogic = sepalg +
   assumes partial_right_cancel: \<open>\<And>a b c. a ## c \<Longrightarrow> b ## c \<Longrightarrow> (a + c = b + c) = (a = b)\<close>
 begin
 
@@ -507,6 +527,15 @@ lemma partial_left_cancel2:
   \<open>c ## a \<Longrightarrow> c ## b \<Longrightarrow> (c + a = c + b) = (a = b)\<close>
   using partial_left_cancel disjoint_symm
   by force
+
+lemma weak_emp:
+  \<open>a ## a \<and> a + a = a \<longleftrightarrow> a = 0\<close>
+  by (metis sep_add_0_right zero_disjointR partial_left_cancel2)
+
+lemma strong_positivity:
+  \<open>a ## b \<Longrightarrow> c ## c \<Longrightarrow> a + b = c \<Longrightarrow> c + c = c \<Longrightarrow> a = b \<and> b = c\<close>
+  using weak_emp by force
+
 
 lemma precise_iff_conj_distrib:
   shows \<open>precise' P \<longleftrightarrow> (\<forall>Q Q'. P \<^emph> (Q \<sqinter> Q') = (P \<^emph> Q) \<sqinter> (P \<^emph> Q'))\<close>
@@ -577,37 +606,12 @@ proof -
     by simp
 qed
 
-
-lemma weak_emp:
-  \<open>a ## a \<and> a + a = a \<longleftrightarrow> a = 0\<close>
-  by (metis sep_add_0_right zero_disjointR partial_left_cancel2)
-
 end
 
 
-(* splitting lemmas *)
+section \<open>A cancellative Separation Algebra\<close>
 
-context seplogic
-begin
-
-lemma \<open>(p \<midarrow>\<^emph> a) \<sqinter> (-p \<midarrow>\<^emph> a) \<le> a\<close>
-  by simp
-
-lemma exmiddle2:
-  fixes a p :: \<open>'a \<Rightarrow> bool\<close>
-  shows \<open>\<top> \<le> p \<squnion> -p\<close>
-  by simp
-
-lemma
-  fixes a p :: \<open>'a \<Rightarrow> bool\<close>
-  shows \<open>a \<le> (-p \<squnion> a) \<sqinter> (p \<squnion> a)\<close>
-  by (clarsimp simp add: sepconj_def le_fun_def)
-
-end
-
-section \<open>A cancellative seplogic\<close>
-
-class cancel_seplogic = seplogic + minus +
+class cancel_sepalg = sepalg + minus +
   assumes sepadd_diff_cancel_left'[simp]: "a ## b \<Longrightarrow> (a + b) - a = b"
   assumes diff_diff_sepadd[simp]: "b ## c \<Longrightarrow> a - b - c = a - (b + c)"
   (* seplogic specific *)

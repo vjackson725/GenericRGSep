@@ -83,7 +83,7 @@ lemma swstable_wsstable_absorb[simp]: \<open>R \<le> R' \<Longrightarrow> \<lflo
   by (metis (opaque_lifting) predicate2D rtranclp.rtrancl_refl rtranclp_trans rtranclp_mono)
 
 
-context seplogic
+context sepalg
 begin
 
 lemma swstable_sepconj_semidistrib:
