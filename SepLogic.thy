@@ -132,7 +132,7 @@ end
 section \<open> Separation Logic \<close>
 
 class disjoint =
-  fixes disjoint :: \<open>'a \<Rightarrow> 'a \<Rightarrow> bool\<close> (infix \<open>##\<close> 70)
+  fixes disjoint :: \<open>'a \<Rightarrow> 'a \<Rightarrow> bool\<close> (infix \<open>##\<close> 60)
 
 class disjoint_zero = disjoint + zero +
   assumes zero_disjointL[simp]: \<open>0 ## a\<close>
@@ -146,12 +146,25 @@ class sepalg = disjoint_zero + plus + order_bot +
   assumes partial_add_0[simp]: \<open>0 + a = a\<close>
   (* separation laws *)
   assumes disjoint_symm: \<open>a ## b = b ## a\<close>
-  assumes disjoint_add_leftL: \<open>b ## c \<Longrightarrow> a ## (b + c) \<Longrightarrow> a ## b\<close>
-  assumes disjoint_add_left_commute: \<open>a ## c \<Longrightarrow> b ## (a + c) \<Longrightarrow> a ## (b + c)\<close>
+  assumes disjoint_add_rightL: \<open>b ## c \<Longrightarrow> a ## (b + c) \<Longrightarrow> a ## b\<close>
+  assumes disjoint_add_right_commute: \<open>a ## c \<Longrightarrow> b ## (a + c) \<Longrightarrow> a ## (b + c)\<close>
   assumes positivity: \<open>a ## b \<Longrightarrow> a + b = c \<Longrightarrow> c ## c \<Longrightarrow> c + c = c \<Longrightarrow> a ## a \<and> a + a = a\<close>
   (* order defn *)
   assumes le_iff_sepadd: \<open>a \<le> b \<longleftrightarrow> (\<exists>c. a ## c \<and> b = a + c)\<close>
 begin
+
+lemma disjoint_add_rightR: \<open>b ## c \<Longrightarrow> a ## b + c \<Longrightarrow> a ## c\<close>
+  by (metis disjoint_add_rightL disjoint_symm partial_add_commute)
+
+lemma disjoint_add_leftL: \<open>a ## b \<Longrightarrow> a + b ## c \<Longrightarrow> a ## c\<close>
+  using disjoint_add_rightL disjoint_symm by blast
+
+lemma disjoint_add_leftR: \<open>a ## b \<Longrightarrow> a + b ## c \<Longrightarrow> b ## c\<close>
+  by (metis disjoint_add_leftL disjoint_symm partial_add_commute)
+
+lemma disjoint_add_commuteL: \<open>c ## b \<Longrightarrow> (c + b) ## a \<Longrightarrow> a + b ## c\<close>
+  by (simp add: disjoint_add_right_commute disjoint_symm)
+
 
 lemma le_plus: \<open>a ## b \<Longrightarrow> a \<le> a + b\<close>
   using le_iff_sepadd by auto
@@ -222,9 +235,6 @@ lemmas zero_order = zero_le le_zero_eq not_less_zero zero_less_iff_neq_zero not_
   \<comment> \<open>This should be attributed with \<open>[iff]\<close>, but then \<open>blast\<close> fails in \<open>Set\<close>.\<close>
 
 subsection \<open>Misc\<close>
-
-lemma disjoint_add_leftR: \<open>b ## c \<Longrightarrow> a ## (b + c) \<Longrightarrow> a ## c\<close>
-  by (metis disjoint_add_leftL disjoint_symm partial_add_commute)
 
 lemma sep_add_0_right[simp]: "a + 0 = a"
   by (metis zero_disjointR partial_add_0 partial_add_commute)
@@ -321,7 +331,8 @@ fun iterated_sepconj :: \<open>('a \<Rightarrow> bool) list \<Rightarrow> ('a \<
 lemma sepconj_assoc: \<open>(P \<^emph> Q) \<^emph> R = P \<^emph> (Q \<^emph> R)\<close>
   apply (clarsimp simp add: sepconj_def ex_simps[symmetric] partial_add_assoc simp del: ex_simps)
   apply (intro ext iffI)
-  apply (metis disjoint_add_leftR disjoint_add_left_commute disjoint_symm partial_add_assoc partial_add_commute)+
+   apply (metis disjoint_add_leftR disjoint_add_right_commute disjoint_symm partial_add_assoc
+      partial_add_commute)+
   done
 
 lemma sepconj_comm: \<open>P \<^emph> Q = Q \<^emph> P\<close>
@@ -331,7 +342,8 @@ lemma sepconj_comm: \<open>P \<^emph> Q = Q \<^emph> P\<close>
 lemma sepconj_left_comm: \<open>Q \<^emph> (P \<^emph> R) = P \<^emph> (Q \<^emph> R)\<close>
   apply (clarsimp simp add: sepconj_def ex_simps[symmetric] partial_add_assoc simp del: ex_simps)
   apply (rule ext)
-  apply (metis disjoint_add_leftR disjoint_add_leftL disjoint_add_left_commute partial_add_left_commute)
+  apply (metis disjoint_add_rightR disjoint_add_rightL disjoint_add_right_commute
+      partial_add_left_commute)
   done
 
 lemmas sepconj_ac = sepconj_assoc sepconj_comm sepconj_left_comm
@@ -369,7 +381,7 @@ lemma emp_sepconj_unit_right[simp]: \<open>P \<^emph> emp = P\<close>
 lemma sepcoimp_curry: \<open>P \<sim>\<^emph> Q \<sim>\<^emph> R = P \<^emph> Q \<sim>\<^emph> R\<close>
   apply (clarsimp simp add: sepcoimp_def sepconj_def)
   apply (intro ext iffI; clarsimp)
-   apply (metis disjoint_add_leftR disjoint_add_left_commute disjoint_symm partial_add_assoc
+   apply (metis disjoint_add_leftR disjoint_add_right_commute disjoint_symm partial_add_assoc
       partial_add_commute)+
   done
 
