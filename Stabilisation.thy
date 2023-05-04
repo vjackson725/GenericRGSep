@@ -110,7 +110,7 @@ end
 class stable_sepalg = sepalg +
   fixes stableres :: \<open>'a \<Rightarrow> 'a\<close>
   assumes stableres_disjoint: \<open>a ## b \<Longrightarrow> stableres a ## b\<close>
-  assumes stableres_plus_subres: \<open>stableres a + stableres b \<le> stableres (a + b)\<close>
+  assumes stableres_plus_subres: \<open>a ## b \<Longrightarrow> stableres a + stableres b \<le> stableres (a + b)\<close>
   assumes stableres_idem[simp]: \<open>stableres (stableres a) = stableres a\<close>
   assumes stableres_subres: \<open>stableres a \<le> a\<close>
 begin
