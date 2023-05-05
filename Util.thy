@@ -8,8 +8,12 @@ section \<open>Helper Lemmas\<close>
 
 subsection \<open>Logic\<close>
 
-lemmas conj_left_mp[simp] = SMT.verit_bool_simplify(7)
-lemmas conj_right_mp[simp] = SMT.verit_bool_simplify(8)
+lemmas conj_left_mp[simp] =
+  SMT.verit_bool_simplify(7)
+  arg_cong[where f=\<open>\<lambda>x. x \<and> R\<close> for R, OF SMT.verit_bool_simplify(7), simplified conj_assoc]
+lemmas conj_right_mp[simp] =
+  SMT.verit_bool_simplify(8)
+  arg_cong[where f=\<open>\<lambda>x. x \<and> R\<close> for R, OF SMT.verit_bool_simplify(8), simplified conj_assoc]
 
 lemma conj_imp_distribR:
   \<open>(p \<longrightarrow> q) \<and> r \<longleftrightarrow> (\<not> p \<and> r) \<or> (q \<and> r)\<close>
@@ -18,6 +22,12 @@ lemma conj_imp_distribR:
 lemma conj_imp_distribL:
   \<open>p \<and> (q \<longrightarrow> r) \<longleftrightarrow> (p \<and> \<not> q) \<or> (p \<and> r)\<close>
   by force
+
+lemma if_eq_disj_cases: \<open>(A \<longrightarrow> B) \<and> (\<not> A \<longrightarrow> C) \<longleftrightarrow> (A \<and> B) \<or> (\<not> A \<and> C)\<close>
+  by blast
+
+lemma imp_impL[simp]: \<open>(A \<longrightarrow> B) \<longrightarrow> C \<longleftrightarrow> (\<not> A \<longrightarrow> C) \<and> (B \<longrightarrow> C)\<close>
+  by blast
 
 lemma all_simps2[simp]:
   \<open>(\<forall>x y. P y \<longrightarrow> Q x y) = (\<forall>y. P y \<longrightarrow> (\<forall>x. Q x y))\<close>
@@ -210,6 +220,19 @@ lemma finite_map_choice_iff:
     done
   done
 
+subsection \<open> Orders \<close>
+
+lemma order_neq_less_conv:
+  \<open>x \<le> y \<Longrightarrow> (x :: ('a :: order)) \<noteq> y \<longleftrightarrow> x < y\<close>
+  \<open>y \<le> x \<Longrightarrow> (x :: ('a :: order)) \<noteq> y \<longleftrightarrow> y < x\<close>
+  by fastforce+
+
+subsection \<open> Groups \<close>
+
+lemmas eq_diff_eq_comm =
+  HOL.trans[OF eq_diff_eq, OF arg_cong[where f=\<open>\<lambda>x. x = y\<close> for y], OF add.commute]
+thm eq_diff_eq
+
 subsection \<open> Arithmetic \<close>
 
 lemma ex_times_k_iff:
@@ -265,7 +288,6 @@ lemma linordered_semidom_ge0_le_iff_add:
   shows \<open>(a \<le> b) = (\<exists>c\<ge>0. b = a + c)\<close>
   by (metis le_add_diff_inverse le_add_same_cancel1)
 
-
 section \<open> Sequencing Algebra \<close>
 
 text \<open> Note this is a subalgebra of a relation algebra. \<close>
@@ -316,7 +338,7 @@ definition \<open>less_top_ext a b \<equiv> b = Top \<and> a \<noteq> Top \<or> 
 instance
   by standard
     (force simp add: less_eq_top_ext_def less_top_ext_def top_top_ext_def)+
-                      
+
 lemmas Top_greatest[simp] =
   HOL.subst[OF meta_eq_to_obj_eq[OF top_top_ext_def], where P=\<open>(\<le>) a\<close> for a, OF top_greatest]
 

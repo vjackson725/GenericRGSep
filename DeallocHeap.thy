@@ -13,19 +13,13 @@ lift_definition wperm :: \<open>perm \<Rightarrow> rat\<close> is \<open>snd\<cl
 
 lemmas Rep_perm_constraints = perm.Rep_perm[simplified mem_Collect_eq]
 
-lemma Rep_perm_constraints':
-  \<open>(snd (Rep_perm p) = 1 \<longrightarrow> 0 \<le> fst (Rep_perm p))\<close>
-  \<open>(snd (Rep_perm p) = 0 \<longrightarrow> fst (Rep_perm p) \<le> 0)\<close>
-  \<open>0 \<le> snd (Rep_perm p)\<close>
-  \<open>snd (Rep_perm p) \<le> 1\<close>
-  by (metis Rep_perm_constraints fst_conv snd_conv)+
-
-lemma dperm_wperm_constraints[simp]:
-  \<open>wperm p = 1 \<Longrightarrow> 0 \<le> dperm p\<close>
-  \<open>wperm p = 0 \<Longrightarrow> dperm p \<le> 0\<close>
-  \<open>0 \<le> wperm p\<close>
-  \<open>wperm p \<le> 1\<close>
-  by (simp add: wperm_def dperm_def Rep_perm_constraints')+
+lemma Rep_perm_eq_iff:
+  \<open>Rep_perm a = x \<longleftrightarrow>
+    fst x = dperm a \<and> snd x = wperm a \<and>
+    (wperm a = 1 \<longrightarrow> 0 \<le> dperm a) \<and>
+    (wperm a = 0 \<longrightarrow> dperm a \<le> 0) \<and>
+    0 \<le> wperm a \<and> wperm a \<le> 1\<close>
+  by (metis Rep_perm_constraints dperm.rep_eq wperm.rep_eq fst_conv snd_conv prod.collapse)
 
 lemma Rep_perm_constraintsD:
   \<open>Rep_perm a = (d,w) \<Longrightarrow> w = 1 \<Longrightarrow> 0 \<le> d\<close>
@@ -34,6 +28,20 @@ lemma Rep_perm_constraintsD:
   \<open>Rep_perm a = (d,w) \<Longrightarrow> w \<le> 1\<close>
   using Rep_perm_constraints[of a]
   by simp+
+
+lemma dperm_wperm_constraints:
+  \<open>wperm p = 1 \<Longrightarrow> 0 \<le> dperm p\<close>
+  \<open>wperm p = 0 \<Longrightarrow> dperm p \<le> 0\<close>
+  \<open>0 \<le> wperm p\<close>
+  \<open>wperm p \<le> 1\<close>
+  by (metis wperm.rep_eq dperm.rep_eq Rep_perm_constraintsD prod.collapse)+
+
+lemma Rep_perm_constraints_complex:
+  \<open>Rep_perm a = (d,w) \<Longrightarrow> w \<ge> 1 \<longleftrightarrow> w = 1\<close>
+  \<open>Rep_perm a = (d,w) \<Longrightarrow> w \<le> 0 \<longleftrightarrow> w = 0\<close>
+  \<open>Rep_perm b = (db,wb) \<Longrightarrow> Rep_perm a = (da,1 + wb) \<longleftrightarrow> Rep_perm a = (da,1) \<and> wb = 0\<close>
+  by (fastforce simp add: Rep_perm_constraintsD order.antisym)+
+    (fastforce dest: Rep_perm_constraintsD)
 
 lemma perm_eq_iff:
   \<open>a = b \<longleftrightarrow> wperm a = wperm b \<and> dperm a = dperm b\<close>
@@ -54,13 +62,26 @@ lemma eq_Abs_perm_iff':
     0 \<le> snd a' \<Longrightarrow>
     snd a' \<le> 1 \<Longrightarrow> Abs_perm a' = a \<longleftrightarrow> Rep_perm a = a'\<close>
   by (metis eq_Abs_perm_iff)
-  
 
 lemma ex_perm_Rep_iff:
   \<open>(\<exists>a. P (Rep_perm a)) \<longleftrightarrow>
-      (\<exists>a'. P a' \<and> (snd a' = 1 \<longrightarrow> 0 \<le> fst a') \<and> (snd a' = 0 \<longrightarrow> fst a' \<le> 0) \<and>
-      0 \<le> snd a' \<and> snd a' \<le> 1)\<close>
-  by (metis Rep_perm_constraints' eq_Abs_perm_iff)
+      (\<exists>a'. (snd a' = 1 \<longrightarrow> 0 \<le> fst a') \<and> (snd a' = 0 \<longrightarrow> fst a' \<le> 0) \<and>
+      0 \<le> snd a' \<and> snd a' \<le> 1 \<and> P a')\<close>
+  by (metis Rep_perm_eq_iff eq_Abs_perm_iff)
+
+lemma Rep_perm_all_iff_ex:
+  \<open>(\<forall>da wa. Rep_perm a = (da, wa) \<longrightarrow> P da wa) \<longleftrightarrow> (\<exists>da wa. Rep_perm a = (da, wa) \<and> P da wa)\<close>
+  using Rep_perm_constraints by fastforce
+
+lemma ex_perm_all_components_iff:
+  \<open>(\<exists>a. (\<forall>da wa. Rep_perm a = (da, wa) \<longrightarrow> P da wa)) \<longleftrightarrow>
+      (\<exists>da wa. (wa = 1 \<longrightarrow> 0 \<le> da) \<and> (wa = 0 \<longrightarrow> da \<le> 0) \<and> 0 \<le> wa \<and> wa \<le> 1 \<and> P da wa)\<close>
+  by (simp add: ex_perm_Rep_iff[where P=\<open>\<lambda>x. \<forall>y z. x = f y z \<longrightarrow> P y z\<close> for f])
+
+lemma Abs_perm_wperm_dperm[simp]:
+  \<open>w = wperm p \<Longrightarrow> Abs_perm (dperm p, w) = p\<close>
+  \<open>d = dperm p \<Longrightarrow> Abs_perm (d, wperm p) = p\<close>
+  using Rep_perm_inverse dperm.rep_eq wperm.rep_eq by force+
 
 lemma Abs_perm_inverse'[simp]:
   \<open>y = 1 \<longrightarrow> 0 \<le> x \<Longrightarrow>
@@ -75,10 +96,6 @@ lemma Abs_perm_inject':
     (Abs_perm (da,wa) = Abs_perm (db,wb)) = ((da,wa) = (db,wb))\<close>
   by (clarsimp simp add: Abs_perm_inject Sigma_def)
 
-lemma Rep_perm_all_iff_ex:
-  \<open>(\<forall>da wa. Rep_perm a = (da, wa) \<longrightarrow> P da wa) \<longleftrightarrow> (\<exists>da wa. Rep_perm a = (da, wa) \<and> P da wa)\<close>
-  using Rep_perm_constraints by fastforce
-
 
 lift_definition map_perm :: \<open>(rat \<Rightarrow> rat) \<Rightarrow> (rat \<Rightarrow> rat) \<Rightarrow> perm \<Rightarrow> perm\<close> is
   \<open>\<lambda>fd fw (d,w).
@@ -88,10 +105,7 @@ lift_definition map_perm :: \<open>(rat \<Rightarrow> rat) \<Rightarrow> (rat \<
 
 lemma map_perm_id[simp]:
   \<open>map_perm id id = id\<close>
-  apply (simp add: map_perm_def fun_eq_iff split: prod.splits)
-  apply (metis Rep_perm_constraints' Rep_perm_inverse dperm.rep_eq fst_conv max.absorb2 min.absorb2
-      nle_le snd_conv wperm.rep_eq)
-  done
+  by (simp add: map_perm_def fun_eq_iff Rep_perm_eq_iff split: prod.splits)
 
 lemma map_perm_eq:
   \<open>map_perm fd fw a =
@@ -123,20 +137,48 @@ lemma dperm_wperm_zero[simp]:
   \<open>wperm 0 = 0\<close>
   by (simp add: zero_perm_def dperm_def wperm_def)+
 
+lemma helpers:
+  \<open>\<And>P Q a b. 0 \<le> a + b \<and> P (max 0 (a + b)) \<and> Q \<longleftrightarrow> 0 \<le> a + b \<and> P (a + b) \<and> Q\<close>
+  \<open>\<And>P Q k x. (k::'a::order) \<le> x \<and> P \<and> x \<le> k \<and> Q \<longleftrightarrow> x = k \<and> P \<and> Q\<close>
+  by (force simp add: max_def)+
+
 lift_definition less_eq_perm :: \<open>perm \<Rightarrow> perm \<Rightarrow> bool\<close> is
-  \<open>\<lambda>(da,wa) (db,wb). da \<le> db \<and> wa \<le> wb\<close> .
+  \<open>\<lambda>(da,wa) (db,wb).
+    (wb - wa = 1 \<longrightarrow> da \<le> db) \<and> (wb - wa = 0 \<longrightarrow> db \<le> da) \<and> 0 \<le> wb - wa \<and> wb - wa \<le> 1\<close> .
 
 lemma less_eq_permI[intro]:
-  \<open>Rep_perm a = (da,wa) \<Longrightarrow> Rep_perm b = (db,wb) \<Longrightarrow> da \<le> db \<Longrightarrow> wa \<le> wb \<Longrightarrow> a \<le> b\<close>
-  by (simp add: less_eq_perm_def)+
+  \<open>Rep_perm a = (da,wa) \<Longrightarrow> Rep_perm b = (db,wb) \<Longrightarrow>
+    (wb - wa = 1 \<longrightarrow> da \<le> db) \<Longrightarrow> (wb - wa = 0 \<longrightarrow> db \<le> da) \<Longrightarrow> 0 \<le> wb - wa \<Longrightarrow> wb - wa \<le> 1 \<Longrightarrow>
+    a \<le> b\<close>
+  by (simp add: less_eq_perm.rep_eq)+
 
-lift_definition less_perm :: \<open>perm \<Rightarrow> perm \<Rightarrow> bool\<close> is
-  \<open>\<lambda>(da,wa) (db,wb). (da \<le> db \<and> wa \<le> wb) \<and> (da < db \<or> wa < wb)\<close> .
+lemma less_eq_perm_trans_helpers:
+  fixes wb wx dx :: rat (* \<open>'a :: linordered_field\<close>*)
+  shows
+  \<open>0 \<le> wa \<Longrightarrow> wc \<le> 1 \<Longrightarrow> wb - wa = 1 \<Longrightarrow> wc - wb = 1 \<Longrightarrow> wc - wa = 1\<close>
+  \<open>
+  0 \<le> wx \<Longrightarrow> 0 \<le> wy \<Longrightarrow>
+  wy - wx = 1 \<longrightarrow> dx \<le> dy \<Longrightarrow>
+       wy = wx \<longrightarrow> dy \<le> dx \<Longrightarrow>
+       wx \<le> wy \<Longrightarrow>
+       wy - wx \<le> 1 \<Longrightarrow>
+       wz - wy = 1 \<longrightarrow> dy \<le> dz \<Longrightarrow>
+       wz = wy \<longrightarrow> dz \<le> dy \<Longrightarrow>
+       wy \<le> wz \<Longrightarrow> wz - wy \<le> 1 \<Longrightarrow> wz - wx = 1 \<longleftrightarrow> wz - wy = 1 \<and> wy = wz \<or> wz = wy \<and> wz - wy = 1\<close>
+   apply force
+  nitpick
+oops
+
+definition less_perm :: \<open>perm \<Rightarrow> perm \<Rightarrow> bool\<close> where
+  \<open>less_perm x y \<equiv> x \<le> y \<and> \<not> y \<le> x\<close>
 
 lemma less_permI[intro]:
-  \<open>Rep_perm a = (da,wa) \<Longrightarrow> Rep_perm b = (db,wb) \<Longrightarrow> da \<le> db \<Longrightarrow> wa < wb \<Longrightarrow> a < b\<close>
-  \<open>Rep_perm a = (da,wa) \<Longrightarrow> Rep_perm b = (db,wb) \<Longrightarrow> da < db \<Longrightarrow> wa \<le> wb \<Longrightarrow> a < b\<close>
-  by (simp add: less_perm_def)+
+  \<open>Rep_perm a = (da,wa) \<Longrightarrow> Rep_perm b = (db,wb) \<Longrightarrow>
+    wa = 1 + wb \<Longrightarrow> da < db \<Longrightarrow> a < b\<close>
+  \<open>Rep_perm a = (da,w) \<Longrightarrow> Rep_perm b = (db,w) \<Longrightarrow> db < da \<Longrightarrow> a < b\<close>
+  \<open>Rep_perm a = (da,wa) \<Longrightarrow> Rep_perm b = (db,wb) \<Longrightarrow>
+    wb - wa = 1 \<longrightarrow> da \<le> db \<Longrightarrow> wb - wa \<le> 1 \<Longrightarrow> wa < wb \<Longrightarrow> a < b\<close>
+  by (clarsimp simp add: less_perm_def less_eq_perm.rep_eq Rep_perm_eq_iff split: prod.splits)+ 
 
 lift_definition plus_perm :: \<open>perm \<Rightarrow> perm \<Rightarrow> perm\<close> is
   \<open>\<lambda>(da,wa) (db,wb). ((if 1 \<le> wa + wb then max 0 else id) (da + db), min 1 (wa+wb))\<close>
@@ -156,25 +198,36 @@ lemma plus_perm_Rep[simp]:
   by (simp add: plus_perm.rep_eq Rep_perm_constraintsD
       add_nonneg_eq_0_iff add_nonpos_nonpos dperm.rep_eq wperm.rep_eq split: prod.splits)
 
-(*
-lemma Abs_perm_plus[simp]:
-  \<open>0 \<le> da \<Longrightarrow> 0 \<le> db \<Longrightarrow> 0 \<le> wa \<Longrightarrow> 0 \<le> wb \<Longrightarrow> wa + wb \<le> 1 \<Longrightarrow>
-    Abs_perm (da, wa) + Abs_perm (db, wb) = Abs_perm (da + db, wa + wb)\<close>
-  by (clarsimp simp add: plus_perm_def Abs_perm_inject' split: prod.splits)
-*)
-
 lemma dperm_wperm_plus[simp]:
   \<open>a ## b \<Longrightarrow> dperm (a + b) = dperm a + dperm b\<close>
   \<open>a ## b \<Longrightarrow> wperm (a + b) = wperm a + wperm b\<close>
   by (clarsimp simp add: plus_perm_def dperm_def wperm_def disjoint_perm_def split: prod.splits)+
 
+
 instance
   apply standard
-               apply (force simp add: less_eq_perm_def less_perm_def split: prod.splits)
-              apply (force simp add: less_eq_perm_def)
-             apply (force simp add: less_eq_perm_def)
-             apply (force simp add: less_eq_perm_def intro: iffD1[OF Rep_perm_inject])
-            apply (clarsimp simp add: less_eq_perm_def bot_perm_def Rep_perm_constraintsD)
+               apply (force simp add: less_perm_def split: prod.splits)
+               apply (force simp add: less_eq_perm.rep_eq)
+              apply (simp only: less_eq_perm.rep_eq split: prod.splits, clarify)
+              apply (clarsimp simp add: less_eq_perm.rep_eq)
+  apply (rename_tac dy wy dx wx dz wz)
+              apply (intro conjI)
+  
+thm less_eq_perm_trans_helpers
+(*
+              apply (clarsimp simp add: Rep_perm_eq_iff diff_eq_eq less_eq_perm.rep_eq
+      order.order_iff_strict[of \<open>wperm _\<close> 1], elim disjE; force)
+*)
+             apply (force simp add: less_eq_perm.rep_eq intro: iffD1[OF Rep_perm_inject])
+            apply (clarsimp simp add: less_eq_perm.rep_eq bot_perm_def Rep_perm_constraintsD)
+            apply (case_tac \<open>wb = 1\<close>)
+             apply (simp add: Rep_perm_constraintsD)
+            apply (case_tac \<open>wb = 0\<close>)
+             apply (simp add: Rep_perm_constraintsD order_antisym_conv)
+             prefer 2
+             apply (simp add: Rep_perm_constraintsD order_neq_less_conv)
+  
+  apply clarsimp
   subgoal sorry
           apply (force simp add: disjoint_perm_def zero_perm_def Rep_perm_constraintsD split: prod.splits)
           apply (force simp add: disjoint_perm_def zero_perm_def Rep_perm_constraintsD split: prod.splits)
@@ -197,7 +250,7 @@ instance
    apply (clarsimp simp add: disjoint_perm_def plus_perm_def Rep_perm_constraintsD eq_Abs_perm_iff'
       add_nonneg_eq_0_iff Rep_perm_inject[symmetric] split: prod.splits; fail)
   subgoal
-    apply (clarsimp simp add: disjoint_perm_def plus_perm_def less_eq_perm_def Rep_perm_constraintsD split: prod.splits)
+    apply (clarsimp simp add: disjoint_perm_def plus_perm_def less_eq_perm.rep_eq Rep_perm_constraintsD split: prod.splits)
     apply (rule iffI; clarify)
     apply (drule iffD1[OF linordered_semidom_ge0_le_iff_add])+
     apply clarsimp
@@ -210,7 +263,7 @@ instance
 
 lemma map_perm_le_decreasing[simp]:
   \<open>(\<And>x. 0 \<le> x \<Longrightarrow> fd x \<le> x) \<Longrightarrow> (\<And>x. 0 \<le> x \<Longrightarrow> x \<le> 1 \<Longrightarrow> fw x \<le> x) \<Longrightarrow> map_perm fd fw a \<le> a\<close>
-  by (force simp add: map_perm_def less_eq_perm_def Rep_perm_constraintsD min.coboundedI2
+  by (force simp add: map_perm_def less_eq_perm.rep_eq Rep_perm_constraintsD min.coboundedI2
       split: prod.splits)
 
 end
@@ -517,7 +570,7 @@ lemma disjoint_dheap_Some_same_valD:
 lemma disjoint_dheap_Some_bounded_oneD:
   \<open>a ## b \<Longrightarrow> a \<bullet> x = Some (pa,va) \<Longrightarrow> b \<bullet> x = Some (pb,vb) \<Longrightarrow> wperm pa + wperm pb \<le> 1\<close>
   by (simp add: disjoint_dheap_def disjoint_set_dheap_def disjoint_perm_def
-      less_eq_perm_def wperm_def split: prod.splits, metis prod.collapse)
+      less_eq_perm.rep_eq wperm_def split: prod.splits, metis prod.collapse)
 
 subsection \<open> Addition \<close>
 
@@ -779,7 +832,7 @@ lemma stable_le_mono:
   shows \<open>a \<le> b \<Longrightarrow> stableres a \<le> stableres b\<close>
   apply (clarsimp simp add: less_eq_dheap_def subhperm_eq_def bind_eq_Some_conv)
   apply (drule_tac x=x in spec)
-  apply (force intro: order_less_le_trans simp add: wperm_def less_eq_perm_def split: prod.splits)
+  apply (force intro: order_less_le_trans simp add: wperm_def less_eq_perm.rep_eq split: prod.splits)
   done
 
 lemma stable_plus_distrib:
@@ -788,7 +841,7 @@ lemma stable_plus_distrib:
   apply (clarsimp simp add: less_eq_dheap_def subhperm_eq_def disjoint_dheap_def' not_less
       split: option.splits)
   apply (drule_tac x=x in spec)
-  apply (simp add: wperm_def disjoint_perm_def plus_perm_def less_eq_perm_def
+  apply (simp add: wperm_def disjoint_perm_def plus_perm_def less_eq_perm.rep_eq
       Rep_perm_constraintsD eq_Abs_perm_iff' split: prod.splits)
   done
 
@@ -917,7 +970,7 @@ lemma halve_dheap_app_eq:
 lemma halve_dheap_subheap:
   \<open>halve_dheap a A \<le> a\<close>
   apply (clarsimp simp add: less_eq_dheap_def subhperm_eq_def halve_dheap_app_eq zero_le_mult_iff
-      less_eq_perm_def map_perm_def split: option.splits prod.splits)
+      less_eq_perm.rep_eq map_perm_def split: option.splits prod.splits)
   apply (clarsimp simp add: Rep_perm_all_iff_ex min_def)
   apply (simp add: Rep_perm_constraintsD)
   done
@@ -1005,7 +1058,7 @@ lemma stablerel_add:
 lemma stablerel_subheap:
   \<open>stablerel a b \<Longrightarrow> a' \<le> a \<Longrightarrow> b' \<le> b \<Longrightarrow> stabledom a' \<subseteq> stabledom b' \<Longrightarrow> stablerel a' b'\<close>
   apply (clarsimp simp add: stablerel_def stabledom_def less_eq_dheap_def subhperm_eq_def
-      less_eq_perm_def subset_iff wperm_def split: prod.splits)
+      less_eq_perm.rep_eq subset_iff wperm_def split: prod.splits)
 
   done
 
