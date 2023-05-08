@@ -156,18 +156,20 @@ lemma less_eq_perm_trans_helpers:
   fixes wb wx dx :: rat (* \<open>'a :: linordered_field\<close>*)
   shows
   \<open>0 \<le> wa \<Longrightarrow> wc \<le> 1 \<Longrightarrow> wb - wa = 1 \<Longrightarrow> wc - wb = 1 \<Longrightarrow> wc - wa = 1\<close>
-  \<open>
-  0 \<le> wx \<Longrightarrow> 0 \<le> wy \<Longrightarrow>
-  wy - wx = 1 \<longrightarrow> dx \<le> dy \<Longrightarrow>
-       wy = wx \<longrightarrow> dy \<le> dx \<Longrightarrow>
-       wx \<le> wy \<Longrightarrow>
-       wy - wx \<le> 1 \<Longrightarrow>
-       wz - wy = 1 \<longrightarrow> dy \<le> dz \<Longrightarrow>
-       wz = wy \<longrightarrow> dz \<le> dy \<Longrightarrow>
-       wy \<le> wz \<Longrightarrow> wz - wy \<le> 1 \<Longrightarrow> wz - wx = 1 \<longleftrightarrow> wz - wy = 1 \<and> wy = wz \<or> wz = wy \<and> wz - wy = 1\<close>
+  \<open>wx = 0 \<longrightarrow> dx \<le> 0 \<Longrightarrow>
+    0 \<le> wx \<Longrightarrow>
+    wz = 1 \<longrightarrow> 0 \<le> dz \<Longrightarrow>
+    wz \<le> 1 \<Longrightarrow>
+    wz - wx = 1 \<Longrightarrow> dx \<le> dz\<close>
+  \<open>wy = wx \<longrightarrow> dy \<le> dx \<Longrightarrow>
+    wx \<le> wy \<Longrightarrow>
+    wz = wy \<longrightarrow> dz \<le> dy \<Longrightarrow>
+    wy \<le> wz \<Longrightarrow>
+    wz = wx \<Longrightarrow> dz \<le> dx\<close>
+    apply force
    apply force
-  nitpick
-oops
+  apply force
+  done
 
 definition less_perm :: \<open>perm \<Rightarrow> perm \<Rightarrow> bool\<close> where
   \<open>less_perm x y \<equiv> x \<le> y \<and> \<not> y \<le> x\<close>
@@ -212,8 +214,8 @@ instance
               apply (clarsimp simp add: less_eq_perm.rep_eq)
   apply (rename_tac dy wy dx wx dz wz)
               apply (intro conjI)
-  
-thm less_eq_perm_trans_helpers
+                apply (metis less_eq_perm_trans_helpers(2) Rep_perm_constraintsD)
+               apply (metis less_eq_perm_trans_helpers(3))
 (*
               apply (clarsimp simp add: Rep_perm_eq_iff diff_eq_eq less_eq_perm.rep_eq
       order.order_iff_strict[of \<open>wperm _\<close> 1], elim disjE; force)
