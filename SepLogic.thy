@@ -165,7 +165,6 @@ lemma disjoint_add_leftR: \<open>a ## b \<Longrightarrow> a + b ## c \<Longright
 lemma disjoint_add_commuteL: \<open>c ## b \<Longrightarrow> (c + b) ## a \<Longrightarrow> a + b ## c\<close>
   by (simp add: disjoint_add_right_commute disjoint_symm)
 
-
 lemma le_plus: \<open>a ## b \<Longrightarrow> a \<le> a + b\<close>
   using le_iff_sepadd by auto
 

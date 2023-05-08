@@ -29,9 +29,13 @@ lemma if_eq_disj_cases: \<open>(A \<longrightarrow> B) \<and> (\<not> A \<longri
 lemma imp_impL[simp]: \<open>(A \<longrightarrow> B) \<longrightarrow> C \<longleftrightarrow> (\<not> A \<longrightarrow> C) \<and> (B \<longrightarrow> C)\<close>
   by blast
 
-lemma all_simps2[simp]:
+lemma all2_push[simp]:
   \<open>(\<forall>x y. P y \<longrightarrow> Q x y) = (\<forall>y. P y \<longrightarrow> (\<forall>x. Q x y))\<close>
   by force
+
+lemma imp_conj_common:
+  \<open>(A1 \<longrightarrow> B \<longrightarrow> C1) \<and> (A2 \<longrightarrow> B \<longrightarrow> C2) \<longleftrightarrow> (B \<longrightarrow> (A1 \<longrightarrow> C1) \<and> (A2 \<longrightarrow> C2))\<close>
+  by blast
 
 lemma all_conj_ex1:
   \<open>(\<forall>x. P x \<longrightarrow> Q x) \<and> Ex P \<longleftrightarrow> (\<exists>x. P x \<and> Q x) \<and> (\<forall>x. P x \<longrightarrow> Q x)\<close>

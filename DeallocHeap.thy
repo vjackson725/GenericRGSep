@@ -119,7 +119,7 @@ instantiation perm :: sepalg
 begin
 
 lift_definition disjoint_perm :: \<open>perm \<Rightarrow> perm \<Rightarrow> bool\<close> is
-  \<open>\<lambda>(da,wa) (db,wb). (wa + wb = 1 \<longrightarrow> 0 \<le> da + db) \<and> wa + wb \<le> 1\<close> .
+  \<open>\<lambda>(da,wa) (db,wb). (wa + wb = 0 \<longrightarrow> da + db \<le> 0) \<and> (wa + wb = 1 \<longrightarrow> 0 \<le> da + db) \<and> wa + wb \<le> 1\<close> .
 
 lift_definition bot_perm :: perm is \<open>(0,0)\<close>
   by simp
@@ -155,7 +155,6 @@ lemma less_eq_permI[intro]:
 lemma less_eq_perm_trans_helpers:
   fixes wb wx dx :: rat (* \<open>'a :: linordered_field\<close>*)
   shows
-  \<open>0 \<le> wa \<Longrightarrow> wc \<le> 1 \<Longrightarrow> wb - wa = 1 \<Longrightarrow> wc - wb = 1 \<Longrightarrow> wc - wa = 1\<close>
   \<open>wx = 0 \<longrightarrow> dx \<le> 0 \<Longrightarrow>
     0 \<le> wx \<Longrightarrow>
     wz = 1 \<longrightarrow> 0 \<le> dz \<Longrightarrow>
@@ -166,10 +165,8 @@ lemma less_eq_perm_trans_helpers:
     wz = wy \<longrightarrow> dz \<le> dy \<Longrightarrow>
     wy \<le> wz \<Longrightarrow>
     wz = wx \<Longrightarrow> dz \<le> dx\<close>
-    apply force
-   apply force
-  apply force
-  done
+  \<open>0 \<le> wx \<Longrightarrow> wz \<le> 1 \<Longrightarrow> wz - wx \<le> 1\<close>
+  by force+
 
 definition less_perm :: \<open>perm \<Rightarrow> perm \<Rightarrow> bool\<close> where
   \<open>less_perm x y \<equiv> x \<le> y \<and> \<not> y \<le> x\<close>
@@ -183,7 +180,9 @@ lemma less_permI[intro]:
   by (clarsimp simp add: less_perm_def less_eq_perm.rep_eq Rep_perm_eq_iff split: prod.splits)+ 
 
 lift_definition plus_perm :: \<open>perm \<Rightarrow> perm \<Rightarrow> perm\<close> is
-  \<open>\<lambda>(da,wa) (db,wb). ((if 1 \<le> wa + wb then max 0 else id) (da + db), min 1 (wa+wb))\<close>
+  \<open>\<lambda>(da,wa) (db,wb).
+    ((if 1 \<le> wa + wb then max 0 else if wa + wb = 0 then min 0 else id) (da + db),
+      min 1 (wa+wb))\<close>
   by (clarsimp split: prod.splits)
 
 lemma plus_perm_Abs_inverse[simp]:
@@ -203,40 +202,51 @@ lemma plus_perm_Rep[simp]:
 lemma dperm_wperm_plus[simp]:
   \<open>a ## b \<Longrightarrow> dperm (a + b) = dperm a + dperm b\<close>
   \<open>a ## b \<Longrightarrow> wperm (a + b) = wperm a + wperm b\<close>
-  by (clarsimp simp add: plus_perm_def dperm_def wperm_def disjoint_perm_def split: prod.splits)+
+  \<open>wperm (a + b) = min 1 (wperm a + wperm b)\<close>
+  \<open>dperm (a + b) = (if 1 \<le> wperm a + wperm b then max 0 else id) (dperm a + dperm b)\<close>
+    apply (force simp add: plus_perm_def dperm_def wperm_def disjoint_perm_def
+      Rep_perm_constraintsD min_def split: prod.splits)+
+  apply (simp add: plus_perm_def dperm_def wperm_def disjoint_perm_def
+      Rep_perm_constraintsD min_def max_def imp_conj_common all_conj_distrib[symmetric]
+      split: prod.splits if_splits)
+  sorry
+
+lemma disjoint_add_expand_perm:
+  fixes a b c :: perm
+  shows \<open>a ## b \<Longrightarrow> b ## c \<Longrightarrow> a ## c \<Longrightarrow> a + (b + c) = a + b + c\<close>
+  apply (case_tac \<open>Rep_perm a\<close>)
+  apply (case_tac \<open>Rep_perm b\<close>)
+  apply (case_tac \<open>Rep_perm c\<close>)
+  apply (rename_tac da wa db wb dc wc)
+  apply (clarsimp simp add: plus_perm_def split: prod.splits)
+  apply (simp add: Abs_perm_inject')
+  apply (intro conjI impI)
+  thm add.assoc dperm.rep_eq dperm_wperm_constraints(1) dperm_wperm_constraints(4) dperm_wperm_plus(1) dperm_wperm_plus(2) fst_conv max_def nle_le snd_conv wperm.rep_eq
+  apply (metis add.assoc dperm.rep_eq dperm_wperm_constraints(1) dperm_wperm_constraints(4) dperm_wperm_plus(1) dperm_wperm_plus(2) fst_conv max_def nle_le snd_conv wperm.rep_eq)
+  sorry
 
 
 instance
   apply standard
-               apply (force simp add: less_perm_def split: prod.splits)
+                apply (force simp add: less_perm_def split: prod.splits)
+    (* subgoal *)
                apply (force simp add: less_eq_perm.rep_eq)
               apply (simp only: less_eq_perm.rep_eq split: prod.splits, clarify)
               apply (clarsimp simp add: less_eq_perm.rep_eq)
-  apply (rename_tac dy wy dx wx dz wz)
+              apply (rename_tac dy wy dx wx dz wz)
               apply (intro conjI)
-                apply (metis less_eq_perm_trans_helpers(2) Rep_perm_constraintsD)
-               apply (metis less_eq_perm_trans_helpers(3))
-(*
-              apply (clarsimp simp add: Rep_perm_eq_iff diff_eq_eq less_eq_perm.rep_eq
-      order.order_iff_strict[of \<open>wperm _\<close> 1], elim disjE; force)
-*)
+                apply (metis less_eq_perm_trans_helpers(1) Rep_perm_constraintsD)
+               apply (metis less_eq_perm_trans_helpers(2))
+              apply (metis less_eq_perm_trans_helpers(3) Rep_perm_constraintsD(3,4))
+    (* done *)
              apply (force simp add: less_eq_perm.rep_eq intro: iffD1[OF Rep_perm_inject])
-            apply (clarsimp simp add: less_eq_perm.rep_eq bot_perm_def Rep_perm_constraintsD)
-            apply (case_tac \<open>wb = 1\<close>)
-             apply (simp add: Rep_perm_constraintsD)
-            apply (case_tac \<open>wb = 0\<close>)
-             apply (simp add: Rep_perm_constraintsD order_antisym_conv)
-             prefer 2
-             apply (simp add: Rep_perm_constraintsD order_neq_less_conv)
-  
-  apply clarsimp
-  subgoal sorry
+            apply (clarsimp simp add: less_eq_perm.rep_eq bot_perm_def Rep_perm_constraintsD; fail)  
           apply (force simp add: disjoint_perm_def zero_perm_def Rep_perm_constraintsD split: prod.splits)
           apply (force simp add: disjoint_perm_def zero_perm_def Rep_perm_constraintsD split: prod.splits)
         (* partial comm monoid *)
-         apply (simp add: perm_eq_iff)
-  sledgehammer
-  using dperm.rep_eq dperm_wperm_plus(1) dperm_wperm_plus(2) wperm.rep_eq apply force
+         apply (simp add: perm_eq_iff dperm_wperm_plus add.assoc)
+
+
   oops
          apply (clarsimp simp add: plus_perm.rep_eq Abs_perm_inject Rep_perm_constraintsD
       ordered_comm_monoid_add_add_min_assoc split: prod.splits)
