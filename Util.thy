@@ -35,7 +35,14 @@ lemma all2_push[simp]:
 
 lemma imp_conj_common:
   \<open>(A1 \<longrightarrow> B \<longrightarrow> C1) \<and> (A2 \<longrightarrow> B \<longrightarrow> C2) \<longleftrightarrow> (B \<longrightarrow> (A1 \<longrightarrow> C1) \<and> (A2 \<longrightarrow> C2))\<close>
-  by blast
+  \<open>(A1 \<longrightarrow> B \<longrightarrow> C1) \<and> (A2 \<longrightarrow> B \<longrightarrow> C2) \<and> D \<longleftrightarrow> (B \<longrightarrow> (A1 \<longrightarrow> C1) \<and> (A2 \<longrightarrow> C2)) \<and> D\<close>
+  by blast+
+
+lemma imp_all_conj_common:
+  \<open>(A1 \<longrightarrow> (\<forall>x. B x \<longrightarrow> C1 x)) \<and> (A2 \<longrightarrow> (\<forall>x. B x \<longrightarrow> C2 x)) \<longleftrightarrow> (\<forall>x. B x \<longrightarrow> (A1 \<longrightarrow> C1 x) \<and> (A2 \<longrightarrow> C2 x))\<close>
+  \<open>(A1 \<longrightarrow> (\<forall>x. B x \<longrightarrow> C1 x)) \<and> (A2 \<longrightarrow> (\<forall>x. B x \<longrightarrow> C2 x)) \<and> D \<longleftrightarrow>
+    (\<forall>x. B x \<longrightarrow> (A1 \<longrightarrow> C1 x) \<and> (A2 \<longrightarrow> C2 x)) \<and> D\<close>
+  by blast+
 
 lemma all_conj_ex1:
   \<open>(\<forall>x. P x \<longrightarrow> Q x) \<and> Ex P \<longleftrightarrow> (\<exists>x. P x \<and> Q x) \<and> (\<forall>x. P x \<longrightarrow> Q x)\<close>
@@ -49,6 +56,10 @@ lemma prod_eq_decompose:
   \<open>a = (b,c) \<longleftrightarrow> fst a = b \<and> snd a = c\<close>
   \<open>(b,c) = a \<longleftrightarrow> fst a = b \<and> snd a = c\<close>
   by force+
+
+lemma common_if_prod[simp]:
+  \<open>(if P then a1 else a2, if P then b1 else b2) = (if P then (a1,b1) else (a2,b2))\<close>
+  by simp
 
 lemma upt_add_eq_append:
   assumes \<open>i \<le> j\<close> \<open>j \<le> k\<close>
@@ -288,9 +299,44 @@ lemma ordered_ab_group_add_ge0_le_iff_add:
   by (metis add.commute diff_add_cancel le_add_same_cancel1)
 
 lemma linordered_semidom_ge0_le_iff_add:
-  fixes a b :: \<open>'a :: {linordered_semidom}\<close>
+  fixes a b :: \<open>'a :: linordered_semidom\<close>
   shows \<open>(a \<le> b) = (\<exists>c\<ge>0. b = a + c)\<close>
   by (metis le_add_diff_inverse le_add_same_cancel1)
+
+lemma pos_eq_neg_iff_zero:
+  fixes x y z :: \<open>'a :: linordered_field\<close>
+  shows
+    \<open>0 \<le> x \<Longrightarrow> 0 \<le> z \<Longrightarrow> x = - z \<longleftrightarrow> x = 0 \<and> z = 0\<close>
+    \<open>0 \<le> x \<Longrightarrow> 0 \<le> y \<Longrightarrow> 0 \<le> z \<Longrightarrow> x + y = - z \<longleftrightarrow> x = 0 \<and> y = 0 \<and> z = 0\<close>
+  by fastforce+
+
+lemma min_mult_extract_right_mult_right:
+  fixes p x y :: \<open>_ :: linordered_field\<close>
+  shows
+    \<open>0 < p \<Longrightarrow> min x (y * p) = min (x/p) y * p\<close>
+    \<open>0 > p \<Longrightarrow> min x (y * p) = max (x/p) y * p\<close>
+  by (simp add: min_def pos_divide_le_eq max_mult_distrib_right)+
+
+lemma max_mult_extract_right_mult_right:
+  fixes p x y :: \<open>_ :: linordered_field\<close>
+  shows
+    \<open>0 < p \<Longrightarrow> max x (y * p) = max (x/p) y * p\<close>
+    \<open>0 > p \<Longrightarrow> max x (y * p) = min (x/p) y * p\<close>
+  by (simp add: max_def pos_divide_le_eq min_mult_distrib_right)+
+
+lemma min_mult_extract_left_mult_right:
+  fixes p x y :: \<open>_ :: linordered_field\<close>
+  shows
+    \<open>0 < p \<Longrightarrow> min x (p * y) = p * min (x/p) y\<close>
+    \<open>0 > p \<Longrightarrow> min x (p * y) = p * max (x/p) y\<close>
+  by (metis min_mult_extract_right_mult_right mult.commute)+
+
+lemma max_mult_extract_right_mult_left:
+  fixes p x y :: \<open>_ :: linordered_field\<close>
+  shows
+    \<open>0 < p \<Longrightarrow> max x (p * y) = p * max (x/p) y\<close>
+    \<open>0 > p \<Longrightarrow> max x (p * y) = p * min (x/p) y\<close>
+  by (metis max_mult_extract_right_mult_right mult.commute)+
 
 section \<open> Sequencing Algebra \<close>
 
