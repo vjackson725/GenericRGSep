@@ -107,16 +107,33 @@ end
 
 
 
-class stable_sepalg = sepalg +
+class stable_sepalg = avoiding_sepalg +
   fixes stableres :: \<open>'a \<Rightarrow> 'a\<close>
-  assumes stableres_disjoint: \<open>a ## b \<Longrightarrow> stableres a ## b\<close>
   assumes stableres_plus_subres: \<open>a ## b \<Longrightarrow> stableres a + stableres b \<le> stableres (a + b)\<close>
   assumes stableres_idem[simp]: \<open>stableres (stableres a) = stableres a\<close>
   assumes stableres_subres: \<open>stableres a \<le> a\<close>
+  assumes stableres_plus_mono:
+    \<open>stableres a \<le> stableres a' \<Longrightarrow> stableres b \<le> stableres b' \<Longrightarrow>
+      stableres (a + b) \<le> stableres (a' + b')\<close>
+(*
+  assumes stableres_mono: \<open>a \<le> b \<Longrightarrow> stableres a \<le> stableres b\<close>
+*)
 begin
 
 lemma stableres_zero[simp]: \<open>stableres 0 = 0\<close>
   using le_zero_eq stableres_subres by blast
+
+lemma stableres_plus_idem: \<open>stableres (stableres a + stableres b) = stableres (a + b)\<close>
+  by (simp add: order.eq_iff stableres_plus_mono)
+
+lemma stableres_mono: \<open>a \<le> b \<Longrightarrow> stableres a \<le> stableres b\<close>
+  by (metis le_iff_sepadd order_refl sep_add_0_right stableres_plus_mono zero_le stableres_zero)
+
+text \<open> this shouldn't be true. There are interesting models where it isn't true. \<close>
+lemma stableres_plus_eq: \<open>stableres (a + b) = stableres a + stableres b\<close>
+  nitpick
+  oops
+
 
 abbreviation(input) stablerel :: \<open>'a \<Rightarrow> 'a \<Rightarrow> bool\<close> where
   \<open>stablerel a b \<equiv> stableres a \<le> stableres b\<close>
@@ -126,24 +143,20 @@ lemma stablerel_additivity_of_update:
     \<open>a1 ## a2\<close>
     \<open>stablerel (a1 + a2) b\<close> 
   shows\<open>\<exists>b1 b2. b1 ## b2 \<and> b = b1 + b2 \<and> stablerel a1 b1 \<and> stablerel a2 b2\<close>
-  using assms stableres_subres[of \<open>a1 + a2\<close>]
-  apply (clarsimp simp add: le_iff_sepadd)
-  apply (rename_tac sc c)
-  apply (subgoal_tac \<open>stableres a1 + stableres a2 ## c\<close>)
-   prefer 2
-  apply (metis disjoint_add_leftL le_iff_sepadd stableres_plus_subres)
-  apply (subgoal_tac \<open>stableres a1 ## c \<and> stableres a2 ## c\<close>)
-  prefer 2
-   apply (metis disjoint_add_leftL disjoint_add_leftR disjoint_symm stableres_disjoint)
-  apply clarsimp
-  apply (rule_tac x=c1 in exI, rule_tac x=c2 in exI)
-  apply (intro context_conjI)
-     defer
-     defer
-  apply clarsimp
+proof -
+  let ?bnew = \<open>sep_avoid b (stableres a1 + stableres a2)\<close>
+  let ?b12=\<open>THE bz. \<exists>bz1 bz2. bz = (bz1,bz2) \<and> bz1 \<le> b \<and> bz2 \<le> b \<and>
+            sepdomeq bz1 (stableres a1 + ?bnew) \<and>
+            sepdomeq bz2 (stableres a2 + ?bnew) \<and>
+            b = bz1 + bz1\<close>
 
+  show ?thesis
+    using assms
+    apply (clarsimp simp add: le_iff_sepadd)
+    apply (subgoal_tac \<open>stableres a1 ## c \<and> stableres a2 ## c\<close>)
+     prefer 2
   sorry
-
+qed
 
 end
 

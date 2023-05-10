@@ -521,7 +521,7 @@ class crosssplit_sepalg = sepalg +
 
 section \<open>Right Cancellative Separation Logic\<close>
 
-class right_cancel_seplogic = sepalg +
+class right_cancel_sepalg = sepalg +
   assumes partial_right_cancel: \<open>\<And>a b c. a ## c \<Longrightarrow> b ## c \<Longrightarrow> (a + c = b + c) = (a = b)\<close>
 begin
 
@@ -619,6 +619,79 @@ qed
 
 end
 
+class avoiding_sepalg = sepalg +
+  assumes exists_greatest_avoiding:
+    \<open>\<exists>a'. a' \<le> a \<and> a' ## b \<and> (\<forall>a''. a'' \<le> a \<longrightarrow> a'' ## b \<longrightarrow> a'' \<le> a')\<close>
+begin
+
+subsection \<open> sep_avoid \<close>
+
+definition \<open>sep_avoid a b \<equiv> GREATEST a'. a' \<le> a \<and> a' ## b\<close>
+
+lemma sep_avoid_equality:
+  \<open>x \<le> a \<Longrightarrow> x ## b \<Longrightarrow> (\<And>y. y \<le> a \<Longrightarrow> y ## b \<Longrightarrow> y \<le> x) \<Longrightarrow> sep_avoid a b = x\<close>
+  by (force simp add: sep_avoid_def intro: Greatest_equality)
+
+lemma sep_avoidI2_order:
+  \<open>x \<le> a \<Longrightarrow> x ## b \<Longrightarrow>
+    (\<And>y. y \<le> a \<Longrightarrow> y ## b \<Longrightarrow> y \<le> x) \<Longrightarrow>
+    (\<And>x. x \<le> a \<Longrightarrow> x ## b \<Longrightarrow> \<forall>y. y \<le> a \<longrightarrow> y ## b \<longrightarrow> y \<le> x \<Longrightarrow> Q x) \<Longrightarrow>
+    Q (sep_avoid a b)\<close>
+  unfolding sep_avoid_def
+  by (blast intro!: GreatestI2_order)
+
+lemma sep_avoid_unique:
+  \<open>\<exists>!b. b \<le> a \<and> b ## c \<and> (\<forall>b'. b' \<le> a \<longrightarrow> b' ## c \<longrightarrow> b' \<le> b)\<close>
+  by (meson order.antisym exists_greatest_avoiding)
+
+lemma sep_avoid_decreasing: \<open>sep_avoid a b \<le> a\<close>
+  using exists_greatest_avoiding sep_avoid_equality by blast
+
+lemma sep_avoid_disjoint: \<open>sep_avoid a b ## b\<close>
+  using exists_greatest_avoiding sep_avoid_equality by blast
+
+lemma sep_avoid_ge:
+  \<open>b \<le> a \<Longrightarrow> b ## c \<Longrightarrow> b \<le> sep_avoid a c\<close>
+  by (metis sep_avoid_equality sep_avoid_unique)
+
+lemma sep_avoid_idem[simp]:
+  \<open>sep_avoid (sep_avoid a b) b = sep_avoid a b\<close>
+  using sep_avoid_disjoint sep_avoid_equality by blast
+
+lemma sep_avoid_monoL:
+  \<open>a \<le> b \<Longrightarrow> sep_avoid a c \<le> sep_avoid b c\<close>
+  by (meson order.trans sep_avoid_disjoint sep_avoid_decreasing sep_avoid_ge)
+
+lemma sep_avoid_antimonoR:
+  \<open>b \<le> c \<Longrightarrow> sep_avoid a c \<le> sep_avoid a b\<close>
+  by (metis disjoint_add_rightL le_iff_sepadd sep_avoid_decreasing sep_avoid_disjoint sep_avoid_ge)
+
+lemma sep_avoid_idem_strong:
+  \<open>b \<le> c \<Longrightarrow> sep_avoid (sep_avoid a b) c = sep_avoid a c\<close>
+  by (meson order.antisym sep_avoid_antimonoR sep_avoid_decreasing
+      sep_avoid_disjoint sep_avoid_ge sep_avoid_monoL)
+
+lemma sep_avoid_idem_strong2:
+  \<open>b \<le> c \<Longrightarrow> sep_avoid (sep_avoid a c) b = sep_avoid a c\<close>
+  by (metis order.antisym sep_avoid_antimonoR sep_avoid_decreasing sep_avoid_idem)
+
+lemma sep_avoid_commute:
+  \<open>sep_avoid (sep_avoid a b) c = sep_avoid (sep_avoid a c) b\<close>
+  by (rule order.antisym; metis disjoint_add_rightL disjoint_symm le_iff_sepadd sep_avoid_decreasing
+      sep_avoid_disjoint sep_avoid_ge sep_avoid_monoL)
+
+
+subclass crosssplit_sepalg
+  apply standard
+  apply (rule_tac x=\<open>sep_avoid a d + sep_avoid c b\<close> in exI)
+  apply (rule_tac x=\<open>sep_avoid a c + sep_avoid d b\<close> in exI)
+  apply (rule_tac x=\<open>sep_avoid b d + sep_avoid c a\<close> in exI)
+  apply (rule_tac x=\<open>sep_avoid b c + sep_avoid d a\<close> in exI)
+  apply clarsimp
+  oops
+
+end
+
 
 section \<open>A cancellative Separation Algebra\<close>
 
@@ -636,7 +709,7 @@ class cancel_sepalg = sepalg + minus +
 *)
 begin
 
-subclass right_cancel_seplogic
+subclass right_cancel_sepalg
   apply standard
   apply (metis disjoint_symm partial_add_commute sepadd_diff_cancel_left')
   done

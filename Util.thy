@@ -242,6 +242,13 @@ lemma order_neq_less_conv:
   \<open>y \<le> x \<Longrightarrow> (x :: ('a :: order)) \<noteq> y \<longleftrightarrow> y < x\<close>
   by fastforce+
 
+lemma order_sandwich:
+  fixes k x :: \<open>'a :: order\<close>
+  shows
+    \<open>k \<le> x \<and> x \<le> k \<and> P \<longleftrightarrow> x = k \<and> P\<close>
+    \<open>k \<le> x \<and> P \<and> x \<le> k \<and> Q \<longleftrightarrow> x = k \<and> P \<and> Q\<close>
+  by force+
+
 subsection \<open> Groups \<close>
 
 lemmas eq_diff_eq_comm =
