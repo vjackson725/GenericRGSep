@@ -174,6 +174,17 @@ lemma le_plus2: \<open>a ## b \<Longrightarrow> b \<le> a + b\<close>
 lemma positivity2: \<open>a ## b \<Longrightarrow> a + b = c \<Longrightarrow> c ## c \<Longrightarrow> c + c = c \<Longrightarrow> b ## b \<and> b + b = b\<close>
   using disjoint_symm partial_add_commute positivity by blast
 
+text \<open>
+  From 'Bringing order to the separation logic Jungle'.
+  Increasing elements are related to the units of the algebra.
+\<close>
+definition increasing_elem :: \<open>'a \<Rightarrow> bool\<close> where
+  \<open>increasing_elem a \<equiv> \<forall>b c. a ## b \<longrightarrow> a + b = c \<longrightarrow> b \<le> c\<close>
+
+lemma zero_increasing_elem:
+  \<open>increasing_elem 0\<close>
+  by (simp add: increasing_elem_def)
+
 subsection \<open>partial canonically_ordered_monoid_add lemmas\<close>
 
 lemma zero_le[simp]: \<open>0 \<le> x\<close>
