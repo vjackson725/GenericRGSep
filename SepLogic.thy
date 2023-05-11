@@ -174,6 +174,10 @@ lemma le_plus2: \<open>a ## b \<Longrightarrow> b \<le> a + b\<close>
 lemma positivity2: \<open>a ## b \<Longrightarrow> a + b = c \<Longrightarrow> c ## c \<Longrightarrow> c + c = c \<Longrightarrow> b ## b \<and> b + b = b\<close>
   using disjoint_symm partial_add_commute positivity by blast
 
+lemma common_subresource_selfsep:
+  \<open>a ## b \<Longrightarrow> ab \<le> a \<Longrightarrow> ab \<le> b \<Longrightarrow> ab ## ab\<close>
+  by (metis disjoint_add_leftL disjoint_symm le_iff_sepadd)
+
 text \<open>
   From 'Bringing order to the separation logic Jungle'.
   Increasing elements are related to the units of the algebra.
@@ -504,9 +508,9 @@ lemma supported_intuitionistic_to_precise:
 
 end
 
-section \<open>Strongly Separated Separation Logic\<close>
+section \<open>Strongly Separated Separation Algebra\<close>
 
-class strong_separated_seplogic = sepalg +
+class strong_separated_sepalg = sepalg +
   assumes only_zero_self_sep: \<open>a ## a \<Longrightarrow> a = 0\<close>
 begin
 
@@ -518,7 +522,7 @@ end
 
 section \<open>Disjointness Separation Algebra\<close>
 
-class disjoint_seplogic = sepalg +
+class disjoint_sepalg = sepalg +
   assumes disjointness: \<open>a ## a \<Longrightarrow> a + a = b \<Longrightarrow> a = b\<close>
 
 section \<open>Cross-Split Separation Algebra\<close>
@@ -529,6 +533,54 @@ class crosssplit_sepalg = sepalg +
     \<exists>ac ad bc bd.
       ac ## ad \<and> bc ## bd \<and> ac ## bc \<and> ad ## bd \<and>
       ac + ad = a \<and> bc + bd = b \<and> ac + bc = c \<and> ad + bd = d\<close>
+
+class inf_sepalg = sepalg +
+  assumes infres_exists:
+    \<open>\<exists>x. x \<le> a \<and> x \<le> b \<and> (\<forall>y. y \<le> a \<longrightarrow> y \<le> b \<longrightarrow> y \<le> x)\<close>
+begin
+
+definition infres :: \<open>'a \<Rightarrow> 'a \<Rightarrow> 'a\<close> where
+  \<open>infres a b \<equiv> (GREATEST ab. ab \<le> a \<and> ab \<le> b)\<close>
+
+lemma sep_restrictI2_order:
+  \<open>x \<le> a \<Longrightarrow> x \<le> b \<Longrightarrow>
+    (\<And>y. y \<le> a \<Longrightarrow> y \<le> b \<Longrightarrow> y \<le> x) \<Longrightarrow>
+    (\<And>x. x \<le> a \<Longrightarrow> x \<le> b \<Longrightarrow> \<forall>y. y \<le> a \<longrightarrow> y \<le> b \<longrightarrow> y \<le> x \<Longrightarrow> Q x) \<Longrightarrow>
+    Q (infres a b)\<close>
+  unfolding infres_def
+  by (blast intro!: GreatestI2_order)
+
+lemma infres_equality:
+  \<open>ab \<le> a \<Longrightarrow> ab \<le> b \<Longrightarrow> (\<And>y. y \<le> a \<Longrightarrow> y \<le> b \<Longrightarrow> y \<le> ab) \<Longrightarrow> infres a b = ab\<close>
+  by (force simp add: infres_def intro: Greatest_equality)
+
+lemma infres_unique:
+  \<open>x \<le> a \<Longrightarrow> x \<le> b \<Longrightarrow> (\<forall>y\<le>a. y \<le> b \<longrightarrow> y \<le> x) \<Longrightarrow>
+    (\<forall>y. y \<le> a \<and> y \<le> b \<and> (\<forall>z\<le>a. z \<le> b \<longrightarrow> z \<le> y)\<longrightarrow> y = x)\<close>
+  by (simp add: order.antisym)
+
+lemma infres_ex1:
+  \<open>\<exists>!x. x \<le> a \<and> x \<le> b \<and> (\<forall>y. y \<le> a \<longrightarrow> y \<le> b \<longrightarrow> y \<le> x)\<close>
+  using Ex1_def infres_exists infres_unique
+  by fastforce
+
+lemma infres_idem[simp]:
+  \<open>infres a a = a\<close>
+  by (simp add: infres_equality)
+
+lemma infres_commute:
+  \<open>infres a b = infres b a\<close>
+  by (rule order.antisym; metis infres_equality infres_exists)
+
+lemma infres_le:
+  \<open>infres a b \<le> a\<close>
+  by (metis infres_equality infres_exists)
+
+lemma infres_disjoint_selfseparate:
+  \<open>a ## b \<Longrightarrow> infres a b ## infres a b\<close>
+  by (metis infres_commute infres_le common_subresource_selfsep)
+
+end
 
 section \<open>Right Cancellative Separation Logic\<close>
 
@@ -639,11 +691,11 @@ subsection \<open> sep_restrict \<close>
 
 definition \<open>sep_restrict a b \<equiv> GREATEST a'. a' \<le> a \<and> sepdomeq a' b\<close>
 
-lemma sep_avoid_equality:
+lemma sep_restrict_equality:
   \<open>x \<le> a \<Longrightarrow> sepdomeq x b \<Longrightarrow> (\<And>y. y \<le> a \<Longrightarrow> sepdomeq y b \<Longrightarrow> y \<le> x) \<Longrightarrow> sep_restrict a b = x\<close>
   by (force simp add: sep_restrict_def intro: Greatest_equality)
 
-lemma sep_avoidI2_order:
+lemma sep_restrictI2_order:
   \<open>x \<le> a \<Longrightarrow> sepdomeq x b \<Longrightarrow>
     (\<And>y. y \<le> a \<Longrightarrow> sepdomeq y b \<Longrightarrow> y \<le> x) \<Longrightarrow>
     (\<And>x. x \<le> a \<Longrightarrow> sepdomeq x b \<Longrightarrow> \<forall>y. y \<le> a \<longrightarrow> sepdomeq y b \<longrightarrow> y \<le> x \<Longrightarrow> Q x) \<Longrightarrow>
@@ -655,11 +707,8 @@ lemma sep_avoidI2_order:
 lemma sep_restrict_exists:
   \<open>\<exists>b. b \<le> a \<and> sepdomeq b c \<and> (\<forall>b'. b' \<le> a \<longrightarrow> sepdomeq b' c \<longrightarrow> b' \<le> b)\<close>
   unfolding sepdomeq_def
+  sledgehammer
   sorry
-
-lemma sep_restrict_unique:
-  \<open>\<exists>!b. b \<le> a \<and> sepdomeq b c \<and> (\<forall>b'. b' \<le> a \<longrightarrow> sepdomeq b' c \<longrightarrow> b' \<le> b)\<close>
-  using order.antisym sep_restrict_exists by fastforce
 *)
 
 lemma sep_restrict_unique:
@@ -667,43 +716,40 @@ lemma sep_restrict_unique:
     (\<forall>y. y \<le> a \<and> sepdomeq y c \<and> (\<forall>b'\<le>a. sepdomeq b' c \<longrightarrow> b' \<le> y)\<longrightarrow> y = x)\<close>
   by (simp add: order.eq_iff)
 
-lemma sep_avoid_decreasing: \<open>sep_restrict a b \<le> a\<close>
-  sledgehammer
+(*
+lemma sep_restrict_ex1:
+  \<open>\<exists>!b. b \<le> a \<and> sepdomeq b c \<and> (\<forall>b'. b' \<le> a \<longrightarrow> sepdomeq b' c \<longrightarrow> b' \<le> b)\<close>
+  using order.antisym sep_restrict_exists by fastforce
+
+lemma sep_restrict_decreasing: \<open>sep_restrict a b \<le> a\<close>
   sorry
 
-lemma sep_avoid_disjoint: \<open>sep_restrict a b ## c \<Longrightarrow> b ## c\<close>
-  sledgehammer
+lemma sep_restrict_disjoint: \<open>sep_restrict a b ## c \<Longrightarrow> b ## c\<close>
   sorry
 
-lemma sep_avoid_ge:
-  \<open>b \<le> a \<Longrightarrow> b ## c \<Longrightarrow> b \<le> sep_avoid a c\<close>
-  by (metis sep_avoid_equality sep_avoid_unique)
+lemma sep_restrict_idem[simp]:
+  \<open>sep_restrict (sep_restrict a b) b = sep_restrict a b\<close>
+  sorry
 
-lemma sep_avoid_idem[simp]:
-  \<open>sep_avoid (sep_avoid a b) b = sep_avoid a b\<close>
-  using sep_avoid_disjoint sep_avoid_equality by blast
+lemma sep_restrict_monoL:
+  \<open>a \<le> b \<Longrightarrow> sep_restrict a c \<le> sep_restrict b c\<close>
+  sorry
 
-lemma sep_avoid_monoL:
-  \<open>a \<le> b \<Longrightarrow> sep_avoid a c \<le> sep_avoid b c\<close>
-  by (meson order.trans sep_avoid_disjoint sep_avoid_decreasing sep_avoid_ge)
+lemma sep_restrict_monoR:
+  \<open>b \<le> c \<Longrightarrow> sep_restrict a b \<le> sep_restrict a c\<close>
 
-lemma sep_avoid_antimonoR:
-  \<open>b \<le> c \<Longrightarrow> sep_avoid a c \<le> sep_avoid a b\<close>
-  by (metis disjoint_add_rightL le_iff_sepadd sep_avoid_decreasing sep_avoid_disjoint sep_avoid_ge)
+lemma sep_restrict_idem_strong:
+  \<open>b \<le> c \<Longrightarrow> sep_restrict (sep_restrict a b) c = sep_restrict a b\<close>
+  sorry
 
-lemma sep_avoid_idem_strong:
-  \<open>b \<le> c \<Longrightarrow> sep_avoid (sep_avoid a b) c = sep_avoid a c\<close>
-  by (meson order.antisym sep_avoid_antimonoR sep_avoid_decreasing
-      sep_avoid_disjoint sep_avoid_ge sep_avoid_monoL)
+lemma sep_restrict_idem_strong2:
+  \<open>b \<le> c \<Longrightarrow> sep_restrict (sep_restrict a c) b = sep_restrict a b\<close>
+  sorry
 
-lemma sep_avoid_idem_strong2:
-  \<open>b \<le> c \<Longrightarrow> sep_avoid (sep_avoid a c) b = sep_avoid a c\<close>
-  by (metis order.antisym sep_avoid_antimonoR sep_avoid_decreasing sep_avoid_idem)
-
-lemma sep_avoid_commute:
-  \<open>sep_avoid (sep_avoid a b) c = sep_avoid (sep_avoid a c) b\<close>
-  by (rule order.antisym; metis disjoint_add_rightL disjoint_symm le_iff_sepadd sep_avoid_decreasing
-      sep_avoid_disjoint sep_avoid_ge sep_avoid_monoL)
+lemma sep_restrict_commute:
+  \<open>sep_restrict (sep_restrict a b) c = sep_restrict (sep_restrict a c) b\<close>
+  sorry
+*)
 
 subsection \<open> sep_avoid \<close>
 
@@ -733,7 +779,7 @@ lemma sep_avoid_disjoint: \<open>sep_avoid a b ## b\<close>
 
 lemma sep_avoid_ge:
   \<open>b \<le> a \<Longrightarrow> b ## c \<Longrightarrow> b \<le> sep_avoid a c\<close>
-  by (metis sep_avoid_equality sep_avoid_unique)
+  by (metis sep_avoid_equality sep_avoid_ex1)
 
 lemma sep_avoid_idem[simp]:
   \<open>sep_avoid (sep_avoid a b) b = sep_avoid a b\<close>
@@ -841,148 +887,6 @@ lemma zero_diff[simp]: "0 - a = 0"
 lemma diff_add_zero[simp]: "a ## b \<Longrightarrow> a - (a + b) = 0"
   by (metis diff_cancel diff_diff_sepadd zero_diff)
 
-subsection \<open>ordered_ab_semigroup_add\<close>
-
-(*
-lemma sepadd_left_mono: "c ## a \<Longrightarrow> c ## b \<Longrightarrow> a \<le> b \<Longrightarrow> c + a \<le> c + b"
-  using le_iff_sepadd partial_add_assoc by auto
-
-lemma sepadd_right_mono: "a ## c \<Longrightarrow> b ## c \<Longrightarrow> a \<le> b \<Longrightarrow> a + c \<le> b + c"
-  by (metis disjoint_symm partial_add_commute sepadd_left_mono)
-
-lemma sepadd_mono:
-  assumes \<open>a ## c\<close> \<open>b ## d\<close> \<open>a \<le> b\<close> \<open>c \<le> d\<close>
-  shows \<open>a + c \<le> b + d\<close>
-proof -
-  have \<open>b ## c\<close>
-    using assms le_iff_sepadd by force
-  then show ?thesis
-    using assms sepadd_left_mono[of b c d] sepadd_right_mono[of a c b]
-    by simp
-qed
-
-subsection \<open>partial ordered_cancel_ab_semigroup_add\<close>
-
-lemma sepadd_strict_left_mono: "c ## a \<Longrightarrow> c ## b \<Longrightarrow> a < b \<Longrightarrow> c + a < c + b"
-  by (simp add: order.strict_iff_order partial_left_cancel2 sepadd_left_mono)
-
-lemma sepadd_strict_right_mono: "a ## c \<Longrightarrow> b ## c \<Longrightarrow> a < b \<Longrightarrow> a + c < b + c"
-  by (metis disjoint_symm partial_add_commute sepadd_strict_left_mono)
-
-lemma sepadd_less_le_mono:
-  assumes \<open>a ## c\<close> \<open>b ## d\<close> \<open>a < b\<close> \<open>c \<le> d\<close>
-  shows \<open>a + c < b + d\<close>
-proof -
-  have \<open>b ## c\<close>
-    using assms le_iff_sepadd by fastforce
-  then show ?thesis
-    using assms sepadd_left_mono[of b c d] sepadd_strict_right_mono[of a c b]
-      order.strict_trans1
-    by force
-qed
-
-lemma sepadd_le_less_mono: "a ## c \<Longrightarrow> b ## d \<Longrightarrow> a \<le> b \<Longrightarrow> c < d \<Longrightarrow> a + c < b + d"
-  by (metis order.strict_iff_order sepadd_less_le_mono sepadd_strict_left_mono)
-
-subsection \<open>partial ordered_ab_semigroup_add_imp_le\<close>
-
-lemma sepadd_le_imp_le_left: "c ## a \<Longrightarrow> c ## b \<Longrightarrow> c + a \<le> c + b \<Longrightarrow> a \<le> b"
-  by (simp add: le_iff_sepadd, metis disjoint_add_left partial_add_assoc
-      sepadd_diff_cancel_left')
-
-lemma sepadd_less_imp_less_left:
-  \<open>c ## a \<Longrightarrow> c ## b \<Longrightarrow> c + a < c + b \<Longrightarrow> a < b\<close>
-  by (force dest: sepadd_le_imp_le_left order.antisym simp add: less_le_not_le)
-
-lemma sepadd_less_imp_less_right: "a ## c \<Longrightarrow> b ## c \<Longrightarrow> a + c < b + c \<Longrightarrow> a < b"
-  by (simp add: disjoint_symm partial_add_commute sepadd_less_imp_less_left)
-
-lemma sepadd_less_cancel_left [simp]: "a ## c \<Longrightarrow> b ## c \<Longrightarrow> c + a < c + b \<longleftrightarrow> a < b"
-  by (meson disjoint_symm sepadd_less_imp_less_left sepadd_strict_left_mono)
-
-lemma sepadd_less_cancel_right [simp]: "a ## c \<Longrightarrow> b ## c \<Longrightarrow> a + c < b + c \<longleftrightarrow> a < b"
-  by (metis partial_add_commute sepadd_less_cancel_left)
-
-lemma add_le_cancel_left [simp]: "c ## a \<Longrightarrow> c ## b \<Longrightarrow> c + a \<le> c + b \<longleftrightarrow> a \<le> b"
-  using sepadd_le_imp_le_left sepadd_left_mono by blast
-
-lemma add_le_cancel_right [simp]: "a ## c \<Longrightarrow> b ## c \<Longrightarrow> a + c \<le> b + c \<longleftrightarrow> a \<le> b"
-  by (metis disjoint_symm partial_add_commute sepadd_le_imp_le_left sepadd_right_mono)
-
-lemma add_le_imp_le_right: "a ## c \<Longrightarrow> b ## c \<Longrightarrow> a + c \<le> b + c \<Longrightarrow> a \<le> b"
-  by simp
-
-lemma max_add_distrib_left: "x ## z \<Longrightarrow> y ## z \<Longrightarrow> max x y + z = max (x + z) (y + z)"
-  unfolding max_def by auto
-
-lemma min_add_distrib_left: "x ## z \<Longrightarrow> y ## z \<Longrightarrow> min x y + z = min (x + z) (y + z)"
-  unfolding min_def by auto
-
-lemma max_add_distrib_right: "x ## y \<Longrightarrow> x ## z \<Longrightarrow> x + max y z = max (x + y) (x + z)"
-  unfolding max_def by auto
-
-lemma min_add_distrib_right: "x ## y \<Longrightarrow> x ## z \<Longrightarrow> x + min y z = min (x + y) (x + z)"
-  unfolding min_def by auto
-
-subsection \<open>partial ordered_comm_monoid_add\<close>
-
-lemma sepadd_nonpos_nonpos: "a \<le> 0 \<Longrightarrow> b \<le> 0 \<Longrightarrow> a + b \<le> 0"
-  by simp
-
-(*
-lemma sepadd_nonneg_eq_0_iff: "0 \<le> x \<Longrightarrow> 0 \<le> y \<Longrightarrow> x + y = 0 \<longleftrightarrow> x = 0 \<and> y = 0"
-  oops
-*)
-
-lemma sepadd_nonpos_eq_0_iff: "x \<le> 0 \<Longrightarrow> y \<le> 0 \<Longrightarrow> x + y = 0 \<longleftrightarrow> x = 0 \<and> y = 0"
-  by simp
-
-lemma sepadd_increasing: "a ## c \<Longrightarrow> 0 \<le> a \<Longrightarrow> b \<le> c \<Longrightarrow> b \<le> a + c"
-  using sepadd_mono [of 0 b a c] by simp
-
-lemma sepadd_increasing2: "a ## c \<Longrightarrow> 0 \<le> c \<Longrightarrow> b \<le> a \<Longrightarrow> b \<le> a + c"
-  using sepadd_mono[of 0 b c a]
-  by (simp add: sepadd_increasing partial_add_commute disjoint_symm)
-
-lemma sepadd_decreasing: "a ## c \<Longrightarrow> a \<le> 0 \<Longrightarrow> c \<le> b \<Longrightarrow> a + c \<le> b"
-  using sepadd_mono[of a c 0 b] by simp
-
-lemma sepadd_decreasing2: "c \<le> 0 \<Longrightarrow> a \<le> b \<Longrightarrow> a + c \<le> b"
-  using sepadd_mono[of a c b 0] by simp
-
-lemma sepadd_pos_nonneg: "a ## b \<Longrightarrow> 0 < a \<Longrightarrow> 0 \<le> b \<Longrightarrow> 0 < a + b"
-  using less_le_trans[of 0 a "a + b"] by (simp add: sepadd_increasing2)
-
-lemma sepadd_pos_pos: "a ## b \<Longrightarrow> 0 < a \<Longrightarrow> 0 < b \<Longrightarrow> 0 < a + b"
-  by (intro sepadd_pos_nonneg less_imp_le)
-
-lemma sepadd_nonneg_pos: "a ## b \<Longrightarrow> 0 \<le> a \<Longrightarrow> 0 < b \<Longrightarrow> 0 < a + b"
-  using sepadd_pos_nonneg[of b a] by (simp add: partial_add_commute disjoint_symm)
-
-lemma sepadd_neg_nonpos: "a ## b \<Longrightarrow> a < 0 \<Longrightarrow> b \<le> 0 \<Longrightarrow> a + b < 0"
-  using le_less_trans[of "a + b" a 0] by (simp add: add_decreasing2)
-
-lemma sepadd_neg_neg: "a ## b \<Longrightarrow> a < 0 \<Longrightarrow> b < 0 \<Longrightarrow> a + b < 0"
-  by (intro sepadd_neg_nonpos less_imp_le)
-
-lemma sepadd_nonpos_neg: "a ## b \<Longrightarrow> a \<le> 0 \<Longrightarrow> b < 0 \<Longrightarrow> a + b < 0"
-  using sepadd_neg_nonpos[of b a] by (simp add: partial_add_commute)
-
-subsection \<open>new laws\<close>
-
-lemma symmdiff_disjoint:\<open>(a - b) ## (b - a)\<close>
-  by (metis disjoint_add_left disjoint_symm restricted_by_disjoint
-      state_minus_basic_split)
-
-lemma restricted_state_a_substate: \<open>a - b \<le> a\<close>
-  by (metis le_plus restricted_by_disjoint state_minus_basic_split)
-
-lemma minus_expansion1: \<open>a - b = a - (a - (a - b))\<close>
-  by (metis restricted_by_disjoint state_minus_basic_split sepadd_diff_cancel_right')
-
-lemma subtract_less_zero: \<open>a' \<le> a \<Longrightarrow> a' - a = 0\<close>
-  by (metis diff_cancel diff_diff_sepadd le_iff_sepadd le_zero_eq restricted_state_a_substate)
-*)
 end
 
 end

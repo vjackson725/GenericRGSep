@@ -107,7 +107,7 @@ end
 
 
 
-class stable_sepalg = avoiding_sepalg +
+class stable_sepalg = avoiding_sepalg + inf_sepalg +
   fixes stableres :: \<open>'a \<Rightarrow> 'a\<close>
   assumes stableres_plus_subres: \<open>a ## b \<Longrightarrow> stableres a + stableres b \<le> stableres (a + b)\<close>
   assumes stableres_idem[simp]: \<open>stableres (stableres a) = stableres a\<close>
@@ -145,10 +145,8 @@ lemma stablerel_additivity_of_update:
   shows\<open>\<exists>b1 b2. b1 ## b2 \<and> b = b1 + b2 \<and> stablerel a1 b1 \<and> stablerel a2 b2\<close>
 proof -
   let ?bnew = \<open>sep_avoid b (stableres a1 + stableres a2)\<close>
-  let ?b12=\<open>THE bz. \<exists>bz1 bz2. bz = (bz1,bz2) \<and> bz1 \<le> b \<and> bz2 \<le> b \<and>
-            sepdomeq bz1 (stableres a1 + ?bnew) \<and>
-            sepdomeq bz2 (stableres a2 + ?bnew) \<and>
-            b = bz1 + bz1\<close>
+  let ?b1=\<open>sep_restrict b (stableres a1 + halfres ?bnew)\<close>
+  let ?b2=\<open>sep_restrict b (stableres a2 + halfres ?bnew)\<close>
 
   show ?thesis
     using assms
