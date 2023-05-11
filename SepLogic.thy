@@ -635,6 +635,76 @@ class avoiding_sepalg = sepalg +
     \<open>\<exists>a'. a' \<le> a \<and> a' ## b \<and> (\<forall>a''. a'' \<le> a \<longrightarrow> a'' ## b \<longrightarrow> a'' \<le> a')\<close>
 begin
 
+subsection \<open> sep_restrict \<close>
+
+definition \<open>sep_restrict a b \<equiv> GREATEST a'. a' \<le> a \<and> sepdomeq a' b\<close>
+
+lemma sep_avoid_equality:
+  \<open>x \<le> a \<Longrightarrow> sepdomeq x b \<Longrightarrow> (\<And>y. y \<le> a \<Longrightarrow> sepdomeq y b \<Longrightarrow> y \<le> x) \<Longrightarrow> sep_restrict a b = x\<close>
+  by (force simp add: sep_restrict_def intro: Greatest_equality)
+
+lemma sep_avoidI2_order:
+  \<open>x \<le> a \<Longrightarrow> sepdomeq x b \<Longrightarrow>
+    (\<And>y. y \<le> a \<Longrightarrow> sepdomeq y b \<Longrightarrow> y \<le> x) \<Longrightarrow>
+    (\<And>x. x \<le> a \<Longrightarrow> sepdomeq x b \<Longrightarrow> \<forall>y. y \<le> a \<longrightarrow> sepdomeq y b \<longrightarrow> y \<le> x \<Longrightarrow> Q x) \<Longrightarrow>
+    Q (sep_restrict a b)\<close>
+  unfolding sep_restrict_def
+  by (blast intro!: GreatestI2_order)
+
+(*
+lemma sep_restrict_exists:
+  \<open>\<exists>b. b \<le> a \<and> sepdomeq b c \<and> (\<forall>b'. b' \<le> a \<longrightarrow> sepdomeq b' c \<longrightarrow> b' \<le> b)\<close>
+  unfolding sepdomeq_def
+  sorry
+
+lemma sep_restrict_unique:
+  \<open>\<exists>!b. b \<le> a \<and> sepdomeq b c \<and> (\<forall>b'. b' \<le> a \<longrightarrow> sepdomeq b' c \<longrightarrow> b' \<le> b)\<close>
+  using order.antisym sep_restrict_exists by fastforce
+*)
+
+lemma sep_restrict_unique:
+  \<open>x \<le> a \<Longrightarrow> sepdomeq x c \<Longrightarrow> (\<forall>b'\<le>a. sepdomeq b' c \<longrightarrow> b' \<le> x) \<Longrightarrow>
+    (\<forall>y. y \<le> a \<and> sepdomeq y c \<and> (\<forall>b'\<le>a. sepdomeq b' c \<longrightarrow> b' \<le> y)\<longrightarrow> y = x)\<close>
+  by (simp add: order.eq_iff)
+
+lemma sep_avoid_decreasing: \<open>sep_restrict a b \<le> a\<close>
+  sledgehammer
+  sorry
+
+lemma sep_avoid_disjoint: \<open>sep_restrict a b ## c \<Longrightarrow> b ## c\<close>
+  sledgehammer
+  sorry
+
+lemma sep_avoid_ge:
+  \<open>b \<le> a \<Longrightarrow> b ## c \<Longrightarrow> b \<le> sep_avoid a c\<close>
+  by (metis sep_avoid_equality sep_avoid_unique)
+
+lemma sep_avoid_idem[simp]:
+  \<open>sep_avoid (sep_avoid a b) b = sep_avoid a b\<close>
+  using sep_avoid_disjoint sep_avoid_equality by blast
+
+lemma sep_avoid_monoL:
+  \<open>a \<le> b \<Longrightarrow> sep_avoid a c \<le> sep_avoid b c\<close>
+  by (meson order.trans sep_avoid_disjoint sep_avoid_decreasing sep_avoid_ge)
+
+lemma sep_avoid_antimonoR:
+  \<open>b \<le> c \<Longrightarrow> sep_avoid a c \<le> sep_avoid a b\<close>
+  by (metis disjoint_add_rightL le_iff_sepadd sep_avoid_decreasing sep_avoid_disjoint sep_avoid_ge)
+
+lemma sep_avoid_idem_strong:
+  \<open>b \<le> c \<Longrightarrow> sep_avoid (sep_avoid a b) c = sep_avoid a c\<close>
+  by (meson order.antisym sep_avoid_antimonoR sep_avoid_decreasing
+      sep_avoid_disjoint sep_avoid_ge sep_avoid_monoL)
+
+lemma sep_avoid_idem_strong2:
+  \<open>b \<le> c \<Longrightarrow> sep_avoid (sep_avoid a c) b = sep_avoid a c\<close>
+  by (metis order.antisym sep_avoid_antimonoR sep_avoid_decreasing sep_avoid_idem)
+
+lemma sep_avoid_commute:
+  \<open>sep_avoid (sep_avoid a b) c = sep_avoid (sep_avoid a c) b\<close>
+  by (rule order.antisym; metis disjoint_add_rightL disjoint_symm le_iff_sepadd sep_avoid_decreasing
+      sep_avoid_disjoint sep_avoid_ge sep_avoid_monoL)
+
 subsection \<open> sep_avoid \<close>
 
 definition \<open>sep_avoid a b \<equiv> GREATEST a'. a' \<le> a \<and> a' ## b\<close>
@@ -651,7 +721,7 @@ lemma sep_avoidI2_order:
   unfolding sep_avoid_def
   by (blast intro!: GreatestI2_order)
 
-lemma sep_avoid_unique:
+lemma sep_avoid_ex1:
   \<open>\<exists>!b. b \<le> a \<and> b ## c \<and> (\<forall>b'. b' \<le> a \<longrightarrow> b' ## c \<longrightarrow> b' \<le> b)\<close>
   by (meson order.antisym exists_greatest_avoiding)
 
