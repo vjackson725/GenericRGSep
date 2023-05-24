@@ -128,8 +128,10 @@ qed
 
 end
 
-
 section \<open> Separation Logic \<close>
+
+subsection \<open> Common Notions \<close>
+
 
 class disjoint =
   fixes disjoint :: \<open>'a \<Rightarrow> 'a \<Rightarrow> bool\<close> (infix \<open>##\<close> 60)
@@ -138,19 +140,18 @@ class disjoint_zero = disjoint + zero +
   assumes zero_disjointL[simp]: \<open>0 ## a\<close>
   assumes zero_disjointR[simp]: \<open>a ## 0\<close>
 
-class sepalg = disjoint_zero + plus + order_bot +
+subsection \<open> Permission Algebras \<close>
+
+class perm_alg = disjoint + plus + order +
   (* partial commutative monoid *)
   assumes partial_add_assoc:
     \<open>a ## b \<Longrightarrow> b ## c \<Longrightarrow> a ## c \<Longrightarrow> (a + b) + c = a + (b + c)\<close>
   assumes partial_add_commute: \<open>a ## b \<Longrightarrow> a + b = b + a\<close>
-  assumes partial_add_0[simp]: \<open>0 + a = a\<close>
   (* separation laws *)
   assumes disjoint_symm: \<open>a ## b = b ## a\<close>
   assumes disjoint_add_rightL: \<open>b ## c \<Longrightarrow> a ## (b + c) \<Longrightarrow> a ## b\<close>
   assumes disjoint_add_right_commute: \<open>a ## c \<Longrightarrow> b ## (a + c) \<Longrightarrow> a ## (b + c)\<close>
   assumes positivity: \<open>a ## b \<Longrightarrow> a + b = c \<Longrightarrow> c ## c \<Longrightarrow> c + c = c \<Longrightarrow> a ## a \<and> a + a = a\<close>
-  (* order defn *)
-  assumes le_iff_sepadd: \<open>a \<le> b \<longleftrightarrow> (\<exists>c. a ## c \<and> b = a + c)\<close>
 begin
 
 lemma disjoint_add_rightR: \<open>b ## c \<Longrightarrow> a ## b + c \<Longrightarrow> a ## c\<close>
@@ -165,93 +166,12 @@ lemma disjoint_add_leftR: \<open>a ## b \<Longrightarrow> a + b ## c \<Longright
 lemma disjoint_add_commuteL: \<open>c ## b \<Longrightarrow> (c + b) ## a \<Longrightarrow> a + b ## c\<close>
   by (simp add: disjoint_add_right_commute disjoint_symm)
 
-lemma le_plus: \<open>a ## b \<Longrightarrow> a \<le> a + b\<close>
-  using le_iff_sepadd by auto
-
-lemma le_plus2: \<open>a ## b \<Longrightarrow> b \<le> a + b\<close>
-  by (metis le_plus disjoint_symm partial_add_commute)
-
 lemma positivity2: \<open>a ## b \<Longrightarrow> a + b = c \<Longrightarrow> c ## c \<Longrightarrow> c + c = c \<Longrightarrow> b ## b \<and> b + b = b\<close>
   using disjoint_symm partial_add_commute positivity by blast
-
-lemma common_subresource_selfsep:
-  \<open>a ## b \<Longrightarrow> ab \<le> a \<Longrightarrow> ab \<le> b \<Longrightarrow> ab ## ab\<close>
-  by (metis disjoint_add_leftL disjoint_symm le_iff_sepadd)
-
-text \<open>
-  From 'Bringing order to the separation logic Jungle'.
-  Increasing elements are related to the units of the algebra.
-\<close>
-definition increasing_elem :: \<open>'a \<Rightarrow> bool\<close> where
-  \<open>increasing_elem a \<equiv> \<forall>b c. a ## b \<longrightarrow> a + b = c \<longrightarrow> b \<le> c\<close>
-
-lemma zero_increasing_elem:
-  \<open>increasing_elem 0\<close>
-  by (simp add: increasing_elem_def)
-
-subsection \<open>partial canonically_ordered_monoid_add lemmas\<close>
-
-lemma zero_le[simp]: \<open>0 \<le> x\<close>
-  by (metis le_plus partial_add_0 zero_disjointL)
-
-lemma le_zero_eq[simp]: "n \<le> 0 \<longleftrightarrow> n = 0"
-  by (auto intro: order.antisym)
-
-lemma not_less_zero[simp]: "\<not> n < 0"
-  by (auto simp: less_le)
-
-lemma zero_less_iff_neq_zero: "0 < n \<longleftrightarrow> n \<noteq> 0"
-  by (auto simp: less_le)
-
-text \<open>This theorem is useful with \<open>blast\<close>\<close>
-lemma gr_zeroI: "(n = 0 \<Longrightarrow> False) \<Longrightarrow> 0 < n"
-  by (rule zero_less_iff_neq_zero[THEN iffD2]) iprover
-
-lemma not_gr_zero[simp]: "\<not> 0 < n \<longleftrightarrow> n = 0"
-  by (simp add: zero_less_iff_neq_zero)
-
-lemma gr_implies_not_zero: "m < n \<Longrightarrow> n \<noteq> 0"
-  by auto
-
-lemma sepadd_eq_0_iff_both_eq_0[simp]: "x ## y \<Longrightarrow> x + y = 0 \<longleftrightarrow> x = 0 \<and> y = 0"
-  by (metis le_plus le_zero_eq partial_add_0)
-
-lemma zero_eq_sepadd_iff_both_eq_0[simp]: "x ## y \<Longrightarrow> 0 = x + y \<longleftrightarrow> x = 0 \<and> y = 0"
-  using sepadd_eq_0_iff_both_eq_0[of x y] unfolding eq_commute[of 0] .
 
 lemma partial_add_left_commute:
   \<open>a ## b \<Longrightarrow> b ## c \<Longrightarrow> a ## c \<Longrightarrow> b + (a + c) = a + (b + c)\<close>
   by (metis disjoint_symm partial_add_assoc partial_add_commute)
-
-(*
-lemma less_eqE:
-  assumes \<open>a \<le> b\<close>
-  obtains c where \<open>b = a + c\<close>
-  using assms
-  by (force simp add: le_iff_sepadd)
-
-lemma lessE:
-  assumes \<open>a < b\<close>
-  obtains c where \<open>b = a + c\<close> \<open>a ## c\<close> and \<open>c \<noteq> 0\<close>
-proof -
-  from assms have \<open>a \<le> b\<close> \<open>a \<noteq> b\<close>
-    by simp_all
-  from \<open>a \<le> b\<close> obtain c where \<open>b = a + c\<close> \<open>a ## c\<close>
-    by (force simp add: le_iff_sepadd)
-  moreover have \<open>c \<noteq> 0\<close> using \<open>a \<noteq> b\<close> \<open>b = a + c\<close>
-    by (metis partial_add_0 partial_add_commute zero_disjointL)
-  ultimately show ?thesis
-    by (rule that)
-qed
-*)
-
-lemmas zero_order = zero_le le_zero_eq not_less_zero zero_less_iff_neq_zero not_gr_zero
-  \<comment> \<open>This should be attributed with \<open>[iff]\<close>, but then \<open>blast\<close> fails in \<open>Set\<close>.\<close>
-
-subsection \<open>Misc\<close>
-
-lemma sep_add_0_right[simp]: "a + 0 = a"
-  by (metis zero_disjointR partial_add_0 partial_add_commute)
 
 subsection \<open>sepdomeq\<close>
 
@@ -291,6 +211,71 @@ lemma sepdomsubseteq_disjointD:
   \<open>sepdomsubseteq a b \<Longrightarrow> a ## c \<Longrightarrow> b ## c\<close>
   by (simp add: sepdomsubseteq_def)
 
+end
+
+subsection \<open> Separation Algebras \<close>
+
+class sep_alg = perm_alg + disjoint_zero + order_bot +
+  assumes partial_add_0[simp]: \<open>0 + a = a\<close>
+  assumes le_iff_sepadd: \<open>a \<le> b \<longleftrightarrow> (\<exists>c. a ## c \<and> b = a + c)\<close>
+begin
+
+lemma le_plus: \<open>a ## b \<Longrightarrow> a \<le> a + b\<close>
+  using le_iff_sepadd by blast
+
+lemma le_plus2: \<open>a ## b \<Longrightarrow> b \<le> a + b\<close>
+  by (metis le_plus disjoint_symm partial_add_commute)
+
+lemma common_subresource_selfsep:
+  \<open>a ## b \<Longrightarrow> ab \<le> a \<Longrightarrow> ab \<le> b \<Longrightarrow> ab ## ab\<close>
+  by (metis disjoint_add_leftL local.disjoint_add_rightL order.order_iff_strict le_iff_sepadd)
+
+text \<open>
+  From 'Bringing order to the separation logic Jungle'.
+  Increasing elements are related to the units of the algebra.
+\<close>
+definition increasing_elem :: \<open>'a \<Rightarrow> bool\<close> where
+  \<open>increasing_elem a \<equiv> \<forall>b c. a ## b \<longrightarrow> a + b = c \<longrightarrow> b \<le> c\<close>
+
+lemma zero_increasing_elem:
+  \<open>increasing_elem 0\<close>
+  by (simp add: increasing_elem_def)
+
+subsection \<open>partial canonically_ordered_monoid_add lemmas\<close>
+
+lemma zero_le[simp]: \<open>0 \<le> x\<close>
+  by (metis le_plus partial_add_0 zero_disjointL)
+
+lemma le_zero_eq[simp]: "n \<le> 0 \<longleftrightarrow> n = 0"
+  by (auto intro: order.antisym)
+
+lemma not_less_zero[simp]: "\<not> n < 0"
+  by (auto simp: less_le)
+
+lemma zero_less_iff_neq_zero: "0 < n \<longleftrightarrow> n \<noteq> 0"
+  by (auto simp: less_le)
+
+lemma gr_zeroI: "(n = 0 \<Longrightarrow> False) \<Longrightarrow> 0 < n"
+  by (rule zero_less_iff_neq_zero[THEN iffD2]) iprover
+
+lemma not_gr_zero[simp]: "\<not> 0 < n \<longleftrightarrow> n = 0"
+  by (simp add: zero_less_iff_neq_zero)
+
+lemma gr_implies_not_zero: "m < n \<Longrightarrow> n \<noteq> 0"
+  by auto
+
+lemma sepadd_eq_0_iff_both_eq_0[simp]: "x ## y \<Longrightarrow> x + y = 0 \<longleftrightarrow> x = 0 \<and> y = 0"
+  by (metis le_plus le_zero_eq partial_add_0)
+
+lemma zero_eq_sepadd_iff_both_eq_0[simp]: "x ## y \<Longrightarrow> 0 = x + y \<longleftrightarrow> x = 0 \<and> y = 0"
+  using sepadd_eq_0_iff_both_eq_0[of x y] unfolding eq_commute[of 0] .
+
+lemmas zero_order = zero_le le_zero_eq not_less_zero zero_less_iff_neq_zero not_gr_zero
+
+subsection \<open>Misc\<close>
+
+lemma sep_add_0_right[simp]: "a + 0 = a"
+  by (metis zero_disjointR partial_add_0 partial_add_commute)
 
 subsection \<open> Seplogic connectives \<close>
 
@@ -327,7 +312,6 @@ definition sepconj_mfault ::
 
 definition subheapexist :: \<open>('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool)\<close> where
   \<open>subheapexist P \<equiv> \<lambda>h. \<exists>h1. h1 \<le> h \<and> P h1\<close>
-
 
 definition emp :: \<open>'a \<Rightarrow> bool\<close> where
   \<open>emp \<equiv> (\<lambda>h. h = 0)\<close>
@@ -510,7 +494,7 @@ end
 
 section \<open>Strongly Separated Separation Algebra\<close>
 
-class strong_separated_sepalg = sepalg +
+class strong_separated_sep_alg = sep_alg +
   assumes only_zero_self_sep: \<open>a ## a \<Longrightarrow> a = 0\<close>
 begin
 
@@ -522,69 +506,23 @@ end
 
 section \<open>Disjointness Separation Algebra\<close>
 
-class disjoint_sepalg = sepalg +
+class disjoint_perm_alg = perm_alg +
   assumes disjointness: \<open>a ## a \<Longrightarrow> a + a = b \<Longrightarrow> a = b\<close>
+
+class disjoint_sep_alg = sep_alg + disjoint_perm_alg
 
 section \<open>Cross-Split Separation Algebra\<close>
 
-class crosssplit_sepalg = sepalg +
+class crosssplit_sep_alg = sep_alg +
   assumes cross_split:
   \<open>a ## b \<Longrightarrow> c ## d \<Longrightarrow> a + b = z \<Longrightarrow> c + d = z \<Longrightarrow>
     \<exists>ac ad bc bd.
       ac ## ad \<and> bc ## bd \<and> ac ## bc \<and> ad ## bd \<and>
       ac + ad = a \<and> bc + bd = b \<and> ac + bc = c \<and> ad + bd = d\<close>
 
-class inf_sepalg = sepalg +
-  assumes infres_exists:
-    \<open>\<exists>x. x \<le> a \<and> x \<le> b \<and> (\<forall>y. y \<le> a \<longrightarrow> y \<le> b \<longrightarrow> y \<le> x)\<close>
-begin
-
-definition infres :: \<open>'a \<Rightarrow> 'a \<Rightarrow> 'a\<close> where
-  \<open>infres a b \<equiv> (GREATEST ab. ab \<le> a \<and> ab \<le> b)\<close>
-
-lemma sep_restrictI2_order:
-  \<open>x \<le> a \<Longrightarrow> x \<le> b \<Longrightarrow>
-    (\<And>y. y \<le> a \<Longrightarrow> y \<le> b \<Longrightarrow> y \<le> x) \<Longrightarrow>
-    (\<And>x. x \<le> a \<Longrightarrow> x \<le> b \<Longrightarrow> \<forall>y. y \<le> a \<longrightarrow> y \<le> b \<longrightarrow> y \<le> x \<Longrightarrow> Q x) \<Longrightarrow>
-    Q (infres a b)\<close>
-  unfolding infres_def
-  by (blast intro!: GreatestI2_order)
-
-lemma infres_equality:
-  \<open>ab \<le> a \<Longrightarrow> ab \<le> b \<Longrightarrow> (\<And>y. y \<le> a \<Longrightarrow> y \<le> b \<Longrightarrow> y \<le> ab) \<Longrightarrow> infres a b = ab\<close>
-  by (force simp add: infres_def intro: Greatest_equality)
-
-lemma infres_unique:
-  \<open>x \<le> a \<Longrightarrow> x \<le> b \<Longrightarrow> (\<forall>y\<le>a. y \<le> b \<longrightarrow> y \<le> x) \<Longrightarrow>
-    (\<forall>y. y \<le> a \<and> y \<le> b \<and> (\<forall>z\<le>a. z \<le> b \<longrightarrow> z \<le> y)\<longrightarrow> y = x)\<close>
-  by (simp add: order.antisym)
-
-lemma infres_ex1:
-  \<open>\<exists>!x. x \<le> a \<and> x \<le> b \<and> (\<forall>y. y \<le> a \<longrightarrow> y \<le> b \<longrightarrow> y \<le> x)\<close>
-  using Ex1_def infres_exists infres_unique
-  by fastforce
-
-lemma infres_idem[simp]:
-  \<open>infres a a = a\<close>
-  by (simp add: infres_equality)
-
-lemma infres_commute:
-  \<open>infres a b = infres b a\<close>
-  by (rule order.antisym; metis infres_equality infres_exists)
-
-lemma infres_le:
-  \<open>infres a b \<le> a\<close>
-  by (metis infres_equality infres_exists)
-
-lemma infres_disjoint_selfseparate:
-  \<open>a ## b \<Longrightarrow> infres a b ## infres a b\<close>
-  by (metis infres_commute infres_le common_subresource_selfsep)
-
-end
-
 section \<open>Right Cancellative Separation Logic\<close>
 
-class right_cancel_sepalg = sepalg +
+class right_cancel_perm_alg = perm_alg +
   assumes partial_right_cancel: \<open>\<And>a b c. a ## c \<Longrightarrow> b ## c \<Longrightarrow> (a + c = b + c) = (a = b)\<close>
 begin
 
@@ -601,6 +539,12 @@ lemma partial_left_cancel2:
   \<open>c ## a \<Longrightarrow> c ## b \<Longrightarrow> (c + a = c + b) = (a = b)\<close>
   using partial_left_cancel disjoint_symm
   by force
+
+end
+
+
+class right_cancel_sep_alg = right_cancel_perm_alg + sep_alg
+begin
 
 lemma weak_emp:
   \<open>a ## a \<and> a + a = a \<longleftrightarrow> a = 0\<close>
@@ -645,7 +589,6 @@ next
     by (simp add: sepconj_def precise'_def fun_eq_iff, blast dest: partial_left_cancel2)
 qed
 
-
 lemma precise_iff_all_sepconj_imp_sepcoimp:
   shows \<open>precise' P \<longleftrightarrow> (\<forall>Q. P \<^emph> Q \<le> P \<sim>\<^emph> Q)\<close>
   apply (clarsimp simp add: sepconj_def sepcoimp_def precise'_def le_fun_def)
@@ -682,7 +625,15 @@ qed
 
 end
 
-class avoiding_sepalg = sepalg +
+
+(*
+*
+* Experiments
+*
+*)
+
+
+class avoiding_sep_alg = sep_alg +
   assumes exists_greatest_avoiding:
     \<open>\<exists>a'. a' \<le> a \<and> a' ## b \<and> (\<forall>a''. a'' \<le> a \<longrightarrow> a'' ## b \<longrightarrow> a'' \<le> a')\<close>
 begin
@@ -808,7 +759,7 @@ lemma sep_avoid_commute:
       sep_avoid_disjoint sep_avoid_ge sep_avoid_monoL)
 
 
-subclass crosssplit_sepalg
+subclass crosssplit_sep_alg
   apply standard
   apply (rule_tac x=\<open>sep_avoid a d + sep_avoid c b\<close> in exI)
   apply (rule_tac x=\<open>sep_avoid a c + sep_avoid d b\<close> in exI)
@@ -822,7 +773,7 @@ end
 
 section \<open>A cancellative Separation Algebra\<close>
 
-class cancel_sepalg = sepalg + minus +
+class cancel_sep_alg = sep_alg + minus +
   assumes sepadd_diff_cancel_left'[simp]: "a ## b \<Longrightarrow> (a + b) - a = b"
   assumes diff_diff_sepadd[simp]: "b ## c \<Longrightarrow> a - b - c = a - (b + c)"
   (* seplogic specific *)
@@ -836,7 +787,7 @@ class cancel_sepalg = sepalg + minus +
 *)
 begin
 
-subclass right_cancel_sepalg
+subclass right_cancel_sep_alg
   apply standard
   apply (metis disjoint_symm partial_add_commute sepadd_diff_cancel_left')
   done

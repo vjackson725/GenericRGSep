@@ -83,7 +83,7 @@ lemma swstable_wsstable_absorb[simp]: \<open>R \<le> R' \<Longrightarrow> \<lflo
   by (metis (opaque_lifting) predicate2D rtranclp.rtrancl_refl rtranclp_trans rtranclp_mono)
 
 
-context sepalg
+context sep_alg
 begin
 
 lemma swstable_sepconj_semidistrib:
@@ -107,7 +107,13 @@ end
 
 
 
-class stable_sepalg = avoiding_sepalg + inf_sepalg +
+(*
+*
+* Experiments
+*
+*)
+
+class stable_sep_alg = avoiding_sep_alg +
   fixes stableres :: \<open>'a \<Rightarrow> 'a\<close>
   assumes stableres_plus_subres: \<open>a ## b \<Longrightarrow> stableres a + stableres b \<le> stableres (a + b)\<close>
   assumes stableres_idem[simp]: \<open>stableres (stableres a) = stableres a\<close>
