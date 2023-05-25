@@ -10,7 +10,7 @@ definition swstable_pred
   ("\<lfloor> _ \<rfloor>\<^bsub>_\<^esub>" [0,0] 90)
   where
   \<open>\<lfloor> P \<rfloor>\<^bsub>R\<^esub> \<equiv> \<lambda>s. \<forall>s'. R\<^sup>*\<^sup>* s s' \<longrightarrow> P s'\<close>
-
+                                                                                           
 (* weakest stronger stable predicate *)
 definition wsstable_pred
   :: \<open>('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> 'a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool)\<close>

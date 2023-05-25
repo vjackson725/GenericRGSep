@@ -152,7 +152,18 @@ class perm_alg = disjoint + plus + order +
   assumes disjoint_add_rightL: \<open>b ## c \<Longrightarrow> a ## (b + c) \<Longrightarrow> a ## b\<close>
   assumes disjoint_add_right_commute: \<open>a ## c \<Longrightarrow> b ## (a + c) \<Longrightarrow> a ## (b + c)\<close>
   assumes positivity: \<open>a ## b \<Longrightarrow> a + b = c \<Longrightarrow> c ## c \<Longrightarrow> c + c = c \<Longrightarrow> a ## a \<and> a + a = a\<close>
+  assumes less_iff_sepadd: \<open>a < b \<longleftrightarrow> a \<noteq> b \<and> (\<exists>c. a ## c \<and> b = a + c)\<close>
 begin
+
+lemma le_plus: \<open>a ## b \<Longrightarrow> a \<le> a + b\<close>
+  by (metis less_iff_sepadd nless_le order.refl)
+
+lemma le_plus2: \<open>a ## b \<Longrightarrow> b \<le> a + b\<close>
+  by (metis le_plus disjoint_symm partial_add_commute)
+
+lemma common_subresource_selfsep:
+  \<open>a ## b \<Longrightarrow> ab \<le> a \<Longrightarrow> ab \<le> b \<Longrightarrow> ab ## ab\<close>
+  by (metis disjoint_add_rightL disjoint_symm order.order_iff_strict less_iff_sepadd)
 
 lemma disjoint_add_rightR: \<open>b ## c \<Longrightarrow> a ## b + c \<Longrightarrow> a ## c\<close>
   by (metis disjoint_add_rightL disjoint_symm partial_add_commute)
@@ -217,18 +228,10 @@ subsection \<open> Separation Algebras \<close>
 
 class sep_alg = perm_alg + disjoint_zero + order_bot +
   assumes partial_add_0[simp]: \<open>0 + a = a\<close>
-  assumes le_iff_sepadd: \<open>a \<le> b \<longleftrightarrow> (\<exists>c. a ## c \<and> b = a + c)\<close>
 begin
 
-lemma le_plus: \<open>a ## b \<Longrightarrow> a \<le> a + b\<close>
-  using le_iff_sepadd by blast
-
-lemma le_plus2: \<open>a ## b \<Longrightarrow> b \<le> a + b\<close>
-  by (metis le_plus disjoint_symm partial_add_commute)
-
-lemma common_subresource_selfsep:
-  \<open>a ## b \<Longrightarrow> ab \<le> a \<Longrightarrow> ab \<le> b \<Longrightarrow> ab ## ab\<close>
-  by (metis disjoint_add_leftL local.disjoint_add_rightL order.order_iff_strict le_iff_sepadd)
+lemma le_iff_sepadd: \<open>a \<le> b \<longleftrightarrow> (\<exists>c. a ## c \<and> b = a + c)\<close>
+  by (metis order.order_iff_strict less_iff_sepadd partial_add_0 partial_add_commute zero_disjointR)
 
 text \<open>
   From 'Bringing order to the separation logic Jungle'.
