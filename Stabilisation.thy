@@ -113,7 +113,7 @@ end
 *
 *)
 
-class stable_sep_alg = avoiding_sep_alg +
+class stable_sep_alg = halving_sep_alg + avoiding_sep_alg +
   fixes stableres :: \<open>'a \<Rightarrow> 'a\<close>
   assumes stableres_plus_subres: \<open>a ## b \<Longrightarrow> stableres a + stableres b \<le> stableres (a + b)\<close>
   assumes stableres_idem[simp]: \<open>stableres (stableres a) = stableres a\<close>
@@ -151,9 +151,16 @@ lemma stablerel_additivity_of_update:
   shows\<open>\<exists>b1 b2. b1 ## b2 \<and> b = b1 + b2 \<and> stablerel a1 b1 \<and> stablerel a2 b2\<close>
 proof -
   let ?bnew = \<open>sep_avoid b (stableres a1 + stableres a2)\<close>
-  let ?b1=\<open>sep_restrict b (stableres a1 + halfres ?bnew)\<close>
-  let ?b2=\<open>sep_restrict b (stableres a2 + halfres ?bnew)\<close>
-
+  let ?b1 = \<open>sep_restrict b (stableres a1 + half ?bnew)\<close>
+  let ?b2 = \<open>sep_restrict b (stableres a2 + half ?bnew)\<close>
+  have \<open>?bnew ## b\<close>
+    sorry
+  moreover have \<open>?b1 \<le> b\<close>
+    sorry
+  moreover have \<open>?b2 \<le> b\<close>
+    sorry
+  moreover have \<open>b = ?bnew + ?b1 + ?b2\<close>
+    sorry
   show ?thesis
     using assms
     apply (clarsimp simp add: le_iff_sepadd)

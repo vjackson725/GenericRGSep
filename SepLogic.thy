@@ -174,7 +174,7 @@ lemma disjoint_add_leftL: \<open>a ## b \<Longrightarrow> a + b ## c \<Longright
 lemma disjoint_add_leftR: \<open>a ## b \<Longrightarrow> a + b ## c \<Longrightarrow> b ## c\<close>
   by (metis disjoint_add_leftL disjoint_symm partial_add_commute)
 
-lemma disjoint_add_commuteL: \<open>c ## b \<Longrightarrow> (c + b) ## a \<Longrightarrow> a + b ## c\<close>
+lemma disjoint_add_commuteL: \<open>c ## b \<Longrightarrow> c + b ## a \<Longrightarrow> a + b ## c\<close>
   by (simp add: disjoint_add_right_commute disjoint_symm)
 
 lemma positivity2: \<open>a ## b \<Longrightarrow> a + b = c \<Longrightarrow> c ## c \<Longrightarrow> c + c = c \<Longrightarrow> b ## b \<and> b + b = b\<close>
@@ -183,6 +183,10 @@ lemma positivity2: \<open>a ## b \<Longrightarrow> a + b = c \<Longrightarrow> c
 lemma partial_add_left_commute:
   \<open>a ## b \<Longrightarrow> b ## c \<Longrightarrow> a ## c \<Longrightarrow> b + (a + c) = a + (b + c)\<close>
   by (metis disjoint_symm partial_add_assoc partial_add_commute)
+
+lemma disjoint_preservation:
+  \<open>a' \<le> a \<Longrightarrow> a ## b \<Longrightarrow> a' ## b\<close>
+  by (metis disjoint_add_leftL order.order_iff_strict less_iff_sepadd)
 
 subsection \<open>sepdomeq\<close>
 
@@ -627,6 +631,37 @@ proof -
 qed
 
 end
+
+
+subsection \<open> Halving \<close>
+
+class halving_perm_alg = perm_alg +
+  fixes half :: \<open>'a \<Rightarrow> 'a\<close>
+  assumes half_additive_split: \<open>\<And>a. half a + half a = a\<close>
+  assumes half_self_disjoint: \<open>\<And>a. half a ## half a\<close>
+begin
+
+lemma half_disjoint_preservation: \<open>a ## b \<Longrightarrow> half a ## b\<close>
+  by (metis disjoint_add_leftR half_additive_split half_self_disjoint)
+
+lemma half_disjoint_distribL:
+  \<open>a ## c \<Longrightarrow> a + c ## b \<Longrightarrow> a + half c ## b + half c\<close>
+  by (metis disjoint_add_leftL disjoint_add_right_commute disjoint_symm half_additive_split
+      half_self_disjoint partial_add_assoc)
+
+lemma half_disjoint_distribR:
+  \<open>b ## c \<Longrightarrow> a ## b + c \<Longrightarrow> a + half c ## b + half c\<close>
+  using half_disjoint_distribL disjoint_symm by blast
+
+lemma half_eq_full_imp_self_additive:
+  \<open>half a = a \<Longrightarrow> a + a = a\<close>
+  by (metis half_additive_split)
+
+end
+
+class halving_sep_alg = sep_alg + halving_perm_alg
+
+
 
 
 (*
