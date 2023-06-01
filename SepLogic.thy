@@ -140,20 +140,25 @@ class disjoint_zero = disjoint + zero +
   assumes zero_disjointL[simp]: \<open>0 ## a\<close>
   assumes zero_disjointR[simp]: \<open>a ## 0\<close>
 
+find_theorems \<open>?a + ?c \<le> ?b + ?d\<close>
+
 subsection \<open> Permission Algebras \<close>
 
 class perm_alg = disjoint + plus + order +
-  (* partial commutative monoid *)
-  assumes partial_add_assoc:
-    \<open>a ## b \<Longrightarrow> b ## c \<Longrightarrow> a ## c \<Longrightarrow> (a + b) + c = a + (b + c)\<close>
+  (* ordered partial commutative monoid *)
+  assumes partial_add_assoc: \<open>a ## b \<Longrightarrow> b ## c \<Longrightarrow> a ## c \<Longrightarrow> (a + b) + c = a + (b + c)\<close>
   assumes partial_add_commute: \<open>a ## b \<Longrightarrow> a + b = b + a\<close>
+  assumes partial_add_right_mono: \<open>a ## c \<Longrightarrow> b ## c \<Longrightarrow> a \<le> b \<Longrightarrow> a + c \<le> b + c\<close>
   (* separation laws *)
-  assumes disjoint_symm: \<open>a ## b = b ## a\<close>
+  assumes disjoint_symm: \<open>a ## b \<Longrightarrow> b ## a\<close>
   assumes disjoint_add_rightL: \<open>b ## c \<Longrightarrow> a ## (b + c) \<Longrightarrow> a ## b\<close>
   assumes disjoint_add_right_commute: \<open>a ## c \<Longrightarrow> b ## (a + c) \<Longrightarrow> a ## (b + c)\<close>
   assumes positivity: \<open>a ## b \<Longrightarrow> a + b = c \<Longrightarrow> c ## c \<Longrightarrow> c + c = c \<Longrightarrow> a ## a \<and> a + a = a\<close>
   assumes less_iff_sepadd: \<open>a < b \<longleftrightarrow> a \<noteq> b \<and> (\<exists>c. a ## c \<and> b = a + c)\<close>
 begin
+
+lemma disjoint_symm_iff: \<open>a ## b \<longleftrightarrow> b ## a\<close>
+  using disjoint_symm by blast
 
 lemma le_plus: \<open>a ## b \<Longrightarrow> a \<le> a + b\<close>
   by (metis less_iff_sepadd nless_le order.refl)
@@ -187,6 +192,19 @@ lemma partial_add_left_commute:
 lemma disjoint_preservation:
   \<open>a' \<le> a \<Longrightarrow> a ## b \<Longrightarrow> a' ## b\<close>
   by (metis disjoint_add_leftL order.order_iff_strict less_iff_sepadd)
+
+lemma partial_add_left_mono: \<open>a ## b \<Longrightarrow> a ## c \<Longrightarrow> b \<le> c \<Longrightarrow> a + b \<le> a + c\<close>
+  by (metis disjoint_symm partial_add_commute partial_add_right_mono)
+
+lemma partial_add_mono:
+  \<open>a ## b \<Longrightarrow> c ## d \<Longrightarrow> a \<le> c \<Longrightarrow> b \<le> d \<Longrightarrow> a + b \<le> c + d\<close>
+  by (metis disjoint_preservation disjoint_symm order.trans partial_add_commute partial_add_right_mono)
+
+lemma partial_add_double_assoc:
+  \<open>a ## c \<Longrightarrow> b ## d \<Longrightarrow> c ## d \<Longrightarrow> b ## c + d \<Longrightarrow> a ## b + (c + d) \<Longrightarrow> a + b + (c + d) = (a + c) + (b + d)\<close>
+  by (metis disjoint_add_rightR disjoint_add_rightL disjoint_add_right_commute partial_add_assoc
+      partial_add_left_commute)
+
 
 subsection \<open>sepdomeq\<close>
 
@@ -505,7 +523,6 @@ class strong_separated_sep_alg = sep_alg +
   assumes only_zero_self_sep: \<open>a ## a \<Longrightarrow> a = 0\<close>
 begin
 
-
 lemma selfsep_iff: \<open>a ## a \<longleftrightarrow> a = 0\<close>
   using only_zero_self_sep zero_disjointL by blast
 
@@ -520,12 +537,14 @@ class disjoint_sep_alg = sep_alg + disjoint_perm_alg
 
 section \<open>Cross-Split Separation Algebra\<close>
 
-class crosssplit_sep_alg = sep_alg +
+class crosssplit_perm_alg = perm_alg +
   assumes cross_split:
   \<open>a ## b \<Longrightarrow> c ## d \<Longrightarrow> a + b = z \<Longrightarrow> c + d = z \<Longrightarrow>
     \<exists>ac ad bc bd.
       ac ## ad \<and> bc ## bd \<and> ac ## bc \<and> ad ## bd \<and>
       ac + ad = a \<and> bc + bd = b \<and> ac + bc = c \<and> ad + bd = d\<close>
+
+class crosssplit_sep_alg = sep_alg + crosssplit_perm_alg
 
 section \<open>Right Cancellative Separation Logic\<close>
 
@@ -548,7 +567,6 @@ lemma partial_left_cancel2:
   by force
 
 end
-
 
 class right_cancel_sep_alg = right_cancel_perm_alg + sep_alg
 begin
@@ -641,8 +659,18 @@ class halving_perm_alg = perm_alg +
   assumes half_self_disjoint: \<open>\<And>a. half a ## half a\<close>
 begin
 
-lemma half_disjoint_preservation: \<open>a ## b \<Longrightarrow> half a ## b\<close>
+lemma half_plus: \<open>half (a + b) = half a + half b\<close>
+  oops
+
+lemma half_disjoint_preservation_left: \<open>a ## b \<Longrightarrow> half a ## b\<close>
   by (metis disjoint_add_leftR half_additive_split half_self_disjoint)
+
+lemma half_disjoint_preservation_right: \<open>a ## b \<Longrightarrow> a ## half b\<close>
+  using half_disjoint_preservation_left disjoint_symm by blast
+
+lemma half_disjoint_preservation: \<open>a ## b \<Longrightarrow> half a ## half b\<close>
+  by (simp add: half_disjoint_preservation_left half_disjoint_preservation_right)
+
 
 lemma half_disjoint_distribL:
   \<open>a ## c \<Longrightarrow> a + c ## b \<Longrightarrow> a + half c ## b + half c\<close>
@@ -661,7 +689,61 @@ end
 
 class halving_sep_alg = sep_alg + halving_perm_alg
 
+section \<open> Disjoint Parts Algebra \<close>
 
+class disjoint_parts_perm_alg = perm_alg +
+  assumes disjointness_left_plusI: \<open>a ## b \<Longrightarrow> a ## c \<Longrightarrow> b ## c \<Longrightarrow> a + b ## c\<close>
+begin
+
+lemmas disjointness_left_plusI' =
+  disjointness_left_plusI
+  disjointness_left_plusI[OF disjoint_symm]
+  disjointness_left_plusI[OF _ disjoint_symm]
+  disjointness_left_plusI[OF _ _ disjoint_symm]
+  disjointness_left_plusI[OF _ disjoint_symm disjoint_symm]
+  disjointness_left_plusI[OF disjoint_symm _ disjoint_symm]
+  disjointness_left_plusI[OF disjoint_symm disjoint_symm]
+  disjointness_left_plusI[OF disjoint_symm disjoint_symm disjoint_symm]
+
+lemma disjointness_right_plusI:
+  \<open>a ## b \<Longrightarrow> a ## c \<Longrightarrow> b ## c \<Longrightarrow> a ## b + c\<close>
+  using disjointness_left_plusI disjoint_symm by auto
+
+lemmas disjointness_right_plusI' =
+  disjointness_right_plusI
+  disjointness_right_plusI[OF disjoint_symm]
+  disjointness_right_plusI[OF _ disjoint_symm]
+  disjointness_right_plusI[OF _ _ disjoint_symm]
+  disjointness_right_plusI[OF _ disjoint_symm disjoint_symm]
+  disjointness_right_plusI[OF disjoint_symm _ disjoint_symm]
+  disjointness_right_plusI[OF disjoint_symm disjoint_symm]
+  disjointness_right_plusI[OF disjoint_symm disjoint_symm disjoint_symm]
+
+lemma disjointness_left_plus_eq:
+  \<open>a ## b \<Longrightarrow> a + b ## c \<longleftrightarrow> a ## c \<and> b ## c\<close>
+  by (metis disjointness_left_plusI disjoint_add_leftL disjoint_add_leftR)
+
+lemma disjointness_right_plus_eq:
+  \<open>b ## c \<Longrightarrow> a ## b + c \<longleftrightarrow> a ## b \<and> a ## c\<close>
+  by (metis disjointness_right_plusI disjoint_add_rightL disjoint_add_rightR)
+
+lemma partial_add_double_assoc2:
+  \<open>a ## b \<Longrightarrow> a ## c \<Longrightarrow> a ## d \<Longrightarrow> b ## c \<Longrightarrow> b ## d \<Longrightarrow> c ## d \<Longrightarrow> a + b + (c + d) = (a + c) + (b + d)\<close>
+  by (meson disjointness_right_plusI partial_add_double_assoc)
+
+end
+
+class disjoint_parts_sep_alg = sep_alg + disjoint_parts_perm_alg
+
+
+class disjoint_halving_cancel_perm_alg = halving_perm_alg + disjoint_perm_alg + right_cancel_perm_alg
+begin
+
+subclass disjoint_parts_perm_alg
+  by (standard, metis disjoint_add_rightL disjointness half_additive_split half_self_disjoint
+      partial_add_assoc partial_right_cancel2)
+
+end
 
 
 (*

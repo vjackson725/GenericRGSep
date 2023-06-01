@@ -197,6 +197,15 @@ lemma rel_le_rtranscp_relcompp_absorb:
   apply force
   done
 
+lemma rtransp_rel_is_rtransclp:
+  \<open>reflp R \<Longrightarrow> transp R \<Longrightarrow> R\<^sup>*\<^sup>* = R\<close>
+  apply (intro ext iffI)
+   apply ((rule rtranclp_induct, assumption); force dest: reflpD transpD)
+  apply force
+  done
+
+section \<open> Options \<close>
+
 lemma not_Some_prod_eq[iff]: \<open>(\<forall>a b. x \<noteq> Some (a,b)) \<longleftrightarrow> x = None\<close>
   by (metis not_eq_None prod.collapse)
 
