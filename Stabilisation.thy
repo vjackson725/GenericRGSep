@@ -106,7 +106,7 @@ lemma wsstable_sepconj_semidistrib:
 end
 
 
-class stable_sep_alg = halving_sep_alg + disjoint_parts_perm_alg +
+class stable_sep_alg = halving_sep_alg +
   fixes stableres :: \<open>'a \<Rightarrow> 'a\<close>
   assumes stableres_concave: \<open>a ## b \<Longrightarrow> stableres a + stableres b \<le> stableres (a + b)\<close>
   assumes stableres_idem[simp]: \<open>stableres (stableres a) = stableres a\<close>
@@ -167,57 +167,38 @@ lemma stablerel_additivity_of_update:
   shows \<open>\<exists>b1 b2. b1 ## b2 \<and> b = b1 + b2 \<and> stablerel a1 b1 \<and> stablerel a2 b2\<close>
 proof -
   obtain c where c_props:
-    \<open>stableres (a1 + a2) = stableres a1 + stableres a2 + c\<close>
+    \<open>b = stableres a1 + stableres a2 + c\<close>
     \<open>stableres a1 + stableres a2 ## c\<close>
-    using assms(1)
-    using le_iff_sepadd stableres_concave by blast
-  obtain d where d_props:
-    \<open>stableres b = stableres a1 + stableres a2 + c + d\<close>
-    \<open>stableres a1 + stableres a2 + c ## d\<close>
-    using assms c_props
-    by (clarsimp simp add: le_iff_sepadd)
-  then obtain e where e_props:
-    \<open>b = stableres a1 + stableres a2 + c + d + e\<close>
-    \<open>stableres a1 + stableres a2 + c + d ## e\<close>
-    using le_iff_sepadd stableres_subres
-    by metis
-  
+    using assms
+    by (meson order.trans le_iff_sepadd stableres_subres stableres_concave)
+
   have disjoint_props:
-    \<open>stableres a1 ## stableres a2 \<and>
-      stableres a1 ## c \<and> stableres a2 ## c \<and>
-      stableres a1 ## d \<and> stableres a2 ## d \<and> c ## d \<and>
-      stableres a1 ## e \<and> stableres a2 ## e \<and> c ## e \<and> d ## e \<and>
-      stableres a1 ## half c \<and> stableres a2 ## half c \<and>
-      stableres a1 ## half d \<and> stableres a2 ## half d \<and> half c ## half d \<and>
-      stableres a1 ## half e \<and> stableres a2 ## half e \<and> half c ## half e \<and> half d ## half e \<and>
-      half c ## half c \<and> half d ## half d \<and> half e ## half e\<close>
-    using c_props(2) d_props(2) e_props(2) assms(1)
-    by (force simp add: stableres_disjoint_preservation disjointness_left_plus_eq
-        disjointness_right_plus_eq half_disjoint_preservation_left half_disjoint_preservation_right
-        half_self_disjoint)
-  moreover then have
-    \<open>b = stableres a1 + half c + half d + half e + (stableres a2 + half c + half d + half e)\<close>
-  proof -
-    have \<open>b = stableres a1 + stableres a2 + c + d + e\<close>
-      using d_props e_props by presburger
-    also have \<open>... = (stableres a1 + stableres a2 + (half c + half c)) + (half d + half d) + (half e + half e)\<close>
-      by (simp add: half_additive_split)
-    also have \<open>... = (stableres a1 + half c + half d + half e) + (stableres a2 + half c + half d + half e)\<close>
-      using disjoint_props
-      by (simp add: disjointness_left_plusI' disjointness_right_plusI' partial_add_double_assoc2)
-    finally show ?thesis .
-qed
-  ultimately show ?thesis
+    \<open>stableres a1 ## half c\<close>
+    \<open>stableres a2 ## half c\<close>
+    \<open>stableres a1 ## stableres a2 + c\<close>
+    \<open>stableres a1 + half c ## stableres a2 + half c\<close>
+    using  assms(1) c_props(2)
+    apply -
+    apply (metis disjoint_add_leftL half_disjoint_preservation_right stableres_disjoint_preservation)
+    apply (metis disjoint_add_leftR half_disjoint_preservation_right stableres_disjoint_preservation)
+    apply (metis disjoint_add_rightR disjoint_add_right_commute disjoint_symm_iff partial_add_commute stableres_disjoint_preservation)
+    apply (metis disjoint_add_leftL disjoint_add_commuteL disjoint_add_leftR half_disjoint_distribL partial_add_commute stableres_disjoint_preservation)
+    done
+
+  have \<open>b = stableres a1 + half c + (stableres a2 + half c)\<close>
+    using assms(1)
+    by (metis c_props disjoint_props(1-3) disjoint_add_leftR half_additive_split half_self_disjoint
+        partial_add_double_assoc stableres_disjoint_preservation)
+  then show ?thesis
     using assms(1)
     apply -
-    apply (rule_tac x=\<open>stableres a1 + half c + half d + half e\<close> in exI)
-    apply (rule_tac x=\<open>stableres a2 + half c + half d + half e\<close> in exI)
+    apply (rule_tac x=\<open>stableres a1 + half c\<close> in exI)
+    apply (rule_tac x=\<open>stableres a2 + half c\<close> in exI)
     apply (intro conjI)
-       apply (fastforce intro!: disjointness_left_plusI disjointness_right_plusI
-        simp add: disjoint_symm_iff)
+       apply (simp add: disjoint_props(4))
       apply force
-     apply (metis disjoint_symm disjointness_right_plus_eq le_plus partial_add_assoc stableres_idem stableres_mono)
-    apply (metis disjoint_symm disjointness_right_plus_eq le_plus partial_add_assoc stableres_idem stableres_mono)
+     apply (metis disjoint_props(1) le_plus stableres_idem stableres_mono)
+    apply (metis disjoint_props(2) le_plus stableres_idem stableres_mono)
     done
 qed
 
@@ -236,7 +217,6 @@ lemma wsstablerel_sepconj_semidistrib:
   fixes P Q :: \<open>'a \<Rightarrow> bool\<close>
   shows \<open>\<lceil> P \<^emph> Q \<rceil> \<le> \<lceil> P \<rceil> \<^emph> \<lceil> Q \<rceil>\<close>
   by (rule wsstable_sepconj_semidistrib, simp add: stablerel_additivity_of_update)
-
 
 end
 

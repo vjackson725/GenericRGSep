@@ -299,6 +299,11 @@ lemma disjoint_set_antimono_pheap:
   \<open>Y \<subseteq> X \<Longrightarrow> a ##\<^bsub>X\<^esub> b \<Longrightarrow> a ##\<^bsub>Y\<^esub> b\<close>
   by (metis Un_absorb2 disjoint_set_un_eq)
 
+lemma disjoint_restrict_pheap_iff[simp]:
+  \<open>a |`\<^sub>d A ##\<^bsub>X\<^esub> b \<longleftrightarrow> a ##\<^bsub>X \<inter> A\<^esub> b\<close>
+  \<open>a ##\<^bsub>X\<^esub> b |`\<^sub>d B \<longleftrightarrow> a ##\<^bsub>X \<inter> B\<^esub> b\<close>
+  by (force simp add: disjoint_set_pheap_def Ball_def)+
+
 lemma disjoint_skip[iff]:
   \<open>\<I> ##\<^bsub>A\<^esub> b\<close>
   \<open>a ##\<^bsub>A\<^esub> \<I>\<close>
@@ -479,7 +484,7 @@ instance
         apply (force simp add: plus_hperm_def disjoint_pheap_def' pheap_eq_iff partial_add_commute
       split: option.splits)
     (* separation *)
-      apply (force simp add: disjoint_pheap_def' disjoint_symm)
+       apply (force simp add: disjoint_pheap_def' disjoint_symm)
   subgoal
     apply (clarsimp simp add: disjoint_pheap_def' plus_hperm_def split: option.splits)
     apply (drule_tac x=x in spec)+
@@ -506,9 +511,43 @@ instance
 
 end
 
-lemma disjoint_restrict_pheap_iff[simp]:
-  \<open>a |`\<^sub>d A ##\<^bsub>X\<^esub> b \<longleftrightarrow> a ##\<^bsub>X \<inter> A\<^esub> b\<close>
-  \<open>a ##\<^bsub>X\<^esub> b |`\<^sub>d B \<longleftrightarrow> a ##\<^bsub>X \<inter> B\<^esub> b\<close>
-  by (force simp add: disjoint_set_pheap_def Ball_def)+
+instantiation pheap :: (halving_perm_alg,type,type) halving_sep_alg
+begin
+
+lift_definition half_pheap :: \<open>('a,'b,'c) pheap \<Rightarrow> ('a,'b,'c) pheap\<close> is
+  \<open>\<lambda>h. \<lambda>x. map_option (apfst half) (h x)\<close>
+  by (simp add: dom_map_option)
+
+lemma half_pheap_app[simp]:
+  fixes h :: \<open>('a,'b,'c) pheap\<close>
+  shows \<open>half h \<bullet> x = map_option (apfst half) (h \<bullet> x)\<close>
+  by (simp add: half_pheap.rep_eq)
+
+instance
+  apply standard
+   apply (clarsimp simp add: pheap_eq_iff plus_hperm_def half_additive_split split: option.splits)
+  apply (clarsimp simp add: disjoint_pheap_def' half_self_disjoint)
+  done
+
+end
+
+
+instantiation pheap :: (disjoint_parts_perm_alg,type,type) disjoint_parts_perm_alg
+begin
+
+instance
+  apply standard
+  apply (clarsimp simp add: disjoint_pheap_def')
+  apply (drule_tac x=x in spec)+
+  apply (case_tac \<open>a \<bullet> x\<close>)
+   apply (simp only: plus_perm_simps; fail)
+  apply (case_tac \<open>b \<bullet> x\<close>)
+   apply (simp only: plus_perm_simps; fail)
+  apply (clarsimp simp only: plus_perm_simps option.inject)
+  apply (drule spec2, drule mp, rule refl)+
+  apply (simp add: disjointness_left_plus_eq)
+  done
+
+end
 
 end

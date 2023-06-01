@@ -258,6 +258,21 @@ instance
 
 end
 
+instance perm :: disjoint_parts_perm_alg
+  apply standard
+  apply (clarsimp simp add: disjoint_perm_def)
+  apply (rule conjI)
+  oops
+
+instantiation perm :: halving_perm_alg
+begin
+
+instance
+  apply standard
+  sorry
+
+end
+
 section \<open> Deallocation-permission Heaps \<close>
 
 typedef ('a,'b) dheap = \<open>UNIV::(perm,'a,'b) pheap set\<close>
