@@ -113,6 +113,26 @@ end
 *
 *)
 
+class stable_perm_alg = perm_alg +
+  fixes is_stable :: \<open>'a \<Rightarrow> bool\<close>
+begin
+
+definition stableres :: \<open>'a \<Rightarrow> 'a\<close> where
+  \<open>stableres a \<equiv> (SOME a'. a' \<le> a \<and> is_stable a')\<close>
+
+lemma stableres_idem[simp]: \<open>stableres (stableres a) = stableres a\<close>
+  oops
+(*
+  assumes stableres_plus_subres: \<open>a ## b \<Longrightarrow> stableres a + stableres b \<le> stableres (a + b)\<close>
+  assumes stableres_idem[simp]: \<open>stableres (stableres a) = stableres a\<close>
+  assumes stableres_subres: \<open>stableres a \<le> a\<close>
+  assumes stableres_plus_mono:
+    \<open>stableres a \<le> stableres a' \<Longrightarrow> stableres b \<le> stableres b' \<Longrightarrow>
+      stableres (a + b) \<le> stableres (a' + b')\<close>
+*)
+
+end
+
 class stable_sep_alg = halving_sep_alg + avoiding_sep_alg +
   fixes stableres :: \<open>'a \<Rightarrow> 'a\<close>
   assumes stableres_plus_subres: \<open>a ## b \<Longrightarrow> stableres a + stableres b \<le> stableres (a + b)\<close>
