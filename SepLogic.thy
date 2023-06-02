@@ -156,14 +156,22 @@ class perm_alg = disjoint + plus + order +
   assumes less_iff_sepadd: \<open>a < b \<longleftrightarrow> a \<noteq> b \<and> (\<exists>c. a ## c \<and> b = a + c)\<close>
 begin
 
+
+lemma positivity_disjoint: \<open>a ## b \<Longrightarrow> a + b = c \<Longrightarrow> c ## c \<Longrightarrow> c + c = c \<Longrightarrow> a ## a\<close>
+  using positivity by blast
+
+lemma positivity_self_add: \<open>a ## b \<Longrightarrow> a + b = c \<Longrightarrow> c ## c \<Longrightarrow> c + c = c \<Longrightarrow> a + a = a\<close>
+  using positivity by blast
+
+
 lemma disjoint_symm_iff: \<open>a ## b \<longleftrightarrow> b ## a\<close>
   using disjoint_symm by blast
 
-lemma le_plus: \<open>a ## b \<Longrightarrow> a \<le> a + b\<close>
+lemma partial_le_plus: \<open>a ## b \<Longrightarrow> a \<le> a + b\<close>
   by (metis less_iff_sepadd nless_le order.refl)
 
-lemma le_plus2: \<open>a ## b \<Longrightarrow> b \<le> a + b\<close>
-  by (metis le_plus disjoint_symm partial_add_commute)
+lemma partial_le_plus2: \<open>a ## b \<Longrightarrow> b \<le> a + b\<close>
+  by (metis partial_le_plus disjoint_symm partial_add_commute)
 
 lemma common_subresource_selfsep:
   \<open>a ## b \<Longrightarrow> ab \<le> a \<Longrightarrow> ab \<le> b \<Longrightarrow> ab ## ab\<close>
@@ -196,7 +204,6 @@ lemma partial_add_double_assoc:
   \<open>a ## c \<Longrightarrow> b ## d \<Longrightarrow> c ## d \<Longrightarrow> b ## c + d \<Longrightarrow> a ## b + (c + d) \<Longrightarrow> a + b + (c + d) = (a + c) + (b + d)\<close>
   by (metis disjoint_add_rightR disjoint_add_rightL disjoint_add_right_commute partial_add_assoc
       partial_add_left_commute)
-
 
 subsection \<open>sepdomeq\<close>
 
@@ -261,7 +268,7 @@ lemma zero_increasing_elem:
 subsection \<open>partial canonically_ordered_monoid_add lemmas\<close>
 
 lemma zero_le[simp]: \<open>0 \<le> x\<close>
-  by (metis le_plus partial_add_0 zero_disjointL)
+  by (metis partial_le_plus partial_add_0 zero_disjointL)
 
 lemma le_zero_eq[simp]: "n \<le> 0 \<longleftrightarrow> n = 0"
   by (auto intro: order.antisym)
@@ -282,7 +289,7 @@ lemma gr_implies_not_zero: "m < n \<Longrightarrow> n \<noteq> 0"
   by auto
 
 lemma sepadd_eq_0_iff_both_eq_0[simp]: "x ## y \<Longrightarrow> x + y = 0 \<longleftrightarrow> x = 0 \<and> y = 0"
-  by (metis le_plus le_zero_eq partial_add_0)
+  by (metis partial_le_plus le_zero_eq partial_add_0)
 
 lemma zero_eq_sepadd_iff_both_eq_0[simp]: "x ## y \<Longrightarrow> 0 = x + y \<longleftrightarrow> x = 0 \<and> y = 0"
   using sepadd_eq_0_iff_both_eq_0[of x y] unfolding eq_commute[of 0] .

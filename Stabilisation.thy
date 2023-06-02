@@ -111,18 +111,12 @@ class stable_sep_alg = halving_sep_alg +
   assumes stableres_concave: \<open>a ## b \<Longrightarrow> stableres a + stableres b \<le> stableres (a + b)\<close>
   assumes stableres_idem[simp]: \<open>stableres (stableres a) = stableres a\<close>
   assumes stableres_subres: \<open>stableres a \<le> a\<close>
-  assumes stableres_add_right_mono: \<open>a ## c \<Longrightarrow> b ## c \<Longrightarrow> stableres a \<le> stableres b \<Longrightarrow> stableres (a + c) \<le> stableres (b + c)\<close>
 begin
 
 lemma stableres_mono: \<open>a \<le> b \<Longrightarrow> stableres a \<le> stableres b\<close>
   unfolding le_iff_sepadd
   by (metis disjoint_preservation disjoint_symm order.trans le_iff_sepadd stableres_concave
       stableres_subres)
-
-lemma stableres_add_left_mono:
-  \<open>a ## b \<Longrightarrow> a ## c \<Longrightarrow> stableres b \<le> stableres c \<Longrightarrow> stableres (a + b) \<le> stableres (a + c)\<close>
-  by (metis disjoint_symm partial_add_commute stableres_add_right_mono)
-
 
 lemma stableres_disjoint_preservation:
   \<open>a ## b \<Longrightarrow> stableres a ## stableres b\<close>
@@ -197,8 +191,8 @@ proof -
     apply (intro conjI)
        apply (simp add: disjoint_props(4))
       apply force
-     apply (metis disjoint_props(1) le_plus stableres_idem stableres_mono)
-    apply (metis disjoint_props(2) le_plus stableres_idem stableres_mono)
+     apply (metis disjoint_props(1) partial_le_plus stableres_idem stableres_mono)
+    apply (metis disjoint_props(2) partial_le_plus stableres_idem stableres_mono)
     done
 qed
 

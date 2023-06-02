@@ -137,23 +137,23 @@ end
 subsubsection \<open> Restriction \<close>
 
 lift_definition restrict_pheap :: \<open>('a::perm_alg,'b,'c) pheap \<Rightarrow> 'b set \<Rightarrow> ('a,'b,'c) pheap\<close>
-  (infixr \<open>|`\<^sub>d\<close> 110) is \<open>(|`)\<close>
+  (infixr \<open>|`\<^sub>p\<close> 110) is \<open>(|`)\<close>
   by (clarsimp simp add: restrict_map_def dom_def)
 
 lemma restrict_app_pheap_eq[simp]:
-  \<open>(a |`\<^sub>d A) \<bullet> x = (if x \<in> A then a \<bullet> x else None)\<close>
+  \<open>(a |`\<^sub>p A) \<bullet> x = (if x \<in> A then a \<bullet> x else None)\<close>
   by (simp add: restrict_pheap.rep_eq)
 
-lemma dom_restrict_pheap_eq[simp]: \<open>dom_pheap (a |`\<^sub>d A) = dom_pheap a \<inter> A\<close>
+lemma dom_restrict_pheap_eq[simp]: \<open>dom_pheap (a |`\<^sub>p A) = dom_pheap a \<inter> A\<close>
   by (simp add: dom_pheap.rep_eq seq_pheap.rep_eq set_eq_iff dom_def split: option.splits)
 
 lemma restrict_dom_subset_eq:
-  \<open>dom_pheap a \<subseteq> A \<Longrightarrow> a |`\<^sub>d A = a\<close>
+  \<open>dom_pheap a \<subseteq> A \<Longrightarrow> a |`\<^sub>p A = a\<close>
   by (rule ccontr, clarsimp simp add: dom_pheap.rep_eq pheap_eq_iff dom_def subset_iff
       split: if_splits)
 
 lemma restrict_sequence_right:
-  \<open>(a \<triangleright> b) = (a \<triangleright> b |`\<^sub>d (- dom_pheap a))\<close>
+  \<open>(a \<triangleright> b) = (a \<triangleright> b |`\<^sub>p (- dom_pheap a))\<close>
   by (simp add: pheap_eq_iff dom_pheap_iff split: option.splits)
 
 section \<open>Operations on permissions\<close>
@@ -222,7 +222,7 @@ lemma subhperm_aa: \<open>a \<subset>\<^sub>d b \<longleftrightarrow> a \<subset
 subsection \<open> plus \<close>
 
 definition plus_hperm :: \<open>('p::perm_alg \<times> 'a) option \<Rightarrow> ('p \<times> 'a) option \<Rightarrow> ('p \<times> 'a) option\<close>
-  (infixl \<open>\<oplus>\<^sub>d\<close> 65) where
+  (infixl \<open>\<oplus>\<^sub>p\<close> 65) where
   \<open>plus_hperm a b \<equiv> case b of
                     Some (pb, vb) \<Rightarrow>
                       (case a of
@@ -231,33 +231,33 @@ definition plus_hperm :: \<open>('p::perm_alg \<times> 'a) option \<Rightarrow> 
                     | None \<Rightarrow> a\<close>
 
 lemma finite_dom_add[simp]:
-  \<open>finite (dom (\<lambda>x. a x \<oplus>\<^sub>d b x)) \<longleftrightarrow> finite (dom a) \<and> finite (dom b)\<close>
+  \<open>finite (dom (\<lambda>x. a x \<oplus>\<^sub>p b x)) \<longleftrightarrow> finite (dom a) \<and> finite (dom b)\<close>
   by (fastforce simp add: dom_def plus_hperm_def conj_disj_distribL conj_disj_distribR imp_conv_disj
       simp del: imp_conv_disj[symmetric] split: option.splits)
 
 lemma plus_perm_simps[simp]:
-  \<open>a \<oplus>\<^sub>d None = a\<close>
-  \<open>None \<oplus>\<^sub>d b = b\<close>
-  \<open>Some pa \<oplus>\<^sub>d Some pb = Some (fst pa + fst pb, snd pa)\<close>
+  \<open>a \<oplus>\<^sub>p None = a\<close>
+  \<open>None \<oplus>\<^sub>p b = b\<close>
+  \<open>Some pa \<oplus>\<^sub>p Some pb = Some (fst pa + fst pb, snd pa)\<close>
   by (force simp add: plus_hperm_def split: option.splits prod.splits)+
 
 lemma plus_perm_eq_None_iff[simp]:
-  \<open>a \<oplus>\<^sub>d b = None \<longleftrightarrow> a = None \<and> b = None\<close>
+  \<open>a \<oplus>\<^sub>p b = None \<longleftrightarrow> a = None \<and> b = None\<close>
   by (force simp add: plus_hperm_def split: option.splits)
 
 lemma plus_perm_eq_Some_iff:
   \<open>\<And>a pb vb c.
-    a \<oplus>\<^sub>d Some (pb, vb) = c \<longleftrightarrow>
+    a \<oplus>\<^sub>p Some (pb, vb) = c \<longleftrightarrow>
       (case a of
         None \<Rightarrow> c = Some (pb,vb)
       | Some (pa, va) \<Rightarrow> c = Some (pa + pb, va))\<close>
   \<open>\<And>pa va b c.
-    Some (pa, va) \<oplus>\<^sub>d b  = c \<longleftrightarrow>
+    Some (pa, va) \<oplus>\<^sub>p b  = c \<longleftrightarrow>
       (case b of
         None \<Rightarrow> c = Some (pa, va)
       | Some (pb, vb) \<Rightarrow> c = Some (pa + pb, va))\<close>
   \<open>\<And>a b p v.
-    (a \<oplus>\<^sub>d b) = Some (p, v) \<longleftrightarrow>
+    (a \<oplus>\<^sub>p b) = Some (p, v) \<longleftrightarrow>
       (b = None \<longrightarrow> a = Some (p, v)) \<and>
       (a = None \<longrightarrow> b = Some (p, v)) \<and>
       (\<forall>pa va. a = Some (pa, va) \<longrightarrow>
@@ -266,18 +266,18 @@ lemma plus_perm_eq_Some_iff:
   by (force simp add: plus_hperm_def split: option.splits)+
 
 lemma hperm_plus_bind_left[simp]:
-  \<open>Option.bind a f \<oplus>\<^sub>d b =
+  \<open>Option.bind a f \<oplus>\<^sub>p b =
     (case a of
       None \<Rightarrow> b
-    | Some x \<Rightarrow> f x \<oplus>\<^sub>d b)\<close>
+    | Some x \<Rightarrow> f x \<oplus>\<^sub>p b)\<close>
   by (force simp add: plus_hperm_def Option.bind_eq_Some_conv Option.bind_eq_None_conv
       split: option.splits)
 
 lemma hperm_plus_bind_right[simp]:
-  \<open>a \<oplus>\<^sub>d Option.bind b f =
+  \<open>a \<oplus>\<^sub>p Option.bind b f =
     (case b of
       None \<Rightarrow> a
-    | Some x \<Rightarrow> a \<oplus>\<^sub>d f x)\<close>
+    | Some x \<Rightarrow> a \<oplus>\<^sub>p f x)\<close>
   by (force simp add: plus_hperm_def Option.bind_eq_Some_conv Option.bind_eq_None_conv
       split: option.splits)
 
@@ -300,8 +300,8 @@ lemma disjoint_set_antimono_pheap:
   by (metis Un_absorb2 disjoint_set_un_eq)
 
 lemma disjoint_restrict_pheap_iff[simp]:
-  \<open>a |`\<^sub>d A ##\<^bsub>X\<^esub> b \<longleftrightarrow> a ##\<^bsub>X \<inter> A\<^esub> b\<close>
-  \<open>a ##\<^bsub>X\<^esub> b |`\<^sub>d B \<longleftrightarrow> a ##\<^bsub>X \<inter> B\<^esub> b\<close>
+  \<open>a |`\<^sub>p A ##\<^bsub>X\<^esub> b \<longleftrightarrow> a ##\<^bsub>X \<inter> A\<^esub> b\<close>
+  \<open>a ##\<^bsub>X\<^esub> b |`\<^sub>p B \<longleftrightarrow> a ##\<^bsub>X \<inter> B\<^esub> b\<close>
   by (force simp add: disjoint_set_pheap_def Ball_def)+
 
 lemma disjoint_skip[iff]:
@@ -353,7 +353,7 @@ instantiation pheap :: (perm_alg, type, type) plus
 begin
 
 lift_definition plus_pheap :: \<open>('a,'b,'c) pheap \<Rightarrow> ('a,'b,'c) pheap \<Rightarrow> ('a,'b,'c) pheap\<close> is
-  \<open>\<lambda>ma mb. \<lambda>x. ma x \<oplus>\<^sub>d mb x\<close>
+  \<open>\<lambda>ma mb. \<lambda>x. ma x \<oplus>\<^sub>p mb x\<close>
   apply (rename_tac ma mb)
   apply (simp add: dom_def plus_hperm_def split: option.splits)
   apply (rule_tac B=\<open>dom ma \<union> dom mb\<close> in rev_finite_subset; force simp add: dom_def)
@@ -364,18 +364,18 @@ instance by standard
 end
 
 lemma app_plus_pheap[simp]:
-  \<open>(a + b) \<bullet> x = a \<bullet> x \<oplus>\<^sub>d b \<bullet> x\<close>
+  \<open>(a + b) \<bullet> x = a \<bullet> x \<oplus>\<^sub>p b \<bullet> x\<close>
   by (simp add: disjoint_pheap_def' plus_pheap_def Abs_pheap_inverse)
 
 lemma restrict_pheap_add_eq[simp]:
-  \<open>(a + b) |`\<^sub>d A = a |`\<^sub>d A + b |`\<^sub>d A\<close>
+  \<open>(a + b) |`\<^sub>p A = a |`\<^sub>p A + b |`\<^sub>p A\<close>
   by (simp add: pheap_eq_iff)
 
 lemma dom_plus_pheap_eq[simp]: \<open>dom_pheap (h1 + h2) = dom_pheap h1 \<union> dom_pheap h2\<close>
   by (simp add: dom_pheap.rep_eq plus_hperm_def dom_def set_eq_iff split: option.splits)
 
 lemma appAbs_plus_pheap[simp]:
-  \<open>finite (dom a) \<Longrightarrow> finite (dom b) \<Longrightarrow> app_pheap (Abs_pheap (\<lambda>x. a x \<oplus>\<^sub>d b x)) x = a x \<oplus>\<^sub>d b x\<close>
+  \<open>finite (dom a) \<Longrightarrow> finite (dom b) \<Longrightarrow> app_pheap (Abs_pheap (\<lambda>x. a x \<oplus>\<^sub>p b x)) x = a x \<oplus>\<^sub>p b x\<close>
   by (force simp add: Abs_pheap_inverse)
 
 text \<open>Define less than and less than or equal on pheaps\<close>
@@ -414,15 +414,15 @@ end
 subsection \<open> Order and restrict \<close>
 
 lemma restrict_alwas_subheap_eq[simp]:
-  \<open>a |`\<^sub>d A \<le> a\<close>
+  \<open>a |`\<^sub>p A \<le> a\<close>
   by (simp add: restrict_pheap_def less_eq_pheap_def Abs_pheap_inverse, simp add: restrict_map_def)
 
 
-lemma subperm_eq_restrictL[simp]: \<open>(a |`\<^sub>d A) \<bullet> x \<subseteq>\<^sub>d b \<bullet> x \<longleftrightarrow> (x \<in> A \<longrightarrow> a \<bullet> x \<subseteq>\<^sub>d b \<bullet> x)\<close>
+lemma subperm_eq_restrictL[simp]: \<open>(a |`\<^sub>p A) \<bullet> x \<subseteq>\<^sub>d b \<bullet> x \<longleftrightarrow> (x \<in> A \<longrightarrow> a \<bullet> x \<subseteq>\<^sub>d b \<bullet> x)\<close>
   by simp
 
 lemma subperm_eq_restrictR[simp]:
-  \<open>a \<bullet> x \<subseteq>\<^sub>d (b |`\<^sub>d B) \<bullet> x \<longleftrightarrow> (if x \<in> B then a \<bullet> x \<subseteq>\<^sub>d b \<bullet> x else a \<bullet> x = None)\<close>
+  \<open>a \<bullet> x \<subseteq>\<^sub>d (b |`\<^sub>p B) \<bullet> x \<longleftrightarrow> (if x \<in> B then a \<bullet> x \<subseteq>\<^sub>d b \<bullet> x else a \<bullet> x = None)\<close>
   by (simp add: dom_pheap_def domIff)
 
 lemma subperm_eq_seqL[simp]:
@@ -472,7 +472,7 @@ lemma le_iff_sepadd_helper:
     apply (erule disjE; force simp add: less_iff_sepadd)
     done
   apply (force simp add: less_eq_pheap_def plus_hperm_def
-      disjoint_pheap_def disjoint_set_pheap_def le_plus split: option.splits) 
+      disjoint_pheap_def disjoint_set_pheap_def partial_le_plus split: option.splits) 
   done
 
 instance
