@@ -6,6 +6,12 @@ unbundle lattice_syntax
 
 section \<open>Helper Lemmas\<close>
 
+subsection \<open> Functional Programming \<close>
+
+definition flip :: \<open>('a \<Rightarrow> 'b \<Rightarrow> 'c) \<Rightarrow> ('b \<Rightarrow> 'a \<Rightarrow> 'c)\<close> where
+  \<open>flip f a b \<equiv> f b a\<close>
+declare flip_def[simp]
+
 subsection \<open>Logic\<close>
 
 lemmas conj_left_mp[simp] =
@@ -177,6 +183,11 @@ lemma disjoint_equiv_iff_eq:
 lemma surj_disjoint_equiv_iff_eq:
   \<open>surj f \<Longrightarrow> (\<forall>x. A \<inter> f x = {} \<longleftrightarrow> B \<inter> f x = {}) \<longleftrightarrow> A = B\<close>
   by (metis disjoint_equiv_iff_eq surjD)
+
+lemma Times_singleton[simp]:
+  \<open>{x} \<times> B = Pair x ` B\<close>
+  \<open>A \<times> {y} = flip Pair y ` A\<close>
+  by force+
 
 subsection \<open> Relations \<close>
 
