@@ -15,6 +15,31 @@ lemmas Abs_pheap_inverse' = Abs_pheap_inverse[OF iffD2[OF mem_Collect_eq]]
 
 syntax app_pheap :: \<open>('p::perm_alg,'a,'b) pheap \<Rightarrow> 'a \<Rightarrow> ('p \<times> 'b) option\<close> (infix \<open>\<bullet>\<close> 990)
 
+lift_definition pheap_empty :: \<open>('p::perm_alg,'a,'b) pheap\<close> is \<open>Map.empty\<close>
+  by simp
+
+lift_definition upd_pheap
+  :: \<open>('p::perm_alg,'a,'b) pheap \<Rightarrow> 'a \<Rightarrow> 'p \<times> 'b \<Rightarrow> ('p,'a,'b) pheap\<close>
+  is \<open>\<lambda>h x pv. h(x \<mapsto> pv)\<close>
+  by simp
+
+nonterminal pmaplets and pmaplet
+
+syntax
+  "_pmaplet"  :: "['a, 'a] \<Rightarrow> pmaplet"             ("_ /\<mapsto>p/ _")
+  "_pmaplets" :: "['a, 'a] \<Rightarrow> pmaplet"             ("_ /[\<mapsto>p]/ _")
+  ""         :: "pmaplet \<Rightarrow> pmaplets"             ("_")
+  "_pMaplets" :: "[pmaplet, pmaplets] \<Rightarrow> pmaplets" ("_,/ _")
+  "_pMapUpd"  :: "['a \<rightharpoonup> 'b, pmaplets] \<Rightarrow> 'a \<rightharpoonup> 'b" ("_/'(_')" [900, 0] 900)
+  "_pMap"     :: "pmaplets \<Rightarrow> 'a \<rightharpoonup> 'b"            ("(1[_])")
+
+translations
+  "_pMapUpd m (_pMaplets xy ms)"  \<rightleftharpoons> "_pMapUpd (_pMapUpd m xy) ms"
+  "_pMapUpd m (_pmaplet  x y)"    \<rightleftharpoons> "CONST upd_pheap m x y"
+  "_pMap ms"                     \<rightleftharpoons> "_pMapUpd (CONST pheap_empty) ms"
+  "_pMap (_pMaplets ms1 ms2)"     \<leftharpoondown> "_pMapUpd (_pMap ms1) ms2"
+  "_pMaplets ms1 (_pMaplets ms2 ms3)" \<leftharpoondown> "_pMaplets (_pMaplets ms1 ms2) ms3"
+
 
 lemma pheap_ext:
   fixes a b :: \<open>('p::perm_alg,'a,'b) pheap\<close>
@@ -137,23 +162,23 @@ end
 subsubsection \<open> Restriction \<close>
 
 lift_definition restrict_pheap :: \<open>('a::perm_alg,'b,'c) pheap \<Rightarrow> 'b set \<Rightarrow> ('a,'b,'c) pheap\<close>
-  (infixr \<open>|`\<^sub>p\<close> 110) is \<open>(|`)\<close>
+  (infixr \<open>|`p\<close> 110) is \<open>(|`)\<close>
   by (clarsimp simp add: restrict_map_def dom_def)
 
 lemma restrict_app_pheap_eq[simp]:
-  \<open>(a |`\<^sub>p A) \<bullet> x = (if x \<in> A then a \<bullet> x else None)\<close>
+  \<open>(a |`p A) \<bullet> x = (if x \<in> A then a \<bullet> x else None)\<close>
   by (simp add: restrict_pheap.rep_eq)
 
-lemma dom_restrict_pheap_eq[simp]: \<open>dom_pheap (a |`\<^sub>p A) = dom_pheap a \<inter> A\<close>
+lemma dom_restrict_pheap_eq[simp]: \<open>dom_pheap (a |`p A) = dom_pheap a \<inter> A\<close>
   by (simp add: dom_pheap.rep_eq seq_pheap.rep_eq set_eq_iff dom_def split: option.splits)
 
 lemma restrict_dom_subset_eq:
-  \<open>dom_pheap a \<subseteq> A \<Longrightarrow> a |`\<^sub>p A = a\<close>
+  \<open>dom_pheap a \<subseteq> A \<Longrightarrow> a |`p A = a\<close>
   by (rule ccontr, clarsimp simp add: dom_pheap.rep_eq pheap_eq_iff dom_def subset_iff
       split: if_splits)
 
 lemma restrict_sequence_right:
-  \<open>(a \<triangleright> b) = (a \<triangleright> b |`\<^sub>p (- dom_pheap a))\<close>
+  \<open>(a \<triangleright> b) = (a \<triangleright> b |`p (- dom_pheap a))\<close>
   by (simp add: pheap_eq_iff dom_pheap_iff split: option.splits)
 
 section \<open>Operations on permissions\<close>
@@ -300,8 +325,8 @@ lemma disjoint_set_antimono_pheap:
   by (metis Un_absorb2 disjoint_set_un_eq)
 
 lemma disjoint_restrict_pheap_iff[simp]:
-  \<open>a |`\<^sub>p A ##\<^bsub>X\<^esub> b \<longleftrightarrow> a ##\<^bsub>X \<inter> A\<^esub> b\<close>
-  \<open>a ##\<^bsub>X\<^esub> b |`\<^sub>p B \<longleftrightarrow> a ##\<^bsub>X \<inter> B\<^esub> b\<close>
+  \<open>a |`p A ##\<^bsub>X\<^esub> b \<longleftrightarrow> a ##\<^bsub>X \<inter> A\<^esub> b\<close>
+  \<open>a ##\<^bsub>X\<^esub> b |`p B \<longleftrightarrow> a ##\<^bsub>X \<inter> B\<^esub> b\<close>
   by (force simp add: disjoint_set_pheap_def Ball_def)+
 
 lemma disjoint_skip[iff]:
@@ -368,7 +393,7 @@ lemma app_plus_pheap[simp]:
   by (simp add: disjoint_pheap_def' plus_pheap_def Abs_pheap_inverse)
 
 lemma restrict_pheap_add_eq[simp]:
-  \<open>(a + b) |`\<^sub>p A = a |`\<^sub>p A + b |`\<^sub>p A\<close>
+  \<open>(a + b) |`p A = a |`p A + b |`p A\<close>
   by (simp add: pheap_eq_iff)
 
 lemma dom_plus_pheap_eq[simp]: \<open>dom_pheap (h1 + h2) = dom_pheap h1 \<union> dom_pheap h2\<close>
@@ -414,15 +439,15 @@ end
 subsection \<open> Order and restrict \<close>
 
 lemma restrict_alwas_subheap_eq[simp]:
-  \<open>a |`\<^sub>p A \<le> a\<close>
+  \<open>a |`p A \<le> a\<close>
   by (simp add: restrict_pheap_def less_eq_pheap_def Abs_pheap_inverse, simp add: restrict_map_def)
 
 
-lemma subperm_eq_restrictL[simp]: \<open>(a |`\<^sub>p A) \<bullet> x \<subseteq>\<^sub>d b \<bullet> x \<longleftrightarrow> (x \<in> A \<longrightarrow> a \<bullet> x \<subseteq>\<^sub>d b \<bullet> x)\<close>
+lemma subperm_eq_restrictL[simp]: \<open>(a |`p A) \<bullet> x \<subseteq>\<^sub>d b \<bullet> x \<longleftrightarrow> (x \<in> A \<longrightarrow> a \<bullet> x \<subseteq>\<^sub>d b \<bullet> x)\<close>
   by simp
 
 lemma subperm_eq_restrictR[simp]:
-  \<open>a \<bullet> x \<subseteq>\<^sub>d (b |`\<^sub>p B) \<bullet> x \<longleftrightarrow> (if x \<in> B then a \<bullet> x \<subseteq>\<^sub>d b \<bullet> x else a \<bullet> x = None)\<close>
+  \<open>a \<bullet> x \<subseteq>\<^sub>d (b |`p B) \<bullet> x \<longleftrightarrow> (if x \<in> B then a \<bullet> x \<subseteq>\<^sub>d b \<bullet> x else a \<bullet> x = None)\<close>
   by (simp add: dom_pheap_def domIff)
 
 lemma subperm_eq_seqL[simp]:

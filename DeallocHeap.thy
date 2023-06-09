@@ -132,6 +132,16 @@ lemma Abs_perm_inject':
     (Abs_perm (da,wa) = Abs_perm (db,wb)) = ((da,wa) = (db,wb))\<close>
   by (clarsimp simp add: Abs_perm_inject Sigma_def)
 
+subsection \<open> full_perm \<close>
+
+lift_definition full_perm :: \<open>perm\<close> is \<open>(1,1)\<close>
+  using zero_le_one zero_less_two by blast
+
+lemma full_perm_parts_eq[simp]:
+  \<open>dperm full_perm = 1\<close>
+  \<open>wperm full_perm = 1\<close>
+  by (simp add: full_perm_def dperm.rep_eq wperm.rep_eq)+
+
 subsection \<open> map_perm \<close>
 
 lift_definition map_perm :: \<open>(rat \<Rightarrow> rat) \<Rightarrow> (rat \<Rightarrow> rat) \<Rightarrow> perm \<Rightarrow> perm\<close> is
@@ -195,7 +205,6 @@ lemma wperm_plus_unrestricted:
 lemma dperm_plus_unrestricted:
   \<open>dperm (a + b) = min 1 (dperm a + dperm b)\<close>
   by (force simp add: plus_perm.rep_eq dperm.rep_eq)
-
 
 instance
   apply standard
@@ -288,43 +297,112 @@ instance
 
 end
 
+subsection \<open> Type of deallocation permissions \<close>
+
+definition is_full_perm :: \<open>perm \<Rightarrow> bool\<close> where
+  \<open>is_full_perm p \<equiv> dperm p = 1 \<and> wperm p = 1\<close>
+
+definition is_write_perm :: \<open>perm \<Rightarrow> bool\<close> where
+  \<open>is_write_perm p \<equiv> dperm p = 1 \<and> wperm p > 0 \<or> dperm p > 0 \<and> wperm p = 1\<close>
+
+definition is_stable_read_perm :: \<open>perm \<Rightarrow> bool\<close> where
+  \<open>is_stable_read_perm p \<equiv> wperm p > 0 \<and> dperm p > 0\<close>
+
+lemma full_perm_conflict:
+  \<open>is_full_perm p1 \<Longrightarrow> \<not> p1 ## p2\<close>
+  apply (clarsimp simp add: is_full_perm_def less_eq_perm_def disjoint_perm_def
+      dperm_plus_unrestricted wperm_plus_unrestricted)
+  apply (metis add_0 dperm_wperm_constraints(5) dperm_wperm_constraints_complex(1) dperm_wperm_constraints_complex(3) order_less_irrefl)
+  done
+
+lemma write_write_perm_conflict:
+  \<open>is_write_perm p1 \<Longrightarrow> is_write_perm p2 \<Longrightarrow> \<not> p1 ## p2\<close>
+  by (force simp add: is_write_perm_def is_stable_read_perm_def less_eq_perm_def
+      disjoint_perm_def dperm_plus_unrestricted wperm_plus_unrestricted)
+
+lemma write_stable_read_perm_conflict:
+  \<open>is_write_perm p1 \<Longrightarrow> is_stable_read_perm p2 \<Longrightarrow> \<not> p1 ## p2\<close>
+  by (clarsimp simp add: is_write_perm_def is_stable_read_perm_def less_eq_perm_def
+      disjoint_perm_def dperm_plus_unrestricted wperm_plus_unrestricted)
+
+definition stable_perm :: \<open>perm \<Rightarrow> bool\<close> where
+  \<open>stable_perm p \<equiv> dperm p > 0 \<and> wperm p > 0\<close>
+
+lemma full_perm_is_stable:
+  \<open>is_full_perm p \<Longrightarrow> stable_perm p\<close>
+  by (clarsimp simp add: is_full_perm_def stable_perm_def)
+
+lemma write_perm_is_stable:
+  \<open>is_write_perm p \<Longrightarrow> stable_perm p\<close>
+  by (force simp add: is_write_perm_def stable_perm_def)
+
+lemma stable_read_perm_is_stable:
+  \<open>is_stable_read_perm p \<Longrightarrow> stable_perm p\<close>
+  by (clarsimp simp add: is_stable_read_perm_def stable_perm_def)
+
 section \<open> Deallocation-permission Heaps \<close>
 
 typedef ('a,'b) dheap = \<open>UNIV::(perm,'a,'b) pheap set\<close>
-  morphisms from_dheap to_dheap
   by blast
 
-abbreviation \<open>dom_dheap \<equiv> dom_pheap \<circ> from_dheap\<close>
+abbreviation \<open>dom_dheap h \<equiv> dom_pheap (Rep_dheap h)\<close>
 
 abbreviation app_dheap :: \<open>('a,'b) dheap \<Rightarrow> 'a \<rightharpoonup> perm \<times> 'b\<close> (infix \<open>\<bullet>d\<close> 990) where
-  \<open>app_dheap x \<equiv> app_pheap (from_dheap x)\<close>
+  \<open>app_dheap h \<equiv> app_pheap (Rep_dheap h)\<close>
 
-abbreviation \<open>Abs_dheap x \<equiv> to_dheap (Abs_pheap x)\<close>
+abbreviation upd_dheap :: \<open>('a,'b) dheap \<Rightarrow> 'a \<Rightarrow> perm \<times> 'b \<Rightarrow> ('a,'b) dheap\<close> where
+  \<open>upd_dheap h x pv \<equiv> Abs_dheap ((Rep_dheap h)(x \<mapsto>p pv))\<close>
+
+abbreviation \<open>dheap_empty \<equiv> Abs_dheap pheap_empty\<close>
+
+nonterminal dmaplets and dmaplet
+
+syntax
+  "_dmaplet"  :: "['a, 'a] \<Rightarrow> dmaplet"             ("_ /\<mapsto>d/ _")
+  "_dmaplets" :: "['a, 'a] \<Rightarrow> pmaplet"             ("_ /[\<mapsto>d]/ _")
+  ""         :: "dmaplet \<Rightarrow> dmaplets"             ("_")
+  "_dMaplets" :: "[dmaplet, dmaplets] \<Rightarrow> dmaplets" ("_,/ _")
+  "_dMapUpd"  :: "['a \<rightharpoonup> 'b, dmaplets] \<Rightarrow> 'a \<rightharpoonup> 'b" ("_/'(_')" [900, 0] 900)
+  "_dMap"     :: "dmaplets \<Rightarrow> 'a \<rightharpoonup> 'b"            ("(1[_])")
+
+translations
+  "_dMapUpd m (_dMaplets xy ms)"  \<rightleftharpoons> "_dMapUpd (_dMapUpd m xy) ms"
+  "_dMapUpd m (_dmaplet  x y)"    \<rightleftharpoons> "CONST upd_dheap m x y"
+  "_dMap ms"                     \<rightleftharpoons> "_dMapUpd (CONST dheap_empty) ms"
+  "_dMap (_dMaplets ms1 ms2)"     \<leftharpoondown> "_dMapUpd (_dMap ms1) ms2"
+  "_dMaplets ms1 (_dMaplets ms2 ms3)" \<leftharpoondown> "_dMaplets (_dMaplets ms1 ms2) ms3"
+
+abbreviation restrict_dheap :: \<open>('a,'b) dheap \<Rightarrow> 'a set \<Rightarrow> ('a,'b) dheap\<close>
+  (infixr \<open>|`d\<close> 110) where
+  \<open>m |`d A \<equiv> Abs_dheap (Rep_dheap m |`p A)\<close>
+
+
+abbreviation \<open>to_dheap h \<equiv> Abs_dheap (Abs_pheap h)\<close>
 
 lemma dheap_eq_iff:
   \<open>h1 = h2 \<longleftrightarrow> (\<forall>x. h1 \<bullet>d x = h2 \<bullet>d x)\<close>
-  using from_dheap_inject pheap_ext by auto
+  using Rep_dheap_inject pheap_ext by auto
 
-lemma ex_to_dheap_iff:
-  \<open>(\<exists>h. P h) \<longleftrightarrow> (\<exists>ph. P (to_dheap ph))\<close>
-  by (metis to_dheap_cases)
+lemma ex_Abs_dheap_iff:
+  \<open>(\<exists>h. P h) \<longleftrightarrow> (\<exists>ph. P (Abs_dheap ph))\<close>
+  by (metis Abs_dheap_cases)
 
 lemma ex_from_dheap_iff:
-  \<open>(\<exists>h. P (from_dheap h)) \<longleftrightarrow> (\<exists>h. P h)\<close>
-  by (metis UNIV_I from_dheap_cases)
+  \<open>(\<exists>h. P (Rep_dheap h)) \<longleftrightarrow> (\<exists>h. P h)\<close>
+  by (metis UNIV_I Rep_dheap_cases)
 
-lemma to_dheap_inverse'[simp]:
-  \<open>from_dheap (to_dheap a) = a\<close>
-  by (simp add: dheap.to_dheap_inverse)
+lemma Abs_dheap_inverse'[simp]:
+  \<open>Rep_dheap (Abs_dheap a) = a\<close>
+  by (simp add: dheap.Abs_dheap_inverse)
 
-declare dheap.from_dheap_inverse[simp] from_dheap_inject[simp] to_dheap_inject[simp]
+declare dheap.Rep_dheap_inverse[simp] Rep_dheap_inject[simp] Abs_dheap_inject[simp]
 
-lemma to_dheap_eq_iff[simp]:
-  \<open>to_dheap a = b \<longleftrightarrow> a = from_dheap b\<close>
+lemma Abs_dheap_eq_iff[simp]:
+  \<open>Abs_dheap a = b \<longleftrightarrow> a = Rep_dheap b\<close>
   by fastforce
 
-lemma eq_to_dheap_iff[simp]:
-  \<open>b = to_dheap a \<longleftrightarrow> from_dheap b = a\<close>
+lemma eq_Abs_dheap_iff[simp]:
+  \<open>b = Abs_dheap a \<longleftrightarrow> Rep_dheap b = a\<close>
   by fastforce
 
 lemma disjoint_pheap_Some_bounded_oneD:
@@ -334,10 +412,10 @@ lemma disjoint_pheap_Some_bounded_oneD:
 section \<open> The stable and zero domains \<close>
 
 definition stabledom :: \<open>('a,'b) dheap \<Rightarrow> 'a set\<close> where
-  \<open>stabledom a \<equiv> {x. \<exists>p v. from_dheap a \<bullet> x = Some (p,v) \<and> (\<exists>da wa. Rep_perm p = (da,wa) \<and> wa > 0)}\<close>
+  \<open>stabledom a \<equiv> {x. \<exists>p v. a \<bullet>d x = Some (p,v) \<and> (\<exists>da wa. Rep_perm p = (da,wa) \<and> wa > 0)}\<close>
 
 definition zerodom :: \<open>('a,'b) dheap \<Rightarrow> 'a set\<close> where
-  \<open>zerodom a \<equiv> {x. \<exists>p v. from_dheap a \<bullet> x = Some (p,v) \<and> (\<exists>da wa. Rep_perm p = (da,wa) \<and> wa = 0)}\<close>
+  \<open>zerodom a \<equiv> {x. \<exists>p v. a \<bullet>d x = Some (p,v) \<and> (\<exists>da wa. Rep_perm p = (da,wa) \<and> wa = 0)}\<close>
 
 lemma dom_pheap_sep:
   \<open>dom_dheap a = stabledom a \<union> zerodom a\<close>
@@ -352,10 +430,10 @@ instantiation dheap :: (type, type) monoid_seq
 begin
 
 definition seq_dheap :: \<open>('a,'b) dheap \<Rightarrow> ('a,'b) dheap \<Rightarrow> ('a,'b) dheap\<close> where
-  \<open>seq_dheap a b \<equiv> to_dheap (from_dheap a \<triangleright> from_dheap b)\<close>
+  \<open>seq_dheap a b \<equiv> Abs_dheap (Rep_dheap a \<triangleright> Rep_dheap b)\<close>
 
 definition skip_dheap :: \<open>('a,'b) dheap\<close> where
-  \<open>skip_dheap \<equiv> to_dheap \<I>\<close>
+  \<open>skip_dheap \<equiv> Abs_dheap \<I>\<close>
 
 instance
   by standard (simp add: seq_dheap_def seq_assoc skip_dheap_def)+
@@ -366,29 +444,29 @@ instantiation dheap :: (type,type) sep_alg
 begin
 
 definition plus_dheap :: \<open>('a,'b) dheap \<Rightarrow> ('a,'b) dheap \<Rightarrow> ('a,'b) dheap\<close> where
-  \<open>plus_dheap a b \<equiv> to_dheap (from_dheap a + from_dheap b)\<close>
+  \<open>plus_dheap a b \<equiv> Abs_dheap (Rep_dheap a + Rep_dheap b)\<close>
 
 definition bot_dheap :: \<open>('a,'b) dheap\<close> where
-  \<open>bot_dheap \<equiv> to_dheap bot\<close>
+  \<open>bot_dheap \<equiv> Abs_dheap bot\<close>
 definition zero_dheap :: \<open>('a,'b) dheap\<close> where
-  \<open>zero_dheap \<equiv> to_dheap 0\<close>
+  \<open>zero_dheap \<equiv> Abs_dheap 0\<close>
 
 definition less_eq_dheap :: \<open>('a,'b) dheap \<Rightarrow> ('a,'b) dheap \<Rightarrow> bool\<close> where
-  \<open>less_eq_dheap a b \<equiv> from_dheap a \<le> from_dheap b\<close>
+  \<open>less_eq_dheap a b \<equiv> Rep_dheap a \<le> Rep_dheap b\<close>
 lemmas less_eq_dheap_def' = less_eq_dheap_def less_eq_pheap_def
 
 definition less_dheap :: \<open>('a,'b) dheap \<Rightarrow> ('a,'b) dheap \<Rightarrow> bool\<close> where
-  \<open>less_dheap a b \<equiv> from_dheap a < from_dheap b\<close>
+  \<open>less_dheap a b \<equiv> Rep_dheap a < Rep_dheap b\<close>
 definition disjoint_dheap :: \<open>('a,'b) dheap \<Rightarrow> ('a,'b) dheap \<Rightarrow> bool\<close> where
-  \<open>disjoint_dheap a b \<equiv> from_dheap a ## from_dheap b\<close>
+  \<open>disjoint_dheap a b \<equiv> Rep_dheap a ## Rep_dheap b\<close>
 lemmas disjoint_dheap_def' = disjoint_dheap_def disjoint_pheap_def'
 
 lemma app_add_dheap[simp]:
   \<open>(a + b) \<bullet>d x = a \<bullet>d x \<oplus>\<^sub>p b \<bullet>d x\<close>
   by (simp add: plus_dheap_def)
 
-lemma from_dheap_zero[simp]:
-  \<open>from_dheap (0::('a,'b) dheap) = 0\<close>
+lemma Rep_dheap_zero[simp]:
+  \<open>Rep_dheap (0::('a,'b) dheap) = 0\<close>
   by (simp add: zero_dheap_def)
 
 instance
@@ -407,11 +485,8 @@ instance
       apply (force simp add: disjoint_dheap_def plus_dheap_def intro: disjoint_add_rightL)
      apply (force simp add: disjoint_dheap_def plus_dheap_def intro: disjoint_add_right_commute)
     apply (force simp add: disjoint_dheap_def plus_dheap_def intro: positivity_disjoint positivity_self_add)
-  subgoal
-    apply (simp add: less_dheap_def less_eq_dheap_def plus_dheap_def disjoint_dheap_def less_iff_sepadd)
-    apply (subst ex_from_dheap_iff)
-    apply force
-    done
+   apply (simp add: less_dheap_def less_eq_dheap_def plus_dheap_def disjoint_dheap_def
+      less_iff_sepadd ex_Abs_dheap_iff)
   apply (simp add: zero_dheap_def plus_dheap_def)
   done
 
@@ -421,7 +496,7 @@ instantiation dheap :: (type,type) halving_sep_alg
 begin
 
 definition half_dheap :: \<open>('a,'b) dheap \<Rightarrow> ('a,'b) dheap\<close> where
-  \<open>half_dheap a \<equiv> to_dheap (half (from_dheap a))\<close>
+  \<open>half_dheap a \<equiv> Abs_dheap (half (Rep_dheap a))\<close>
 
 instance
   apply standard
@@ -431,19 +506,17 @@ instance
 
 end
 
-
 instantiation dheap :: (type,type) stable_sep_alg
 begin
 
 definition stableres_dheap :: \<open>('a,'b) dheap \<Rightarrow> ('a,'b) dheap\<close> where
   \<open>stableres_dheap a \<equiv>
-    Abs_dheap (\<lambda>x. Option.bind (a \<bullet>d x) (\<lambda>(p,v). if dperm p \<noteq> 0 \<and> wperm p > 0 then Some (p,v) else None))\<close>
+    to_dheap (\<lambda>x. Option.bind (a \<bullet>d x) (\<lambda>(p,v). if stable_perm p then Some (p,v) else None))\<close>
 
 lemma stableres_dheap_app[simp]:
   fixes a :: \<open>('a,'b) dheap\<close>
   shows
-    \<open>stableres a \<bullet>d x =
-      Option.bind (a \<bullet>d x) (\<lambda>(p,v). if dperm p \<noteq> 0 \<and> wperm p > 0 then Some (p,v) else None)\<close>
+    \<open>stableres a \<bullet>d x = Option.bind (a \<bullet>d x) (\<lambda>(p,v). if stable_perm p then Some (p,v) else None)\<close>
   by (simp add: stableres_dheap_def)
 
 instance
@@ -454,7 +527,7 @@ instance
     apply (case_tac \<open>a \<bullet>d x\<close>, force)
     apply (case_tac \<open>b \<bullet>d x\<close>, force)
     apply (force simp add: dperm_wperm_constraints(1,3) add_nonneg_eq_0_iff add_nonneg_pos
-      add_pos_nonneg partial_le_plus partial_le_plus2)
+      add_pos_nonneg partial_le_plus partial_le_plus2 stable_perm_def)
     (* done *)
    apply (force simp add: dheap_eq_iff split: Option.bind_splits)
   apply (force simp add: less_eq_dheap_def' split: Option.bind_splits)

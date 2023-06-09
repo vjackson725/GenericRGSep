@@ -459,4 +459,29 @@ lemma hoare_triple_seq:
   by (force simp add: htriple'_def seq_process_def Ball_def all_conj_distrib
       split: if_splits)
 
+section \<open> Specific Program Semantics \<close>
+
+datatype ('p) val =
+  VPtr 'p
+
+datatype ('x,'p) action =
+  AAlloc 'x \<open>'p val\<close>
+  | AFree 'p
+  | AReadPtr 'x 'p
+  | AWritePtr 'p \<open>'p val\<close>
+  | ASkip
+  | AAbort
+  | ALocal \<open>('x \<rightharpoonup> 'p val) \<Rightarrow> ('x \<rightharpoonup> 'p val)\<close>
+
+inductive sstep_sem ::
+  \<open>('x \<rightharpoonup> 'p val) \<times> ('p, 'p val) dheap \<Rightarrow> ('x,'p) action \<Rightarrow> ('x \<rightharpoonup> 'p val) \<times> ('p,'p val) dheap \<Rightarrow> bool\<close>
+  (\<open>_ \<sim>_\<leadsto> _\<close> [51,0,51] 50 )
+  where
+  \<open>s \<sim>ASkip\<leadsto> s\<close>
+| \<open>h \<bullet>d p = None \<Longrightarrow> (l, h) \<sim>AAlloc x v\<leadsto> (l(x \<mapsto> VPtr p), h(p \<mapsto>d (full_perm, v)))\<close>
+| \<open>h \<bullet>d p = Some (full_perm, v) \<Longrightarrow> (l, h) \<sim>AFree p\<leadsto> (l, h |`d (-{p}))\<close>
+| \<open>h \<bullet>d p = Some (perm, v) \<Longrightarrow> (l, h) \<sim>AReadPtr p\<leadsto> (l(x \<mapsto> v), h)\<close>
+| \<open>h \<bullet>d p = Some (perm, v) \<Longrightarrow> wperm perm = 1 \<Longrightarrow> (l, h) \<sim>AWritePtr p v\<leadsto> (l, h(p \<mapsto>d (perm, v)))\<close>
+| \<open>(l, h) \<sim>ALocal f\<leadsto> (f l, h)\<close>
+
 end
