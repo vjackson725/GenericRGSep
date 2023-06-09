@@ -744,4 +744,70 @@ subclass disjoint_parts_perm_alg
 
 end
 
+section \<open> Instances \<close>
+
+instantiation prod  :: (sep_alg,sep_alg) sep_alg
+begin
+
+definition plus_prod  :: \<open>'a \<times> 'b \<Rightarrow> 'a \<times> 'b \<Rightarrow> 'a \<times> 'b\<close> where
+  \<open>plus_prod a b \<equiv> (fst a + fst b, snd a + snd b)\<close>
+
+definition less_eq_prod  :: \<open>'a \<times> 'b \<Rightarrow> 'a \<times> 'b \<Rightarrow> bool\<close> where
+  \<open>less_eq_prod a b \<equiv> (fst a \<le> fst b \<and> snd a \<le> snd b)\<close>
+
+definition less_prod  :: \<open>'a \<times> 'b \<Rightarrow> 'a \<times> 'b \<Rightarrow> bool\<close> where
+  \<open>less_prod x y \<equiv> fst x \<le> fst y \<and> snd x \<le> snd y \<and> (\<not> fst y \<le> fst x \<or> \<not> snd y \<le> snd x)\<close>
+
+definition disjoint_prod  :: \<open>'a \<times> 'b \<Rightarrow> 'a \<times> 'b \<Rightarrow> bool\<close> where
+  \<open>disjoint_prod a b \<equiv> (fst a ## fst b \<and> snd a ## snd b)\<close>
+
+definition zero_prod  :: \<open>'a \<times> 'b\<close> where
+  \<open>zero_prod \<equiv> (0, 0)\<close>
+
+definition bot_prod  :: \<open>'a \<times> 'b\<close> where
+  \<open>bot_prod \<equiv> (\<bottom>, \<bottom>)\<close>
+
+instance
+  apply standard
+                apply (simp add: less_prod_def less_eq_prod_def)
+               apply (simp add: less_eq_prod_def)
+              apply (force simp add: less_eq_prod_def)
+             apply (force simp add: less_eq_prod_def)
+            apply (force simp add: bot_prod_def less_eq_prod_def)
+           apply (force simp add: zero_prod_def disjoint_prod_def)
+          apply (force simp add: zero_prod_def disjoint_prod_def)
+         apply (force simp add: disjoint_prod_def plus_prod_def partial_add_assoc)
+        apply (clarsimp simp add: disjoint_prod_def plus_prod_def, metis partial_add_commute)
+       apply (force simp add: disjoint_prod_def disjoint_symm)
+      apply (force simp add: disjoint_prod_def plus_prod_def dest: disjoint_add_rightL)
+     apply (force simp add: disjoint_prod_def plus_prod_def dest: disjoint_add_right_commute)
+    apply (force simp add: disjoint_prod_def plus_prod_def dest: positivity)
+   apply (clarsimp simp add: less_prod_def less_iff_sepadd plus_prod_def disjoint_prod_def)
+    (* subgoal *)
+   apply (rename_tac a1 b1 a2 b2)
+   apply (case_tac \<open>a1 = a2\<close>)
+    apply (case_tac \<open>b1 = b2\<close>)
+     apply force
+    apply (metis le_iff_sepadd order_class.order_eq_iff)
+   apply (metis le_iff_sepadd order_class.order_eq_iff)
+    (* done *)
+  apply (clarsimp simp add: plus_prod_def zero_prod_def)
+  done
+
+end
+
+instantiation unit :: perm_alg
+begin
+
+definition plus_unit :: \<open>unit \<Rightarrow> unit \<Rightarrow> unit\<close> where
+  \<open>plus_unit a b \<equiv> ()\<close>
+
+definition disjoint_unit :: \<open>unit \<Rightarrow> unit \<Rightarrow> bool\<close> where
+  \<open>disjoint_unit a b \<equiv> True\<close>
+
+instance
+  by standard simp+
+
+end
+
 end
