@@ -21,8 +21,18 @@ datatype (\<alpha>set: 'a) trace =
 lemma not_TNil_eq: \<open>a \<noteq> TNil \<longleftrightarrow> (\<exists>ax a'. a = ax \<cdot> a')\<close>
   using trace.exhaust_sel by blast
 
+subsection \<open> Trace Start and End \<close>
+
+fun trace_start :: \<open>'a trace \<Rightarrow> 'a\<close> where
+  \<open>trace_start TNil = undefined\<close>
+| \<open>trace_start (x \<cdot> _) = x\<close>
+
+fun trace_end :: \<open>'a trace \<Rightarrow> 'a\<close> where
+  \<open>trace_end TNil = undefined\<close>
+| \<open>trace_end (x \<cdot> TNil) = x\<close>
+| \<open>trace_end (_ \<cdot> a) = trace_end a\<close>
+
 subsection \<open> Trace Concat \<close>
-find_theorems \<open>_ @ _\<close>
 
 fun trace_concat :: \<open>'a trace \<Rightarrow> 'a trace \<Rightarrow> 'a trace\<close> (infixr \<open>@t\<close> 65) where
   \<open>trace_concat TNil b = b\<close>
@@ -35,6 +45,25 @@ lemma trace_concat_unit_right[simp]:
 lemma trace_concat_assoc:
   \<open>a @t b @t c = (a @t b) @t c\<close>
   by (induct a arbitrary: b c) simp+
+
+lemma trace_start_concat[simp]:
+  \<open>trace_start (a @t b) = (if a = TNil then trace_start b else trace_start a)\<close>
+  by (induct a arbitrary: b)
+    (force elim: trace_concat.elims)+
+
+lemma trace_end_concat[simp]:
+  \<open>trace_end (a @t b) = (if b = TNil then trace_end a else trace_end b)\<close>
+  apply (induct a arbitrary: b)
+   apply clarsimp
+  apply (case_tac \<open>a @t b\<close>)
+   apply (force elim: trace_concat.elims)
+  apply (simp, metis trace_concat_unit_right trace_end.simps(3))
+  done
+
+lemma trace_concat_eq_nil_iff[simp]:
+  \<open>(a @t b) = TNil \<longleftrightarrow> a = TNil \<and> b = TNil\<close>
+  \<open>TNil = (a @t b) \<longleftrightarrow> a = TNil \<and> b = TNil\<close>
+  by (metis trace.discI trace_concat.elims)+
 
 subsection \<open> Parallel Trace Merge\<close>
 
@@ -278,7 +307,6 @@ lemma process_eq_iff:
   \<open>a = b \<longleftrightarrow> proctr a = proctr b\<close>
   using process.expand by auto
 
-
 lemma eq_Process_iff_proctr_eq:
   \<open>a = Process A \<longleftrightarrow> proctr a = A\<close>
   by auto
@@ -414,5 +442,21 @@ instance process :: (type) ordered_semiring_0
    apply (simp add: less_eq_process_def zero_process_def times_process_def)
   apply (simp add: less_eq_process_def zero_process_def times_process_def)
   done
+
+section \<open> Hoare Triples \<close>
+
+definition htriple' :: \<open>'a pred \<Rightarrow> ('a pred \<times> 'a pred) process \<Rightarrow> 'a pred \<Rightarrow> bool\<close>
+  (\<open>\<lbrace> _ \<rbrace> _ \<lbrace> _ \<rbrace>\<close> [0,0,0]) where
+  \<open>htriple' p a q \<equiv>
+    \<forall>t\<in>proctr a. if t = TNil then p \<le> q else snd (trace_end t) \<le> q\<close>
+
+lemma hoare_triple_ndet:
+  \<open>\<lbrace> p1 \<rbrace> a \<lbrace> q1 \<rbrace> \<Longrightarrow> \<lbrace> p2 \<rbrace> b \<lbrace> q2 \<rbrace> \<Longrightarrow> \<lbrace> p1 \<sqinter> p2 \<rbrace> a + b \<lbrace> q1 \<squnion> q2 \<rbrace>\<close>
+  by (force simp add: htriple'_def plus_process_def)
+
+lemma hoare_triple_seq:
+  \<open>\<lbrace> p \<rbrace> a \<lbrace> q \<rbrace> \<Longrightarrow> \<lbrace> q \<rbrace> b \<lbrace> r \<rbrace> \<Longrightarrow> \<lbrace> p \<rbrace> a \<triangleright> b \<lbrace> r \<rbrace>\<close>
+  by (force simp add: htriple'_def seq_process_def Ball_def all_conj_distrib
+      split: if_splits)
 
 end
