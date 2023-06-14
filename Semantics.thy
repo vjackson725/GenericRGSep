@@ -133,6 +133,11 @@ lemma trace_le_iff_add:
   apply (case_tac a; force)
   done
 
+lemma trace_le_plus_iff:
+  fixes a b c :: \<open>'a trace\<close>
+  shows \<open>a \<le> c + b \<longleftrightarrow> a \<le> c \<or> (\<exists>a'. a = c + a' \<and> a' \<le> b)\<close>
+  by (induct c arbitrary: a b rule: trace.induct) (force simp add: le_TCons_iff)+
+
 instantiation trace :: (type) semilattice_inf
 begin
 
@@ -162,6 +167,46 @@ proof standard
 qed
 
 end
+
+subsection \<open> Custom trace induction rules \<close>
+
+lemma traces2_step_induct[case_names TNil2 TConsL TConsR]:
+  \<open>P TNil TNil \<Longrightarrow>
+    (\<And>a b x. P a b \<Longrightarrow> P (x \<cdot> a) b) \<Longrightarrow>
+    (\<And>a b y. P a b \<Longrightarrow> P a (y \<cdot> b)) \<Longrightarrow>
+    P a b\<close>
+proof (induct a arbitrary: b)
+  case (TNil b)
+  then show ?case
+    by (induct b) blast+
+next
+  case TCons
+  then show ?case
+    by blast
+qed
+
+thm trace.induct less_induct
+
+lemma trace_concat_induct[case_names TNil trace_concat]:
+  fixes a :: \<open>'a trace\<close>
+  shows \<open>P TNil \<Longrightarrow> (\<And>a b. a \<noteq> TNil \<Longrightarrow> P b \<Longrightarrow> P (a + b)) \<Longrightarrow> P a\<close>
+  by (induct a) force+
+
+lemma trace_concat_backwards_induct:
+  fixes a :: \<open>'a trace\<close>
+  shows \<open>P TNil \<Longrightarrow> (\<And>a b. b \<noteq> TNil \<Longrightarrow> P a \<Longrightarrow> P (a + b)) \<Longrightarrow> P a\<close>
+proof (induct a rule: trace_concat_induct)
+  case TNil
+  then show ?case by force
+next
+  case (trace_concat a b)
+  then show ?case
+    apply (induct a arbitrary: b)
+     apply force
+    apply (metis plus_trace.simps(1))
+    done
+qed
+
 
 subsection \<open> Parallel Trace Merge \<close>
 
@@ -338,21 +383,6 @@ lemma merge_traces_simp[simp]:
   apply (force simp add: merge_traces_def set_eq_iff merge_traces_rel_cons_LR_iff image_def)
   done
 
-lemma traces2_step_induct[case_names TNil2 TConsL TConsR]:
-  \<open>P TNil TNil \<Longrightarrow>
-    (\<And>a b x. P a b \<Longrightarrow> P (x \<cdot> a) b) \<Longrightarrow>
-    (\<And>a b y. P a b \<Longrightarrow> P a (y \<cdot> b)) \<Longrightarrow>
-    P a b\<close>
-proof (induct a arbitrary: b)
-  case (TNil b)
-  then show ?case
-    by (induct b) blast+
-next
-  case TCons
-  then show ?case
-    by blast
-qed
-
 lemma merge_traces_induct[case_names TNilL TNilR TCons2]:
   \<open>(\<And>b. P TNil b) \<Longrightarrow>
     (\<And>a. P a TNil) \<Longrightarrow>
@@ -415,6 +445,11 @@ lemma prefixcl_increasing:
   shows \<open>A \<le> prefixcl A\<close>
   by (force simp add: prefixcl_def)
 
+lemma prefix_closed_prefixcl_eq[simp]:
+  fixes A :: \<open>('a :: preorder) set\<close>
+  shows \<open>prefixcl A \<subseteq> A \<Longrightarrow> prefixcl A = A\<close>
+  by (force simp add: prefixcl_def subset_eq set_eq_iff)
+
 lemma prefixcl_un[simp]:
   \<open>prefixcl (A \<union> B) = prefixcl A \<union> prefixcl B\<close>
   by (force simp add: prefixcl_def)
@@ -423,15 +458,37 @@ lemma prefixcl_Union[simp]:
   \<open>prefixcl (\<Union>\<A>) = \<Union>(prefixcl ` \<A>)\<close>
   by (force simp add: prefixcl_def)
 
+abbreviation (input) \<open>prefix_closed A \<equiv> prefixcl A \<subseteq> A\<close>
+
+lemma prefixcl_trace_plusD:
+  fixes A :: \<open>'a trace set\<close>
+  shows \<open>prefix_closed A \<Longrightarrow> a1 + a2 \<in> A \<Longrightarrow> a1 \<in> A\<close>
+  using prefixcl_def trace_le_iff_add by fastforce
 
 lemma prefixcl_merge_traces[simp]:
-  \<open>prefixcl (merge_trace_sets A B) \<subseteq> merge_trace_sets (prefixcl A) (prefixcl B)\<close>
-  apply (clarsimp simp add: prefixcl_def merge_trace_sets_def merge_traces_def)
-  apply (rename_tac ab' a b ab)
-  sorry
-
-
-abbreviation (input) \<open>prefix_closed A \<equiv> prefixcl A \<subseteq> A\<close>
+  assumes
+    \<open>prefixcl A \<subseteq> A\<close>
+    \<open>prefixcl B \<subseteq> B\<close>
+  shows
+    \<open>prefixcl (merge_trace_sets A B) \<subseteq> merge_trace_sets A B\<close>
+proof -
+  {
+    fix ab' a b ab
+    assume assms2:
+      \<open>merge_traces_rel a b ab\<close>
+      \<open>a \<in> A\<close>
+      \<open>b \<in> B\<close>
+      \<open>ab' \<le> ab\<close>
+    then have \<open>\<exists>a'\<in>A. \<exists>b'\<in>B. merge_traces_rel a' b' ab'\<close>
+      apply (induct ab rule: trace_concat_backwards_induct)
+        apply force
+       apply (clarsimp simp add: le_TCons_iff)
+      sorry
+  } note helper = this
+  then show ?thesis
+    using assms helper
+    by (clarsimp simp add: prefixcl_def merge_trace_sets_def merge_traces_def)
+qed
 
 lemma prefix_closed_strong:
   fixes A :: \<open>('a :: preorder) set\<close>
@@ -445,6 +502,8 @@ type_synonym 'a ptrace = \<open>('a pred \<times> 'a pred) trace\<close>
 typedef 'a process = \<open>Collect prefix_closed :: 'a trace set set\<close>
   morphisms proctr Process
   by auto
+
+declare Process_inverse[simplified, simp] proctr_inverse[simp]
 
 setup_lifting type_definition_process
 
@@ -473,41 +532,56 @@ lift_definition zero_process :: \<open>'a process\<close> is \<open>{}\<close>
   by simp
 
 lift_definition times_process :: \<open>'a process \<Rightarrow> 'a process \<Rightarrow> 'a process\<close> is
-  \<open>\<lambda>A B. \<Union>(a,b) \<in> A\<times>B. merge_traces a b\<close>
+  \<open>\<lambda>A B. merge_trace_sets A B\<close>
   apply clarsimp
   sorry
 
+lemma prefixcl_TNil_set[simp]:
+  \<open>prefixcl {TNil} = {TNil}\<close>
+  by (simp add: prefixcl_def)
+
 lift_definition one_process :: \<open>'a process\<close> is
   \<open>{TNil}\<close>
+  by simp
 
 instance
 proof
   fix a b c :: \<open>'a process\<close>
   show \<open>a + b + c = a + (b + c)\<close>
-    by (force simp add: plus_process_def)
+    sorry
+(*    by (force simp add: plus_process_def) *)
   show \<open>0 + a = a\<close>
-    by (simp add: plus_process_def zero_process_def)
+    sorry
+(*    by (simp add: plus_process_def zero_process_def) *)
   show \<open>a + b = b + a\<close>
     by (simp add: plus_process_def sup_commute)
   show \<open>a \<parallel> b \<parallel> c = a \<parallel> (b \<parallel> c)\<close>
+    sorry
+(*
     apply (simp add: times_process_def Setcompr_eq_image Union_eq)
     apply (rule HOL.trans[OF _ merge_traces_assoc, THEN HOL.trans])
      apply blast
     apply blast
     done
+*)
   show \<open>1 \<parallel> a = a\<close>
-    by (simp add: times_process_def one_process_def Setcompr_eq_image)
+    sorry
+    (*by (simp add: times_process_def one_process_def Setcompr_eq_image)*)
   show \<open>a \<parallel> b = b \<parallel> a\<close>
     using merge_traces_comm
-    by (fastforce simp add: times_process_def set_eq_iff)
+sorry
+(*    by (fastforce simp add: times_process_def set_eq_iff)*)
   show \<open>0 \<parallel> a = 0\<close>
-    by (simp add: zero_process_def times_process_def)
+sorry
+(*    by (simp add: zero_process_def times_process_def)*)
   show \<open>a \<parallel> 0 = 0\<close>
-    by (simp add: zero_process_def times_process_def)
+sorry
+(*    by (simp add: zero_process_def times_process_def)*)
   show \<open>(a + b) \<parallel> c = a \<parallel> c + b \<parallel> c\<close>
-    by (simp add: plus_process_def times_process_def Sigma_Un_distrib1)
+sorry
+(*    by (simp add: plus_process_def times_process_def Sigma_Un_distrib1)*)
   show \<open>(0::'a process) \<noteq> 1\<close>
-    by (simp add: zero_process_def one_process_def)
+    by (simp add: zero_process_def one_process_def process_eq_iff)
 qed
 
 end
@@ -527,7 +601,21 @@ lemma process_skip_eq_one:
 
 instance
   apply standard
-    apply (simp add: seq_process_def set_eq_iff, metis (no_types) add.assoc)
+  subgoal
+    apply (simp add: seq_process_def set_eq_iff)
+    apply (rule arg_cong[where f=Process])
+    apply (subst Process_inverse)
+     apply (clarsimp simp add: prefixcl_def trace_le_plus_iff)
+     apply (erule disjE)
+      apply (metis trace_le_iff_add CollectD add_0 plus_trace_unit_right prefixcl_trace_plusD proctr)
+     apply (metis (lifting) CollectD prefixcl_trace_plusD proctr trace_le_iff_add)
+    apply (subst Process_inverse)
+     apply (clarsimp simp add: prefixcl_def trace_le_plus_iff)
+     apply (erule disjE)
+      apply (metis trace_le_iff_add CollectD add_0 plus_trace_unit_right prefixcl_trace_plusD proctr)
+     apply (metis (lifting) CollectD prefixcl_trace_plusD proctr trace_le_iff_add)
+    apply (force simp add: set_eq_iff ex_simps[symmetric] add.assoc simp del: ex_simps)
+    done
    apply (simp add: seq_process_def skip_process_def)
   apply (simp add: seq_process_def skip_process_def)
   done
@@ -547,11 +635,17 @@ lemma seq_plus_eq:
   shows
     \<open>a \<triangleright> (b + c) = (a \<triangleright> b) + (a \<triangleright> c)\<close>
     \<open>(a + b) \<triangleright> c = (a \<triangleright> c) + (b \<triangleright> c)\<close>
+  sorry
+(*
   by (force simp add: seq_process_def plus_process_def)+
+*)
 
 instance process :: (type) semiring_no_zero_divisors
+  sorry
+(*
   by standard
     (simp add: times_process_def zero_process_def eq_Process_iff_proctr_eq merge_traces_not_empty)
+*)
 
 instance process :: (type) semiring_1_no_zero_divisors
   by standard
@@ -584,16 +678,20 @@ instance
       process_eq_iff)+
       apply (clarsimp simp add: less_process_def less_eq_process_def inf_process_def top_process_def
       process_eq_iff)+
-  sledgehammer
+      apply (metis CollectD prefix_closed_strong proctr)
+  sorry
 
 end
 
 instance process :: (type) ordered_semiring_0
   apply standard
+  sorry
+(*
     apply (force simp add: less_eq_process_def plus_process_def)
    apply (simp add: less_eq_process_def zero_process_def times_process_def)
   apply (simp add: less_eq_process_def zero_process_def times_process_def)
   done
+*)
 
 section \<open> Specific Program Semantics \<close>
 
@@ -609,11 +707,9 @@ datatype ('x,'p) action =
   | AAbort
   | ALocal \<open>(unit, 'x, 'p val) pheap \<Rightarrow> (unit, 'x, 'p val) pheap\<close>
 
-inductive sstep_sem ::
-  \<open>(unit, 'x, 'p val) pheap \<times> ('p, 'p val) dheap \<Rightarrow>
-    ('x,'p) action \<Rightarrow>
-    (unit, 'x, 'p val) pheap \<times> ('p,'p val) dheap \<Rightarrow>
-    bool\<close>
+type_synonym ('x,'p) state = \<open>(unit, 'x, 'p val) pheap \<times> ('p, 'p val) dheap\<close>
+
+inductive sstep_sem :: \<open>('x, 'p) state \<Rightarrow> ('x,'p) action \<Rightarrow> ('x, 'p) state \<Rightarrow> bool\<close>
   (\<open>_ \<sim>_\<leadsto> _\<close> [51,0,51] 50 )
   where
   \<open>s \<sim>ASkip\<leadsto> s\<close>
@@ -638,6 +734,10 @@ proof -
   then show ?thesis
     by force
 qed
+
+fun sstep_sem_reftrcl :: \<open>_ \<Rightarrow> _ \<Rightarrow> _ \<Rightarrow> bool\<close> (\<open>_ \<sim>_\<leadsto>\<^sup>* _\<close> [60,0,60]) where
+  \<open>sstep_sem_reftrcl s TNil s' = (s = s')\<close>
+| \<open>sstep_sem_reftrcl s (x \<cdot> a) s' = (\<exists>s1. s \<sim> x \<leadsto> s1 \<and> s1 \<sim> a \<leadsto>\<^sup>* s')\<close>
 
 section \<open> Unit pheap \<close>
 
@@ -665,6 +765,7 @@ definition htriple
 definition \<open>dealloc_cap p \<equiv> \<lambda>(l,h). \<exists>perm v. h \<bullet>d p = Some (perm, v) \<and> is_full_perm perm\<close>
 definition \<open>write_cap p \<equiv> \<lambda>(l,h). \<exists>perm v. h \<bullet>d p = Some (perm, v) \<and> is_write_perm perm\<close>
 
+(*
 lemma hoare_triple_ptr_write:
   fixes P :: \<open>((unit, 'x, 'p val) pheap \<times> ('p, 'p val) dheap) pred\<close>
   shows \<open>\<lbrace> dealloc_cap p \<rbrace> (\<lambda>s s'. s \<sim>AFree p\<leadsto> s') \<lbrace> emp \<rbrace>\<close>
@@ -672,13 +773,18 @@ lemma hoare_triple_ptr_write:
       dealloc_cap_def is_full_perm_def)
   apply (metis Rep_dheap_zero app_zero_pheap sep_alg_class.zero_le)
   done
+*)
 
+definition interp_act ::
+  \<open>('x,'p) action process \<Rightarrow> (('x, 'p) state \<Rightarrow> ('x, 'p) state \<Rightarrow> bool)\<close> where
+  \<open>interp_act p \<equiv> \<lambda>s s'. (\<forall>a\<in>proctr p.  s \<sim> a \<leadsto>\<^sup>* s')\<close>
 
 definition interp :: \<open>'a pred process \<Rightarrow> ('a \<Rightarrow> 'a \<Rightarrow> bool)\<close> where
   \<open>interp p \<equiv> \<lambda>s s'.
       (TNil \<in> proctr p \<longrightarrow> s = s') \<and>
       (\<forall>t\<in>proctr p. t \<noteq> TNil \<longrightarrow> trace_start t s \<longrightarrow> trace_end t s')\<close>
 
+(*
 lemma hoare_triple_ndet:
   fixes a b :: \<open>('a::ord) pred process\<close>
   assumes
@@ -699,5 +805,6 @@ lemma hoare_triple_seq:
   using assms
   by (clarsimp simp add: htriple_def seq_process_def interp_def leD less_eq_process_def
       zero_process_def)
+*)
 
 end

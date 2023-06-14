@@ -277,6 +277,17 @@ thm eq_diff_eq
 
 subsection \<open> Arithmetic \<close>
 
+(* It feels like Isabelle/HOL is missing a theory of non-abelian ordered monoids.
+   An example of an instance of such a thing is traces.
+*)
+lemma prefixcl_weak_canonical_plusD:
+  fixes a1 a2 :: \<open>'a :: {order,monoid_add}\<close>
+  assumes zero_le: \<open>\<And>a::'a. 0 \<le> a\<close>
+  assumes add_left_cancel_le: \<open>\<And>a b c::'a. b \<le> c \<Longrightarrow> a + b \<le> a + c\<close>
+  shows \<open>a1 \<le> a1 + a2\<close>
+  using assms
+  by (metis add.right_neutral)
+
 lemma ex_times_k_iff:
   fixes a :: \<open>'a :: division_ring\<close>
   assumes \<open>k \<noteq> 0\<close>
