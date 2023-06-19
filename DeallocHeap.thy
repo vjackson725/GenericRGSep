@@ -484,10 +484,10 @@ instance
        apply (simp add: disjoint_dheap_def disjoint_symm)
       apply (force simp add: disjoint_dheap_def plus_dheap_def intro: disjoint_add_rightL)
      apply (force simp add: disjoint_dheap_def plus_dheap_def intro: disjoint_add_right_commute)
-    apply (force simp add: disjoint_dheap_def plus_dheap_def intro: positivity_disjoint positivity_self_add)
-   apply (simp add: less_dheap_def less_eq_dheap_def plus_dheap_def disjoint_dheap_def
+    apply (force simp add: disjoint_dheap_def plus_dheap_def intro: positivity)
+   apply (force simp add: less_dheap_def less_eq_dheap_def plus_dheap_def disjoint_dheap_def
       less_iff_sepadd ex_Abs_dheap_iff)
-  apply (simp add: zero_dheap_def plus_dheap_def)
+  apply (force simp add: zero_dheap_def plus_dheap_def)
   done
 
 end

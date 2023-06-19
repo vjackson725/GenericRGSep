@@ -150,19 +150,11 @@ class perm_alg = disjoint + plus + order +
   assumes partial_add_commute: \<open>a ## b \<Longrightarrow> a + b = b + a\<close>
   (* separation laws *)
   assumes disjoint_symm: \<open>a ## b \<Longrightarrow> b ## a\<close>
-  assumes disjoint_add_rightL: \<open>b ## c \<Longrightarrow> a ## (b + c) \<Longrightarrow> a ## b\<close>
-  assumes disjoint_add_right_commute: \<open>a ## c \<Longrightarrow> b ## (a + c) \<Longrightarrow> a ## (b + c)\<close>
-  assumes positivity: \<open>a ## b \<Longrightarrow> a + b = c \<Longrightarrow> c ## c \<Longrightarrow> c + c = c \<Longrightarrow> a ## a \<and> a + a = a\<close>
+  assumes disjoint_add_rightL: \<open>b ## c \<Longrightarrow> a ## b + c \<Longrightarrow> a ## b\<close>
+  assumes disjoint_add_right_commute: \<open>a ## c \<Longrightarrow> b ## a + c \<Longrightarrow> a ## (b + c)\<close>
+  assumes positivity: \<open>a ## b \<Longrightarrow> a + b = c \<Longrightarrow> c ## c \<Longrightarrow> c + c = c \<Longrightarrow> a + a = a\<close>
   assumes less_iff_sepadd: \<open>a < b \<longleftrightarrow> a \<noteq> b \<and> (\<exists>c. a ## c \<and> b = a + c)\<close>
 begin
-
-
-lemma positivity_disjoint: \<open>a ## b \<Longrightarrow> a + b = c \<Longrightarrow> c ## c \<Longrightarrow> c + c = c \<Longrightarrow> a ## a\<close>
-  using positivity by blast
-
-lemma positivity_self_add: \<open>a ## b \<Longrightarrow> a + b = c \<Longrightarrow> c ## c \<Longrightarrow> c + c = c \<Longrightarrow> a + a = a\<close>
-  using positivity by blast
-
 
 lemma disjoint_symm_iff: \<open>a ## b \<longleftrightarrow> b ## a\<close>
   using disjoint_symm by blast
@@ -189,7 +181,13 @@ lemma disjoint_add_leftR: \<open>a ## b \<Longrightarrow> a + b ## c \<Longright
 lemma disjoint_add_commuteL: \<open>c ## b \<Longrightarrow> c + b ## a \<Longrightarrow> a + b ## c\<close>
   by (simp add: disjoint_add_right_commute disjoint_symm)
 
-lemma positivity2: \<open>a ## b \<Longrightarrow> a + b = c \<Longrightarrow> c ## c \<Longrightarrow> c + c = c \<Longrightarrow> b ## b \<and> b + b = b\<close>
+lemma weak_positivity: \<open>a ## b \<Longrightarrow> a + b = c \<Longrightarrow> c ## c \<Longrightarrow> a ## a\<close>
+  by (meson disjoint_add_rightL disjoint_symm)
+
+lemma weak_positivityR: \<open>a ## b \<Longrightarrow> a + b = c \<Longrightarrow> c ## c \<Longrightarrow> b ## b\<close>
+  using disjoint_symm partial_add_commute weak_positivity by blast
+
+lemma positivityR: \<open>a ## b \<Longrightarrow> a + b = c \<Longrightarrow> c ## c \<Longrightarrow> c + c = c \<Longrightarrow> b + b = b\<close>
   using disjoint_symm partial_add_commute positivity by blast
 
 lemma partial_add_left_commute:
@@ -775,13 +773,13 @@ declare bot_prod_def[simp]
 
 instance
   apply standard
-                apply force+
-         apply (force simp add: partial_add_assoc)
-        apply (force dest: partial_add_commute)
-       apply (force simp add: disjoint_symm)
-      apply (force dest: disjoint_add_rightL)
-     apply (force dest: disjoint_add_right_commute)
-    apply (force dest: positivity)
+                 apply force+
+          apply (force simp add: partial_add_assoc)
+         apply (force dest: partial_add_commute)
+        apply (force simp add: disjoint_symm)
+       apply (force dest: disjoint_add_rightL)
+      apply (force dest: disjoint_add_right_commute)
+     apply (force dest: positivity)
    apply (clarsimp simp add: less_iff_sepadd)
     (* subgoal *)
    apply (rename_tac a1 b1 a2 b2)
