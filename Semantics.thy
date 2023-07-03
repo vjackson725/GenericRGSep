@@ -426,6 +426,10 @@ lemma merge_trace_sets_assoc:
   \<open>merge_trace_sets (merge_trace_sets A B) C = merge_trace_sets A (merge_trace_sets B C)\<close>
   by (simp add: merge_trace_sets_def merge_traces_def Union_eq merge_traces_rel_assoc)
 
+lemma merge_trace_sets_comm:
+  \<open>merge_trace_sets A B = merge_trace_sets B A\<close>
+  by (fastforce simp: merge_trace_sets_def Union_eq merge_traces_comm)
+
 section \<open>Processes\<close>
 
 subsection \<open> prefix closure \<close>
@@ -507,7 +511,7 @@ declare Process_inverse[simplified, simp] proctr_inverse[simp]
 
 setup_lifting type_definition_process
 
-lemma process_eq_iff:
+lemma process_eq_iff[simp]:
   \<open>a = b \<longleftrightarrow> proctr a = proctr b\<close>
   by (metis proctr_inverse)
 
@@ -533,8 +537,8 @@ lift_definition zero_process :: \<open>'a process\<close> is \<open>{}\<close>
 
 lift_definition times_process :: \<open>'a process \<Rightarrow> 'a process \<Rightarrow> 'a process\<close> is
   \<open>\<lambda>A B. merge_trace_sets A B\<close>
-  apply clarsimp
-  sorry
+  by (rule prefixcl_merge_traces)
+
 
 lemma prefixcl_TNil_set[simp]:
   \<open>prefixcl {TNil} = {TNil}\<close>
@@ -548,40 +552,27 @@ instance
 proof
   fix a b c :: \<open>'a process\<close>
   show \<open>a + b + c = a + (b + c)\<close>
-    sorry
-(*    by (force simp add: plus_process_def) *)
+    by (simp  add:sup_assoc plus_process.rep_eq)
   show \<open>0 + a = a\<close>
-    sorry
-(*    by (simp add: plus_process_def zero_process_def) *)
+    by (simp add: zero_process_def plus_process_def)
   show \<open>a + b = b + a\<close>
     by (simp add: plus_process_def sup_commute)
   show \<open>a \<parallel> b \<parallel> c = a \<parallel> (b \<parallel> c)\<close>
-    sorry
-(*
-    apply (simp add: times_process_def Setcompr_eq_image Union_eq)
-    apply (rule HOL.trans[OF _ merge_traces_assoc, THEN HOL.trans])
-     apply blast
-    apply blast
-    done
-*)
+    by (simp add: merge_trace_sets_assoc times_process.rep_eq)
   show \<open>1 \<parallel> a = a\<close>
-    sorry
-    (*by (simp add: times_process_def one_process_def Setcompr_eq_image)*)
+    by (simp add: times_process_def one_process_def merge_trace_sets_def)
   show \<open>a \<parallel> b = b \<parallel> a\<close>
-    using merge_traces_comm
-sorry
-(*    by (fastforce simp add: times_process_def set_eq_iff)*)
+    by (simp add: times_process_def merge_trace_sets_comm) 
   show \<open>0 \<parallel> a = 0\<close>
-sorry
-(*    by (simp add: zero_process_def times_process_def)*)
+    by (simp add:  times_process_def zero_process_def merge_trace_sets_def)
   show \<open>a \<parallel> 0 = 0\<close>
-sorry
-(*    by (simp add: zero_process_def times_process_def)*)
-  show \<open>(a + b) \<parallel> c = a \<parallel> c + b \<parallel> c\<close>
-sorry
-(*    by (simp add: plus_process_def times_process_def Sigma_Un_distrib1)*)
+    by (simp add: zero_process_def times_process.rep_eq 
+                  merge_trace_sets_comm merge_trace_sets_def)
+  show \<open>(a + b) \<parallel> c = a \<parallel> c + b \<parallel> c\<close>  
+    by (metis (mono_tags, lifting) SUP_union proctr_inverse 
+        plus_process.rep_eq times_process.rep_eq merge_trace_sets_def)
   show \<open>(0::'a process) \<noteq> 1\<close>
-    by (simp add: zero_process_def one_process_def process_eq_iff)
+    by (simp add: zero_process_def one_process_def)
 qed
 
 end
@@ -709,35 +700,59 @@ datatype ('x,'p) action =
 
 type_synonym ('x,'p) state = \<open>(unit, 'x, 'p val) pheap \<times> ('p, 'p val) dheap\<close>
 
-inductive sstep_sem :: \<open>('x, 'p) state \<Rightarrow> ('x,'p) action \<Rightarrow> ('x, 'p) state \<Rightarrow> bool\<close>
-  (\<open>_ \<sim>_\<leadsto> _\<close> [51,0,51] 50 )
+inductive sstep_sem :: \<open>('x,'p) action \<Rightarrow> ('x, 'p) state \<Rightarrow> ('x, 'p) state \<Rightarrow> bool\<close>
+  (\<open>_ \<sim> _ \<leadsto> _\<close> [51,0,51] 50 )
   where
-  \<open>s \<sim>ASkip\<leadsto> s\<close>
-| \<open>h \<bullet>d p = None \<Longrightarrow> (l, h) \<sim>AAlloc x v\<leadsto> (l(x \<mapsto>p ((), VPtr p)), h(p \<mapsto>d (full_perm, v)))\<close>
-| \<open>h \<bullet>d p = Some (full_perm, v) \<Longrightarrow> (l, h) \<sim>AFree p\<leadsto> (l, h |`d (-{p}))\<close>
-| \<open>h \<bullet>d p = Some (perm, v) \<Longrightarrow> (l, h) \<sim>AReadPtr x p\<leadsto> (l(x \<mapsto>p ((), v)), h)\<close>
-| \<open>h \<bullet>d p = Some (perm, v) \<Longrightarrow> wperm perm = 1 \<Longrightarrow> (l, h) \<sim>AWritePtr p v\<leadsto> (l, h(p \<mapsto>d (perm, v)))\<close>
-| \<open>(l, h) \<sim>ALocal f\<leadsto> (f l, h)\<close>
 
-inductive_cases sstep_sem_AFreeE[elim]: \<open>s \<sim>AFree p\<leadsto> s'\<close>
+  \<open>ASkip \<sim> s\<leadsto> s\<close>
+
+| \<open>h \<bullet>d p = None \<Longrightarrow> 
+    AAlloc x v \<sim> 
+        (l, h) \<leadsto> 
+        (l(x \<mapsto>p ((), VPtr p)), h(p \<mapsto>d (full_perm, v)))\<close>
+
+| \<open>h \<bullet>d p = Some (full_perm, v) \<Longrightarrow> 
+    AFree p \<sim>
+        (l, h) \<leadsto>
+        (l, h |`d (-{p}))\<close>
+
+| \<open>h \<bullet>d p = Some (perm, v) \<Longrightarrow> 
+    AReadPtr x p \<sim> 
+        (l, h) \<leadsto> 
+        (l(x \<mapsto>p ((), v)), h)\<close>
+
+| \<open>\<lbrakk> h \<bullet>d p = Some (perm, v); 
+     wperm perm = 1\<rbrakk> \<Longrightarrow> 
+    AWritePtr p v \<sim> 
+        (l, h) \<leadsto> 
+        (l, h(p \<mapsto>d (perm, v)))\<close>
+
+| \<open>ALocal f \<sim> 
+        (l, h)\<leadsto> 
+        (f l, h)\<close>
+
+inductive_cases sstep_sem_AFreeE[elim]: \<open>AFree p \<sim> s \<leadsto> s'\<close>
 
 lemma sstep_sem_AFree_iff:
-  \<open>(l,h) \<sim>AFree p\<leadsto> (l',h') \<longleftrightarrow> (l' = l \<and> h' = h |`d (- {p}) \<and> (\<exists>v. h \<bullet>d p = Some (full_perm, v)))\<close>
+  \<open>AFree p \<sim> (l,h) \<leadsto> (l',h') \<longleftrightarrow> 
+    (l' = l \<and> h' = h |`d (- {p}) \<and> (\<exists>v. h \<bullet>d p = Some (full_perm, v)))\<close>
   by (rule iffI; force intro: sstep_sem.intros)
 
 lemma sstep_sem_no_step_abort:
-  \<open>\<not> s \<sim>AAbort\<leadsto> s'\<close>
+  \<open>\<not> AAbort \<sim> s\<leadsto> s'\<close>
 proof -
   { fix a
-  have  \<open>s \<sim>a\<leadsto> s' \<Longrightarrow> a = AAbort \<Longrightarrow> False\<close>
+  have  \<open>a \<sim>s\<leadsto> s' \<Longrightarrow> a = AAbort \<Longrightarrow> False\<close>
     by (induct rule: sstep_sem.induct) simp+ }
   then show ?thesis
     by force
 qed
 
-fun sstep_sem_reftrcl :: \<open>_ \<Rightarrow> _ \<Rightarrow> _ \<Rightarrow> bool\<close> (\<open>_ \<sim>_\<leadsto>\<^sup>* _\<close> [60,0,60]) where
+fun sstep_sem_reftrcl :: 
+  \<open>_ \<Rightarrow> _ \<Rightarrow> _ \<Rightarrow> bool\<close> (\<open>_ \<sim>_\<leadsto>\<^sup>* _\<close> [60,0,60]) 
+where
   \<open>sstep_sem_reftrcl s TNil s' = (s = s')\<close>
-| \<open>sstep_sem_reftrcl s (x \<cdot> a) s' = (\<exists>s1. s \<sim> x \<leadsto> s1 \<and> s1 \<sim> a \<leadsto>\<^sup>* s')\<close>
+| \<open>sstep_sem_reftrcl s (x \<cdot> a) s' = (\<exists>s1. x \<sim> s \<leadsto> s1 \<and> s1 \<sim> a \<leadsto>\<^sup>* s')\<close>
 
 section \<open> Unit pheap \<close>
 
@@ -754,14 +769,22 @@ lemma unit_pheap_hperm_plus_eq:
 
 section \<open> Hoare Triples \<close>
 
-fun trace_rtrancl :: \<open>('a \<Rightarrow> 's \<Rightarrow> 's \<Rightarrow> bool) \<Rightarrow> 'a trace \<Rightarrow> 's \<Rightarrow> 's \<Rightarrow> bool\<close> 
+fun lift_interp_trace :: \<open>('a \<Rightarrow> 's \<Rightarrow> 's \<Rightarrow> bool) \<Rightarrow> 'a trace \<Rightarrow> 's \<Rightarrow> 's \<Rightarrow> bool\<close> 
   (\<open>_\<^sup>* _ _ _\<close> [60,0,60]) where
-  \<open>trace_rtrancl r TNil s s' = (s = s')\<close>
-| \<open>trace_rtrancl r (x \<cdot> a) s s' = (\<exists>s1. r x s s1 \<and> r\<^sup>* a s1 s')\<close>
+  \<open>lift_interp_trace r TNil s s' = (s = s')\<close>
+| \<open>lift_interp_trace r (x \<cdot> a) s s' = (\<exists>s1. r x s s1 \<and> r\<^sup>* a s1 s')\<close>
+
+lemma lift_interp_trace_TNil:
+  "lift_interp_trace r TNil s s" 
+  by simp
+
+
+
 
 definition lift_interp ::
   \<open>('a \<Rightarrow> 's \<Rightarrow> 's \<Rightarrow> bool) \<Rightarrow> 'a process \<Rightarrow> 's \<Rightarrow> 's \<Rightarrow> bool\<close> where
-  \<open>lift_interp ssem p \<equiv> \<lambda>s s'. (\<forall>t\<in>proctr p. trace_rtrancl ssem t s s')\<close>
+  \<open>lift_interp ssem p \<equiv> \<lambda>s s'. (\<forall>t\<in>proctr p. lift_interp_trace ssem t s s')\<close>
+
 
 definition generic_htriple ::
   \<open>('a \<Rightarrow> ('s::preorder) \<Rightarrow> 's \<Rightarrow> bool) \<Rightarrow> 's pred  \<Rightarrow> 'a process \<Rightarrow> 's pred \<Rightarrow> bool\<close>
@@ -795,6 +818,8 @@ lemma generic_htriple_eq_lift_htriple:
   "generic_htriple  ssem pre p post = lift_htriple ssem pre p post"
   unfolding generic_htriple_def lift_htriple_def htriple_basic_def lift_interp_def
   sorry
+
+
 (*
 lemma
   assumes
@@ -825,11 +850,13 @@ subsection \<open> Specific Semantics \<close>
 definition htriple ::
   \<open>('x,'p) state pred  \<Rightarrow> ('x,'p) action process \<Rightarrow> ('x,'p) state pred \<Rightarrow> bool\<close>
   (\<open>\<lbrace> _ \<rbrace> _ \<lbrace> _ \<rbrace>\<close> [0,60,0] 60) where
-  \<open>htriple pre p post \<equiv> (\<lambda>x y. sstep_sem y x) \<turnstile> \<lbrace> pre \<rbrace> p \<lbrace> post \<rbrace>\<close>
-
+  \<open>htriple pre p post \<equiv> sstep_sem \<turnstile> \<lbrace> pre \<rbrace> p \<lbrace> post \<rbrace>\<close>
+(*
 abbreviation interp
-  where "interp \<equiv> lift_interp (\<lambda>x y. sstep_sem y x)"
+  where "interp \<equiv> lift_interp sstep_sem"
+*)
 
+(*
 definition htriple_act :: 
   \<open> ('x, 'p) state pred \<Rightarrow>
     ('x, 'p) action  \<Rightarrow>
@@ -838,16 +865,10 @@ definition htriple_act ::
   (\<open>\<lbrace> _ \<rbrace> _ \<lbrace> _ \<rbrace>\<close> [0,0,0]) 
 where
   \<open> htriple_act p a q \<equiv> True\<close>
+*)
 
 
-
-
-definition lift_htriple ::
-  \<open>( 's pred \<Rightarrow> 'a \<Rightarrow> 's pred \<Rightarrow> bool) \<Rightarrow> 's pred  \<Rightarrow> 'a process \<Rightarrow> 's pred \<Rightarrow> bool\<close> where
-  \<open>lift_htriple htriple pre p post\<equiv>  
-     \<forall>s s'.  interp a s s' \<longrightarrow> (\<exists>x. x \<le> s \<and> p x) \<longrightarrow> (\<exists>x. x \<le> s' \<and> q x)\<close>
-
-
+(*
 
 definition htriple'
   :: \<open>('s::ord) pred \<Rightarrow>
@@ -857,8 +878,6 @@ definition htriple'
   \<open>htriple' p c q \<equiv> \<forall>s s'. c s s' \<longrightarrow> (\<exists>x. x \<le> s \<and> p x) \<longrightarrow> (\<exists>x. x \<le> s' \<and> q x)\<close>
 
 
-
-(*
 
 definition htriple'
   :: \<open>('s::ord) pred \<Rightarrow>
@@ -921,7 +940,7 @@ definition interp :: \<open>'a pred process \<Rightarrow> ('a \<Rightarrow> 'a \
       (\<forall>t\<in>proctr p. t \<noteq> TNil \<longrightarrow> trace_start t s \<longrightarrow> trace_end t s')\<close>
 *)
 
-*)
+
 definition htriple:: 
   \<open> ('x, 'p) state pred \<Rightarrow>
     ('x, 'p) action process \<Rightarrow>
@@ -931,6 +950,6 @@ definition htriple::
 where
   \<open> htriple p c q \<equiv> htriple' p (interp_act c) q\<close>
 
-
+*)
 
 end
