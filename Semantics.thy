@@ -759,19 +759,106 @@ fun trace_rtrancl :: \<open>('a \<Rightarrow> 's \<Rightarrow> 's \<Rightarrow> 
   \<open>trace_rtrancl r TNil s s' = (s = s')\<close>
 | \<open>trace_rtrancl r (x \<cdot> a) s s' = (\<exists>s1. r x s s1 \<and> r\<^sup>* a s1 s')\<close>
 
-definition interp ::
+definition lift_interp ::
   \<open>('a \<Rightarrow> 's \<Rightarrow> 's \<Rightarrow> bool) \<Rightarrow> 'a process \<Rightarrow> 's \<Rightarrow> 's \<Rightarrow> bool\<close> where
-  \<open>interp ssem p \<equiv> \<lambda>s s'. (\<forall>t\<in>proctr p. trace_rtrancl ssem t s s')\<close>
+  \<open>lift_interp ssem p \<equiv> \<lambda>s s'. (\<forall>t\<in>proctr p. trace_rtrancl ssem t s s')\<close>
+
+definition generic_htriple ::
+  \<open>('a \<Rightarrow> ('s::preorder) \<Rightarrow> 's \<Rightarrow> bool) \<Rightarrow> 's pred  \<Rightarrow> 'a process \<Rightarrow> 's pred \<Rightarrow> bool\<close>
+  (\<open>_ \<turnstile> \<lbrace> _ \<rbrace> _ \<lbrace> _ \<rbrace>\<close> [60,0,60,0] 60) where
+  \<open>generic_htriple ssem pre p post \<equiv>
+     \<forall>s s'. lift_interp ssem p s s' \<longrightarrow> (\<exists>x. x \<le> s \<and> pre x) \<longrightarrow> (\<exists>x. x \<le> s' \<and> post x)\<close>
 
 
-abbreviation interp_act where "interp_act \<equiv> interp (\<lambda>x y. sstep_sem y x)"
+definition htriple_basic ::
+  \<open>('a \<Rightarrow> 's \<Rightarrow> 's \<Rightarrow> bool) \<Rightarrow> ('s::preorder) pred  \<Rightarrow> 'a  \<Rightarrow> 's pred \<Rightarrow> bool\<close>
+where
+  \<open>htriple_basic ssem pre a post \<equiv>  
+     \<forall>s s'. 
+       ssem a s s' \<longrightarrow> (\<exists>x. x \<le> s \<and> pre x) \<longrightarrow> (\<exists>x. x \<le> s' \<and> post x)\<close>
+
+
+fun lift_htriple_traces ::
+  \<open>('a \<Rightarrow> 's pred \<Rightarrow> 's pred \<Rightarrow> bool) \<Rightarrow> 'a trace \<Rightarrow> 's pred \<Rightarrow> 's pred \<Rightarrow> bool\<close> 
+  where
+  \<open>lift_htriple_traces r TNil p q = (p = q)\<close>
+| \<open>lift_htriple_traces r (a \<cdot> t) p q = (\<exists>p'. r a p p' \<and> lift_htriple_traces r t p' q)\<close>
+
+
+definition lift_htriple ::
+  \<open>('a \<Rightarrow> 's \<Rightarrow> 's \<Rightarrow> bool) \<Rightarrow> ('s::preorder) pred  \<Rightarrow> 'a process  \<Rightarrow> 's pred \<Rightarrow> bool\<close>
+where
+  \<open>lift_htriple ssem pre p post \<equiv>
+    \<forall>t\<in>proctr p. lift_htriple_traces (\<lambda>x y. htriple_basic ssem y x) t pre post \<close>
+
+lemma generic_htriple_eq_lift_htriple:
+  "generic_htriple  ssem pre p post = lift_htriple ssem pre p post"
+  unfolding generic_htriple_def lift_htriple_def htriple_basic_def lift_interp_def
+  sorry
 (*
+lemma
+  assumes
+    \<open>\<lbrace> pre \<rbrace> a \<lbrace> post \<rbrace>\<^sub>B\<close>
+  shows
+    \<open>\<lbrace> pre \<rbrace> {a} \<lbrace> post \<rbrace>\<close>
+  sorry
+
+lemma
+  assumes
+    \<open>\<lbrace> pre \<rbrace> a . p \<lbrace> m \<rbrace>\<close>
+    \<open>\<lbrace> m \<rbrace> a \<lbrace> post \<rbrace>\<^sub>B\<close>
+  shows
+    \<open>\<lbrace> pre \<rbrace> p  \<lbrace> post \<rbrace>\<close>
+  sorry
+*)
+(* what does it mean for htriple_basic to be sound? *)
+
+(* what does it mean for lift_htriple to be sound given htriple_basic is sound? *)
+
+(* what does it mean for generic_htriple to be sound? *)
+
+subsection \<open> Specific Semantics \<close>
+
+
+
+
+definition htriple ::
+  \<open>('x,'p) state pred  \<Rightarrow> ('x,'p) action process \<Rightarrow> ('x,'p) state pred \<Rightarrow> bool\<close>
+  (\<open>\<lbrace> _ \<rbrace> _ \<lbrace> _ \<rbrace>\<close> [0,60,0] 60) where
+  \<open>htriple pre p post \<equiv> (\<lambda>x y. sstep_sem y x) \<turnstile> \<lbrace> pre \<rbrace> p \<lbrace> post \<rbrace>\<close>
+
+abbreviation interp
+  where "interp \<equiv> lift_interp (\<lambda>x y. sstep_sem y x)"
+
+definition htriple_act :: 
+  \<open> ('x, 'p) state pred \<Rightarrow>
+    ('x, 'p) action  \<Rightarrow>
+    ('x, 'p) state pred \<Rightarrow>
+      bool\<close>
+  (\<open>\<lbrace> _ \<rbrace> _ \<lbrace> _ \<rbrace>\<close> [0,0,0]) 
+where
+  \<open> htriple_act p a q \<equiv> True\<close>
+
+
+
+
+definition lift_htriple ::
+  \<open>( 's pred \<Rightarrow> 'a \<Rightarrow> 's pred \<Rightarrow> bool) \<Rightarrow> 's pred  \<Rightarrow> 'a process \<Rightarrow> 's pred \<Rightarrow> bool\<close> where
+  \<open>lift_htriple htriple pre p post\<equiv>  
+     \<forall>s s'.  interp a s s' \<longrightarrow> (\<exists>x. x \<le> s \<and> p x) \<longrightarrow> (\<exists>x. x \<le> s' \<and> q x)\<close>
+
+
+
 definition htriple'
   :: \<open>('s::ord) pred \<Rightarrow>
       ('s \<Rightarrow> 's \<Rightarrow> bool) \<Rightarrow>
       's pred \<Rightarrow>
       bool\<close> where
   \<open>htriple' p c q \<equiv> \<forall>s s'. c s s' \<longrightarrow> (\<exists>x. x \<le> s \<and> p x) \<longrightarrow> (\<exists>x. x \<le> s' \<and> q x)\<close>
+
+
+
+(*
 
 definition htriple'
   :: \<open>('s::ord) pred \<Rightarrow>
@@ -834,7 +921,7 @@ definition interp :: \<open>'a pred process \<Rightarrow> ('a \<Rightarrow> 'a \
       (\<forall>t\<in>proctr p. t \<noteq> TNil \<longrightarrow> trace_start t s \<longrightarrow> trace_end t s')\<close>
 *)
 
-
+*)
 definition htriple:: 
   \<open> ('x, 'p) state pred \<Rightarrow>
     ('x, 'p) action process \<Rightarrow>
@@ -844,6 +931,6 @@ definition htriple::
 where
   \<open> htriple p c q \<equiv> htriple' p (interp_act c) q\<close>
 
-*)
+
 
 end

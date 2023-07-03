@@ -10,6 +10,7 @@ lemma htriple_ndet:
     \<open>\<lbrace> p2 \<rbrace> b \<lbrace> q2 \<rbrace>\<close>
   shows 
     \<open>\<lbrace> p1 \<sqinter> p2 \<rbrace>  (a + b) \<lbrace> q1 \<squnion> q2 \<rbrace>\<close>
+  unfolding htriple_def 
   sorry
 
 
@@ -19,7 +20,7 @@ lemma htriple_seq:
     \<open>\<lbrace> p \<rbrace> a \<lbrace> q \<rbrace>\<close>
     \<open>\<lbrace> q \<rbrace> b \<lbrace> r \<rbrace>\<close>
   shows \<open>\<lbrace> p \<rbrace>  (a \<triangleright> b) \<lbrace> r \<rbrace>\<close>
-  using assms htriple'_def seq_process_def  leD less_eq_process_def
+  using assms htriple_def seq_process_def  leD less_eq_process_def
       zero_process_def 
   sorry
 
@@ -36,7 +37,7 @@ lemma htriple_parallel:
 lemma htriple_zero: \<open>\<lbrace> \<bottom> \<rbrace> 0 \<lbrace> q \<rbrace>\<close>  sorry
 
 lemma htriple_one: \<open>\<lbrace> p \<rbrace> 1 \<lbrace> p \<rbrace>\<close> 
-  using htriple'_def htriple_def one_process.rep_eq sorry
+  using htriple_def htriple_def one_process.rep_eq sorry
 
 
 (*
