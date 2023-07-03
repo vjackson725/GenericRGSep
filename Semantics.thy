@@ -754,13 +754,62 @@ lemma unit_pheap_hperm_plus_eq:
 
 section \<open> Hoare Triples \<close>
 
-definition htriple
+fun trace_rtrancl :: \<open>('a \<Rightarrow> 's \<Rightarrow> 's \<Rightarrow> bool) \<Rightarrow> 'a trace \<Rightarrow> 's \<Rightarrow> 's \<Rightarrow> bool\<close> 
+  (\<open>_\<^sup>* _ _ _\<close> [60,0,60]) where
+  \<open>trace_rtrancl r TNil s s' = (s = s')\<close>
+| \<open>trace_rtrancl r (x \<cdot> a) s s' = (\<exists>s1. r x s s1 \<and> r\<^sup>* a s1 s')\<close>
+
+definition interp ::
+  \<open>('a \<Rightarrow> 's \<Rightarrow> 's \<Rightarrow> bool) \<Rightarrow> 'a process \<Rightarrow> 's \<Rightarrow> 's \<Rightarrow> bool\<close> where
+  \<open>interp ssem p \<equiv> \<lambda>s s'. (\<forall>t\<in>proctr p. trace_rtrancl ssem t s s')\<close>
+
+
+abbreviation interp_act where "interp_act \<equiv> interp (\<lambda>x y. sstep_sem y x)"
+(*
+definition htriple'
   :: \<open>('s::ord) pred \<Rightarrow>
       ('s \<Rightarrow> 's \<Rightarrow> bool) \<Rightarrow>
       's pred \<Rightarrow>
-      bool\<close>
-  (\<open>\<lbrace> _ \<rbrace> _ \<lbrace> _ \<rbrace>\<close> [0,0,0]) where
-  \<open>htriple p c q \<equiv> \<forall>s s'. c s s' \<longrightarrow> (\<exists>x. x \<le> s \<and> p x) \<longrightarrow> (\<exists>x. x \<le> s' \<and> q x)\<close>
+      bool\<close> where
+  \<open>htriple' p c q \<equiv> \<forall>s s'. c s s' \<longrightarrow> (\<exists>x. x \<le> s \<and> p x) \<longrightarrow> (\<exists>x. x \<le> s' \<and> q x)\<close>
+
+definition htriple'
+  :: \<open>('s::ord) pred \<Rightarrow>
+      ('s \<Rightarrow> 's \<Rightarrow> bool) \<Rightarrow>
+      's pred \<Rightarrow>
+      bool\<close> where
+  \<open>htriple' p c q \<equiv> \<forall>s s'. c s s' \<longrightarrow> (\<exists>x. x \<le> s \<and> p x) \<longrightarrow> (\<exists>x. x \<le> s' \<and> q x)\<close>
+
+
+definition interp_act ::
+  \<open>('x,'p) action process \<Rightarrow> (('x, 'p) state \<Rightarrow> ('x, 'p) state \<Rightarrow> bool)\<close> where
+  \<open>interp_act p \<equiv> \<lambda>s s'. (\<forall>a\<in>proctr p.  s \<sim> a \<leadsto>\<^sup>* s')\<close>
+
+definition interp  \<open>('x,'p) action process \<Rightarrow> 
+ (('x, 'p) state \<Rightarrow> ('x,'p) action \<Rightarrow> ('x, 'p) state \<Rightarrow> bool) \<Rightarrow> 
+('x, 'p) state \<Rightarrow> ('x, 'p) state \<Rightarrow> bool\<close> ::
+sstep_sem
+
+
+definition interp_act ::
+  \<open>('x,'p) action process \<Rightarrow> 
+ (('x, 'p) state \<Rightarrow> ('x,'p) action \<Rightarrow> ('x, 'p) state \<Rightarrow> bool) \<Rightarrow> 
+('x, 'p) state \<Rightarrow> ('x, 'p) state \<Rightarrow> bool\<close> where
+  \<open>interp_act p r \<equiv> \<lambda>s s'. (\<forall>a\<in>proctr p.  r\<^sup>* a s s')\<close>
+
+
+(*
+definition interp ::
+  \<open>'a process \<Rightarrow> ('a \<Rightarrow> 's \<Rightarrow> 's \<Rightarrow> bool) \<Rightarrow> 's \<Rightarrow> 's \<Rightarrow> bool\<close> where
+  \<open>interp_act p \<equiv> \<lambda>s s'. (\<forall>a\<in>proctr p.  s \<sim> a \<leadsto>\<^sup>* s')\<close>
+*)
+definition htriple'
+  :: \<open>('s::ord) pred \<Rightarrow>
+      ('s \<Rightarrow> 's \<Rightarrow> bool) \<Rightarrow>
+      's pred \<Rightarrow>
+      bool\<close> where
+  \<open>htriple' p c q \<equiv> \<forall>s s'. c s s' \<longrightarrow> (\<exists>x. x \<le> s \<and> p x) \<longrightarrow> (\<exists>x. x \<le> s' \<and> q x)\<close>
+
 
 definition \<open>dealloc_cap p \<equiv> \<lambda>(l,h). \<exists>perm v. h \<bullet>d p = Some (perm, v) \<and> is_full_perm perm\<close>
 definition \<open>write_cap p \<equiv> \<lambda>(l,h). \<exists>perm v. h \<bullet>d p = Some (perm, v) \<and> is_write_perm perm\<close>
@@ -778,33 +827,23 @@ lemma hoare_triple_ptr_write:
 definition interp_act ::
   \<open>('x,'p) action process \<Rightarrow> (('x, 'p) state \<Rightarrow> ('x, 'p) state \<Rightarrow> bool)\<close> where
   \<open>interp_act p \<equiv> \<lambda>s s'. (\<forall>a\<in>proctr p.  s \<sim> a \<leadsto>\<^sup>* s')\<close>
-
+(*
 definition interp :: \<open>'a pred process \<Rightarrow> ('a \<Rightarrow> 'a \<Rightarrow> bool)\<close> where
   \<open>interp p \<equiv> \<lambda>s s'.
       (TNil \<in> proctr p \<longrightarrow> s = s') \<and>
       (\<forall>t\<in>proctr p. t \<noteq> TNil \<longrightarrow> trace_start t s \<longrightarrow> trace_end t s')\<close>
+*)
 
-(*
-lemma hoare_triple_ndet:
-  fixes a b :: \<open>('a::ord) pred process\<close>
-  assumes
-    \<open>\<lbrace> p1 \<rbrace> interp a \<lbrace> q1 \<rbrace>\<close>
-    \<open>\<lbrace> p2 \<rbrace> interp b \<lbrace> q2 \<rbrace>\<close>
-  shows \<open>\<lbrace> p1 \<sqinter> p2 \<rbrace> interp (a + b) \<lbrace> q1 \<squnion> q2 \<rbrace>\<close>
-  using assms
-  by (auto simp add: htriple_def plus_process_def interp_def Ball_def all_conj_distrib
-      conj_disj_distribL ex_disj_distrib)
 
-lemma hoare_triple_seq:
-  fixes a b :: \<open>('a::ord) pred process\<close>
-  assumes
-    \<open>0 < a\<close>
-    \<open>\<lbrace> p \<rbrace> interp a \<lbrace> q \<rbrace>\<close>
-    \<open>\<lbrace> q \<rbrace> interp b \<lbrace> r \<rbrace>\<close>
-  shows \<open>\<lbrace> p \<rbrace> interp (a \<triangleright> b) \<lbrace> r \<rbrace>\<close>
-  using assms
-  by (clarsimp simp add: htriple_def seq_process_def interp_def leD less_eq_process_def
-      zero_process_def)
+definition htriple:: 
+  \<open> ('x, 'p) state pred \<Rightarrow>
+    ('x, 'p) action process \<Rightarrow>
+    ('x, 'p) state pred \<Rightarrow>
+      bool\<close>
+  (\<open>\<lbrace> _ \<rbrace> _ \<lbrace> _ \<rbrace>\<close> [0,0,0]) 
+where
+  \<open> htriple p c q \<equiv> htriple' p (interp_act c) q\<close>
+
 *)
 
 end
