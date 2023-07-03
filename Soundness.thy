@@ -3,6 +3,22 @@ theory Soundness
 begin
 
 
+lemma htriple_zero: 
+  \<open>\<lbrace> \<bottom> \<rbrace> 0 \<lbrace> q \<rbrace>\<close>  
+  unfolding htriple_def generic_htriple_def 
+  by blast  
+
+lemma htriple_one: 
+  \<open>\<lbrace> p \<rbrace> 1 \<lbrace> p \<rbrace>\<close> 
+  by (simp add: htriple_def generic_htriple_def lift_interp_def one_process_def)
+  apply clarsimp
+  apply (case_tac )
+  apply (case)
+  apply (intro allI impI)apply simp
+  apply (rename_tac )
+  apply (case_tac t)
+
+
 lemma htriple_ndet:
   fixes a b :: \<open>('x,'p) action process\<close>
   assumes
@@ -10,7 +26,7 @@ lemma htriple_ndet:
     \<open>\<lbrace> p2 \<rbrace> b \<lbrace> q2 \<rbrace>\<close>
   shows 
     \<open>\<lbrace> p1 \<sqinter> p2 \<rbrace>  (a + b) \<lbrace> q1 \<squnion> q2 \<rbrace>\<close>
-  unfolding htriple_def 
+unfolding htriple_def 
   sorry
 
 
@@ -32,12 +48,6 @@ lemma htriple_parallel:
   shows 
     \<open>\<lbrace> p1 \<^emph> p2 \<rbrace>  (a * b) \<lbrace> q1 \<^emph> q2 \<rbrace>\<close>
   sorry
-
-
-lemma htriple_zero: \<open>\<lbrace> \<bottom> \<rbrace> 0 \<lbrace> q \<rbrace>\<close>  sorry
-
-lemma htriple_one: \<open>\<lbrace> p \<rbrace> 1 \<lbrace> p \<rbrace>\<close> 
-  using htriple_def htriple_def one_process.rep_eq sorry
 
 
 (*

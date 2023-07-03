@@ -484,9 +484,11 @@ proof -
       \<open>b \<in> B\<close>
       \<open>ab' \<le> ab\<close>
     then have \<open>\<exists>a'\<in>A. \<exists>b'\<in>B. merge_traces_rel a' b' ab'\<close>
-      apply (induct ab rule: trace_concat_backwards_induct)
-        apply force
-       apply (clarsimp simp add: le_TCons_iff)
+      apply (induct ab arbitrary:  rule: trace_concat_backwards_induct)
+       apply force
+      apply (case_tac "aa + ba"; clarsimp simp: le_TCons_iff)
+      apply (erule disjE)
+       apply (metis assms(1,2) merge_traces_rel.simps plus_trace.simps(1) prefixcl_trace_plusD)
       sorry
   } note helper = this
   then show ?thesis
