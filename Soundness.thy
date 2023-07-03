@@ -11,12 +11,7 @@ lemma htriple_zero:
 lemma htriple_one: 
   \<open>\<lbrace> p \<rbrace> 1 \<lbrace> p \<rbrace>\<close> 
   by (simp add: htriple_def generic_htriple_def lift_interp_def one_process_def)
-  apply clarsimp
-  apply (case_tac )
-  apply (case)
-  apply (intro allI impI)apply simp
-  apply (rename_tac )
-  apply (case_tac t)
+
 
 
 lemma htriple_ndet:
@@ -26,8 +21,12 @@ lemma htriple_ndet:
     \<open>\<lbrace> p2 \<rbrace> b \<lbrace> q2 \<rbrace>\<close>
   shows 
     \<open>\<lbrace> p1 \<sqinter> p2 \<rbrace>  (a + b) \<lbrace> q1 \<squnion> q2 \<rbrace>\<close>
-unfolding htriple_def 
-  sorry
+  using assms 
+  apply - 
+  unfolding htriple_def  generic_htriple_def lift_interp_def plus_process_def
+  apply clarsimp 
+  by (metis Un_iff plus_process.rep_eq proctr_inverse)
+  
 
 
 lemma htriple_seq:
