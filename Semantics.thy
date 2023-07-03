@@ -511,7 +511,7 @@ declare Process_inverse[simplified, simp] proctr_inverse[simp]
 
 setup_lifting type_definition_process
 
-lemma process_eq_iff[simp]:
+lemma process_eq_iff:
   \<open>a = b \<longleftrightarrow> proctr a = proctr b\<close>
   by (metis proctr_inverse)
 
@@ -548,8 +548,11 @@ lift_definition one_process :: \<open>'a process\<close> is
   \<open>{TNil}\<close>
   by simp
 
+declare process_eq_iff[simp]
+
 instance
 proof
+
   fix a b c :: \<open>'a process\<close>
   show \<open>a + b + c = a + (b + c)\<close>
     by (simp  add:sup_assoc plus_process.rep_eq)
@@ -575,6 +578,8 @@ proof
     by (simp add: zero_process_def one_process_def)
 qed
 
+declare process_eq_iff[simp del]
+
 end
 
 instantiation process :: (type) monoid_seq
@@ -592,7 +597,6 @@ lemma process_skip_eq_one:
 
 instance
   apply standard
-  subgoal
     apply (simp add: seq_process_def set_eq_iff)
     apply (rule arg_cong[where f=Process])
     apply (subst Process_inverse)
@@ -606,7 +610,6 @@ instance
       apply (metis trace_le_iff_add CollectD add_0 plus_trace_unit_right prefixcl_trace_plusD proctr)
      apply (metis (lifting) CollectD prefixcl_trace_plusD proctr trace_le_iff_add)
     apply (force simp add: set_eq_iff ex_simps[symmetric] add.assoc simp del: ex_simps)
-    done
    apply (simp add: seq_process_def skip_process_def)
   apply (simp add: seq_process_def skip_process_def)
   done
@@ -663,26 +666,23 @@ definition less_process :: \<open>'a process \<Rightarrow> 'a process \<Rightarr
   \<open>less_process a b \<equiv> prefixcl (proctr a) \<supset> prefixcl (proctr b)\<close>
 
 instance
-  apply standard
-  apply
-    (force simp add: less_process_def less_eq_process_def inf_process_def top_process_def
-      process_eq_iff)+
-      apply (clarsimp simp add: less_process_def less_eq_process_def inf_process_def top_process_def
-      process_eq_iff)+
-      apply (metis CollectD prefix_closed_strong proctr)
-  sorry
+  apply (standard; 
+          simp add: less_eq_process_def less_process_def 
+                    zero_process_def process_eq_iff process_top_eq_zero)
+      apply (simp_all add: process_inf_eq_plus plus_process.rep_eq)
+   apply (fastforce simp: top_process_def process_eq_iff)   
+  apply (metis CollectD prefix_closed_strong proctr)
+  done
 
 end
 
 instance process :: (type) ordered_semiring_0
   apply standard
-  sorry
-(*
-    apply (force simp add: less_eq_process_def plus_process_def)
-   apply (simp add: less_eq_process_def zero_process_def times_process_def)
-  apply (simp add: less_eq_process_def zero_process_def times_process_def)
+    apply (metis plus_process.rep_eq inf_process_def inf_le1
+           inf_le2 le_inf_iff order_trans proctr_inverse)
+   apply (metis add_0 inf_le1 mult.commute mult_zero_right order_antisym process_inf_eq_plus)
+  apply (metis add_0 inf_le1 mult_zero_right order_antisym process_inf_eq_plus)
   done
-*)
 
 section \<open> Specific Program Semantics \<close>
 
@@ -777,9 +777,6 @@ fun lift_interp_trace :: \<open>('a \<Rightarrow> 's \<Rightarrow> 's \<Rightarr
 lemma lift_interp_trace_TNil:
   "lift_interp_trace r TNil s s" 
   by simp
-
-
-
 
 definition lift_interp ::
   \<open>('a \<Rightarrow> 's \<Rightarrow> 's \<Rightarrow> bool) \<Rightarrow> 'a process \<Rightarrow> 's \<Rightarrow> 's \<Rightarrow> bool\<close> where
