@@ -21,12 +21,39 @@ lemma htriple_ndet:
     \<open>\<lbrace> p2 \<rbrace> b \<lbrace> q2 \<rbrace>\<close>
   shows 
     \<open>\<lbrace> p1 \<sqinter> p2 \<rbrace>  (a + b) \<lbrace> q1 \<squnion> q2 \<rbrace>\<close>
-  using assms 
-  apply - 
-  unfolding htriple_def  generic_htriple_def lift_interp_def plus_process_def
-  apply clarsimp 
-  by (metis Un_iff plus_process.rep_eq proctr_inverse)
+  using assms unfolding htriple_def generic_htriple_def lift_interp_def plus_process_def
+  by (clarsimp, metis Un_iff plus_process.rep_eq proctr_inverse)
   
+lemma htriple_parallel:
+  fixes a b :: \<open>('x,'p) action process\<close>
+  assumes
+    \<open>\<lbrace> p1 \<rbrace>  a \<lbrace> q1 \<rbrace>\<close>
+    \<open>\<lbrace> p2 \<rbrace>  b \<lbrace> q2 \<rbrace>\<close>
+  shows 
+    \<open>\<lbrace> p1 \<^emph> p2 \<rbrace>  (a * b) \<lbrace> q1 \<^emph> q2 \<rbrace>\<close>
+(*this may be missing something about non-interference *)
+  using assms 
+  unfolding htriple_def generic_htriple_def lift_interp_def 
+            times_process.rep_eq  
+  apply -
+  apply (intro allI)
+  apply (case_tac "\<exists> s''. (\<forall>t\<in>proctr a. sstep_sem\<^sup>* t s s'')")
+   prefer 2
+  subgoal sorry
+  apply (erule exE)  
+  apply (erule_tac x=s in allE, erule_tac x=s'' in allE, erule impE, assumption)
+apply (case_tac "(\<forall>t\<in>proctr b. sstep_sem\<^sup>* t s'' s')")
+   prefer 2
+  subgoal sorry
+
+  apply (erule_tac x=s'' in allE, erule_tac x=s' in allE, erule impE, assumption)
+  apply (rule impI) 
+
+  apply (clarsimp )
+  apply (rename_tac l1 h1 ln hn l1' h1')
+  find_theorems "_ \<le> _" "_ * _"
+
+  sorry
 
 
 lemma htriple_seq:
@@ -35,17 +62,15 @@ lemma htriple_seq:
     \<open>\<lbrace> p \<rbrace> a \<lbrace> q \<rbrace>\<close>
     \<open>\<lbrace> q \<rbrace> b \<lbrace> r \<rbrace>\<close>
   shows \<open>\<lbrace> p \<rbrace>  (a \<triangleright> b) \<lbrace> r \<rbrace>\<close>
-  using assms htriple_def seq_process_def  leD less_eq_process_def
-      zero_process_def 
-  sorry
+  (* what's the difference between seq and times? *)
+  using assms unfolding htriple_def generic_htriple_def lift_interp_def 
+using lift_interp_trace.simps
+  apply clarsimp
+  apply (cases a; cases b; clarsimp)
+  apply (rename_tac a' b')
 
-lemma htriple_parallel:
-  fixes a b :: \<open>('x,'p) action process\<close>
-  assumes
-    \<open>\<lbrace> p1 \<rbrace>  a \<lbrace> q1 \<rbrace>\<close>
-    \<open>\<lbrace> p2 \<rbrace>  b \<lbrace> q2 \<rbrace>\<close>
-  shows 
-    \<open>\<lbrace> p1 \<^emph> p2 \<rbrace>  (a * b) \<lbrace> q1 \<^emph> q2 \<rbrace>\<close>
+  using one_process.rep_eq times_process.rep_eq less_eq_process_def proctr_inverse
+leD
   sorry
 
 
