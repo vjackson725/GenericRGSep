@@ -214,4 +214,21 @@ lemma wsstablerel_sepconj_semidistrib:
 
 end
 
+
+instantiation prod :: (stable_sep_alg,stable_sep_alg) stable_sep_alg
+begin
+
+definition stableres_prod :: \<open>'a \<times> 'b \<Rightarrow> 'a \<times> 'b\<close> where
+  \<open>stableres_prod \<equiv> map_prod stableres stableres\<close>
+
+definition half_prod :: \<open>'a \<times> 'b \<Rightarrow> 'a \<times> 'b\<close> where
+  \<open>half_prod \<equiv> map_prod half half\<close>
+
+instance
+  apply standard 
+  sorry
+
+end
+
+
 end

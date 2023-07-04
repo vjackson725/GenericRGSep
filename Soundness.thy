@@ -9,10 +9,8 @@ lemma htriple_zero:
   by blast  
 
 lemma htriple_one: 
-  \<open>\<lbrace> p \<rbrace> 1 \<lbrace> p \<rbrace>\<close> 
-  by (simp add: htriple_def generic_htriple_def lift_interp_def one_process_def)
-
-
+  \<open>\<lbrace> p \<rbrace> 1 \<lbrace> p \<rbrace>\<close> unfolding htriple_def generic_htriple_def lift_interp_process_def one_process_def
+  by (simp add: htriple_def generic_htriple_def lift_interp_process_def one_process_def)
 
 lemma htriple_ndet:
   fixes a b :: \<open>('x,'p) action process\<close>
@@ -21,7 +19,7 @@ lemma htriple_ndet:
     \<open>\<lbrace> p2 \<rbrace> b \<lbrace> q2 \<rbrace>\<close>
   shows 
     \<open>\<lbrace> p1 \<sqinter> p2 \<rbrace>  (a + b) \<lbrace> q1 \<squnion> q2 \<rbrace>\<close>
-  using assms unfolding htriple_def generic_htriple_def lift_interp_def plus_process_def
+  using assms unfolding htriple_def generic_htriple_def lift_interp_process_def plus_process_def
   by (clarsimp, metis Un_iff plus_process.rep_eq proctr_inverse)
   
 lemma htriple_parallel:
@@ -30,10 +28,10 @@ lemma htriple_parallel:
     \<open>\<lbrace> p1 \<rbrace>  a \<lbrace> q1 \<rbrace>\<close>
     \<open>\<lbrace> p2 \<rbrace>  b \<lbrace> q2 \<rbrace>\<close>
   shows 
-    \<open>\<lbrace> p1 \<^emph> p2 \<rbrace>  (a * b) \<lbrace> q1 \<^emph> q2 \<rbrace>\<close>
-(*this may be missing something about non-interference *)
+    \<open>\<lbrace> p1 \<^emph> p2 \<rbrace>  (a * b) \<lbrace>  (q1 \<^emph> q2) \<rbrace>\<close>
+(*this may be missing something about non-interference (wsstablerel?) *)
   using assms 
-  unfolding htriple_def generic_htriple_def lift_interp_def 
+  unfolding htriple_def generic_htriple_def lift_interp_process_def 
             times_process.rep_eq  
   apply -
   apply (intro allI)
@@ -56,6 +54,70 @@ apply (case_tac "(\<forall>t\<in>proctr b. sstep_sem\<^sup>* t s'' s')")
   sorry
 
 
+lemma trace_TCons_concatD:
+  \<open>x \<cdot> t' = ta + tb \<Longrightarrow>
+      (ta = TNil \<and> tb = x \<cdot> t') \<or>
+     (\<exists>ta'. ta = x \<cdot> ta' \<and> t' = ta' + tb)\<close>
+  by (metis plus_trace.elims trace.sel(2) trace_start.simps(2))
+
+lemma trace_TCons_concatI:
+  \<open>(ta = TNil \<and> tb = x \<cdot> t') \<or>
+   (\<exists>ta'. ta = x \<cdot> ta' \<and> t' = ta' + tb) \<Longrightarrow>
+  x \<cdot> t' = ta + tb\<close>
+  by fastforce
+
+lemma trace_TCons_concat_eq:
+  \<open>(x \<cdot> t' = ta + tb) \<longleftrightarrow>
+      (ta = TNil \<and> tb = x \<cdot> t') \<or>
+     (\<exists>ta'. ta = x \<cdot> ta' \<and> t' = ta' + tb)\<close>
+  using  trace_TCons_concatD 
+  by fastforce
+
+lemma interp_trace_concatD':
+  \<open>f\<^sup>* t s s' \<Longrightarrow> t = ta + tb \<Longrightarrow> \<exists>si. f\<^sup>* ta s si \<and> f\<^sup>* tb si s'\<close>
+  by (induct f t s s' arbitrary: ta tb rule: lift_interp_trace.induct)
+     (fastforce dest!: trace_TCons_concatD)+
+
+lemma interp_trace_concatD:
+  \<open>f\<^sup>* (ta + tb) s s' \<Longrightarrow> \<exists>si. f\<^sup>* ta s si \<and> f\<^sup>* tb si s'\<close>
+  by (fastforce dest: interp_trace_concatD')
+
+lemma interp_trace_concatI:
+  \<open>f\<^sup>* ta s si \<Longrightarrow> f\<^sup>* tb si s'\<Longrightarrow> t = ta + tb \<Longrightarrow>  f\<^sup>* t s s'\<close>
+  using trace_TCons_concat_eq
+  by (induct f ta s si arbitrary: t tb rule: lift_interp_trace.induct)
+    (fastforce dest!: trace_TCons_concatD)+
+
+lemma interp_trace_concat_eq:
+  \<open>f\<^sup>* (ta + tb) s s' = (\<exists>si. f\<^sup>* ta s si \<and> f\<^sup>* tb si s')\<close>
+  using interp_trace_concatD interp_trace_concatI
+  by fast
+
+lemma interp_seq_0_eq:
+  \<open>lift_interp_process sstep_sem (0 \<triangleright> b) s s' =
+  (\<exists>si. lift_interp_process sstep_sem 0 s si \<and> lift_interp_process sstep_sem b si s')\<close>
+  oops
+
+
+
+lemma lift_interp_0:
+  \<open>lift_interp_process f 0 s s'\<close>
+  by (simp add: lift_interp_process_def zero_process.rep_eq)
+
+
+lemma lift_interp_process_seqI:
+  \<open>lift_interp_process f a s si \<Longrightarrow> 
+   lift_interp_process f b si s' \<Longrightarrow> 
+   lift_interp_process f (a \<triangleright> b) s s'\<close>
+  by (fastforce simp: lift_interp_process_def interp_trace_concat_eq)
+
+(*
+lemma lift_interp_process_seq:
+  \<open>lift_interp_process f a s si \<Longrightarrow> 
+   lift_interp_process f b si s' \<Longrightarrow> 
+   lift_interp_process f (a \<triangleright> b) s s'\<close>
+  by (fastforce simp: lift_interp_process_def interp_trace_concat_eq)
+*)
 lemma htriple_seq:
   fixes a b :: \<open>('x,'p) action process\<close>
   assumes
@@ -63,15 +125,13 @@ lemma htriple_seq:
     \<open>\<lbrace> q \<rbrace> b \<lbrace> r \<rbrace>\<close>
   shows \<open>\<lbrace> p \<rbrace>  (a \<triangleright> b) \<lbrace> r \<rbrace>\<close>
   (* what's the difference between seq and times? *)
-  using assms unfolding htriple_def generic_htriple_def lift_interp_def 
-using lift_interp_trace.simps
-  apply clarsimp
-  apply (cases a; cases b; clarsimp)
-  apply (rename_tac a' b')
-
-  using one_process.rep_eq times_process.rep_eq less_eq_process_def proctr_inverse
-leD
+  using assms unfolding htriple_def generic_htriple_def  
+  apply (intro allI impI)
+  unfolding lift_interp_process_def
   sorry
+
+ 
+
 
 
 (*

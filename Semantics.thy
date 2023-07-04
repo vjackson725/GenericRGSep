@@ -462,6 +462,11 @@ lemma prefixcl_Union[simp]:
   \<open>prefixcl (\<Union>\<A>) = \<Union>(prefixcl ` \<A>)\<close>
   by (force simp add: prefixcl_def)
 
+lemma prefixcl_idem[simp]:
+  fixes A :: \<open>('a :: preorder) set\<close>
+  shows \<open>prefixcl (prefixcl A) = prefixcl A\<close>
+  by (auto intro: order.trans simp: prefixcl_def)
+
 abbreviation (input) \<open>prefix_closed A \<equiv> prefixcl A \<subseteq> A\<close>
 
 lemma prefixcl_trace_plusD:
@@ -618,6 +623,64 @@ instance
 
 end
 
+
+(*
+  t1t1t1t1t1t1t1t1 t2t2t2t2t2t2t2t2
+  s1s1s1s1s1 s2s2s2s2s2s2s2s2s2s2s2
+*)
+
+lemma trace_TCons_concatD:
+  \<open>x \<cdot> t' = ta + tb \<Longrightarrow>
+      (ta = TNil \<and> tb = x \<cdot> t') \<or>
+     (\<exists>ta'. ta = x \<cdot> ta' \<and> t' = ta' + tb)\<close>
+  by (metis plus_trace.elims trace.sel(2) trace_start.simps(2))
+
+lemma trace_TCons_concatI:
+  \<open>(ta = TNil \<and> tb = x \<cdot> t') \<or>
+   (\<exists>ta'. ta = x \<cdot> ta' \<and> t' = ta' + tb) \<Longrightarrow>
+  x \<cdot> t' = ta + tb\<close>
+  by fastforce
+
+lemma trace_TCons_concat_eq:
+  \<open>(x \<cdot> t' = ta + tb) \<longleftrightarrow>
+      (ta = TNil \<and> tb = x \<cdot> t') \<or>
+     (\<exists>ta'. ta = x \<cdot> ta' \<and> t' = ta' + tb)\<close>
+  using  trace_TCons_concatD 
+  by fastforce
+
+lemma trace_concat_eq:
+  fixes s1 s2 t1 t2 :: \<open>'a trace\<close>
+  shows \<open>s1 + s2 = t1 + t2 \<longleftrightarrow> 
+          ((s1 \<le> t1 \<and> 
+              (\<exists>s1'. t1 = s1 + s1' \<and> s2 = s1' + t2)) \<or> 
+           (t1 \<le> s1 \<and> 
+              (\<exists>t1'. s1 = t1 + t1' \<and> t2 = t1'+ s2)))\<close>
+  by (induct s1 arbitrary: t1 t2)
+     (fastforce simp: trace_TCons_concat_eq)+
+
+
+lemma seq_eq[simp]:
+  \<open>proctr (a \<triangleright> b) = {ta + tb |ta tb. ta \<in> proctr a \<and> tb \<in> proctr b}\<close>
+  apply (simp add: seq_process_def)
+  apply (subst Process_inverse)
+   apply (clarsimp simp add: prefixcl_def trace_le_iff_add trace_concat_eq)
+   apply (erule disjE)
+    apply clarsimp
+
+   apply (rename_tac t1a t1b t2a t2b)
+
+   apply (subgoal_tac \<open>t1a \<le> t1b \<or> t1b \<le> t1a\<close>)
+    apply (erule disjE)
+     apply (clarsimp simp add: trace_le_iff_add)
+     apply (rename_tac tc)
+     apply (rule_tac x=\<open>u1\<close> in exI)
+     apply (rule_tac x=\<open>u2\<close> in exI)
+  
+  
+
+  sorry
+
+
 text \<open>TODO: should probably be a new class\<close>
 lemma seq_zero_zero[simp]:
   fixes a :: \<open>'a process\<close>
@@ -709,13 +772,15 @@ inductive sstep_sem :: \<open>('x,'p) action \<Rightarrow> ('x, 'p) state \<Righ
   \<open>ASkip \<sim> s\<leadsto> s\<close>
 
 | \<open>h \<bullet>d p = None \<Longrightarrow> 
+  s = (l, h) \<Longrightarrow> 
     AAlloc x v \<sim> 
-        (l, h) \<leadsto> 
+        s \<leadsto> 
         (l(x \<mapsto>p ((), VPtr p)), h(p \<mapsto>d (full_perm, v)))\<close>
 
 | \<open>h \<bullet>d p = Some (full_perm, v) \<Longrightarrow> 
+    s = (l, h) \<Longrightarrow> 
     AFree p \<sim>
-        (l, h) \<leadsto>
+        s \<leadsto>
         (l, h |`d (-{p}))\<close>
 
 | \<open>h \<bullet>d p = Some (perm, v) \<Longrightarrow> 
@@ -772,7 +837,7 @@ lemma unit_pheap_hperm_plus_eq:
 section \<open> Hoare Triples \<close>
 
 fun lift_interp_trace :: \<open>('a \<Rightarrow> 's \<Rightarrow> 's \<Rightarrow> bool) \<Rightarrow> 'a trace \<Rightarrow> 's \<Rightarrow> 's \<Rightarrow> bool\<close> 
-  (\<open>_\<^sup>* _ _ _\<close> [60,0,60]) where
+  (\<open>_\<^sup>* _ _ _\<close> [999,999,999,999]) where
   \<open>lift_interp_trace r TNil s s' = (s = s')\<close>
 | \<open>lift_interp_trace r (x \<cdot> a) s s' = (\<exists>s1. r x s s1 \<and> r\<^sup>* a s1 s')\<close>
 
@@ -780,16 +845,16 @@ lemma lift_interp_trace_TNil:
   "lift_interp_trace r TNil s s" 
   by simp
 
-definition lift_interp ::
+definition lift_interp_process ::
   \<open>('a \<Rightarrow> 's \<Rightarrow> 's \<Rightarrow> bool) \<Rightarrow> 'a process \<Rightarrow> 's \<Rightarrow> 's \<Rightarrow> bool\<close> where
-  \<open>lift_interp ssem p \<equiv> \<lambda>s s'. (\<forall>t\<in>proctr p. lift_interp_trace ssem t s s')\<close>
+  \<open>lift_interp_process ssem p \<equiv> \<lambda>s s'. (\<forall>t\<in>proctr p. lift_interp_trace ssem t s s')\<close>
 
 
 definition generic_htriple ::
   \<open>('a \<Rightarrow> ('s::preorder) \<Rightarrow> 's \<Rightarrow> bool) \<Rightarrow> 's pred  \<Rightarrow> 'a process \<Rightarrow> 's pred \<Rightarrow> bool\<close>
   (\<open>_ \<turnstile> \<lbrace> _ \<rbrace> _ \<lbrace> _ \<rbrace>\<close> [60,0,60,0] 60) where
   \<open>generic_htriple ssem pre p post \<equiv>
-     \<forall>s s'. lift_interp ssem p s s' \<longrightarrow> (\<exists>x. x \<le> s \<and> pre x) \<longrightarrow> (\<exists>x. x \<le> s' \<and> post x)\<close>
+     \<forall>s s'. lift_interp_process ssem p s s' \<longrightarrow> (\<exists>x. x \<le> s \<and> pre x) \<longrightarrow> (\<exists>x. x \<le> s' \<and> post x)\<close>
 
 
 definition htriple_basic ::
@@ -815,7 +880,7 @@ where
 
 lemma generic_htriple_eq_lift_htriple:
   "generic_htriple  ssem pre p post = lift_htriple ssem pre p post"
-  unfolding generic_htriple_def lift_htriple_def htriple_basic_def lift_interp_def
+  unfolding generic_htriple_def lift_htriple_def htriple_basic_def lift_interp_process_def
   sorry
 
 
