@@ -215,6 +215,30 @@ lemma wsstablerel_sepconj_semidistrib:
 end
 
 
+lemma swstable_necessitation: \<open>\<top> \<le> P \<Longrightarrow> \<top> \<le> \<lfloor> P \<rfloor>\<close>
+  by (metis order_eq_refl swstable_wsstable_absorb top.extremum_uniqueI wsstable_stronger)
+
+lemma swstable_necessitation: \<open>\<top> \<le> P \<Longrightarrow> \<top> \<le> \<lfloor> P \<rfloor>\<close>
+  by (metis order_eq_refl swstable_wsstable_absorb top.extremum_uniqueI wsstable_stronger)
+
+lemma swstable_impl_distrib: \<open>\<lfloor> - P \<squnion> Q \<rfloor> \<sqinter> \<lfloor> P \<rfloor> \<le> \<lfloor> Q \<rfloor>\<close>
+  by (metis (no_types, lifting) double_compl inf.absorb1 inf.orderI inf_idem sup_neg_inf
+      swstable_conj_distrib)
+
+thm wsstable_stronger
+
+lemma wsstabledual_necessitation: \<open>\<top> \<le> P \<Longrightarrow> \<top> \<le> - \<lceil> - P \<rceil>\<close>
+  by (metis (mono_tags, lifting) double_compl order_antisym predicate1I top_apply uminus_apply
+      wsstable_pred_def wsstable_stronger)
+
+lemma wsstabledual_impl_distrib: \<open>\<lceil> - Q \<rceil> \<le> \<lceil> P \<sqinter> - Q \<rceil> \<squnion> \<lceil> - P \<rceil>\<close>
+  by (metis (mono_tags, lifting) boolean_algebra.de_Morgan_disj double_compl inf.absorb1 inf_idem
+      shunt1 sup.orderI wsstable_disj_distrib)
+
+lemma \<open>- \<lceil> - P \<rceil> = \<lfloor> P \<rfloor>\<close>
+  apply (simp add: le_fun_def fun_eq_iff wsstable_pred_def swstable_pred_def)
+
+
 instantiation prod :: (stable_sep_alg,stable_sep_alg) stable_sep_alg
 begin
 
