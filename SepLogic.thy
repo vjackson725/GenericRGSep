@@ -2,6 +2,8 @@ theory SepLogic
   imports Util
 begin
 
+thm less_induct
+
 section \<open>Predicate Logic\<close>
 
 definition pred_false :: \<open>'a \<Rightarrow> bool\<close> (\<open>\<^bold>F\<close>) where
@@ -139,8 +141,6 @@ class disjoint =
 class disjoint_zero = disjoint + zero +
   assumes zero_disjointL[simp]: \<open>0 ## a\<close>
   assumes zero_disjointR[simp]: \<open>a ## 0\<close>
-
-find_theorems \<open>?a + ?c \<le> ?b + ?d\<close>
 
 subsection \<open> Permission Algebras \<close>
 
@@ -319,7 +319,6 @@ definition septract_rev :: \<open>('a \<Rightarrow> bool) \<Rightarrow> ('a \<Ri
 lemma septract_reverse: \<open>P \<midarrow>\<odot> Q = Q \<odot>\<midarrow> P\<close>
   by (force simp add: septract_def septract_rev_def)
 
-
 definition sepconj_mfault ::
   \<open>('a \<Rightarrow> bool) mfault \<Rightarrow> ('a \<Rightarrow> bool) mfault \<Rightarrow> ('a \<Rightarrow> bool) mfault\<close> (infixl \<open>\<^emph>\<^sub>f\<close> 88)
   where
@@ -340,7 +339,6 @@ definition emp :: \<open>'a \<Rightarrow> bool\<close> where
 
 definition emp_mfault :: \<open>('a \<Rightarrow> bool) mfault\<close> ("emp\<^sub>f") where
   \<open>emp\<^sub>f \<equiv> Success emp\<close>
-
 
 fun iterated_sepconj :: \<open>('a \<Rightarrow> bool) list \<Rightarrow> ('a \<Rightarrow> bool)\<close> where
   \<open>iterated_sepconj (P # Ps) = P \<^emph> iterated_sepconj Ps\<close>
@@ -646,7 +644,6 @@ proof -
 qed
 
 end
-
 
 subsection \<open> Halving \<close>
 

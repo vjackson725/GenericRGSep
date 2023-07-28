@@ -4,14 +4,14 @@ begin
 
 section \<open>Stabilisation\<close>
 
-(* strongest weaker stable predicate *)
+(* strongest weaker stable predicate *) (* \<box>\<^sup>\<rightarrow> *)
 definition swstable_pred
   :: \<open>('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> 'a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool)\<close>
   ("\<lfloor> _ \<rfloor>\<^bsub>_\<^esub>" [0,0] 90)
   where
   \<open>\<lfloor> P \<rfloor>\<^bsub>R\<^esub> \<equiv> \<lambda>s. \<forall>s'. R\<^sup>*\<^sup>* s s' \<longrightarrow> P s'\<close>
-                                                                                           
-(* weakest stronger stable predicate *)
+
+(* weakest stronger stable predicate *) (* \<diamondsuit>\<^sup>\<leftarrow> *)
 definition wsstable_pred
   :: \<open>('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> 'a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool)\<close>
   ("\<lceil> _ \<rceil>\<^bsub>_\<^esub>" [0,0] 90)
