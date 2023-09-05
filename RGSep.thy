@@ -2,16 +2,6 @@ theory RGSep
   imports Stabilisation PermHeap
 begin
 
-definition \<open>passert p \<equiv> \<lambda>a b. p a\<close>
-definition \<open>passume p \<equiv> \<lambda>a b. p b\<close> 
-
-
-datatype ('h) basic_comm =
-  Nop
-
-inductive basic_rel :: \<open>'h basic_comm \<Rightarrow> 'h \<Rightarrow> 'h \<Rightarrow> bool\<close> where
-  \<open>basic_rel c h h'\<close>
-
 datatype 'h comm =
   Skip
   | Abort
@@ -19,37 +9,55 @@ datatype 'h comm =
   | Par \<open>'h comm\<close> \<open>'h comm\<close> (infixr \<open>\<parallel>\<close> 65)
   | Ndet \<open>'h comm\<close> \<open>'h comm\<close> (infixr \<open>\<^bold>+\<close> 65)
   | Iter \<open>'h comm\<close> (\<open>_\<^sup>\<star>\<close> [80] 80)
-  | Basic \<open>'h basic_comm\<close>
-  | Assert \<open>'h \<Rightarrow> bool\<close>
-  | Assume \<open>'h \<Rightarrow> bool\<close>
+  | Basic \<open>'h \<Rightarrow> 'h \<Rightarrow> bool\<close>
 
-datatype act =
-    ReduceSeq
-  | ReduceNdetLeft
-  | ReduceNdetRight
-  | ReduceParLeft
-  | ReduceParRight
-  | ActAssert
-  | ActAssume
-  | ActIterStep
+datatype 'h act =
+    Tau
+  | Env \<open>'h \<Rightarrow> 'h \<Rightarrow> bool\<close>
 
-inductive opsem :: \<open>act \<Rightarrow> 'h \<times> 'h comm \<Rightarrow> 'h \<times> 'h comm \<Rightarrow> bool\<close> where
+inductive opsem :: \<open>'h act \<Rightarrow> 'h \<times> 'h comm \<Rightarrow> 'h \<times> 'h comm \<Rightarrow> bool\<close> where
   SeqL: \<open>opsem a (h,s) (h',s) \<Longrightarrow> opsem a (h, s ;; t) (h', s' ;; t)\<close>
-| SeqR: \<open>opsem ReduceSeq (h, Skip ;; t) (h, t)\<close>
-| NdetL: \<open>opsem ReduceNdetLeft (h, s \<^bold>+ t) (h, s)\<close>
-| NdetR: \<open>opsem ReduceNdetRight (h, s \<^bold>+ t) (h, t)\<close>
+| SeqR: \<open>opsem Tau (h, Skip ;; t) (h, t)\<close>
+| NdetL: \<open>opsem Tau (h, s \<^bold>+ t) (h, s)\<close>
+| NdetR: \<open>opsem Tau (h, s \<^bold>+ t) (h, t)\<close>
 | ParStepL: \<open>opsem a (h, s) (h', s') \<Longrightarrow> opsem a (h, s \<parallel> t) (h', s' \<parallel> t)\<close>
 | ParStepR: \<open>opsem a (h, t) (h', t') \<Longrightarrow> opsem a (h, s \<parallel> t) (h', s \<parallel> t')\<close>
-| ParL: \<open>opsem ReduceParLeft (h, Skip \<parallel> t) (h, t)\<close>
-| ParR: \<open>opsem ReduceParRight (h, s \<parallel> Skip) (h, s)\<close>
-| IterStep: \<open>opsem ActIterStep (h, s\<^sup>\<star>) (h', s ;; s\<^sup>\<star>)\<close>
-| AssertTrue: \<open>p h \<Longrightarrow> opsem ActAssert (h, Assert p) (h, Skip)\<close>
-| AssertFalse: \<open>\<not> p h \<Longrightarrow> opsem ActAssert (h, Assume p) (h, Abort)\<close>
-| AssumeTrue: \<open>p h \<Longrightarrow> opsem ActAssume (h, Assume p) (h, Skip)\<close>
-| AssumeFalse: \<open>\<not> p h \<Longrightarrow> opsem ActAssume (h, Assert p) (h, c)\<close>
+| ParL: \<open>opsem Tau (h, Skip \<parallel> t) (h, t)\<close>
+| ParR: \<open>opsem Tau (h, s \<parallel> Skip) (h, s)\<close>
+| IterStep: \<open>opsem Tau (h, s\<^sup>\<star>) (h', s ;; s\<^sup>\<star>)\<close>
+| BasicStep: \<open>c h h' \<Longrightarrow> opsem Tau (h, Basic c) (h', Skip)\<close>
+| BasicFail: \<open>\<forall>h'. \<not> c h h' \<Longrightarrow> opsem Tau (h, Basic c) (h, Abort)\<close>
+| EnvStep: \<open>r h h' \<Longrightarrow> opsem (Env r) (h, t) (h', t)\<close>
 
-abbreviation pretty_opsem :: \<open>_ \<Rightarrow> _ \<Rightarrow> _ \<Rightarrow> _\<close> (\<open>_ \<midarrow>(_)\<rightarrow> _\<close>) where
+definition \<open>passert p \<equiv> \<lambda>a b. p a\<close>
+definition \<open>passume p \<equiv> \<lambda>a b. p b\<close> 
+
+abbreviation \<open>Assert p \<equiv> Basic (passert p)\<close>
+abbreviation \<open>Assume p \<equiv> Basic (passume p)\<close>
+
+abbreviation(input) pretty_opsem :: \<open>_ \<Rightarrow> _ \<Rightarrow> _ \<Rightarrow> _\<close> (\<open>_ \<midarrow>(_)\<rightarrow> _\<close> [60,0,60] 60) where
   \<open>hs \<midarrow>a\<rightarrow> ht \<equiv> opsem a hs ht\<close>
+
+(* TODO: infinite behaviour *)
+inductive rtrans_opsem :: \<open>'h act list \<Rightarrow> 'h \<times> 'h comm \<Rightarrow> 'h \<times> 'h comm \<Rightarrow> bool\<close> where
+  ISemStep:
+  \<open>opsem a (h, s) (h', s) \<Longrightarrow>
+    rtrans_opsem as (h', s') (h'', s'') \<Longrightarrow> 
+    rtrans_opsem (a # as) (h, s) (h'', s'')\<close>
+| ISemEnd: \<open>rtrans_opsem [] (h, s) (h, s)\<close>
+
+abbreviation(input) pretty_rtrans_opsem :: \<open>_ \<Rightarrow> _ \<Rightarrow> _ \<Rightarrow> _\<close> (\<open>_ \<midarrow>(_)\<rightarrow>\<^sup>\<star> _\<close> [60,0,60] 60) where
+  \<open>hs \<midarrow>as\<rightarrow>\<^sup>\<star> ht \<equiv> rtrans_opsem as hs ht\<close>
+
+definition erasing_rtrans_opsem
+  :: \<open>'h \<times> 'h comm \<Rightarrow> 'h \<times> 'h comm \<Rightarrow> bool\<close> (\<open>_ \<longlongrightarrow>\<^sup>\<star> _\<close> [60,60] 60) 
+  where
+  \<open>erasing_rtrans_opsem hs ht \<equiv> \<exists>as. rtrans_opsem as hs ht\<close>
+
+lemma eventually_skip_or_abort:
+  \<open>\<exists>h' s'. (h, s) \<longlongrightarrow>\<^sup>\<star> (h', s') \<and> (s' = Skip \<or> s' = Abort)\<close>
+
+  oops
 
 inductive rgsat
   :: \<open>'h comm \<Rightarrow> ('h \<Rightarrow> 'h \<Rightarrow> bool) \<Rightarrow> ('h \<Rightarrow> 'h \<Rightarrow> bool) \<Rightarrow> ('h \<Rightarrow> bool) \<Rightarrow> ('h \<Rightarrow> bool) \<Rightarrow> bool\<close>
@@ -62,8 +70,12 @@ inductive rgsat
     rgsat s2 (r \<squnion> g1) g2 p2 q2 \<Longrightarrow>
     rgsat (s1 \<parallel> s2) r (g1 \<squnion> g2) (p1 \<sqinter> p2) (q1 \<sqinter> q2)\<close>
 | rg_basic:
-  \<open>passert p \<sqinter> basic_rel c \<le> passume q \<Longrightarrow>
-    passert p \<sqinter> basic_rel c \<le> g \<Longrightarrow>
+  \<open>passert p \<sqinter> c \<le> passume q \<Longrightarrow>
+    passert p \<sqinter> c \<le> g \<Longrightarrow>
     rgsat (Basic c) r g (\<lfloor> p \<rfloor>\<^bsub>r\<^esub>) (\<lceil> q \<rceil>\<^bsub>r\<^esub>)\<close>
+
+
+lemma soundness:
+  \<open>(h, s) \<midarrow>a\<rightarrow> ht\<close>
 
 end
