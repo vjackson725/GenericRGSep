@@ -6,15 +6,6 @@ thm less_induct
 
 section \<open>Predicate Logic\<close>
 
-definition pred_false :: \<open>'a \<Rightarrow> bool\<close> (\<open>\<^bold>F\<close>) where
-  \<open>\<^bold>F \<equiv> \<lambda>x. False\<close>
-
-definition pred_true :: \<open>'a \<Rightarrow> bool\<close> (\<open>\<^bold>T\<close>) where
-  \<open>\<^bold>T \<equiv> \<lambda>x. True\<close>
-
-definition pred_impl :: \<open>('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool)\<close> (infixr \<open>\<^bold>\<longrightarrow>\<close> 82) where
-  \<open>p \<^bold>\<longrightarrow> q \<equiv> \<lambda>x. p x \<longrightarrow> q x\<close>
-
 lemma pred_conj_simp:
   \<open>(p \<sqinter> q) x \<longleftrightarrow> p x \<and> q x\<close>
   by (simp add:)
@@ -241,6 +232,169 @@ lemma sepdomsubseteq_disjointD:
   \<open>sepdomsubseteq a b \<Longrightarrow> a ## c \<Longrightarrow> b ## c\<close>
   by (simp add: sepdomsubseteq_def)
 
+subsection \<open> Seplogic connectives \<close>
+
+definition sepconj :: \<open>('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool)\<close> (infixl \<open>\<^emph>\<close> 88) where
+  \<open>P \<^emph> Q \<equiv> \<lambda>h. \<exists>h1 h2. h1 ## h2 \<and> h = h1 + h2 \<and> P h1 \<and> Q h2\<close>
+
+definition sepimp :: \<open>('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool)\<close> (infixr \<open>\<midarrow>\<^emph>\<close> 65) where
+  \<open>P \<midarrow>\<^emph> Q \<equiv> \<lambda>h. \<forall>h1. h ## h1 \<longrightarrow> P h1 \<longrightarrow> Q (h + h1)\<close>
+
+definition sepcoimp :: \<open>('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool)\<close> (infixr \<open>\<sim>\<^emph>\<close> 65) where
+  \<open>P \<sim>\<^emph> Q \<equiv> \<lambda>h. \<forall>h1 h2. h1 ## h2 \<longrightarrow> h = h1 + h2 \<longrightarrow> P h1 \<longrightarrow> Q h2\<close>
+
+definition septract :: \<open>('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool)\<close> (infixr \<open>\<midarrow>\<odot>\<close> 67) where
+  \<open>P \<midarrow>\<odot> Q \<equiv> \<lambda>h. \<exists>h1. h ## h1 \<and> P h1 \<and> Q (h + h1)\<close>
+
+definition septract_rev :: \<open>('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool)\<close> (infixr \<open>\<odot>\<midarrow>\<close> 67) where
+  \<open>P \<odot>\<midarrow> Q \<equiv> \<lambda>h. \<exists>h'. h ## h' \<and> P (h + h') \<and> Q h'\<close>
+
+definition subheapexist :: \<open>('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool)\<close> where
+  \<open>subheapexist P \<equiv> \<lambda>h. \<exists>h1. h1 \<le> h \<and> P h1\<close>
+
+subsection \<open> Seplogic connective properties \<close>
+
+lemma septract_reverse: \<open>P \<midarrow>\<odot> Q = Q \<odot>\<midarrow> P\<close>
+  by (force simp add: septract_def septract_rev_def)
+
+lemma sepconj_assoc: \<open>(P \<^emph> Q) \<^emph> R = P \<^emph> (Q \<^emph> R)\<close>
+  apply (clarsimp simp add: sepconj_def ex_simps[symmetric] partial_add_assoc simp del: ex_simps)
+  apply (intro ext iffI)
+   apply (metis disjoint_add_leftR disjoint_add_right_commute disjoint_symm partial_add_assoc
+      partial_add_commute)+
+  done
+
+lemma sepconj_comm: \<open>P \<^emph> Q = Q \<^emph> P\<close>
+  unfolding sepconj_def
+  by (metis disjoint_symm partial_add_commute)
+
+lemma sepconj_left_comm: \<open>Q \<^emph> (P \<^emph> R) = P \<^emph> (Q \<^emph> R)\<close>
+  apply (clarsimp simp add: sepconj_def ex_simps[symmetric] partial_add_assoc simp del: ex_simps)
+  apply (rule ext)
+  apply (metis disjoint_add_rightR disjoint_add_rightL disjoint_add_right_commute
+      partial_add_left_commute)
+  done
+
+lemmas sepconj_ac = sepconj_assoc sepconj_comm sepconj_left_comm
+
+(*
+
+\<^emph>   < ~ >  \<midarrow>\<^emph>
+|           X
+\<sim>\<^emph>  < ~ > \<midarrow>\<odot>
+
+*)
+
+
+lemma septract_sepimp_dual: \<open>P \<midarrow>\<odot> Q = -(P \<midarrow>\<^emph> (-Q))\<close>
+  unfolding septract_def sepimp_def
+  by force
+
+lemma sepimp_sepcoimp_dual: \<open>P \<sim>\<^emph> Q = -(P \<^emph> (-Q))\<close>
+  unfolding sepconj_def sepcoimp_def
+  by force
+
+lemma sepconj_sepimp_galois: \<open>P \<^emph> Q \<le> R \<longleftrightarrow> P \<le> Q \<midarrow>\<^emph> R\<close>
+  using sepconj_def sepimp_def by fastforce
+
+lemma sepcoimp_septract_galois: \<open>P \<odot>\<midarrow> Q \<le> R \<longleftrightarrow> P \<le> Q \<sim>\<^emph> R\<close>
+  unfolding sepcoimp_def septract_rev_def le_fun_def
+  using disjoint_symm partial_add_commute by fastforce
+
+lemma sepcoimp_curry: \<open>P \<sim>\<^emph> Q \<sim>\<^emph> R = P \<^emph> Q \<sim>\<^emph> R\<close>
+  apply (clarsimp simp add: sepcoimp_def sepconj_def)
+  apply (intro ext iffI; clarsimp)
+   apply (metis disjoint_add_leftR disjoint_add_right_commute disjoint_symm partial_add_assoc
+      partial_add_commute)+
+  done
+
+lemma sepconj_left_mono:
+  \<open>P \<le> Q \<Longrightarrow> P \<^emph> R \<le> Q \<^emph> R\<close>
+  using sepconj_def by auto
+
+lemma sepconj_right_mono:
+  \<open>Q \<le> R \<Longrightarrow> P \<^emph> Q \<le> P \<^emph> R\<close>
+  using sepconj_def by auto
+
+lemma sepconj_comm_imp:
+  \<open>P \<^emph> Q \<le> Q \<^emph> P\<close>
+  by (simp add: sepconj_comm)
+lemma sepimp_sepconjL:
+  \<open>P \<^emph> Q \<midarrow>\<^emph> R = P \<midarrow>\<^emph> Q \<midarrow>\<^emph> R\<close>
+  apply (clarsimp simp add: sepconj_def sepimp_def fun_eq_iff)
+  apply (rule iffI)
+   apply (metis disjoint_add_rightR disjoint_add_right_commute disjoint_symm partial_add_assoc
+      partial_add_commute)+
+  done
+
+lemma sepimp_conjR:
+  \<open>P \<midarrow>\<^emph> Q \<sqinter> R = (P \<midarrow>\<^emph> Q) \<sqinter> (P \<midarrow>\<^emph> R)\<close>
+  by (force simp add: sepimp_def fun_eq_iff)
+
+section \<open> Precision \<close>
+
+definition precise :: \<open>('a \<Rightarrow> bool) \<Rightarrow> bool\<close> where
+  \<open>precise P \<equiv> \<forall>h1 h1' h2 h2'.
+                  P h1 \<longrightarrow> P h2 \<longrightarrow> h1 ## h1' \<longrightarrow> h2 ## h2' \<longrightarrow> h1 + h1' = h2 + h2' \<longrightarrow>
+                  h1 = h2\<close>
+
+definition intuitionistic :: \<open>('a \<Rightarrow> bool) \<Rightarrow> bool\<close> where
+  \<open>intuitionistic P \<equiv> \<forall>h h'. P h \<and> h \<le> h' \<longrightarrow> P h'\<close>
+
+
+lemma strong_sepcoimp_imp_sepconj:
+  \<open>(P \<^emph> \<top>) \<sqinter> (P \<sim>\<^emph> Q) \<le> P \<^emph> Q\<close>
+  by (force simp add: sepconj_def sepcoimp_def precise_def le_fun_def)
+
+lemma sepconj_pdisj_distrib_left: \<open>P \<^emph> (Q1 \<squnion> Q2) = P \<^emph> Q1 \<squnion> P \<^emph> Q2\<close>
+  by (force simp add: sepconj_def)
+
+lemma sepcoimp_pconj_distrib_left:
+  \<open>P \<sim>\<^emph> (Q \<sqinter> Q') = (P \<sim>\<^emph> Q) \<sqinter> (P \<sim>\<^emph> Q')\<close>
+  by (force simp add: sepcoimp_def)
+
+lemma sepconj_distrib_conj_iff_sepconj_eq_strong_sepcoimp:
+  shows \<open>(\<forall>Q Q'. P \<^emph> (Q \<sqinter> Q') = (P \<^emph> Q) \<sqinter> (P \<^emph> Q')) \<longleftrightarrow> (\<forall>Q. P \<^emph> Q = (P \<^emph> \<top>) \<sqinter> (P \<sim>\<^emph> Q))\<close>
+  apply (clarsimp simp add: sepconj_def sepcoimp_def precise_def le_fun_def)
+  apply (intro iffI)
+  subgoal
+    apply (rule allI)
+    apply (rule ext)
+    apply (rule iffI)
+     apply simp
+     apply (rule conjI)
+      apply blast
+     apply clarsimp
+     apply (drule_tac x=\<open>Q\<close> in spec)
+     apply (drule_tac x=\<open>(=) h2a\<close> in spec)
+     apply (drule_tac x=\<open>h1a + h2a\<close> in cong[OF _ refl])
+     apply fastforce
+    apply fastforce
+    done
+  apply (simp add: fun_eq_iff, blast)
+  done
+
+
+lemma sepconj_distrib_conj_imp_sepconj_eq_strong_sepcoimp:
+  assumes \<open>\<forall>Q Q'. P \<^emph> (Q \<sqinter> Q') = (P \<^emph> Q) \<sqinter> (P \<^emph> Q')\<close>
+  shows \<open>P \<^emph> Q = (P \<^emph> \<top>) \<sqinter> (P \<sim>\<^emph> Q)\<close>
+  using assms sepconj_distrib_conj_iff_sepconj_eq_strong_sepcoimp
+  by blast
+
+lemma sepconj_middle_monotone_left: \<open>A1 \<^emph> A2 \<le> B \<Longrightarrow> A1 \<^emph> C \<^emph> A2 \<le> C \<^emph> B\<close>
+  by (metis sepconj_assoc sepconj_comm sepconj_left_mono)
+
+lemma sepconj_middle_monotone_right: \<open>A \<le> B1 \<^emph> B2 \<Longrightarrow> C \<^emph> A \<le> B1 \<^emph> C \<^emph> B2\<close>
+  by (metis sepconj_assoc sepconj_comm sepconj_left_mono)
+
+
+definition supported :: \<open>('a \<Rightarrow> bool) \<Rightarrow> bool\<close> where
+  \<open>supported P \<equiv> \<forall>s. P s \<longrightarrow> (\<exists>hp. P hp \<and> hp \<le> s \<and> (\<forall>s'. hp \<le> s' \<longrightarrow> s' \<le> s \<longrightarrow> P s'))\<close>
+
+lemma precise_to_supported:
+  \<open>precise P \<Longrightarrow> supported (P \<^emph> \<top>)\<close>
+  by (metis order.eq_iff supported_def)
+
 end
 
 subsection \<open> Separation Algebras \<close>
@@ -299,26 +453,6 @@ subsection \<open>Misc\<close>
 lemma sep_add_0_right[simp]: "a + 0 = a"
   by (metis zero_disjointR partial_add_0 partial_add_commute)
 
-subsection \<open> Seplogic connectives \<close>
-
-definition sepconj :: \<open>('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool)\<close> (infixl \<open>\<^emph>\<close> 88) where
-  \<open>P \<^emph> Q \<equiv> \<lambda>h. \<exists>h1 h2. h1 ## h2 \<and> h = h1 + h2 \<and> P h1 \<and> Q h2\<close>
-
-definition sepimp :: \<open>('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool)\<close> (infixr \<open>\<midarrow>\<^emph>\<close> 85) where
-  \<open>P \<midarrow>\<^emph> Q \<equiv> \<lambda>h. \<forall>h1. h ## h1 \<longrightarrow> P h1 \<longrightarrow> Q (h + h1)\<close>
-
-definition sepcoimp :: \<open>('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool)\<close> (infixr \<open>\<sim>\<^emph>\<close> 85) where
-  \<open>P \<sim>\<^emph> Q \<equiv> \<lambda>h. \<forall>h1 h2. h1 ## h2 \<longrightarrow> h = h1 + h2 \<longrightarrow> P h1 \<longrightarrow> Q h2\<close>
-
-definition septract :: \<open>('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool)\<close> (infixr \<open>\<midarrow>\<odot>\<close> 86) where
-  \<open>P \<midarrow>\<odot> Q \<equiv> \<lambda>h. \<exists>h1. h ## h1 \<and> P h1 \<and> Q (h + h1)\<close>
-
-definition septract_rev :: \<open>('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool)\<close> (infixr \<open>\<odot>\<midarrow>\<close> 86) where
-  \<open>P \<odot>\<midarrow> Q \<equiv> \<lambda>h. \<exists>h'. h ## h' \<and> P (h + h') \<and> Q h'\<close>
-
-lemma septract_reverse: \<open>P \<midarrow>\<odot> Q = Q \<odot>\<midarrow> P\<close>
-  by (force simp add: septract_def septract_rev_def)
-
 definition sepconj_mfault ::
   \<open>('a \<Rightarrow> bool) mfault \<Rightarrow> ('a \<Rightarrow> bool) mfault \<Rightarrow> ('a \<Rightarrow> bool) mfault\<close> (infixl \<open>\<^emph>\<^sub>f\<close> 88)
   where
@@ -331,9 +465,6 @@ definition sepconj_mfault ::
         | Success Q \<Rightarrow> Success (\<lambda>h. \<exists>h1 h2. h1 ## h2 \<and> h = h1 + h2 \<and> P h1 \<and> Q h2))\<close>
 
 
-definition subheapexist :: \<open>('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool)\<close> where
-  \<open>subheapexist P \<equiv> \<lambda>h. \<exists>h1. h1 \<le> h \<and> P h1\<close>
-
 definition emp :: \<open>'a \<Rightarrow> bool\<close> where
   \<open>emp \<equiv> (\<lambda>h. h = 0)\<close>
 
@@ -344,153 +475,22 @@ fun iterated_sepconj :: \<open>('a \<Rightarrow> bool) list \<Rightarrow> ('a \<
   \<open>iterated_sepconj (P # Ps) = P \<^emph> iterated_sepconj Ps\<close>
 | \<open>iterated_sepconj [] = emp\<close>
 
-
-
-lemma sepconj_assoc: \<open>(P \<^emph> Q) \<^emph> R = P \<^emph> (Q \<^emph> R)\<close>
-  apply (clarsimp simp add: sepconj_def ex_simps[symmetric] partial_add_assoc simp del: ex_simps)
-  apply (intro ext iffI)
-   apply (metis disjoint_add_leftR disjoint_add_right_commute disjoint_symm partial_add_assoc
-      partial_add_commute)+
-  done
-
-lemma sepconj_comm: \<open>P \<^emph> Q = Q \<^emph> P\<close>
-  unfolding sepconj_def
-  by (metis disjoint_symm partial_add_commute)
-
-lemma sepconj_left_comm: \<open>Q \<^emph> (P \<^emph> R) = P \<^emph> (Q \<^emph> R)\<close>
-  apply (clarsimp simp add: sepconj_def ex_simps[symmetric] partial_add_assoc simp del: ex_simps)
-  apply (rule ext)
-  apply (metis disjoint_add_rightR disjoint_add_rightL disjoint_add_right_commute
-      partial_add_left_commute)
-  done
-
-lemmas sepconj_ac = sepconj_assoc sepconj_comm sepconj_left_comm
-
-(*
-
-\<^emph>   < ~ >  \<midarrow>\<^emph>
-|           X
-\<sim>\<^emph>  < ~ > \<midarrow>\<odot>
-
-*)
-
-
-lemma septract_sepimp_dual: \<open>P \<midarrow>\<odot> Q = -(P \<midarrow>\<^emph> (-Q))\<close>
-  unfolding septract_def sepimp_def
-  by force
-
-lemma sepimp_sepcoimp_dual: \<open>P \<sim>\<^emph> Q = -(P \<^emph> (-Q))\<close>
-  unfolding sepconj_def sepcoimp_def
-  by force
-
-lemma sepconj_sepimp_galois: \<open>P \<^emph> Q \<le> R \<longleftrightarrow> P \<le> Q \<midarrow>\<^emph> R\<close>
-  using sepconj_def sepimp_def by fastforce
-
-lemma sepcoimp_septract_galois: \<open>P \<odot>\<midarrow> Q \<le> R \<longleftrightarrow> P \<le> Q \<sim>\<^emph> R\<close>
-  unfolding sepcoimp_def septract_rev_def le_fun_def
-  using disjoint_symm partial_add_commute by fastforce
-
 lemma emp_sepconj_unit[simp]: \<open>emp \<^emph> P = P\<close>
   by (simp add: emp_def sepconj_def)
 
 lemma emp_sepconj_unit_right[simp]: \<open>P \<^emph> emp = P\<close>
   by (simp add: emp_def sepconj_def)
 
-lemma sepcoimp_curry: \<open>P \<sim>\<^emph> Q \<sim>\<^emph> R = P \<^emph> Q \<sim>\<^emph> R\<close>
-  apply (clarsimp simp add: sepcoimp_def sepconj_def)
-  apply (intro ext iffI; clarsimp)
-   apply (metis disjoint_add_leftR disjoint_add_right_commute disjoint_symm partial_add_assoc
-      partial_add_commute)+
-  done
-
-lemma sepconj_left_mono:
-  \<open>P \<le> Q \<Longrightarrow> P \<^emph> R \<le> Q \<^emph> R\<close>
-  using sepconj_def by auto
-
-lemma sepconj_right_mono:
-  \<open>Q \<le> R \<Longrightarrow> P \<^emph> Q \<le> P \<^emph> R\<close>
-  using sepconj_def by auto
-
-lemma sepconj_comm_imp:
-  \<open>P \<^emph> Q \<le> Q \<^emph> P\<close>
-  by (simp add: sepconj_comm)
-
-
-definition precise :: \<open>('a \<Rightarrow> bool) \<Rightarrow> bool\<close> where
-  \<open>precise P \<equiv> \<forall>h. \<forall>h1\<le>h. P h1 \<longrightarrow> (\<forall>h2\<le>h. P h2 \<longrightarrow> h1 = h2)\<close>
-
-definition precise' :: \<open>('a \<Rightarrow> bool) \<Rightarrow> bool\<close> where
-  \<open>precise' P \<equiv> \<forall>h1. P h1 \<longrightarrow> (\<forall>h2. P h2 \<longrightarrow>
-                    (\<exists>h1' h2'. h1 ## h1' \<and> h2 ## h2' \<and> h1 + h1' = h2 + h2') \<longrightarrow> h1 = h2)\<close>
-
-definition intuitionistic :: \<open>('a \<Rightarrow> bool) \<Rightarrow> bool\<close> where
-  \<open>intuitionistic P \<equiv> \<forall>h h'. P h \<and> h \<le> h' \<longrightarrow> P h'\<close>
-
-
-lemma strong_sepcoimp_imp_sepconj:
-  \<open>(P \<^emph> \<^bold>T) \<sqinter> (P \<sim>\<^emph> Q) \<le> P \<^emph> Q\<close>
-  by (force simp add: sepconj_def sepcoimp_def precise_def le_fun_def pred_true_def)
-
 lemma secoimp_imp_sepconj:
   \<open>P \<sqinter> (P \<sim>\<^emph> Q) \<le> P \<^emph> (Q \<sqinter> emp)\<close>
   unfolding sepcoimp_def sepconj_def le_fun_def le_bool_def emp_def
   by force
 
-lemma sepconj_pdisj_distrib_left: \<open>P \<^emph> (Q1 \<squnion> Q2) = P \<^emph> Q1 \<squnion> P \<^emph> Q2\<close>
-  by (force simp add: sepconj_def)
-
-lemma sepcoimp_pconj_distrib_left:
-  \<open>P \<sim>\<^emph> (Q \<sqinter> Q') = (P \<sim>\<^emph> Q) \<sqinter> (P \<sim>\<^emph> Q')\<close>
-  by (force simp add: sepcoimp_def)
-
 lemma not_coimp_emp:
-  \<open>h \<noteq> 0 \<Longrightarrow> (- (\<^bold>T \<sim>\<^emph> emp)) h\<close>
-  apply (clarsimp simp add: pred_true_def sepcoimp_def emp_def)
+  \<open>h \<noteq> 0 \<Longrightarrow> (- (\<top> \<sim>\<^emph> emp)) h\<close>
+  apply (clarsimp simp add: sepcoimp_def emp_def)
   apply (rule_tac x=0 in exI, force)
   done
-
-lemma sepconj_distrib_conj_iff_sepconj_eq_strong_sepcoimp:
-  shows \<open>(\<forall>Q Q'. P \<^emph> (Q \<sqinter> Q') = (P \<^emph> Q) \<sqinter> (P \<^emph> Q')) \<longleftrightarrow> (\<forall>Q. P \<^emph> Q = (P \<^emph> \<^bold>T) \<sqinter> (P \<sim>\<^emph> Q))\<close>
-  apply (clarsimp simp add: sepconj_def sepcoimp_def precise_def le_fun_def pred_true_def)
-  apply (intro iffI)
-  subgoal
-    apply (rule allI)
-    apply (rule ext)
-    apply (rule iffI)
-     apply simp
-     apply (rule conjI)
-      apply blast
-     apply clarsimp
-     apply (drule_tac x=\<open>Q\<close> in spec)
-     apply (drule_tac x=\<open>(=) h2a\<close> in spec)
-     apply (drule_tac x=\<open>h1a + h2a\<close> in cong[OF _ refl])
-     apply fastforce
-    apply fastforce
-    done
-  apply (simp add: fun_eq_iff, blast)
-  done
-
-
-lemma sepconj_distrib_conj_imp_sepconj_eq_strong_sepcoimp:
-  assumes \<open>\<forall>Q Q'. P \<^emph> (Q \<sqinter> Q') = (P \<^emph> Q) \<sqinter> (P \<^emph> Q')\<close>
-  shows \<open>P \<^emph> Q = (P \<^emph> \<^bold>T) \<sqinter> (P \<sim>\<^emph> Q)\<close>
-  using assms sepconj_distrib_conj_iff_sepconj_eq_strong_sepcoimp
-  by blast
-
-lemma sepconj_middle_monotone_left: \<open>A1 \<^emph> A2 \<le> B \<Longrightarrow> A1 \<^emph> C \<^emph> A2 \<le> C \<^emph> B\<close>
-  by (metis sepconj_assoc sepconj_comm sepconj_left_mono)
-
-lemma sepconj_middle_monotone_right: \<open>A \<le> B1 \<^emph> B2 \<Longrightarrow> C \<^emph> A \<le> B1 \<^emph> C \<^emph> B2\<close>
-  by (metis sepconj_assoc sepconj_comm sepconj_left_mono)
-
-
-definition supported :: \<open>('a \<Rightarrow> bool) \<Rightarrow> bool\<close> where
-  \<open>supported P \<equiv> \<forall>s. P s \<longrightarrow> (\<exists>hp. P hp \<and> hp \<le> s \<and> (\<forall>s'. hp \<le> s' \<longrightarrow> s' \<le> s \<longrightarrow> P s'))\<close>
-
-lemma precise_to_supported:
-  \<open>precise P \<Longrightarrow> supported (P \<^emph> \<^bold>T)\<close>
-  by (metis order.eq_iff supported_def)
-
 
 lemma le_iff_sepadd:
   \<open>a \<le> b \<longleftrightarrow> (\<exists>c. b = a + c)\<close>
@@ -499,8 +499,8 @@ lemma le_iff_sepadd:
 
 lemma precise_to_intuitionistic:
   fixes P :: \<open>'a \<Rightarrow> bool\<close>
-  shows \<open>precise' P \<Longrightarrow> intuitionistic (P \<^emph> \<^bold>T)\<close>
-  apply (simp add: sepconj_def pred_true_def precise'_def intuitionistic_def)
+  shows \<open>precise P \<Longrightarrow> intuitionistic (P \<^emph> \<top>)\<close>
+  apply (simp add: sepconj_def precise_def intuitionistic_def)
   apply clarsimp
   oops
 
@@ -508,7 +508,6 @@ lemma supported_intuitionistic_to_precise:
   \<open>supported P \<Longrightarrow> intuitionistic P \<Longrightarrow> precise (P \<sqinter> - (P \<^emph> (-emp)))\<close>
   nitpick[card=4]
   oops
-  (* not actualy true *)
 
 end
 
@@ -543,7 +542,7 @@ class crosssplit_sep_alg = sep_alg + crosssplit_perm_alg
 
 section \<open>Right Cancellative Separation Logic\<close>
 
-class right_cancel_perm_alg = perm_alg +
+class cancel_perm_alg = perm_alg +
   assumes partial_right_cancel: \<open>\<And>a b c. a ## c \<Longrightarrow> b ## c \<Longrightarrow> (a + c = b + c) = (a = b)\<close>
 begin
 
@@ -561,26 +560,19 @@ lemma partial_left_cancel2:
   using partial_left_cancel disjoint_symm
   by force
 
-end
-
-class right_cancel_sep_alg = right_cancel_perm_alg + sep_alg
-begin
-
-lemma weak_emp:
-  \<open>a ## a \<and> a + a = a \<longleftrightarrow> a = 0\<close>
-  by (metis sep_add_0_right zero_disjointR partial_left_cancel2)
-
-lemma strong_positivity:
-  \<open>a ## b \<Longrightarrow> c ## c \<Longrightarrow> a + b = c \<Longrightarrow> c + c = c \<Longrightarrow> a = b \<and> b = c\<close>
-  using weak_emp by force
+lemmas partial_right_cancelD = iffD1[OF partial_right_cancel, rotated 2]
+lemmas partial_right_cancel2D = iffD1[OF partial_right_cancel2, rotated 2]
+lemmas partial_left_cancelD = iffD1[OF partial_left_cancel, rotated 2]
+lemmas partial_left_cancel2D = iffD1[OF partial_left_cancel2, rotated 2]
 
 
 lemma precise_iff_conj_distrib:
-  shows \<open>precise' P \<longleftrightarrow> (\<forall>Q Q'. P \<^emph> (Q \<sqinter> Q') = (P \<^emph> Q) \<sqinter> (P \<^emph> Q'))\<close>
+  fixes P :: \<open>'a \<Rightarrow> bool\<close>
+  shows \<open>precise P \<longleftrightarrow> (\<forall>Q Q'. P \<^emph> (Q \<sqinter> Q') = (P \<^emph> Q) \<sqinter> (P \<^emph> Q'))\<close>
 proof (rule iffI)
   assume distrib_assm: \<open>\<forall>Q Q'. P \<^emph> (Q \<sqinter> Q') = (P \<^emph> Q) \<sqinter> (P \<^emph> Q')\<close>
-  show \<open>precise' P\<close>
-  proof (clarsimp simp add: precise'_def)
+  show \<open>precise P\<close>
+  proof (clarsimp simp add: precise_def)
     fix h1 h1' h2 h2'
     assume precise_assms:
       \<open>h1 + h1' = h2 + h2'\<close>
@@ -591,40 +583,53 @@ proof (rule iffI)
 
     have \<open>(P \<^emph> ((=) h1')) (h2+h2')\<close>
       using precise_assms partial_add_commute disjoint_symm sepconj_def
-      by auto
+      by (metis (mono_tags, lifting) perm_alg_class.sepconj_def)
     moreover have \<open>(P \<^emph> ((=) h2')) (h2+h2')\<close>
       using precise_assms partial_add_commute disjoint_symm sepconj_def
-      by auto
+      by (metis (mono_tags, lifting) perm_alg_class.sepconj_def)
     ultimately have \<open>(P \<^emph> ((=) h1' \<sqinter> (=) h2')) (h2+h2')\<close>
       using distrib_assm precise_assms
       by simp
     then show \<open>h1 = h2\<close>
-      using precise_assms disjoint_symm partial_right_cancel
-      unfolding sepconj_def
-      by fastforce
+      using precise_assms disjoint_symm
+      by (force dest: partial_right_cancelD simp add: sepconj_def)
   qed
 next
-  assume precise_assm: \<open>precise' P\<close>
+  assume precise_assm: \<open>precise P\<close>
   then show \<open>\<forall>Q Q'. P \<^emph> (Q \<sqinter> Q') = (P \<^emph> Q) \<sqinter> (P \<^emph> Q')\<close>
-    by (simp add: sepconj_def precise'_def fun_eq_iff, blast dest: partial_left_cancel2)
+    by (simp add: sepconj_def precise_def fun_eq_iff, blast dest: partial_left_cancel2)
 qed
 
 lemma precise_iff_all_sepconj_imp_sepcoimp:
-  shows \<open>precise' P \<longleftrightarrow> (\<forall>Q. P \<^emph> Q \<le> P \<sim>\<^emph> Q)\<close>
-  apply (clarsimp simp add: sepconj_def sepcoimp_def precise'_def le_fun_def)
+  shows \<open>precise P \<longleftrightarrow> (\<forall>Q. P \<^emph> Q \<le> P \<sim>\<^emph> Q)\<close>
+  apply (clarsimp simp add: sepconj_def sepcoimp_def precise_def le_fun_def)
   apply (rule iffI)
    apply (metis partial_left_cancel2)
   apply (metis le_less order.irrefl partial_right_cancel)
   done
 
 lemma precise_sepconj_eq_strong_sepcoimp:
-  shows \<open>precise' P \<Longrightarrow> P \<^emph> Q = (P \<^emph> \<^bold>T) \<sqinter> (P \<sim>\<^emph> Q)\<close>
-  apply (clarsimp simp add: sepconj_def sepcoimp_def precise'_def le_fun_def pred_true_def)
+  shows \<open>precise P \<Longrightarrow> P \<^emph> Q = (P \<^emph> \<top>) \<sqinter> (P \<sim>\<^emph> Q)\<close>
+  apply (clarsimp simp add: sepconj_def sepcoimp_def precise_def le_fun_def)
   apply (rule ext)
   apply (rule iffI)
   apply (blast dest: partial_left_cancel2)
   apply blast
   done
+
+end
+
+class cancel_sep_alg = cancel_perm_alg + sep_alg
+begin
+
+lemma weak_emp:
+  \<open>a ## a \<and> a + a = a \<longleftrightarrow> a = 0\<close>
+  by (metis sep_add_0_right zero_disjointR partial_left_cancel2)
+
+lemma strong_positivity:
+  \<open>a ## b \<Longrightarrow> c ## c \<Longrightarrow> a + b = c \<Longrightarrow> c + c = c \<Longrightarrow> a = b \<and> b = c\<close>
+  using weak_emp by force
+
 
 
 lemma \<open>(a \<^emph> \<top>) \<sqinter> (b \<^emph> \<top>) \<le> ((a \<^emph> b) \<squnion> (a \<sqinter> b)) \<^emph> \<top>\<close>
@@ -730,7 +735,7 @@ end
 class disjoint_parts_sep_alg = sep_alg + disjoint_parts_perm_alg
 
 
-class disjoint_halving_cancel_perm_alg = halving_perm_alg + disjoint_perm_alg + right_cancel_perm_alg
+class disjoint_halving_cancel_perm_alg = halving_perm_alg + disjoint_perm_alg + cancel_perm_alg
 begin
 
 subclass disjoint_parts_perm_alg
@@ -806,5 +811,6 @@ instance
   by standard simp+
 
 end
+
 
 end

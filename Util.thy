@@ -547,5 +547,66 @@ instance
   done
 end
 
+section \<open> Extending Lattices \<close>
+
+context lattice
+begin
+
+lemma inf_twist_sup_idem: \<open>a \<sqinter> b \<squnion> b \<sqinter> a = a \<sqinter> b\<close>
+  by (simp add: inf.commute)
+
+lemma inf_twist_sup_idem_assoc: \<open>a \<sqinter> b \<squnion> b \<sqinter> a \<squnion> c = a \<sqinter> b \<squnion> c\<close>
+  by (simp add: inf_twist_sup_idem)
+
+end
+
+context boolean_algebra
+begin
+
+definition implies :: "'a \<Rightarrow> 'a \<Rightarrow> 'a" (infixr "\<leadsto>" 60) where
+  "a \<leadsto> b \<equiv> -a \<squnion> b"
+
+lemma implies_shunt:
+  \<open>c \<sqinter> a \<le> b \<longleftrightarrow> c \<le> a \<leadsto> b\<close>
+  by (simp add: implies_def shunt1)
+
+lemma implies_shunt2:
+  \<open>-(a \<leadsto> b) \<le> c \<longleftrightarrow> a \<le> b \<squnion> c\<close>
+  by (simp add: implies_def shunt2)
+
+lemma implies_simps[simp]:
+  \<open>(a \<leadsto> b) x = (a x \<longrightarrow> b x)\<close>
+  \<open>All (a \<leadsto> b) = (\<forall>x. a x \<longrightarrow> b x)\<close>
+  \<open>Ex (a \<leadsto> b) = (\<exists>x. a x \<longrightarrow> b x)\<close>
+  \<open>\<top> \<leadsto> b = b\<close>
+  \<open>\<bottom> \<leadsto> b = \<top>\<close>
+  \<open>a \<leadsto> \<bottom> = - a\<close>
+  \<open>a \<leadsto> \<top> = \<top>\<close>
+  \<open>a \<leadsto> a = \<top>\<close>
+  by (force simp add: boolean_algebra_class.implies_def)+
+
+definition bequiv :: "'a \<Rightarrow> 'a \<Rightarrow> 'a" (infixr "\<sim>" 60) where
+  "a \<sim> b \<equiv> (a \<leadsto> b) \<sqinter> (b \<leadsto> a)"
+
+lemma bequiv_simps[simp]:
+  \<open>(a \<sim> b) x = (a x = b x)\<close>
+  \<open>All (a \<sim> b) = (\<forall>x. a x = b x)\<close>
+  \<open>Ex (a \<sim> b) = (\<exists>x. a x = b x)\<close>
+  \<open>a \<sim> a = \<top>\<close>
+  \<open>a \<sim> -a = \<bottom>\<close>
+  \<open>-a \<sim> a = \<bottom>\<close>
+  \<open>a \<sim> \<top> = a\<close>
+  \<open>\<top> \<sim> a = a\<close>
+  \<open>a \<sim> \<bottom> = -a\<close>
+  \<open>\<bottom> \<sim> a = -a\<close>
+  by (force simp add: boolean_algebra_class.bequiv_def)+
+
+lemma bequiv_iff: \<open>a \<sim> b = (-a \<squnion> b) \<sqinter> (-b \<squnion> a)\<close>
+  by (simp add: bequiv_def implies_def)
+
+lemma bequiv_iff2: \<open>a \<sim> b = (a \<sqinter> b) \<squnion> (-a \<sqinter> -b)\<close>
+  using bequiv_iff sup.commute sup_inf_distrib2 by force
+
+end
 
 end

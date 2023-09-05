@@ -105,12 +105,11 @@ lemma wsstable_sepconj_semidistrib:
 
 end
 
-
 class stable_sep_alg = halving_sep_alg +
   fixes stableres :: \<open>'a \<Rightarrow> 'a\<close>
-  assumes stableres_concave: \<open>a ## b \<Longrightarrow> stableres a + stableres b \<le> stableres (a + b)\<close>
+  assumes stableres_concave[intro]: \<open>a ## b \<Longrightarrow> stableres a + stableres b \<le> stableres (a + b)\<close>
   assumes stableres_idem[simp]: \<open>stableres (stableres a) = stableres a\<close>
-  assumes stableres_subres: \<open>stableres a \<le> a\<close>
+  assumes stableres_subres[intro!]: \<open>stableres a \<le> a\<close>
 begin
 
 lemma stableres_mono: \<open>a \<le> b \<Longrightarrow> stableres a \<le> stableres b\<close>
@@ -202,6 +201,12 @@ abbreviation swstablerel :: \<open>('a \<Rightarrow> bool) \<Rightarrow> ('a \<R
 abbreviation wsstablerel :: \<open>('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool)\<close> (\<open>\<lceil> _ \<rceil>\<close>) where
   \<open>\<lceil> P \<rceil> \<equiv> \<lceil> P \<rceil>\<^bsub>stablerel\<^esub>\<close>
 
+abbreviation(input) wsstablerel_temporal :: \<open>('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool)\<close> (\<open>\<diamond>\<^sup>- _\<close> [81] 80) where
+  \<open>\<diamond>\<^sup>- P \<equiv> \<lceil> P \<rceil>\<^bsub>stablerel\<^esub>\<close>
+
+abbreviation(input) swstablerel_temporal :: \<open>('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool)\<close> (\<open>\<box> _\<close> [81] 80) where
+  \<open>\<box> P \<equiv> \<lfloor> P \<rfloor>\<^bsub>stablerel\<^esub>\<close>
+
 lemma swstablerel_sepconj_semidistrib:
   fixes P Q :: \<open>'a \<Rightarrow> bool\<close>
   shows \<open>\<lfloor> P \<rfloor> \<^emph> \<lfloor> Q \<rfloor> \<le> \<lfloor> P \<^emph> Q \<rfloor>\<close>
@@ -215,29 +220,20 @@ lemma wsstablerel_sepconj_semidistrib:
 end
 
 
-lemma swstable_necessitation: \<open>\<top> \<le> P \<Longrightarrow> \<top> \<le> \<lfloor> P \<rfloor>\<close>
+lemma swstable_necessitation: \<open>\<top> \<le> P \<Longrightarrow> \<top> \<le> \<box> P\<close>
   by (metis order_eq_refl swstable_wsstable_absorb top.extremum_uniqueI wsstable_stronger)
 
-lemma swstable_necessitation: \<open>\<top> \<le> P \<Longrightarrow> \<top> \<le> \<lfloor> P \<rfloor>\<close>
-  by (metis order_eq_refl swstable_wsstable_absorb top.extremum_uniqueI wsstable_stronger)
-
-lemma swstable_impl_distrib: \<open>\<lfloor> - P \<squnion> Q \<rfloor> \<sqinter> \<lfloor> P \<rfloor> \<le> \<lfloor> Q \<rfloor>\<close>
+lemma swstable_impl_distrib: \<open>\<box>(P \<leadsto> Q) \<sqinter> \<box> P \<le> \<box> Q\<close>
   by (metis (no_types, lifting) double_compl inf.absorb1 inf.orderI inf_idem sup_neg_inf
-      swstable_conj_distrib)
+      swstable_conj_distrib implies_def)
 
-thm wsstable_stronger
-
-lemma wsstabledual_necessitation: \<open>\<top> \<le> P \<Longrightarrow> \<top> \<le> - \<lceil> - P \<rceil>\<close>
+lemma wsstabledual_necessitation: \<open>\<top> \<le> P \<Longrightarrow> \<top> \<le> - (\<diamond>\<^sup>- (- P))\<close>
   by (metis (mono_tags, lifting) double_compl order_antisym predicate1I top_apply uminus_apply
       wsstable_pred_def wsstable_stronger)
 
-lemma wsstabledual_impl_distrib: \<open>\<lceil> - Q \<rceil> \<le> \<lceil> P \<sqinter> - Q \<rceil> \<squnion> \<lceil> - P \<rceil>\<close>
+lemma wsstabledual_impl_distrib: \<open>\<diamond>\<^sup>- Q \<le> \<diamond>\<^sup>-(-P \<sqinter> Q) \<squnion> \<diamond>\<^sup>-(P)\<close>
   by (metis (mono_tags, lifting) boolean_algebra.de_Morgan_disj double_compl inf.absorb1 inf_idem
       shunt1 sup.orderI wsstable_disj_distrib)
-
-lemma \<open>- \<lceil> - P \<rceil> = \<lfloor> P \<rfloor>\<close>
-  apply (simp add: le_fun_def fun_eq_iff wsstable_pred_def swstable_pred_def)
-
 
 instantiation prod :: (stable_sep_alg,stable_sep_alg) stable_sep_alg
 begin
@@ -249,8 +245,13 @@ definition half_prod :: \<open>'a \<times> 'b \<Rightarrow> 'a \<times> 'b\<clos
   \<open>half_prod \<equiv> map_prod half half\<close>
 
 instance
-  apply standard 
-  sorry
+  apply standard
+      apply (simp add: half_prod_def half_additive_split)
+     apply (simp add: half_prod_def half_self_disjoint)
+    apply (simp add: stableres_prod_def stableres_concave)
+   apply (clarsimp simp add: stableres_prod_def)
+  apply (simp add: stableres_prod_def stableres_subres)
+  done
 
 end
 
