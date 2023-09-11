@@ -97,26 +97,30 @@ lemma swstable_wsstable_absorb[simp]: \<open>R \<le> R' \<Longrightarrow> \<lflo
   unfolding wsstable_def swstable_def
   by (metis (opaque_lifting) predicate2D rtranclp.rtrancl_refl rtranclp_trans rtranclp_mono)
 
+paragraph \<open> Preservation of addition over a relation \<close>
 
-context sep_alg
+context perm_alg
 begin
 
+definition
+  \<open>rel_add_preserve r \<equiv>
+    \<forall>a1 a2 b. a1 ## a2 \<longrightarrow> r (a1 + a2) b \<longrightarrow> (\<exists>b1 b2. b1 ## b2 \<and> b = b1 + b2 \<and> r a1 b1 \<and> r a2 b2)\<close>
+
 lemma swstable_sepconj_semidistrib:
-  fixes P Q :: \<open>'a \<Rightarrow> bool\<close>
-  assumes rely_additivity_of_update:
-    \<open>\<And>a1 a2 b. a1 ## a2 \<Longrightarrow> R\<^sup>*\<^sup>* (a1 + a2) b \<Longrightarrow>
-        \<exists>b1 b2. b1 ## b2 \<and> b = b1 + b2 \<and> R\<^sup>*\<^sup>* a1 b1 \<and> R\<^sup>*\<^sup>* a2 b2\<close>
+  fixes R :: \<open>'a \<Rightarrow> 'a \<Rightarrow> bool\<close>
+  assumes rely_preserves_add: \<open>rel_add_preserve (R\<^sup>*\<^sup>*)\<close>
   shows \<open>\<lfloor> P \<rfloor>\<^bsub>R\<^esub> \<^emph> \<lfloor> Q \<rfloor>\<^bsub>R\<^esub> \<le> \<lfloor> P \<^emph> Q \<rfloor>\<^bsub>R\<^esub>\<close>
-  using rely_additivity_of_update
-  by (simp add: swstable_def sepconj_def le_fun_def, metis)
+  using assms
+  unfolding rel_add_preserve_def swstable_def sepconj_def
+  by blast
 
 lemma wsstable_sepconj_semidistrib:
-  fixes P Q :: \<open>'a \<Rightarrow> bool\<close>
-  assumes rely_additivity_of_update:
-    \<open>\<And>a1 a2 b. a1 ## a2 \<Longrightarrow> R\<^sup>*\<^sup>* (a1 + a2) b \<Longrightarrow> \<exists>b1 b2. b1 ## b2 \<and> b = b1 + b2 \<and> R\<^sup>*\<^sup>* a1 b1 \<and> R\<^sup>*\<^sup>* a2 b2\<close>
+  fixes R :: \<open>'a \<Rightarrow> 'a \<Rightarrow> bool\<close>
+  assumes rely_preserves_add: \<open>rel_add_preserve (R\<^sup>*\<^sup>*)\<close>
   shows \<open>\<lceil> P \<^emph> Q \<rceil>\<^bsub>R\<^esub> \<le> \<lceil> P \<rceil>\<^bsub>R\<^esub> \<^emph> \<lceil> Q \<rceil>\<^bsub>R\<^esub>\<close>
-  using rely_additivity_of_update
-  by (simp add: wsstable_def sepconj_def le_fun_def, metis)
+  using assms
+  unfolding rel_add_preserve_def wsstable_def sepconj_def
+  by blast
 
 end
 
@@ -225,12 +229,12 @@ abbreviation(input) swstablerel_temporal :: \<open>('a \<Rightarrow> bool) \<Rig
 lemma swstablerel_sepconj_semidistrib:
   fixes P Q :: \<open>'a \<Rightarrow> bool\<close>
   shows \<open>\<lfloor> P \<rfloor> \<^emph> \<lfloor> Q \<rfloor> \<le> \<lfloor> P \<^emph> Q \<rfloor>\<close>
-  by (rule swstable_sepconj_semidistrib, simp add: stablerel_additivity_of_update)
+  by (rule swstable_sepconj_semidistrib, simp add: rel_add_preserve_def stablerel_additivity_of_update)
 
 lemma wsstablerel_sepconj_semidistrib:
   fixes P Q :: \<open>'a \<Rightarrow> bool\<close>
   shows \<open>\<lceil> P \<^emph> Q \<rceil> \<le> \<lceil> P \<rceil> \<^emph> \<lceil> Q \<rceil>\<close>
-  by (rule wsstable_sepconj_semidistrib, simp add: stablerel_additivity_of_update)
+  by (rule wsstable_sepconj_semidistrib, simp add: rel_add_preserve_def stablerel_additivity_of_update)
 
 end
 

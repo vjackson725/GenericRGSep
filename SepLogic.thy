@@ -237,8 +237,16 @@ subsection \<open> Seplogic connectives \<close>
 definition sepconj :: \<open>('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool)\<close> (infixl \<open>\<^emph>\<close> 88) where
   \<open>P \<^emph> Q \<equiv> \<lambda>h. \<exists>h1 h2. h1 ## h2 \<and> h = h1 + h2 \<and> P h1 \<and> Q h2\<close>
 
+lemma sepconj_simp[simp]:
+  \<open>(p \<^emph> q) h = (\<exists>h1 h2. h1 ## h2 \<and> h = h1 + h2 \<and> p h1 \<and> q h2)\<close>
+  by (simp add: sepconj_def)
+
 definition sepimp :: \<open>('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool)\<close> (infixr \<open>\<midarrow>\<^emph>\<close> 65) where
   \<open>P \<midarrow>\<^emph> Q \<equiv> \<lambda>h. \<forall>h1. h ## h1 \<longrightarrow> P h1 \<longrightarrow> Q (h + h1)\<close>
+
+lemma sepimp_simp[simp]:
+  \<open>(p \<midarrow>\<^emph> q) h = (\<forall>h1 h2. h ## h1 \<longrightarrow> p h1 \<longrightarrow> q (h + h1))\<close>
+  by (simp add: sepimp_def)
 
 definition sepcoimp :: \<open>('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool)\<close> (infixr \<open>\<sim>\<^emph>\<close> 65) where
   \<open>P \<sim>\<^emph> Q \<equiv> \<lambda>h. \<forall>h1 h2. h1 ## h2 \<longrightarrow> h = h1 + h2 \<longrightarrow> P h1 \<longrightarrow> Q h2\<close>
@@ -308,11 +316,15 @@ lemma sepcoimp_curry: \<open>P \<sim>\<^emph> Q \<sim>\<^emph> R = P \<^emph> Q 
       partial_add_commute)+
   done
 
-lemma sepconj_left_mono:
+lemma sepconj_mono[intro]:
+  \<open>P \<le> P' \<Longrightarrow> Q \<le> Q' \<Longrightarrow> P \<^emph> Q \<le> P' \<^emph> Q'\<close>
+  using sepconj_def by auto
+
+lemma sepconj_left_mono[intro]:
   \<open>P \<le> Q \<Longrightarrow> P \<^emph> R \<le> Q \<^emph> R\<close>
   using sepconj_def by auto
 
-lemma sepconj_right_mono:
+lemma sepconj_right_mono[intro]:
   \<open>Q \<le> R \<Longrightarrow> P \<^emph> Q \<le> P \<^emph> R\<close>
   using sepconj_def by auto
 
@@ -543,19 +555,19 @@ class crosssplit_sep_alg = sep_alg + crosssplit_perm_alg
 section \<open>Right Cancellative Separation Logic\<close>
 
 class cancel_perm_alg = perm_alg +
-  assumes partial_right_cancel: \<open>\<And>a b c. a ## c \<Longrightarrow> b ## c \<Longrightarrow> (a + c = b + c) = (a = b)\<close>
+  assumes partial_right_cancel[simp]: \<open>\<And>a b c. a ## c \<Longrightarrow> b ## c \<Longrightarrow> (a + c = b + c) = (a = b)\<close>
 begin
 
-lemma partial_right_cancel2:
+lemma partial_right_cancel2[simp]:
   \<open>c ## a \<Longrightarrow> c ## b \<Longrightarrow> (a + c = b + c) = (a = b)\<close>
   using partial_right_cancel disjoint_symm
   by force
 
-lemma partial_left_cancel:
+lemma partial_left_cancel[simp]:
   \<open>a ## c \<Longrightarrow> b ## c \<Longrightarrow> (c + a = c + b) = (a = b)\<close>
   by (metis partial_add_commute partial_right_cancel)
 
-lemma partial_left_cancel2:
+lemma partial_left_cancel2[simp]:
   \<open>c ## a \<Longrightarrow> c ## b \<Longrightarrow> (c + a = c + b) = (a = b)\<close>
   using partial_left_cancel disjoint_symm
   by force
