@@ -5,6 +5,14 @@ begin
 definition \<open>rel_liftL p \<equiv> \<lambda>a b. p a\<close>
 definition \<open>rel_liftR p \<equiv> \<lambda>a b. p b\<close>
 
+lemma rel_liftL_unfold[simp]:
+  \<open>rel_liftL p a b = p a\<close>
+  by (simp add: rel_liftL_def)
+
+lemma rel_liftR_unfold[simp]:
+  \<open>rel_liftR p a b = p b\<close>
+  by (simp add: rel_liftR_def)
+
 section \<open> Language Definition \<close>
 
 datatype 'h comm =
@@ -105,6 +113,10 @@ definition \<open>passert p \<equiv> \<lambda>a b. p a \<and> a = b\<close>
 abbreviation \<open>Assert p \<equiv> Basic (passert p)\<close>
 abbreviation \<open>Assume p \<equiv> Basic (rel_liftR p)\<close>
 abbreviation \<open>Skip \<equiv> Basic (passert \<top>)\<close>
+
+lemma passert_simps[simp]:
+  \<open>passert p a b \<longleftrightarrow> p a \<and> b = a\<close>
+  by (force simp add: passert_def)
 
 lemma opsem_assert[intro!]: \<open>p h \<Longrightarrow> opsem r Tau (h, Assert p) (h, Done)\<close>
   by (simp add: opsem.basic passert_def)
@@ -293,9 +305,9 @@ inductive rgsat
 | rgsat_basic:
   \<open>pp \<le> \<lfloor> p \<rfloor>\<^bsub>r\<^esub> \<Longrightarrow>
     \<lceil> q \<rceil>\<^bsub>r\<^esub> \<le> qq \<Longrightarrow>
-    rel_liftL p \<sqinter> c \<le> rel_liftR q \<Longrightarrow>
-    rel_liftL p \<sqinter> c \<le> g \<Longrightarrow>
-    rgsat (Basic c) r g pp qq\<close>
+    rel_liftL p \<sqinter> b \<le> rel_liftR q \<Longrightarrow>
+    rel_liftL p \<sqinter> b \<le> g \<Longrightarrow>
+    rgsat (Basic b) r g pp qq\<close>
 inductive_cases rgsep_doneE[elim]: \<open>rgsat Done r g p q\<close>
 inductive_cases rgsep_iterE[elim]: \<open>rgsat (c\<^sup>\<star>) r g p q\<close>
 inductive_cases rgsep_parE[elim]: \<open>rgsat (s1 \<parallel> s2) r g p q\<close>
@@ -306,18 +318,18 @@ lemma rgsat_weaken:
     p \<le> p' \<Longrightarrow> q' \<le> q \<Longrightarrow> r \<le> r' \<Longrightarrow> g' \<le> g \<Longrightarrow>
     rgsat c r g p q\<close>
   apply (induct arbitrary: p r g q rule: rgsat.induct)
-       apply (rule rgsat_done, metis le_supE sup.absorb_iff2 wsstable_disj_distrib wsstable_rely_mono)
-      apply (meson order.eq_iff order.trans rgsat_iter; fail)
-     apply (meson order.eq_iff order.trans rgsat_ndet; fail)
-    apply (meson order.eq_iff order.trans sup_mono rgsat_parallel; fail)
-   apply (meson order.trans swstable_rely_antimono wsstable_rely_mono rgsat_basic)
+      apply (rule rgsat_done, metis le_supE sup.absorb_iff2 wsstable_disj_distrib wsstable_rely_mono)
+     apply (meson order.eq_iff order.trans rgsat_iter; fail)
+    apply (meson order.eq_iff order.trans rgsat_ndet; fail)
+   apply (meson order.eq_iff order.trans sup_mono rgsat_parallel; fail)
+  apply (meson order.trans swstable_rely_antimono wsstable_rely_mono rgsat_basic)
   done
 
 lemma frame_conj_helper:
   fixes p1 :: \<open>'a::cancel_perm_alg \<Rightarrow> bool\<close>
   assumes precise_f: \<open>\<And>h h'. (\<lceil> f \<rceil>\<^bsub>r1\<^esub>) h \<Longrightarrow> (\<lceil> f \<rceil>\<^bsub>r2\<^esub>) h' \<Longrightarrow> h' = h\<close>
   shows \<open>p1 \<^emph> \<lceil> f \<rceil>\<^bsub>r1\<^esub> \<sqinter> p2 \<^emph> \<lceil> f \<rceil>\<^bsub>r2\<^esub> \<le> (p1 \<sqinter> p2) \<^emph> \<lceil> f \<rceil>\<^bsub>r1 \<squnion> r2\<^esub>\<close>
-  apply clarsimp
+  apply (clarsimp simp add: sepconj_def)
   apply (rename_tac h1a h1b h2a h2b)
   apply (frule(1) precise_f)
   apply simp
@@ -325,7 +337,21 @@ lemma frame_conj_helper:
   done
 
 lemma rgsat_frame:
-  \<open>rgsat c r g p q \<Longrightarrow> rel_add_preserve (r\<^sup>*\<^sup>*) \<Longrightarrow> rgsat c r g (p \<^emph> f) (q \<^emph> \<lceil> f \<rceil>\<^bsub>r \<squnion> g\<^esub>)\<close>
+  assumes
+    \<open>rgsat c r g p q\<close>
+    \<open>rel_add_preserve (r\<^sup>*\<^sup>*)\<close>
+    \<open>precise f\<close>
+(*
+   and frame_stable:
+   \<open>f \<le> \<lfloor> f \<rfloor>\<^bsub>r\<^esub>\<close> (* I note this is my addition, varying from Wickerson; It is needed for the basic step. *)
+*)
+(*
+   and guarantee_independent_of_frame:
+   \<open>rel_liftL f \<sqinter> g \<le> passert f \<sqinter> g\<close> (* my simulation of the variable restriction *)
+*)
+  shows
+    \<open>rgsat c r g (p \<^emph> f) (q \<^emph> \<lceil> f \<rceil>\<^bsub>r \<squnion> g\<^esub>)\<close>
+  using assms
 proof (induct arbitrary: f rule: rgsat.induct)
   case (rgsat_done p r q g)
   then show ?case
@@ -336,11 +362,16 @@ proof (induct arbitrary: f rule: rgsat.induct)
 next
   case (rgsat_iter c r g i p q)
   then show ?case
-    apply (intro rgsat.rgsat_iter[where i=\<open>i \<^emph> \<lceil> f \<rceil>\<^bsub>r \<squnion> g\<^esub>\<close>])
-      apply (metis sup.absorb_iff1 sup_ge1 wsstable_absorb2)
+    apply (rule_tac rgsat.rgsat_iter[where i=\<open>i \<^emph> \<lceil> f \<rceil>\<^bsub>r \<squnion> g\<^esub>\<close>])
+      apply (drule meta_spec[where x=\<open>\<lceil> f \<rceil>\<^bsub>r \<squnion> g\<^esub>\<close>])
+      apply simp
+    sorry
+(*
+      apply (metis (no_types, lifting) order.refl wsstable_absorb2 rgsat_iter.hyps(2))
      apply (meson sepconj_mono wsstable_stronger; fail)
     apply (meson sepconj_left_mono wsstable_stronger; fail)
     done
+*)
 next
   case (rgsat_ndet s1 r g1 p q1 s2 g2 q2 g q)
   then show ?case
@@ -365,12 +396,29 @@ next
        apply (meson sepconj_left_mono; fail)
     sorry
 next
-  case (rgsat_basic pp p r q qq c g)
+  case (rgsat_basic pp p r q qq b g)
   then show ?case
     apply -
     apply (rule rgsat.rgsat_basic[where
-          p=\<open>\<lfloor> p \<^emph> f \<rfloor>\<^bsub>r\<^esub>\<close> and
-          q=\<open>\<lfloor> q \<^emph> f \<rfloor>\<^bsub>r\<^esub>\<close>])
+          p=\<open>p \<^emph> f\<close> and
+          q=\<open>q \<^emph> f\<close>])
+    using [[simp_trace]]
+    apply simp
+    apply (rule allI)
+       apply (rule order.trans[OF _ swstable_sepconj_semidistrib])
+        apply (rule sepconj_mono, blast)
+        defer
+       apply blast
+      apply (rule order.trans[OF wsstable_sepconj_semidistrib])
+       apply blast
+      apply (rule sepconj_mono, blast)
+      apply (metis inf_sup_aci(5) sup.cobounded2 wsstable_rely_mono)
+       apply (clarsimp simp add: rel_liftL_def rel_liftR_def le_fun_def)
+       apply (clarsimp simp add: rel_add_preserve_def)
+       apply (drule spec, drule spec, drule mp, assumption, drule spec, drule mp, assumption)
+       apply clarsimp
+       apply (rule_tac x=h1 in exI, rule_tac x=h2 in exI)
+       apply simp
     thm wsstable_swstable_absorb swstable_wsstable_absorb
     thm wsstable_sepconj_semidistrib
     thm swstable_sepconj_semidistrib

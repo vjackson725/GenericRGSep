@@ -237,16 +237,8 @@ subsection \<open> Seplogic connectives \<close>
 definition sepconj :: \<open>('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool)\<close> (infixl \<open>\<^emph>\<close> 88) where
   \<open>P \<^emph> Q \<equiv> \<lambda>h. \<exists>h1 h2. h1 ## h2 \<and> h = h1 + h2 \<and> P h1 \<and> Q h2\<close>
 
-lemma sepconj_simp[simp]:
-  \<open>(p \<^emph> q) h = (\<exists>h1 h2. h1 ## h2 \<and> h = h1 + h2 \<and> p h1 \<and> q h2)\<close>
-  by (simp add: sepconj_def)
-
 definition sepimp :: \<open>('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool)\<close> (infixr \<open>\<midarrow>\<^emph>\<close> 65) where
   \<open>P \<midarrow>\<^emph> Q \<equiv> \<lambda>h. \<forall>h1. h ## h1 \<longrightarrow> P h1 \<longrightarrow> Q (h + h1)\<close>
-
-lemma sepimp_simp[simp]:
-  \<open>(p \<midarrow>\<^emph> q) h = (\<forall>h1 h2. h ## h1 \<longrightarrow> p h1 \<longrightarrow> q (h + h1))\<close>
-  by (simp add: sepimp_def)
 
 definition sepcoimp :: \<open>('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool)\<close> (infixr \<open>\<sim>\<^emph>\<close> 65) where
   \<open>P \<sim>\<^emph> Q \<equiv> \<lambda>h. \<forall>h1 h2. h1 ## h2 \<longrightarrow> h = h1 + h2 \<longrightarrow> P h1 \<longrightarrow> Q h2\<close>
