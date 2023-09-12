@@ -363,8 +363,12 @@ next
   case (rgsat_iter c r g i p q)
   then show ?case
     apply (rule_tac rgsat.rgsat_iter[where i=\<open>i \<^emph> \<lceil> f \<rceil>\<^bsub>r \<squnion> g\<^esub>\<close>])
-      apply (drule meta_spec[where x=\<open>\<lceil> f \<rceil>\<^bsub>r \<squnion> g\<^esub>\<close>])
+      apply (drule meta_spec[where x=\<open>\<lfloor> f \<rfloor>\<^bsub>r \<squnion> g\<^esub>\<close>])
       apply simp
+      apply (drule swstable_preserves_precise[where r=\<open>r \<squnion> g\<close>])
+    apply clarsimp
+      apply (subst (asm) wsstable_swstable_absorb)
+    apply blast
     sorry
 (*
       apply (metis (no_types, lifting) order.refl wsstable_absorb2 rgsat_iter.hyps(2))

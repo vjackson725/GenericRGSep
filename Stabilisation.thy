@@ -97,10 +97,11 @@ lemma swstable_wsstable_absorb[simp]: \<open>R \<le> R' \<Longrightarrow> \<lflo
   unfolding wsstable_def swstable_def
   by (metis (opaque_lifting) predicate2D rtranclp.rtrancl_refl rtranclp_trans rtranclp_mono)
 
-paragraph \<open> Preservation of addition over a relation \<close>
-
+subsection \<open> Properties of stabilisation in a perm algebra \<close>
 context perm_alg
 begin
+
+paragraph \<open> Preservation of addition over a relation \<close>
 
 definition
   \<open>rel_add_preserve r \<equiv>
@@ -121,6 +122,58 @@ lemma wsstable_sepconj_semidistrib:
   using assms
   unfolding rel_add_preserve_def wsstable_def sepconj_def
   by blast
+
+paragraph \<open> Preservation of addition over a relation \<close>
+
+lemma swstable_preserves_precise[dest]:
+  \<open>precise p \<Longrightarrow> precise (\<lfloor> p \<rfloor>\<^bsub>r\<^esub>)\<close>
+  by (clarsimp simp add: precise_def swstable_def)
+
+end
+
+context cancel_perm_alg
+begin
+
+lemma wsstable_preserves_precise[dest]:
+  assumes rely_preserves_frame_forward:
+    \<open>\<forall>a1 b1 a2 b2 f1 f2.
+      r\<^sup>*\<^sup>* a1 b1 \<longrightarrow> r\<^sup>*\<^sup>* a2 b2 \<longrightarrow>
+      b1 ## f1 \<longrightarrow> b2 ## f2 \<longrightarrow>
+      b1 + f1 = b2 + f2 \<longrightarrow>
+      (\<exists>f1' f2'. a1 ## f1' \<and> a2 ## f2' \<and> a1 + f1' = a2 + f2') \<and>
+        (\<forall>y y'. r\<^sup>*\<^sup>* a1 y \<longrightarrow> r\<^sup>*\<^sup>* a1 y' \<longrightarrow> y' = y) \<and>
+        (\<forall>y y'. r\<^sup>*\<^sup>* a2 y \<longrightarrow> r\<^sup>*\<^sup>* a2 y' \<longrightarrow> y' = y)
+      \<or> (a1 ## f1 \<and> a2 ## f2 \<and> a1 + f1 = a2 + f2)\<close>
+  shows
+    \<open>precise p \<Longrightarrow> precise (\<lceil> p \<rceil>\<^bsub>r\<^esub>)\<close>
+  apply (clarsimp simp add: precise_def wsstable_def)
+  apply (rename_tac h1 s1 h2 s2 f1 f2)
+  apply (subgoal_tac \<open>(\<exists>f1' f2'. s1 ## f1' \<and> s2 ## f2' \<and> s1 + f1' = s2 + f2') \<and>
+                        (\<forall>y y'. r\<^sup>*\<^sup>* s1 y \<longrightarrow> r\<^sup>*\<^sup>* s1 y' \<longrightarrow> y' = y) \<and>
+                        (\<forall>y y'. r\<^sup>*\<^sup>* s2 y \<longrightarrow> r\<^sup>*\<^sup>* s2 y' \<longrightarrow> y' = y)
+                      \<or> (s1 ## f1 \<and> s2 ## f2 \<and> s1 + f1 = s2 + f2)\<close>)
+   prefer 2
+   apply (meson rely_preserves_frame_forward; fail)
+  apply (subgoal_tac \<open>s1 = s2\<close>)
+   prefer 2
+   apply blast
+  apply clarsimp
+  apply (metis partial_left_cancel2 partial_right_cancelD)
+  done
+
+thm rel_add_preserve_def
+
+definition
+  \<open>rel_add_compat r \<equiv> \<forall>a a' b b'. r a a' \<longrightarrow> r b b' \<longrightarrow> a ## b \<longrightarrow> a' ## b' \<longrightarrow> r (a + b) (b + b')\<close>
+
+
+lemma wsstable_preserves_precise2[dest]:
+  assumes
+    \<open>rel_add_compat (r\<^sup>*\<^sup>*)\<close>
+    \<open>rel_add_preserve (r\<^sup>*\<^sup>*)\<close>
+  shows
+    \<open>precise p \<Longrightarrow> precise (\<lceil> p \<rceil>\<^bsub>r\<^esub>)\<close>
+  oops
 
 end
 
