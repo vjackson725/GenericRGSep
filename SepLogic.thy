@@ -147,14 +147,22 @@ class perm_alg = disjoint + plus + order +
   assumes less_iff_sepadd: \<open>a < b \<longleftrightarrow> a \<noteq> b \<and> (\<exists>c. a ## c \<and> b = a + c)\<close>
 begin
 
+lemma le_iff_sepadd_weak: \<open>a \<le> b \<longleftrightarrow> a = b \<or> (\<exists>c. a ## c \<and> b = a + c)\<close>
+  using le_less less_iff_sepadd by auto
+
 lemma disjoint_symm_iff: \<open>a ## b \<longleftrightarrow> b ## a\<close>
   using disjoint_symm by blast
 
-lemma partial_le_plus: \<open>a ## b \<Longrightarrow> a \<le> a + b\<close>
+lemma partial_le_plus[simp]: \<open>a ## b \<Longrightarrow> a \<le> a + b\<close>
   by (metis less_iff_sepadd nless_le order.refl)
 
-lemma partial_le_plus2: \<open>a ## b \<Longrightarrow> b \<le> a + b\<close>
+lemma partial_le_plus2[simp]: \<open>a ## b \<Longrightarrow> b \<le> a + b\<close>
   by (metis partial_le_plus disjoint_symm partial_add_commute)
+
+(* TODO: think about decreasing and increasing elements from
+    'Bringing order to the separation logic Jungle'.
+  All our elements are increasing, I think, because of the above two rules.
+*)
 
 lemma common_subresource_selfsep:
   \<open>a ## b \<Longrightarrow> ab \<le> a \<Longrightarrow> ab \<le> b \<Longrightarrow> ab ## ab\<close>
@@ -312,11 +320,11 @@ lemma sepconj_mono[intro]:
   \<open>P \<le> P' \<Longrightarrow> Q \<le> Q' \<Longrightarrow> P \<^emph> Q \<le> P' \<^emph> Q'\<close>
   using sepconj_def by auto
 
-lemma sepconj_left_mono[intro]:
+lemma sepconj_monoL[intro]:
   \<open>P \<le> Q \<Longrightarrow> P \<^emph> R \<le> Q \<^emph> R\<close>
   using sepconj_def by auto
 
-lemma sepconj_right_mono[intro]:
+lemma sepconj_monoR[intro]:
   \<open>Q \<le> R \<Longrightarrow> P \<^emph> Q \<le> P \<^emph> R\<close>
   using sepconj_def by auto
 
@@ -386,10 +394,10 @@ lemma sepconj_distrib_conj_imp_sepconj_eq_strong_sepcoimp:
   by blast
 
 lemma sepconj_middle_monotone_left: \<open>A1 \<^emph> A2 \<le> B \<Longrightarrow> A1 \<^emph> C \<^emph> A2 \<le> C \<^emph> B\<close>
-  by (metis sepconj_assoc sepconj_comm sepconj_left_mono)
+  by (metis sepconj_assoc sepconj_comm sepconj_monoL)
 
 lemma sepconj_middle_monotone_right: \<open>A \<le> B1 \<^emph> B2 \<Longrightarrow> C \<^emph> A \<le> B1 \<^emph> C \<^emph> B2\<close>
-  by (metis sepconj_assoc sepconj_comm sepconj_left_mono)
+  by (metis sepconj_assoc sepconj_comm sepconj_monoL)
 
 
 definition supported :: \<open>('a \<Rightarrow> bool) \<Rightarrow> bool\<close> where
@@ -409,17 +417,6 @@ begin
 
 lemma le_iff_sepadd: \<open>a \<le> b \<longleftrightarrow> (\<exists>c. a ## c \<and> b = a + c)\<close>
   by (metis order.order_iff_strict less_iff_sepadd partial_add_0 partial_add_commute zero_disjointR)
-
-text \<open>
-  From 'Bringing order to the separation logic Jungle'.
-  Increasing elements are related to the units of the algebra.
-\<close>
-definition increasing_elem :: \<open>'a \<Rightarrow> bool\<close> where
-  \<open>increasing_elem a \<equiv> \<forall>b c. a ## b \<longrightarrow> a + b = c \<longrightarrow> b \<le> c\<close>
-
-lemma zero_increasing_elem:
-  \<open>increasing_elem 0\<close>
-  by (simp add: increasing_elem_def)
 
 subsection \<open>partial canonically_ordered_monoid_add lemmas\<close>
 
@@ -647,7 +644,7 @@ proof -
   moreover have \<open>a \<^emph> b \<^emph> \<top> \<le> (a \<^emph> \<top>) \<sqinter> (b \<^emph> \<top>)\<close>
     by (metis le_infI sepconj_comm sepconj_middle_monotone_left top_greatest)
   moreover have \<open>(a \<sqinter> b) \<^emph> \<top> \<le> (a \<^emph> \<top>) \<sqinter> (b \<^emph> \<top>)\<close>
-    by (simp add: sepconj_left_mono)
+    by (simp add: sepconj_monoL)
   ultimately show ?thesis
     by simp
 qed

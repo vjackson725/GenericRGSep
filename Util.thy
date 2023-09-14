@@ -12,6 +12,9 @@ definition flip :: \<open>('a \<Rightarrow> 'b \<Rightarrow> 'c) \<Rightarrow> (
   \<open>flip f a b \<equiv> f b a\<close>
 declare flip_def[simp]
 
+lemma le_fun_eta[simp]: \<open>(\<lambda>x. a) \<le> (\<lambda>x. b) \<longleftrightarrow> a \<le> b\<close>
+  by (simp add: le_fun_def)
+
 subsection \<open>Logic\<close>
 
 lemmas conj_left_mp[simp] =

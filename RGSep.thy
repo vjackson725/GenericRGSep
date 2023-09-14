@@ -13,6 +13,14 @@ lemma rel_liftR_unfold[simp]:
   \<open>rel_liftR p a b = p b\<close>
   by (simp add: rel_liftR_def)
 
+lemma liftL_le_liftL[simp]:
+  \<open>rel_liftL p \<le> rel_liftL q \<longleftrightarrow> p \<le> q\<close>
+  by (simp add: rel_liftL_def le_fun_def)
+
+lemma liftR_le_liftR[simp]:
+  \<open>rel_liftR p \<le> rel_liftR q \<longleftrightarrow> p \<le> q\<close>
+  by (simp add: rel_liftR_def)
+
 section \<open> Language Definition \<close>
 
 datatype 'h comm =
@@ -23,7 +31,7 @@ datatype 'h comm =
 (*
   | ExtNdet \<open>'h comm\<close> \<open>'h comm\<close> (infixr \<open>\<^bold>\<box>\<close> 65)
 *)
-  | Iter \<open>'h comm\<close> (\<open>_\<^sup>\<star>\<close> [80] 80)
+  | Iter \<open>'h comm\<close> \<open>'h \<Rightarrow> bool\<close> (\<open>_\<^sup>\<star>\<^bsub>_\<^esub>\<close> [80,0] 80)
   | Basic \<open>'h \<Rightarrow> 'h \<Rightarrow> bool\<close>
 
 datatype 'h act =
@@ -35,22 +43,84 @@ lemma act_neq_iff[simp]:
   \<open>Tau \<noteq> a \<longleftrightarrow> (\<exists>x y. a = Env x y)\<close>
   by (metis act.distinct(1) act.exhaust)+
 
-paragraph \<open> Predicate to ensure basic actions uphold a guarantee \<close>
 
-inductive basics_guarantee :: \<open>('h \<Rightarrow> 'h \<Rightarrow> bool) \<Rightarrow> 'h comm \<Rightarrow> bool\<close> where
-  skip[iff]: \<open>basics_guarantee g Done\<close>
-| seq[intro!]: \<open>basics_guarantee g c1 \<Longrightarrow> basics_guarantee g c2 \<Longrightarrow> basics_guarantee g (c1 ;; c2)\<close>
-| par[intro!]: \<open>basics_guarantee g c1 \<Longrightarrow> basics_guarantee g c2 \<Longrightarrow> basics_guarantee g (c1 \<parallel> c2)\<close>
-| ndet[intro!]: \<open>basics_guarantee g c1 \<Longrightarrow> basics_guarantee g c2 \<Longrightarrow> basics_guarantee g (c1 \<^bold>+ c2)\<close>
-| iter[intro!]: \<open>basics_guarantee g c \<Longrightarrow> basics_guarantee g (c\<^sup>\<star>)\<close>
-| basic[intro!]: \<open>g \<le> g' \<Longrightarrow> basics_guarantee g (Basic g')\<close>
+paragraph \<open> Predicate to ensure that loop invariants have a given property \<close>
 
-inductive_cases basics_guarantee_doneE[elim!]: \<open>basics_guarantee g Done\<close>
-inductive_cases basics_guarantee_seqE[elim!]: \<open>basics_guarantee g (c1 ;; c2)\<close>
-inductive_cases basics_guarantee_ndetE[elim!]: \<open>basics_guarantee g (c1 \<^bold>+ c2)\<close>
-inductive_cases basics_guarantee_parE[elim!]: \<open>basics_guarantee g (c1 \<parallel>  c2)\<close>
-inductive_cases basics_guarantee_iterE[elim!]: \<open>basics_guarantee g (c\<^sup>\<star>)\<close>
-inductive_cases basics_guarantee_basicE[elim!]: \<open>basics_guarantee g (Basic g')\<close>
+inductive all_loop_inv :: \<open>(('h \<Rightarrow> bool) \<Rightarrow> bool) \<Rightarrow> 'h comm \<Rightarrow> bool\<close> where
+  skip[iff]: \<open>all_loop_inv p Done\<close>
+| seq[intro!]: \<open>all_loop_inv p c1 \<Longrightarrow> all_loop_inv p c2 \<Longrightarrow> all_loop_inv p (c1 ;; c2)\<close>
+| par[intro!]: \<open>all_loop_inv p c1 \<Longrightarrow> all_loop_inv p c2 \<Longrightarrow> all_loop_inv p (c1 \<parallel> c2)\<close>
+| ndet[intro!]: \<open>all_loop_inv p c1 \<Longrightarrow> all_loop_inv p c2 \<Longrightarrow> all_loop_inv p (c1 \<^bold>+ c2)\<close>
+| iter[intro!]: \<open>all_loop_inv p c \<Longrightarrow> p i \<Longrightarrow> all_loop_inv p (c\<^sup>\<star>\<^bsub>i\<^esub>)\<close>
+| basic[intro!]: \<open>all_loop_inv p (Basic b)\<close>
+
+inductive_cases all_loop_inv_doneE[elim!]: \<open>all_loop_inv p Done\<close>
+inductive_cases all_loop_inv_seqE[elim!]: \<open>all_loop_inv p (c1 ;; c2)\<close>
+inductive_cases all_loop_inv_ndetE[elim!]: \<open>all_loop_inv p (c1 \<^bold>+ c2)\<close>
+inductive_cases all_loop_inv_parE[elim!]: \<open>all_loop_inv p (c1 \<parallel> c2)\<close>
+inductive_cases all_loop_inv_iterE[elim!]: \<open>all_loop_inv p (c\<^sup>\<star>\<^bsub>i\<^esub>)\<close>
+inductive_cases all_loop_inv_basicE[elim!]: \<open>all_loop_inv p (Basic b)\<close>
+
+lemma all_loop_inv_simps[simp]:
+  \<open>all_loop_inv p Done \<longleftrightarrow> True\<close>
+  \<open>all_loop_inv p (c1 ;; c2) \<longleftrightarrow> all_loop_inv p c1 \<and> all_loop_inv p c2\<close>
+  \<open>all_loop_inv p (c1 \<^bold>+ c2) \<longleftrightarrow> all_loop_inv p c1 \<and> all_loop_inv p c2\<close>
+  \<open>all_loop_inv p (c1 \<parallel> c2) \<longleftrightarrow> all_loop_inv p c1 \<and> all_loop_inv p c2\<close>
+  \<open>all_loop_inv p (c\<^sup>\<star>\<^bsub>i\<^esub>) \<longleftrightarrow> p i \<and> all_loop_inv p c\<close>
+  \<open>all_loop_inv p (Basic b) \<longleftrightarrow> True\<close>
+  by fastforce+
+
+
+paragraph \<open> Predicate to ensure basic actions have a given property \<close>
+
+inductive all_basic_comm :: \<open>(('h \<Rightarrow> 'h \<Rightarrow> bool) \<Rightarrow> bool) \<Rightarrow> 'h comm \<Rightarrow> bool\<close> where
+  skip[iff]: \<open>all_basic_comm p Done\<close>
+| seq[intro!]: \<open>all_basic_comm p c1 \<Longrightarrow> all_basic_comm p c2 \<Longrightarrow> all_basic_comm p (c1 ;; c2)\<close>
+| par[intro!]: \<open>all_basic_comm p c1 \<Longrightarrow> all_basic_comm p c2 \<Longrightarrow> all_basic_comm p (c1 \<parallel> c2)\<close>
+| ndet[intro!]: \<open>all_basic_comm p c1 \<Longrightarrow> all_basic_comm p c2 \<Longrightarrow> all_basic_comm p (c1 \<^bold>+ c2)\<close>
+| iter[intro!]: \<open>all_basic_comm p c \<Longrightarrow> all_basic_comm p (c\<^sup>\<star>\<^bsub>i\<^esub>)\<close>
+| basic[intro!]: \<open>p b \<Longrightarrow> all_basic_comm p (Basic b)\<close>
+
+inductive_cases all_basic_comm_doneE[elim!]: \<open>all_basic_comm p Done\<close>
+inductive_cases all_basic_comm_seqE[elim!]: \<open>all_basic_comm p (c1 ;; c2)\<close>
+inductive_cases all_basic_comm_ndetE[elim!]: \<open>all_basic_comm p (c1 \<^bold>+ c2)\<close>
+inductive_cases all_basic_comm_parE[elim!]: \<open>all_basic_comm p (c1 \<parallel> c2)\<close>
+inductive_cases all_basic_comm_iterE[elim!]: \<open>all_basic_comm p (c\<^sup>\<star>\<^bsub>i\<^esub>)\<close>
+inductive_cases all_basic_comm_basicE[elim!]: \<open>all_basic_comm p (Basic b)\<close>
+
+lemma all_basic_comm_simps[simp]:
+  \<open>all_basic_comm p Done \<longleftrightarrow> True\<close>
+  \<open>all_basic_comm p (c1 ;; c2) \<longleftrightarrow> all_basic_comm p c1 \<and> all_basic_comm p c2\<close>
+  \<open>all_basic_comm p (c1 \<^bold>+ c2) \<longleftrightarrow> all_basic_comm p c1 \<and> all_basic_comm p c2\<close>
+  \<open>all_basic_comm p (c1 \<parallel> c2) \<longleftrightarrow> all_basic_comm p c1 \<and> all_basic_comm p c2\<close>
+  \<open>all_basic_comm p (c\<^sup>\<star>\<^bsub>i\<^esub>) \<longleftrightarrow> all_basic_comm p c\<close>
+  \<open>all_basic_comm p (Basic b) \<longleftrightarrow> p b\<close>
+  by fastforce+
+
+abbreviation \<open>basics_guarantee g \<equiv> all_basic_comm ((\<le>) g)\<close>
+
+subsection \<open> For the variable restriction \<close>
+
+definition
+  \<open>basic_frame_pred p c \<equiv>
+    all_basic_comm
+      (\<lambda>b. \<forall>h1 hf h'. p hf \<longrightarrow> b (h1 + hf) h' \<longrightarrow> (\<exists>h2. b h1 h2 \<and> h2 ## hf \<and> h' = h2 + hf))
+      c\<close>
+
+lemma basic_frame_pred_simps[simp]:
+  \<open>basic_frame_pred p Done \<longleftrightarrow> True\<close>
+  \<open>basic_frame_pred p (c1 ;; c2) \<longleftrightarrow> basic_frame_pred p c1 \<and> basic_frame_pred p c2\<close>
+  \<open>basic_frame_pred p (c1 \<^bold>+ c2) \<longleftrightarrow> basic_frame_pred p c1 \<and> basic_frame_pred p c2\<close>
+  \<open>basic_frame_pred p (c1 \<parallel> c2) \<longleftrightarrow> basic_frame_pred p c1 \<and> basic_frame_pred p c2\<close>
+  \<open>basic_frame_pred p (c\<^sup>\<star>\<^bsub>i\<^esub>) \<longleftrightarrow> basic_frame_pred p c\<close>
+  \<open>basic_frame_pred p (Basic b) \<longleftrightarrow>
+    (\<forall>h1 hf h'. p hf \<longrightarrow> b (h1 + hf) h' \<longrightarrow> (\<exists>h2. b h1 h2 \<and> h2 ## hf \<and> h' = h2 + hf))\<close>
+  by (fastforce simp add: basic_frame_pred_def)+
+
+lemma basic_frame_pred_antimono:
+  \<open>p \<le> q \<Longrightarrow> basic_frame_pred q c \<Longrightarrow> basic_frame_pred p c\<close>
+  by (induct c arbitrary: p q)
+    (fastforce simp add: basic_frame_pred_def)+
 
 section \<open> Operational Semantics \<close>
 
@@ -73,14 +143,14 @@ inductive opsem :: \<open>('h \<Rightarrow> 'h \<Rightarrow> bool) \<Rightarrow>
 | par_step_right[intro]: \<open>opsem r a (h, t) (h', t') \<Longrightarrow> opsem r a (h, s \<parallel> t) (h', s \<parallel> t')\<close>
 | par_left[intro!]: \<open>opsem r Tau (h, Done \<parallel> t) (h, t)\<close>
 | par_right[intro!]: \<open>opsem r Tau (h, s \<parallel> Done) (h, s)\<close>
-| iter[intro]: \<open>opsem r Tau (h, c\<^sup>\<star>) (h, (Done \<^bold>+ c) ;; c\<^sup>\<star>)\<close>
+| iter[intro]: \<open>opsem r Tau (h, c\<^sup>\<star>\<^bsub>i\<^esub>) (h, (Done \<^bold>+ c) ;; c\<^sup>\<star>\<^bsub>i\<^esub>)\<close>
 | basic[intro!]: \<open>g h h' \<Longrightarrow> opsem r Tau (h, Basic g) (h', Done)\<close>
 | env[intro!]: \<open>r h h' \<Longrightarrow> opsem r (Env h h') (h, t) (h', t)\<close>
 
 inductive_cases opsem_seqE[elim!]: \<open>opsem r a (h, c1 ;; c2) (h', c')\<close>
 inductive_cases opsem_ndetE[elim!]: \<open>opsem r a (h, c1 \<^bold>+ c2) (h', c')\<close>
 inductive_cases opsem_parE[elim!]: \<open>opsem r a (h, c1 \<parallel>  c2) (h', c')\<close>
-inductive_cases opsem_iterE[elim!]: \<open>opsem r a (h, c\<^sup>\<star>) (h', c')\<close>
+inductive_cases opsem_iterE[elim!]: \<open>opsem r a (h, c\<^sup>\<star>\<^bsub>i\<^esub>) (h', c')\<close>
 inductive_cases opsem_basicE[elim!]: \<open>opsem r a (h, Basic g) (h', c')\<close>
 inductive_cases opsem_skipE[elim!]: \<open>opsem r a (h, Done) (h', c')\<close>
 inductive_cases opsem_envE[elim]: \<open>opsem r (Env x y) s s'\<close>
@@ -94,7 +164,7 @@ lemma opsem_tau_iff:
     (\<exists>h' c1'. opsem r Tau (h,c1) (h',c1') \<and> s' = (h', c1' \<parallel> c2) \<or>
     (\<exists>h' c2'. opsem r Tau (h,c2) (h',c2') \<and> s' = (h', c1 \<parallel> c2')))\<close>
   \<open>opsem r Tau (h, c1 \<^bold>+ c2) s' \<longleftrightarrow> s' = (h, c2) \<or> s' = (h, c1)\<close>
-  \<open>opsem r Tau (h, c\<^sup>\<star>) s' \<longleftrightarrow> s' = (h, (Done \<^bold>+ c) ;; c\<^sup>\<star>)\<close>
+  \<open>opsem r Tau (h, c\<^sup>\<star>\<^bsub>i\<^esub>) s' \<longleftrightarrow> s' = (h, (Done \<^bold>+ c) ;; c\<^sup>\<star>\<^bsub>i\<^esub>)\<close>
   \<open>opsem r Tau (h, Basic g) s' \<longleftrightarrow> (\<exists>h'. g h h' \<and> s' = (h', Done))\<close>
   by (cases s', force)+
 
@@ -130,7 +200,7 @@ lemma opsem_skip[intro!]: \<open>opsem r Tau (h, Skip) (h, Done)\<close>
 subsubsection \<open> Sugared programs \<close>
 
 abbreviation \<open>IfThenElse p ct cf \<equiv> Assert p ;; ct \<^bold>+ Assert (-p) ;; cf\<close>
-abbreviation \<open>WhileLoop p c \<equiv> (Assert p ;; c)\<^sup>\<star> ;; Assert (-p)\<close>
+abbreviation \<open>WhileLoop p c \<equiv> (Assert p ;; c)\<^sup>\<star>\<^bsub>i\<^esub> ;; Assert (-p)\<close>
 
 paragraph \<open> Pretty operational semantics \<close>
 
@@ -163,8 +233,8 @@ lemma opsem_rtrancl_iff[simp]:
 
 paragraph \<open> pretty opsem transitive closure \<close>
 
-abbreviation(input) pretty_opsem_rtrancl :: \<open>_ \<Rightarrow> _ \<Rightarrow> _ \<Rightarrow> _ \<Rightarrow> _\<close> (\<open>_ \<midarrow>(_, _)\<rightarrow>\<^sup>\<star> _\<close> [60,0,0,60] 60) where
-  \<open>hs \<midarrow>r, as\<rightarrow>\<^sup>\<star> ht \<equiv> opsem_rtrancl r as hs ht\<close>
+abbreviation(input) pretty_opsem_rtrancl :: \<open>_ \<Rightarrow> _ \<Rightarrow> _ \<Rightarrow> _ \<Rightarrow> _\<close> (\<open>_ \<midarrow>(_, _)\<rightarrow>\<^sup>\<star>\<^bsub>i\<^esub> _\<close> [60,0,0,60] 60) where
+  \<open>hs \<midarrow>r, as\<rightarrow>\<^sup>\<star>\<^bsub>i\<^esub> ht \<equiv> opsem_rtrancl r as hs ht\<close>
 
 subsection \<open> Theorems about the operational semantics \<close>
 
@@ -187,18 +257,18 @@ lemma opsem_rtrancl_rev_cons_iff[simp]:
 
 
 lemma opsem_rtrancl_rely_monoD:
-  \<open>s \<midarrow>r, as\<rightarrow>\<^sup>\<star> s' \<Longrightarrow> r \<le> r' \<Longrightarrow> s \<midarrow>r', as\<rightarrow>\<^sup>\<star> s'\<close>
+  \<open>s \<midarrow>r, as\<rightarrow>\<^sup>\<star>\<^bsub>i\<^esub> s' \<Longrightarrow> r \<le> r' \<Longrightarrow> s \<midarrow>r', as\<rightarrow>\<^sup>\<star>\<^bsub>i\<^esub> s'\<close>
   by (induct rule: opsem_rtrancl.induct)
     (fastforce dest: opsem_rely_monoD[where r'=r'])+
 
 lemmas opsem_rtrancl_rely_mono = opsem_rtrancl_rely_monoD[rotated]
 
 lemma opsem_rtrancl_stepI:
-  \<open>s \<midarrow>r, a\<rightarrow> s' \<Longrightarrow> s \<midarrow>r, [a]\<rightarrow>\<^sup>\<star> s'\<close>
+  \<open>s \<midarrow>r, a\<rightarrow> s' \<Longrightarrow> s \<midarrow>r, [a]\<rightarrow>\<^sup>\<star>\<^bsub>i\<^esub> s'\<close>
   by blast
 
 lemma opsem_rtrancl_trans:
-  \<open>s \<midarrow>r1, as1\<rightarrow>\<^sup>\<star> s' \<Longrightarrow> s' \<midarrow>r2, as2\<rightarrow>\<^sup>\<star> s'' \<Longrightarrow> s \<midarrow>r1 \<squnion> r2, as1 @ as2\<rightarrow>\<^sup>\<star> s''\<close>
+  \<open>s \<midarrow>r1, as1\<rightarrow>\<^sup>\<star>\<^bsub>i\<^esub> s' \<Longrightarrow> s' \<midarrow>r2, as2\<rightarrow>\<^sup>\<star>\<^bsub>i\<^esub> s'' \<Longrightarrow> s \<midarrow>r1 \<squnion> r2, as1 @ as2\<rightarrow>\<^sup>\<star>\<^bsub>i\<^esub> s''\<close>
   by (induct arbitrary: r2 as2 s'' rule: opsem_rtrancl.induct)
     (force intro: opsem_rely_mono opsem_rtrancl_rely_mono)+
 
@@ -288,7 +358,11 @@ inductive rgsat
   :: \<open>('h::perm_alg) comm \<Rightarrow> ('h \<Rightarrow> 'h \<Rightarrow> bool) \<Rightarrow> ('h \<Rightarrow> 'h \<Rightarrow> bool) \<Rightarrow> ('h \<Rightarrow> bool) \<Rightarrow> ('h \<Rightarrow> bool) \<Rightarrow> bool\<close>
   where
   rgsat_done: \<open>\<lceil> p \<rceil>\<^bsub>r\<^esub> \<le> q \<Longrightarrow> rgsat Done r g p q\<close>
-| rgsat_iter: \<open>rgsat c r g i i \<Longrightarrow> p \<le> i \<Longrightarrow> i \<le> q \<Longrightarrow> rgsat (c\<^sup>\<star>) r g p q\<close>
+| rgsat_iter:
+  \<open>rgsat c r g p' q' \<Longrightarrow>
+      p \<le> i \<Longrightarrow> i \<le> p' \<Longrightarrow>
+      q' \<le> i \<Longrightarrow> i \<le> q \<Longrightarrow>
+      rgsat (c\<^sup>\<star>\<^bsub>i\<^esub>) r g p q\<close>
 | rgsat_ndet:
   \<open>rgsat s1 r g1 p q1 \<Longrightarrow>
     rgsat s2 r g2 p q2 \<Longrightarrow>
@@ -303,15 +377,14 @@ inductive rgsat
     q1 \<sqinter> q2 \<le> q \<Longrightarrow>
     rgsat (s1 \<parallel> s2) r g p q\<close>
 | rgsat_basic:
-  \<open>pp \<le> \<lfloor> p \<rfloor>\<^bsub>r\<^esub> \<Longrightarrow>
-    \<lceil> q \<rceil>\<^bsub>r\<^esub> \<le> qq \<Longrightarrow>
-    rel_liftL p \<sqinter> b \<le> rel_liftR q \<Longrightarrow>
-    rel_liftL p \<sqinter> b \<le> g \<Longrightarrow>
-    rgsat (Basic b) r g pp qq\<close>
+  \<open>rel_liftL p \<sqinter> b \<le> rel_liftR q \<Longrightarrow>
+    b \<le> g \<Longrightarrow>
+    rgsat (Basic b) r g p q\<close>
 inductive_cases rgsep_doneE[elim]: \<open>rgsat Done r g p q\<close>
-inductive_cases rgsep_iterE[elim]: \<open>rgsat (c\<^sup>\<star>) r g p q\<close>
+inductive_cases rgsep_iterE[elim]: \<open>rgsat (c\<^sup>\<star>\<^bsub>i\<^esub>) r g p q\<close>
 inductive_cases rgsep_parE[elim]: \<open>rgsat (s1 \<parallel> s2) r g p q\<close>
 inductive_cases rgsep_basicE[elim]: \<open>rgsat (Basic c) r g p q\<close>
+
 
 lemma rgsat_weaken:
   \<open>rgsat c r' g' p' q' \<Longrightarrow>
@@ -319,11 +392,22 @@ lemma rgsat_weaken:
     rgsat c r g p q\<close>
   apply (induct arbitrary: p r g q rule: rgsat.induct)
       apply (rule rgsat_done, metis le_supE sup.absorb_iff2 wsstable_disj_distrib wsstable_rely_mono)
-     apply (meson order.eq_iff order.trans rgsat_iter; fail)
+     apply (rule_tac i=i in rgsat_iter)
+         apply assumption
+        apply (simp; fail)
+       apply (simp; fail)
+      apply blast
+     apply blast
     apply (meson order.eq_iff order.trans rgsat_ndet; fail)
    apply (meson order.eq_iff order.trans sup_mono rgsat_parallel; fail)
-  apply (meson order.trans swstable_rely_antimono wsstable_rely_mono rgsat_basic)
+  apply (fastforce intro!: rgsat_basic)
   done
+
+lemma rgsat_iter':
+  \<open>rgsat c r g i i \<Longrightarrow> rgsat (c\<^sup>\<star>\<^bsub>i\<^esub>) r g i i\<close>
+  using rgsat_iter[OF _ order.refl order.refl order.refl order.refl]
+  by blast
+  
 
 lemma frame_conj_helper:
   fixes p1 :: \<open>'a::cancel_perm_alg \<Rightarrow> bool\<close>
@@ -336,18 +420,26 @@ lemma frame_conj_helper:
   apply (metis precise_f predicate1D wsstable_def wsstable_stronger)
   done
 
+lemma ex_inv:
+  \<open>
+      p \<^emph> f \<le> i' \<and>
+      i' \<le> p' \<^emph> f \<and>
+      q' \<^emph> \<lceil> f \<rceil>\<^bsub>r\<^esub> \<le> i' \<and>
+      i' \<le> q \<^emph> \<lceil> f \<rceil>\<^bsub>r\<^esub> \<Longrightarrow>
+      \<lceil> f \<rceil>\<^bsub>r\<^esub> \<le> f\<close>
+  nitpick
+  oops
+
 lemma rgsat_frame:
   assumes
     \<open>rgsat c r g p q\<close>
     \<open>rel_add_preserve (r\<^sup>*\<^sup>*)\<close>
-    \<open>precise f\<close>
+    \<comment> \<open> the variable restriction \<close>
+    \<open>basic_frame_pred f c\<close>
+    \<open>all_loop_inv (\<lambda>i. i \<^emph> \<lceil> f \<rceil>\<^bsub>r\<^esub> \<le> i \<^emph> f) c\<close>
 (*
    and frame_stable:
    \<open>f \<le> \<lfloor> f \<rfloor>\<^bsub>r\<^esub>\<close> (* I note this is my addition, varying from Wickerson; It is needed for the basic step. *)
-*)
-(*
-   and guarantee_independent_of_frame:
-   \<open>rel_liftL f \<sqinter> g \<le> passert f \<sqinter> g\<close> (* my simulation of the variable restriction *)
 *)
   shows
     \<open>rgsat c r g (p \<^emph> f) (q \<^emph> \<lceil> f \<rceil>\<^bsub>r \<squnion> g\<^esub>)\<close>
@@ -360,15 +452,14 @@ proof (induct arbitrary: f rule: rgsat.induct)
     apply (meson sepconj_mono sup_ge1 wsstable_rely_mono; fail)
     done
 next
-  case (rgsat_iter c r g i p q)
+  case (rgsat_iter c r g p' q' p i q)
   then show ?case
-    apply (rule_tac rgsat.rgsat_iter[where i=\<open>i \<^emph> \<lceil> f \<rceil>\<^bsub>r \<squnion> g\<^esub>\<close>])
-      apply (drule meta_spec[where x=\<open>\<lfloor> f \<rfloor>\<^bsub>r \<squnion> g\<^esub>\<close>])
-      apply simp
-      apply (drule swstable_preserves_precise[where r=\<open>r \<squnion> g\<close>])
-    apply clarsimp
-      apply (subst (asm) wsstable_swstable_absorb)
-    apply blast
+    apply (rule_tac rgsat.rgsat_iter)
+        apply fastforce
+    apply simp
+      apply clarsimp
+
+    thm basic_frame_pred_antimono swstable_weaker wsstable_stronger
     sorry
 (*
       apply (metis (no_types, lifting) order.refl wsstable_absorb2 rgsat_iter.hyps(2))
@@ -379,9 +470,9 @@ next
 next
   case (rgsat_ndet s1 r g1 p q1 s2 g2 q2 g q)
   then show ?case
-    by (intro rgsat.rgsat_ndet[where
+    apply (intro rgsat.rgsat_ndet[where
           ?g1.0=g1 and ?g2.0=g2 and ?q1.0=\<open>q1 \<^emph> \<lceil> f \<rceil>\<^bsub>r \<squnion> g1\<^esub>\<close> and ?q2.0=\<open>q2 \<^emph> \<lceil> f \<rceil>\<^bsub>r \<squnion> g2\<^esub>\<close>])
-      (meson order.eq_iff sepconj_mono sup.mono wsstable_rely_mono; fail)+
+    sorry
 next
   case (rgsat_parallel s1 r g2 g1 p1 q1 s2 p2 q2 g p q)
   then show ?case
@@ -400,38 +491,20 @@ next
        apply (meson sepconj_left_mono; fail)
     sorry
 next
-  case (rgsat_basic pp p r q qq b g)
+  case (rgsat_basic p b q g r f)
   then show ?case
     apply -
-    apply (rule rgsat.rgsat_basic[where
-          p=\<open>p \<^emph> f\<close> and
-          q=\<open>q \<^emph> f\<close>])
-    using [[simp_trace]]
-    apply simp
-    apply (rule allI)
-       apply (rule order.trans[OF _ swstable_sepconj_semidistrib])
-        apply (rule sepconj_mono, blast)
-        defer
-       apply blast
-      apply (rule order.trans[OF wsstable_sepconj_semidistrib])
-       apply blast
-      apply (rule sepconj_mono, blast)
-      apply (metis inf_sup_aci(5) sup.cobounded2 wsstable_rely_mono)
-       apply (clarsimp simp add: rel_liftL_def rel_liftR_def le_fun_def)
-       apply (clarsimp simp add: rel_add_preserve_def)
-       apply (drule spec, drule spec, drule mp, assumption, drule spec, drule mp, assumption)
-       apply clarsimp
-       apply (rule_tac x=h1 in exI, rule_tac x=h2 in exI)
-       apply simp
-    thm wsstable_swstable_absorb swstable_wsstable_absorb
-    thm wsstable_sepconj_semidistrib
-    thm swstable_sepconj_semidistrib
-    sorry
+    apply (rule rgsat.rgsat_basic)
+     apply (rule order.trans[where b=\<open>rel_liftR (q \<^emph> f)\<close>])
+      apply (clarsimp simp add: sepconj_def le_fun_def, metis)
+     apply (clarsimp simp add: sepconj_monoR wsstable_stronger)
+    apply blast
+    done
 qed
-
 
 lemma backwards_frame:
   \<open>rgsat c r g p q \<Longrightarrow> rel_add_preserve (r\<^sup>*\<^sup>*) \<Longrightarrow> rgsat c r g (p \<^emph> \<lfloor> f \<rfloor>\<^bsub>r \<squnion> g\<^esub>) (q \<^emph> f)\<close>
+  oops
   by (rule rgsat_weaken[OF rgsat_frame[where f=\<open>\<lfloor> f \<rfloor>\<^bsub>r \<squnion> g\<^esub>\<close>] _ _ order.refl order.refl])
     (force simp add: wsstable_def swstable_def le_fun_def)+
 
@@ -443,7 +516,7 @@ lemma backwards_done:
 
 lemma pre_soundness:
   assumes opsem:
-    \<open>s \<midarrow>r, as\<rightarrow>\<^sup>\<star> s'\<close>
+    \<open>s \<midarrow>r, as\<rightarrow>\<^sup>\<star>\<^bsub>i\<^esub> s'\<close>
     \<open>s = (h, c)\<close>
     \<open>s' = (h', Done)\<close>
     and rgsat: \<open>rgsat c r g p q\<close>

@@ -20,10 +20,10 @@ definition wsstable
 
 subsection \<open>basic logical properties\<close>
 
-lemma swstable_weaker: \<open>\<lfloor> P \<rfloor>\<^bsub>R\<^esub> \<le> P\<close>
+lemma swstable_weaker[intro!]: \<open>\<lfloor> P \<rfloor>\<^bsub>R\<^esub> \<le> P\<close>
   by (force simp add: swstable_def)
 
-lemma wsstable_stronger: \<open>P \<le> \<lceil> P \<rceil>\<^bsub>R\<^esub>\<close>
+lemma wsstable_stronger[intro!]: \<open>P \<le> \<lceil> P \<rceil>\<^bsub>R\<^esub>\<close>
   by (force simp add: wsstable_def)
 
 lemma wsstable_weaker_iff_swstable_stronger:
@@ -40,6 +40,19 @@ lemma stable_iff:
 lemma stable_iff2:
   \<open>stable R p \<longleftrightarrow> \<lceil> p \<rceil>\<^bsub>R\<^esub> \<le> p\<close>
   by (simp add: stable_iff wsstable_weaker_iff_swstable_stronger)
+
+lemmas stableD[dest] = iffD1[OF stable_iff]
+lemmas stableD2[dest] = iffD1[OF stable_iff2]
+
+lemmas stableI[intro] = iffD2[OF stable_iff]
+lemmas stableI2[intro] = iffD2[OF stable_iff2]
+
+lemma stable_antimono:
+  \<open>r1 \<le> r2 \<Longrightarrow> stable r2 p \<Longrightarrow> stable r1 p\<close>
+  by (simp add: stable_def swstable_def fun_eq_iff)
+    (metis rev_predicate2D rtranclp.rtrancl_refl rtranclp_mono)
+
+lemmas stable_antimono'[dest] = stable_antimono[rotated]
 
 subsection \<open>(semi)distributivity properties\<close>
 
@@ -105,11 +118,29 @@ paragraph \<open> Preservation of addition over a relation \<close>
 
 definition
   \<open>rel_add_preserve r \<equiv>
-    \<forall>a1 a2 b. a1 ## a2 \<longrightarrow> r (a1 + a2) b \<longrightarrow> (\<exists>b1 b2. b1 ## b2 \<and> b = b1 + b2 \<and> r a1 b1 \<and> r a2 b2)\<close>
+    (\<forall>h1 h2 s.
+      h1 ## h2 \<longrightarrow>
+      r\<^sup>=\<^sup>= (h1 + h2) s \<longrightarrow>
+      (\<exists>s1 s2. s1 ## s2 \<and> s = s1 + s2 \<and> r\<^sup>=\<^sup>= h1 s1 \<and> r\<^sup>=\<^sup>= h2 s2))\<close>
+
+definition
+  \<open>weak_rel_add_preserve r \<equiv>
+    \<forall>p q.
+      (\<forall>h1 h2 x.
+        r\<^sup>=\<^sup>= (h1 + h2) x \<longrightarrow>
+        h1 ## h2 \<longrightarrow>
+        p h1 \<longrightarrow>
+        q h2 \<longrightarrow>
+        (\<exists>h1 h2. h1 ## h2 \<and> x = h1 + h2 \<and> (\<exists>s. r\<^sup>=\<^sup>= s h1 \<and> p s) \<and> (\<exists>s. r\<^sup>=\<^sup>= s h2 \<and> q s)))\<close>
+
+lemma rel_add_preserve_impl_weak[intro,dest]:
+  \<open>rel_add_preserve r \<Longrightarrow> weak_rel_add_preserve r\<close>
+  unfolding weak_rel_add_preserve_def rel_add_preserve_def
+  by meson
 
 lemma swstable_sepconj_semidistrib:
   fixes R :: \<open>'a \<Rightarrow> 'a \<Rightarrow> bool\<close>
-  assumes rely_preserves_add: \<open>rel_add_preserve (R\<^sup>*\<^sup>*)\<close>
+  assumes \<open>rel_add_preserve (R\<^sup>*\<^sup>*)\<close>
   shows \<open>\<lfloor> P \<rfloor>\<^bsub>R\<^esub> \<^emph> \<lfloor> Q \<rfloor>\<^bsub>R\<^esub> \<le> \<lfloor> P \<^emph> Q \<rfloor>\<^bsub>R\<^esub>\<close>
   using assms
   unfolding rel_add_preserve_def swstable_def sepconj_def
@@ -117,11 +148,11 @@ lemma swstable_sepconj_semidistrib:
 
 lemma wsstable_sepconj_semidistrib:
   fixes R :: \<open>'a \<Rightarrow> 'a \<Rightarrow> bool\<close>
-  assumes rely_preserves_add: \<open>rel_add_preserve (R\<^sup>*\<^sup>*)\<close>
+  assumes \<open>weak_rel_add_preserve (R\<^sup>*\<^sup>*)\<close>
   shows \<open>\<lceil> P \<^emph> Q \<rceil>\<^bsub>R\<^esub> \<le> \<lceil> P \<rceil>\<^bsub>R\<^esub> \<^emph> \<lceil> Q \<rceil>\<^bsub>R\<^esub>\<close>
   using assms
-  unfolding rel_add_preserve_def wsstable_def sepconj_def
-  by blast
+  unfolding weak_rel_add_preserve_def wsstable_def sepconj_def
+  by force
 
 paragraph \<open> Preservation of addition over a relation \<close>
 
@@ -218,7 +249,11 @@ lemma stablerel_reflp:
 
 lemma stablerel_transp:
   \<open>transp stablerel\<close>
-  using order.trans transp_def by blast
+  using order.trans transp_def by fast
+
+lemma stablerel_eqclp[simp]:
+  \<open>stablerel\<^sup>=\<^sup>= = stablerel\<close>
+  by (simp add: reflp_ge_eq stablerel_reflp sup.absorb1)
 
 lemma stablerel_transclp[simp]:
   \<open>stablerel\<^sup>*\<^sup>* = stablerel\<close>
@@ -287,7 +322,8 @@ lemma swstablerel_sepconj_semidistrib:
 lemma wsstablerel_sepconj_semidistrib:
   fixes P Q :: \<open>'a \<Rightarrow> bool\<close>
   shows \<open>\<lceil> P \<^emph> Q \<rceil> \<le> \<lceil> P \<rceil> \<^emph> \<lceil> Q \<rceil>\<close>
-  by (rule wsstable_sepconj_semidistrib, simp add: rel_add_preserve_def stablerel_additivity_of_update)
+  by (rule wsstable_sepconj_semidistrib[OF rel_add_preserve_impl_weak])
+    (simp add: rel_add_preserve_def stablerel_additivity_of_update)
 
 end
 
@@ -304,8 +340,7 @@ lemma wsstabledual_necessitation: \<open>\<top> \<le> P \<Longrightarrow> \<top>
       wsstable_def wsstable_stronger)
 
 lemma wsstabledual_impl_distrib: \<open>\<diamond>\<^sup>- Q \<le> \<diamond>\<^sup>-(-P \<sqinter> Q) \<squnion> \<diamond>\<^sup>-(P)\<close>
-  by (metis (mono_tags, lifting) boolean_algebra.de_Morgan_disj double_compl inf.absorb1 inf_idem
-      shunt1 sup.orderI wsstable_disj_distrib)
+  by (force simp add: le_fun_def wsstable_def)
 
 instantiation prod :: (stable_sep_alg,stable_sep_alg) stable_sep_alg
 begin
