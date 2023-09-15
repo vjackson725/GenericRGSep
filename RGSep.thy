@@ -21,6 +21,47 @@ lemma liftR_le_liftR[simp]:
   \<open>rel_liftR p \<le> rel_liftR q \<longleftrightarrow> p \<le> q\<close>
   by (simp add: rel_liftR_def)
 
+subsection \<open> Seperation algebras + relations \<close>
+
+definition
+  \<open>minchange_rel (r :: ('a::semigroup_add) \<Rightarrow> 'a \<Rightarrow> bool) \<equiv>
+    \<lambda>h1 h2. r h1 h2 \<and> (\<forall>h'. \<not>(\<forall>x. x + h' = x) \<longrightarrow> (\<nexists>h1' h2'. h1 = h1' + h' \<and> h2 = h2' + h'))\<close>
+
+definition
+  \<open>rel_frame_closed (r :: ('a::perm_alg) \<Rightarrow> 'a \<Rightarrow> bool) \<equiv>
+      \<forall>h1 h2. r h1 h2 \<longrightarrow> (\<forall>h. h ## h1 \<longrightarrow> h ## h2 \<longrightarrow> r (h1 + h) (h2 + h))\<close>
+
+definition
+  \<open>rel_frame_cl (r :: ('a::perm_alg) \<Rightarrow> 'a \<Rightarrow> bool) \<equiv> \<lambda>h1 h2.
+    r h1 h2 \<or>
+      (\<exists>h1' h2'. r h1' h2' \<and> (\<exists>h'. h1' ## h' \<and> h2' ## h' \<and> h1 = h1' + h' \<and> h2 = h2' + h'))\<close>
+
+lemma rel_frame_cl_is_least_frame_closure:
+  \<open>rel_frame_cl r = (LEAST r'. r \<le> r' \<and> rel_frame_closed r')\<close>
+  unfolding rel_frame_cl_def rel_frame_closed_def
+  apply (rule Least_equality[symmetric])
+   apply (rule conjI)
+    apply force
+  subgoal
+    apply clarsimp
+    apply (rule conjI)
+     apply (force intro: disjoint_symm)
+    apply (clarsimp, metis disjoint_add_rightL disjoint_add_rightR disjoint_add_right_commute
+        partial_add_commute partial_add_left_commute)
+    done
+  apply (clarsimp, metis disjoint_symm predicate2D)
+  done
+
+lemma frame_closed_frame_cl_of_minimal_pairs_eq:
+  \<open>rel_frame_closed r \<Longrightarrow> rel_frame_cl (minchange_rel r) = r\<close>
+  unfolding rel_frame_cl_def rel_frame_closed_def minchange_rel_def
+  apply (clarsimp simp add: fun_eq_iff)
+  apply (rule iffI)
+   apply (force simp add: disjoint_symm_iff)
+  apply clarsimp
+  oops
+
+
 section \<open> Language Definition \<close>
 
 datatype 'h comm =
@@ -31,8 +72,8 @@ datatype 'h comm =
 (*
   | ExtNdet \<open>'h comm\<close> \<open>'h comm\<close> (infixr \<open>\<^bold>\<box>\<close> 65)
 *)
-  | Iter \<open>'h comm\<close> \<open>'h \<Rightarrow> bool\<close> (\<open>_\<^sup>\<star>\<^bsub>_\<^esub>\<close> [80,0] 80)
-  | Basic \<open>'h \<Rightarrow> 'h \<Rightarrow> bool\<close>
+  | Iter \<open>'h comm\<close> (\<open>_\<^sup>\<star>\<close> [80] 80)
+  | Atomic \<open>'h \<Rightarrow> 'h \<Rightarrow> bool\<close>
 
 datatype 'h act =
     Tau
@@ -44,83 +85,63 @@ lemma act_neq_iff[simp]:
   by (metis act.distinct(1) act.exhaust)+
 
 
-paragraph \<open> Predicate to ensure that loop invariants have a given property \<close>
+paragraph \<open> Predicate to ensure atomic actions have a given property \<close>
 
-inductive all_loop_inv :: \<open>(('h \<Rightarrow> bool) \<Rightarrow> bool) \<Rightarrow> 'h comm \<Rightarrow> bool\<close> where
-  skip[iff]: \<open>all_loop_inv p Done\<close>
-| seq[intro!]: \<open>all_loop_inv p c1 \<Longrightarrow> all_loop_inv p c2 \<Longrightarrow> all_loop_inv p (c1 ;; c2)\<close>
-| par[intro!]: \<open>all_loop_inv p c1 \<Longrightarrow> all_loop_inv p c2 \<Longrightarrow> all_loop_inv p (c1 \<parallel> c2)\<close>
-| ndet[intro!]: \<open>all_loop_inv p c1 \<Longrightarrow> all_loop_inv p c2 \<Longrightarrow> all_loop_inv p (c1 \<^bold>+ c2)\<close>
-| iter[intro!]: \<open>all_loop_inv p c \<Longrightarrow> p i \<Longrightarrow> all_loop_inv p (c\<^sup>\<star>\<^bsub>i\<^esub>)\<close>
-| basic[intro!]: \<open>all_loop_inv p (Basic b)\<close>
+inductive all_atom_comm :: \<open>(('h \<Rightarrow> 'h \<Rightarrow> bool) \<Rightarrow> bool) \<Rightarrow> 'h comm \<Rightarrow> bool\<close> where
+  skip[iff]: \<open>all_atom_comm p Done\<close>
+| seq[intro!]: \<open>all_atom_comm p c1 \<Longrightarrow> all_atom_comm p c2 \<Longrightarrow> all_atom_comm p (c1 ;; c2)\<close>
+| par[intro!]: \<open>all_atom_comm p c1 \<Longrightarrow> all_atom_comm p c2 \<Longrightarrow> all_atom_comm p (c1 \<parallel> c2)\<close>
+| ndet[intro!]: \<open>all_atom_comm p c1 \<Longrightarrow> all_atom_comm p c2 \<Longrightarrow> all_atom_comm p (c1 \<^bold>+ c2)\<close>
+| iter[intro!]: \<open>all_atom_comm p c \<Longrightarrow> all_atom_comm p (c\<^sup>\<star>)\<close>
+| atom[intro!]: \<open>p b \<Longrightarrow> all_atom_comm p (Atomic b)\<close>
 
-inductive_cases all_loop_inv_doneE[elim!]: \<open>all_loop_inv p Done\<close>
-inductive_cases all_loop_inv_seqE[elim!]: \<open>all_loop_inv p (c1 ;; c2)\<close>
-inductive_cases all_loop_inv_ndetE[elim!]: \<open>all_loop_inv p (c1 \<^bold>+ c2)\<close>
-inductive_cases all_loop_inv_parE[elim!]: \<open>all_loop_inv p (c1 \<parallel> c2)\<close>
-inductive_cases all_loop_inv_iterE[elim!]: \<open>all_loop_inv p (c\<^sup>\<star>\<^bsub>i\<^esub>)\<close>
-inductive_cases all_loop_inv_basicE[elim!]: \<open>all_loop_inv p (Basic b)\<close>
+inductive_cases all_atom_comm_doneE[elim!]: \<open>all_atom_comm p Done\<close>
+inductive_cases all_atom_comm_seqE[elim!]: \<open>all_atom_comm p (c1 ;; c2)\<close>
+inductive_cases all_atom_comm_ndetE[elim!]: \<open>all_atom_comm p (c1 \<^bold>+ c2)\<close>
+inductive_cases all_atom_comm_parE[elim!]: \<open>all_atom_comm p (c1 \<parallel> c2)\<close>
+inductive_cases all_atom_comm_iterE[elim!]: \<open>all_atom_comm p (c\<^sup>\<star>)\<close>
+inductive_cases all_atom_comm_atomE[elim!]: \<open>all_atom_comm p (Atomic b)\<close>
 
-lemma all_loop_inv_simps[simp]:
-  \<open>all_loop_inv p Done \<longleftrightarrow> True\<close>
-  \<open>all_loop_inv p (c1 ;; c2) \<longleftrightarrow> all_loop_inv p c1 \<and> all_loop_inv p c2\<close>
-  \<open>all_loop_inv p (c1 \<^bold>+ c2) \<longleftrightarrow> all_loop_inv p c1 \<and> all_loop_inv p c2\<close>
-  \<open>all_loop_inv p (c1 \<parallel> c2) \<longleftrightarrow> all_loop_inv p c1 \<and> all_loop_inv p c2\<close>
-  \<open>all_loop_inv p (c\<^sup>\<star>\<^bsub>i\<^esub>) \<longleftrightarrow> p i \<and> all_loop_inv p c\<close>
-  \<open>all_loop_inv p (Basic b) \<longleftrightarrow> True\<close>
+lemma all_atom_comm_simps[simp]:
+  \<open>all_atom_comm p Done \<longleftrightarrow> True\<close>
+  \<open>all_atom_comm p (c1 ;; c2) \<longleftrightarrow> all_atom_comm p c1 \<and> all_atom_comm p c2\<close>
+  \<open>all_atom_comm p (c1 \<^bold>+ c2) \<longleftrightarrow> all_atom_comm p c1 \<and> all_atom_comm p c2\<close>
+  \<open>all_atom_comm p (c1 \<parallel> c2) \<longleftrightarrow> all_atom_comm p c1 \<and> all_atom_comm p c2\<close>
+  \<open>all_atom_comm p (c\<^sup>\<star>) \<longleftrightarrow> all_atom_comm p c\<close>
+  \<open>all_atom_comm p (Atomic b) \<longleftrightarrow> p b\<close>
   by fastforce+
 
-
-paragraph \<open> Predicate to ensure basic actions have a given property \<close>
-
-inductive all_basic_comm :: \<open>(('h \<Rightarrow> 'h \<Rightarrow> bool) \<Rightarrow> bool) \<Rightarrow> 'h comm \<Rightarrow> bool\<close> where
-  skip[iff]: \<open>all_basic_comm p Done\<close>
-| seq[intro!]: \<open>all_basic_comm p c1 \<Longrightarrow> all_basic_comm p c2 \<Longrightarrow> all_basic_comm p (c1 ;; c2)\<close>
-| par[intro!]: \<open>all_basic_comm p c1 \<Longrightarrow> all_basic_comm p c2 \<Longrightarrow> all_basic_comm p (c1 \<parallel> c2)\<close>
-| ndet[intro!]: \<open>all_basic_comm p c1 \<Longrightarrow> all_basic_comm p c2 \<Longrightarrow> all_basic_comm p (c1 \<^bold>+ c2)\<close>
-| iter[intro!]: \<open>all_basic_comm p c \<Longrightarrow> all_basic_comm p (c\<^sup>\<star>\<^bsub>i\<^esub>)\<close>
-| basic[intro!]: \<open>p b \<Longrightarrow> all_basic_comm p (Basic b)\<close>
-
-inductive_cases all_basic_comm_doneE[elim!]: \<open>all_basic_comm p Done\<close>
-inductive_cases all_basic_comm_seqE[elim!]: \<open>all_basic_comm p (c1 ;; c2)\<close>
-inductive_cases all_basic_comm_ndetE[elim!]: \<open>all_basic_comm p (c1 \<^bold>+ c2)\<close>
-inductive_cases all_basic_comm_parE[elim!]: \<open>all_basic_comm p (c1 \<parallel> c2)\<close>
-inductive_cases all_basic_comm_iterE[elim!]: \<open>all_basic_comm p (c\<^sup>\<star>\<^bsub>i\<^esub>)\<close>
-inductive_cases all_basic_comm_basicE[elim!]: \<open>all_basic_comm p (Basic b)\<close>
-
-lemma all_basic_comm_simps[simp]:
-  \<open>all_basic_comm p Done \<longleftrightarrow> True\<close>
-  \<open>all_basic_comm p (c1 ;; c2) \<longleftrightarrow> all_basic_comm p c1 \<and> all_basic_comm p c2\<close>
-  \<open>all_basic_comm p (c1 \<^bold>+ c2) \<longleftrightarrow> all_basic_comm p c1 \<and> all_basic_comm p c2\<close>
-  \<open>all_basic_comm p (c1 \<parallel> c2) \<longleftrightarrow> all_basic_comm p c1 \<and> all_basic_comm p c2\<close>
-  \<open>all_basic_comm p (c\<^sup>\<star>\<^bsub>i\<^esub>) \<longleftrightarrow> all_basic_comm p c\<close>
-  \<open>all_basic_comm p (Basic b) \<longleftrightarrow> p b\<close>
-  by fastforce+
-
-abbreviation \<open>basics_guarantee g \<equiv> all_basic_comm ((\<le>) g)\<close>
+abbreviation \<open>atoms_guarantee g \<equiv> all_atom_comm ((\<le>) g)\<close>
 
 subsection \<open> For the variable restriction \<close>
 
 definition
-  \<open>basic_frame_pred p c \<equiv>
-    all_basic_comm
-      (\<lambda>b. \<forall>h1 hf h'. p hf \<longrightarrow> b (h1 + hf) h' \<longrightarrow> (\<exists>h2. b h1 h2 \<and> h2 ## hf \<and> h' = h2 + hf))
+  \<open>atom_frame_pred p c \<equiv>
+    all_atom_comm
+      (\<lambda>b. \<forall>h1 h2 hf. b h1 h2 \<longrightarrow> p hf \<longrightarrow> h1 ## hf \<and> h2 ## hf \<and> b (h1 + hf) (h2 + hf))
       c\<close>
 
-lemma basic_frame_pred_simps[simp]:
-  \<open>basic_frame_pred p Done \<longleftrightarrow> True\<close>
-  \<open>basic_frame_pred p (c1 ;; c2) \<longleftrightarrow> basic_frame_pred p c1 \<and> basic_frame_pred p c2\<close>
-  \<open>basic_frame_pred p (c1 \<^bold>+ c2) \<longleftrightarrow> basic_frame_pred p c1 \<and> basic_frame_pred p c2\<close>
-  \<open>basic_frame_pred p (c1 \<parallel> c2) \<longleftrightarrow> basic_frame_pred p c1 \<and> basic_frame_pred p c2\<close>
-  \<open>basic_frame_pred p (c\<^sup>\<star>\<^bsub>i\<^esub>) \<longleftrightarrow> basic_frame_pred p c\<close>
-  \<open>basic_frame_pred p (Basic b) \<longleftrightarrow>
-    (\<forall>h1 hf h'. p hf \<longrightarrow> b (h1 + hf) h' \<longrightarrow> (\<exists>h2. b h1 h2 \<and> h2 ## hf \<and> h' = h2 + hf))\<close>
-  by (fastforce simp add: basic_frame_pred_def)+
+lemma atom_frame_pred_simps[simp]:
+  \<open>atom_frame_pred p Done \<longleftrightarrow> True\<close>
+  \<open>atom_frame_pred p (c1 ;; c2) \<longleftrightarrow> atom_frame_pred p c1 \<and> atom_frame_pred p c2\<close>
+  \<open>atom_frame_pred p (c1 \<^bold>+ c2) \<longleftrightarrow> atom_frame_pred p c1 \<and> atom_frame_pred p c2\<close>
+  \<open>atom_frame_pred p (c1 \<parallel> c2) \<longleftrightarrow> atom_frame_pred p c1 \<and> atom_frame_pred p c2\<close>
+  \<open>atom_frame_pred p (c\<^sup>\<star>) \<longleftrightarrow> atom_frame_pred p c\<close>
+  \<open>atom_frame_pred p (Atomic b) \<longleftrightarrow>
+    (\<forall>h1 h2 hf. b h1 h2 \<longrightarrow> p hf \<longrightarrow> h1 ## hf \<and> h2 ## hf \<and> b (h1 + hf) (h2 + hf))\<close>
+  by (fastforce simp add: atom_frame_pred_def)+
 
-lemma basic_frame_pred_antimono:
-  \<open>p \<le> q \<Longrightarrow> basic_frame_pred q c \<Longrightarrow> basic_frame_pred p c\<close>
+lemma atom_frame_pred_antimono:
+  \<open>p \<le> q \<Longrightarrow> atom_frame_pred q c \<Longrightarrow> atom_frame_pred p c\<close>
   by (induct c arbitrary: p q)
-    (fastforce simp add: basic_frame_pred_def)+
+    (fastforce simp add: atom_frame_pred_def)+
+
+lemma atom_frame_pred_mono:
+  \<open>p \<le> q \<Longrightarrow> atom_frame_pred p c \<Longrightarrow> atom_frame_pred q c\<close>
+  apply (induct c arbitrary: p q)
+       apply (fastforce simp add: atom_frame_pred_def)+
+  apply (clarsimp simp add: atom_frame_pred_def)
+  oops
 
 section \<open> Operational Semantics \<close>
 
@@ -143,15 +164,15 @@ inductive opsem :: \<open>('h \<Rightarrow> 'h \<Rightarrow> bool) \<Rightarrow>
 | par_step_right[intro]: \<open>opsem r a (h, t) (h', t') \<Longrightarrow> opsem r a (h, s \<parallel> t) (h', s \<parallel> t')\<close>
 | par_left[intro!]: \<open>opsem r Tau (h, Done \<parallel> t) (h, t)\<close>
 | par_right[intro!]: \<open>opsem r Tau (h, s \<parallel> Done) (h, s)\<close>
-| iter[intro]: \<open>opsem r Tau (h, c\<^sup>\<star>\<^bsub>i\<^esub>) (h, (Done \<^bold>+ c) ;; c\<^sup>\<star>\<^bsub>i\<^esub>)\<close>
-| basic[intro!]: \<open>g h h' \<Longrightarrow> opsem r Tau (h, Basic g) (h', Done)\<close>
+| iter[intro]: \<open>opsem r Tau (h, c\<^sup>\<star>) (h, (Done \<^bold>+ c) ;; c\<^sup>\<star>)\<close>
+| atom[intro!]: \<open>g h h' \<Longrightarrow> opsem r Tau (h, Atomic g) (h', Done)\<close>
 | env[intro!]: \<open>r h h' \<Longrightarrow> opsem r (Env h h') (h, t) (h', t)\<close>
 
 inductive_cases opsem_seqE[elim!]: \<open>opsem r a (h, c1 ;; c2) (h', c')\<close>
 inductive_cases opsem_ndetE[elim!]: \<open>opsem r a (h, c1 \<^bold>+ c2) (h', c')\<close>
 inductive_cases opsem_parE[elim!]: \<open>opsem r a (h, c1 \<parallel>  c2) (h', c')\<close>
-inductive_cases opsem_iterE[elim!]: \<open>opsem r a (h, c\<^sup>\<star>\<^bsub>i\<^esub>) (h', c')\<close>
-inductive_cases opsem_basicE[elim!]: \<open>opsem r a (h, Basic g) (h', c')\<close>
+inductive_cases opsem_iterE[elim!]: \<open>opsem r a (h, c\<^sup>\<star>) (h', c')\<close>
+inductive_cases opsem_atomE[elim!]: \<open>opsem r a (h, Atomic g) (h', c')\<close>
 inductive_cases opsem_skipE[elim!]: \<open>opsem r a (h, Done) (h', c')\<close>
 inductive_cases opsem_envE[elim]: \<open>opsem r (Env x y) s s'\<close>
 
@@ -164,8 +185,8 @@ lemma opsem_tau_iff:
     (\<exists>h' c1'. opsem r Tau (h,c1) (h',c1') \<and> s' = (h', c1' \<parallel> c2) \<or>
     (\<exists>h' c2'. opsem r Tau (h,c2) (h',c2') \<and> s' = (h', c1 \<parallel> c2')))\<close>
   \<open>opsem r Tau (h, c1 \<^bold>+ c2) s' \<longleftrightarrow> s' = (h, c2) \<or> s' = (h, c1)\<close>
-  \<open>opsem r Tau (h, c\<^sup>\<star>\<^bsub>i\<^esub>) s' \<longleftrightarrow> s' = (h, (Done \<^bold>+ c) ;; c\<^sup>\<star>\<^bsub>i\<^esub>)\<close>
-  \<open>opsem r Tau (h, Basic g) s' \<longleftrightarrow> (\<exists>h'. g h h' \<and> s' = (h', Done))\<close>
+  \<open>opsem r Tau (h, c\<^sup>\<star>) s' \<longleftrightarrow> s' = (h, (Done \<^bold>+ c) ;; c\<^sup>\<star>)\<close>
+  \<open>opsem r Tau (h, Atomic g) s' \<longleftrightarrow> (\<exists>h'. g h h' \<and> s' = (h', Done))\<close>
   by (cases s', force)+
 
 lemma opsem_envD:
@@ -180,27 +201,27 @@ subsubsection \<open>sugared atomic programs\<close>
 
 definition \<open>passert p \<equiv> \<lambda>a b. p a \<and> a = b\<close>
 
-abbreviation \<open>Assert p \<equiv> Basic (passert p)\<close>
-abbreviation \<open>Assume p \<equiv> Basic (rel_liftR p)\<close>
-abbreviation \<open>Skip \<equiv> Basic (passert \<top>)\<close>
+abbreviation \<open>Assert p \<equiv> Atomic (passert p)\<close>
+abbreviation \<open>Assume p \<equiv> Atomic (rel_liftR p)\<close>
+abbreviation \<open>Skip \<equiv> Atomic (passert \<top>)\<close>
 
 lemma passert_simps[simp]:
   \<open>passert p a b \<longleftrightarrow> p a \<and> b = a\<close>
   by (force simp add: passert_def)
 
 lemma opsem_assert[intro!]: \<open>p h \<Longrightarrow> opsem r Tau (h, Assert p) (h, Done)\<close>
-  by (simp add: opsem.basic passert_def)
+  by (simp add: opsem.atom passert_def)
 
 lemma opsem_assume[intro!]: \<open>q h' \<Longrightarrow> opsem r Tau (h, Assume q) (h', Done)\<close>
-  by (simp add: opsem.basic rel_liftR_def)
+  by (simp add: opsem.atom rel_liftR_def)
 
 lemma opsem_skip[intro!]: \<open>opsem r Tau (h, Skip) (h, Done)\<close>
-  by (simp add: opsem.basic passert_def)
+  by (simp add: opsem.atom passert_def)
 
 subsubsection \<open> Sugared programs \<close>
 
 abbreviation \<open>IfThenElse p ct cf \<equiv> Assert p ;; ct \<^bold>+ Assert (-p) ;; cf\<close>
-abbreviation \<open>WhileLoop p c \<equiv> (Assert p ;; c)\<^sup>\<star>\<^bsub>i\<^esub> ;; Assert (-p)\<close>
+abbreviation \<open>WhileLoop p c \<equiv> (Assert p ;; c)\<^sup>\<star> ;; Assert (-p)\<close>
 
 paragraph \<open> Pretty operational semantics \<close>
 
@@ -233,8 +254,8 @@ lemma opsem_rtrancl_iff[simp]:
 
 paragraph \<open> pretty opsem transitive closure \<close>
 
-abbreviation(input) pretty_opsem_rtrancl :: \<open>_ \<Rightarrow> _ \<Rightarrow> _ \<Rightarrow> _ \<Rightarrow> _\<close> (\<open>_ \<midarrow>(_, _)\<rightarrow>\<^sup>\<star>\<^bsub>i\<^esub> _\<close> [60,0,0,60] 60) where
-  \<open>hs \<midarrow>r, as\<rightarrow>\<^sup>\<star>\<^bsub>i\<^esub> ht \<equiv> opsem_rtrancl r as hs ht\<close>
+abbreviation(input) pretty_opsem_rtrancl :: \<open>_ \<Rightarrow> _ \<Rightarrow> _ \<Rightarrow> _ \<Rightarrow> _\<close> (\<open>_ \<midarrow>(_, _)\<rightarrow>\<^sup>\<star> _\<close> [60,0,0,60] 60) where
+  \<open>hs \<midarrow>r, as\<rightarrow>\<^sup>\<star> ht \<equiv> opsem_rtrancl r as hs ht\<close>
 
 subsection \<open> Theorems about the operational semantics \<close>
 
@@ -257,18 +278,18 @@ lemma opsem_rtrancl_rev_cons_iff[simp]:
 
 
 lemma opsem_rtrancl_rely_monoD:
-  \<open>s \<midarrow>r, as\<rightarrow>\<^sup>\<star>\<^bsub>i\<^esub> s' \<Longrightarrow> r \<le> r' \<Longrightarrow> s \<midarrow>r', as\<rightarrow>\<^sup>\<star>\<^bsub>i\<^esub> s'\<close>
+  \<open>s \<midarrow>r, as\<rightarrow>\<^sup>\<star> s' \<Longrightarrow> r \<le> r' \<Longrightarrow> s \<midarrow>r', as\<rightarrow>\<^sup>\<star> s'\<close>
   by (induct rule: opsem_rtrancl.induct)
     (fastforce dest: opsem_rely_monoD[where r'=r'])+
 
 lemmas opsem_rtrancl_rely_mono = opsem_rtrancl_rely_monoD[rotated]
 
 lemma opsem_rtrancl_stepI:
-  \<open>s \<midarrow>r, a\<rightarrow> s' \<Longrightarrow> s \<midarrow>r, [a]\<rightarrow>\<^sup>\<star>\<^bsub>i\<^esub> s'\<close>
+  \<open>s \<midarrow>r, a\<rightarrow> s' \<Longrightarrow> s \<midarrow>r, [a]\<rightarrow>\<^sup>\<star> s'\<close>
   by blast
 
 lemma opsem_rtrancl_trans:
-  \<open>s \<midarrow>r1, as1\<rightarrow>\<^sup>\<star>\<^bsub>i\<^esub> s' \<Longrightarrow> s' \<midarrow>r2, as2\<rightarrow>\<^sup>\<star>\<^bsub>i\<^esub> s'' \<Longrightarrow> s \<midarrow>r1 \<squnion> r2, as1 @ as2\<rightarrow>\<^sup>\<star>\<^bsub>i\<^esub> s''\<close>
+  \<open>s \<midarrow>r1, as1\<rightarrow>\<^sup>\<star> s' \<Longrightarrow> s' \<midarrow>r2, as2\<rightarrow>\<^sup>\<star> s'' \<Longrightarrow> s \<midarrow>r1 \<squnion> r2, as1 @ as2\<rightarrow>\<^sup>\<star> s''\<close>
   by (induct arbitrary: r2 as2 s'' rule: opsem_rtrancl.induct)
     (force intro: opsem_rely_mono opsem_rtrancl_rely_mono)+
 
@@ -287,12 +308,12 @@ lemma done_stuck:
   \<open>\<nexists>s'. (h, Done)  \<midarrow>r, Tau\<rightarrow> s'\<close>
   by force
 
-lemma blocked_basic_stuck:
-  \<open>\<nexists>h'. g h h' \<Longrightarrow> \<nexists>s'. (h, Basic g)  \<midarrow>r, Tau\<rightarrow> s'\<close>
+lemma blocked_atom_stuck:
+  \<open>\<nexists>h'. g h h' \<Longrightarrow> \<nexists>s'. (h, Atomic g)  \<midarrow>r, Tau\<rightarrow> s'\<close>
   by force
 
 lemma nondone_nonstuck:
-  \<open>c \<noteq> Done \<Longrightarrow> \<forall>x. \<exists>y. g x y \<Longrightarrow> basics_guarantee g c \<Longrightarrow> \<exists>s'. (h, c)  \<midarrow>r, Tau\<rightarrow> s'\<close>
+  \<open>c \<noteq> Done \<Longrightarrow> \<forall>x. \<exists>y. g x y \<Longrightarrow> atoms_guarantee g c \<Longrightarrow> \<exists>s'. (h, c)  \<midarrow>r, Tau\<rightarrow> s'\<close>
   by (induct c arbitrary: h)
     (fastforce simp add: opsem_tau_iff)+
 
@@ -362,7 +383,7 @@ inductive rgsat
   \<open>rgsat c r g p' q' \<Longrightarrow>
       p \<le> i \<Longrightarrow> i \<le> p' \<Longrightarrow>
       q' \<le> i \<Longrightarrow> i \<le> q \<Longrightarrow>
-      rgsat (c\<^sup>\<star>\<^bsub>i\<^esub>) r g p q\<close>
+      rgsat (c\<^sup>\<star>) r g p q\<close>
 | rgsat_ndet:
   \<open>rgsat s1 r g1 p q1 \<Longrightarrow>
     rgsat s2 r g2 p q2 \<Longrightarrow>
@@ -376,14 +397,14 @@ inductive rgsat
     p \<le> p1 \<Longrightarrow> p \<le> p2 \<Longrightarrow>
     q1 \<sqinter> q2 \<le> q \<Longrightarrow>
     rgsat (s1 \<parallel> s2) r g p q\<close>
-| rgsat_basic:
+| rgsat_atom:
   \<open>rel_liftL p \<sqinter> b \<le> rel_liftR q \<Longrightarrow>
     b \<le> g \<Longrightarrow>
-    rgsat (Basic b) r g p q\<close>
+    rgsat (Atomic b) r g p q\<close>
 inductive_cases rgsep_doneE[elim]: \<open>rgsat Done r g p q\<close>
-inductive_cases rgsep_iterE[elim]: \<open>rgsat (c\<^sup>\<star>\<^bsub>i\<^esub>) r g p q\<close>
+inductive_cases rgsep_iterE[elim]: \<open>rgsat (c\<^sup>\<star>) r g p q\<close>
 inductive_cases rgsep_parE[elim]: \<open>rgsat (s1 \<parallel> s2) r g p q\<close>
-inductive_cases rgsep_basicE[elim]: \<open>rgsat (Basic c) r g p q\<close>
+inductive_cases rgsep_atomE[elim]: \<open>rgsat (Atomic c) r g p q\<close>
 
 
 lemma rgsat_weaken:
@@ -400,11 +421,11 @@ lemma rgsat_weaken:
      apply blast
     apply (meson order.eq_iff order.trans rgsat_ndet; fail)
    apply (meson order.eq_iff order.trans sup_mono rgsat_parallel; fail)
-  apply (fastforce intro!: rgsat_basic)
+  apply (fastforce intro!: rgsat_atom)
   done
 
 lemma rgsat_iter':
-  \<open>rgsat c r g i i \<Longrightarrow> rgsat (c\<^sup>\<star>\<^bsub>i\<^esub>) r g i i\<close>
+  \<open>rgsat c r g i i \<Longrightarrow> rgsat (c\<^sup>\<star>) r g i i\<close>
   using rgsat_iter[OF _ order.refl order.refl order.refl order.refl]
   by blast
   
@@ -435,12 +456,9 @@ lemma rgsat_frame:
     \<open>rgsat c r g p q\<close>
     \<open>rel_add_preserve (r\<^sup>*\<^sup>*)\<close>
     \<comment> \<open> the variable restriction \<close>
-    \<open>basic_frame_pred f c\<close>
-    \<open>all_loop_inv (\<lambda>i. i \<^emph> \<lceil> f \<rceil>\<^bsub>r\<^esub> \<le> i \<^emph> f) c\<close>
-(*
+    \<open>atom_frame_pred f c\<close>
    and frame_stable:
-   \<open>f \<le> \<lfloor> f \<rfloor>\<^bsub>r\<^esub>\<close> (* I note this is my addition, varying from Wickerson; It is needed for the basic step. *)
-*)
+   \<open>\<lceil> f \<rceil>\<^bsub>r \<squnion> g\<^esub> \<le> f\<close> (* Variation from Wickerson, but in the original. Needed in iter. *)
   shows
     \<open>rgsat c r g (p \<^emph> f) (q \<^emph> \<lceil> f \<rceil>\<^bsub>r \<squnion> g\<^esub>)\<close>
   using assms
@@ -449,30 +467,40 @@ proof (induct arbitrary: f rule: rgsat.induct)
   then show ?case
     apply (intro rgsat.rgsat_done[OF order.trans])
      apply (rule wsstable_sepconj_semidistrib; force)
-    apply (meson sepconj_mono sup_ge1 wsstable_rely_mono; fail)
+    apply (meson sepconj_mono sup_ge1 wsstable_rely_mono)
     done
 next
   case (rgsat_iter c r g p' q' p i q)
   then show ?case
-    apply (rule_tac rgsat.rgsat_iter)
+    apply (rule_tac rgsat.rgsat_iter[
+          where p'=\<open>p' \<^emph> f\<close> and q'=\<open>q' \<^emph> \<lceil> f \<rceil>\<^bsub>r \<squnion> g\<^esub>\<close> and i=\<open>i \<^emph> f\<close>])
+        apply (drule_tac x=\<open>f\<close> in meta_spec)
         apply fastforce
-    apply simp
-      apply clarsimp
-
-    thm basic_frame_pred_antimono swstable_weaker wsstable_stronger
-    sorry
-(*
-      apply (metis (no_types, lifting) order.refl wsstable_absorb2 rgsat_iter.hyps(2))
-     apply (meson sepconj_mono wsstable_stronger; fail)
-    apply (meson sepconj_left_mono wsstable_stronger; fail)
+       apply (simp add: sepconj_monoL; fail)
+      apply (simp add: sepconj_monoL; fail)
+     apply (rule sepconj_mono; blast)
+    apply (rule sepconj_mono; force)
     done
-*)
 next
   case (rgsat_ndet s1 r g1 p q1 s2 g2 q2 g q)
+
+  have
+    \<open>\<lceil> f \<rceil>\<^bsub>r \<squnion> g1\<^esub> \<le> f\<close>
+    \<open>\<lceil> f \<rceil>\<^bsub>r \<squnion> g2\<^esub> \<le> f\<close>
+    using rgsat_ndet.hyps(5-6) rgsat_ndet.prems(3)
+    by (metis wsstable_rely_le_antimono[OF sup_mono[OF order.refl]])+
   then show ?case
+    using rgsat_ndet.prems(1,2) rgsat_ndet.hyps(2,4)[of f] rgsat_ndet.hyps(5-)
+    apply (simp add: sup_fun_def)
     apply (intro rgsat.rgsat_ndet[where
           ?g1.0=g1 and ?g2.0=g2 and ?q1.0=\<open>q1 \<^emph> \<lceil> f \<rceil>\<^bsub>r \<squnion> g1\<^esub>\<close> and ?q2.0=\<open>q2 \<^emph> \<lceil> f \<rceil>\<^bsub>r \<squnion> g2\<^esub>\<close>])
-    sorry
+         apply (simp add: sup_fun_def; fail)
+        apply (simp add: sup_fun_def; fail)
+       apply blast
+      apply blast
+     apply (rule sepconj_mono[OF _ wsstable_rely_mono]; force)
+    apply (rule sepconj_mono[OF _ wsstable_rely_mono]; force)
+    done
 next
   case (rgsat_parallel s1 r g2 g1 p1 q1 s2 p2 q2 g p q)
   then show ?case
@@ -487,14 +515,12 @@ next
           defer
           apply blast
          apply blast
-        apply (meson sepconj_left_mono; fail)
-       apply (meson sepconj_left_mono; fail)
     sorry
 next
-  case (rgsat_basic p b q g r f)
+  case (rgsat_atom p b q g r f)
   then show ?case
     apply -
-    apply (rule rgsat.rgsat_basic)
+    apply (rule rgsat.rgsat_atom)
      apply (rule order.trans[where b=\<open>rel_liftR (q \<^emph> f)\<close>])
       apply (clarsimp simp add: sepconj_def le_fun_def, metis)
      apply (clarsimp simp add: sepconj_monoR wsstable_stronger)
@@ -516,7 +542,7 @@ lemma backwards_done:
 
 lemma pre_soundness:
   assumes opsem:
-    \<open>s \<midarrow>r, as\<rightarrow>\<^sup>\<star>\<^bsub>i\<^esub> s'\<close>
+    \<open>s \<midarrow>r, as\<rightarrow>\<^sup>\<star> s'\<close>
     \<open>s = (h, c)\<close>
     \<open>s' = (h', Done)\<close>
     and rgsat: \<open>rgsat c r g p q\<close>
@@ -524,7 +550,7 @@ lemma pre_soundness:
     \<open>reflp r\<close>
     \<open>transp r\<close>
     and r_mono_p: \<open>\<And>h h'. r h h' \<Longrightarrow> p h \<Longrightarrow> (\<lceil> p \<rceil>\<^bsub>r\<^esub>) h'\<close>
-    and c_maintains_g: \<open>basics_guarantee g c\<close>
+    and c_maintains_g: \<open>atoms_guarantee g c\<close>
     and pre: \<open>p h\<close>
   shows \<open>q h'\<close>
   using assms

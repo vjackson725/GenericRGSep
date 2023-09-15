@@ -74,9 +74,31 @@ lemma swstable_rely_antimono: \<open>R \<le> S \<Longrightarrow> \<lfloor> P \<r
   using mono_rtranclp
   by (force simp add: swstable_def le_fun_def)
 
+lemma wsstable_rely_le_mono:
+  \<open>R \<le> S \<Longrightarrow> \<lfloor> P \<rfloor>\<^bsub>R\<^esub> \<le> Q \<Longrightarrow> \<lfloor> P \<rfloor>\<^bsub>S\<^esub> \<le> Q\<close>
+  by (metis order_trans swstable_rely_antimono)
+
+lemma wsstable_rely_ge_antimono:
+  \<open>R \<le> S \<Longrightarrow> P \<le> \<lfloor> Q \<rfloor>\<^bsub>S\<^esub> \<Longrightarrow> P \<le> \<lfloor> Q \<rfloor>\<^bsub>R\<^esub>\<close>
+  by (metis order_trans swstable_rely_antimono)
+
+lemmas wsstable_rely_le_monoD = wsstable_rely_le_mono[rotated]
+lemmas wsstable_rely_ge_antimonoD = wsstable_rely_ge_antimono[rotated]
+
 lemma wsstable_rely_mono: \<open>R \<le> S \<Longrightarrow> \<lceil> P \<rceil>\<^bsub>R\<^esub> \<le> \<lceil> P \<rceil>\<^bsub>S\<^esub>\<close>
   using mono_rtranclp
   by (force simp add: wsstable_def le_fun_def)
+
+lemma wsstable_rely_le_antimono:
+  \<open>R \<le> S \<Longrightarrow> \<lceil> P \<rceil>\<^bsub>S\<^esub> \<le> Q \<Longrightarrow> \<lceil> P \<rceil>\<^bsub>R\<^esub> \<le> Q\<close>
+  by (meson order_trans wsstable_rely_mono)
+
+lemma wsstable_rely_ge_mono:
+  \<open>R \<le> S \<Longrightarrow> P \<le> \<lceil> Q \<rceil>\<^bsub>R\<^esub> \<Longrightarrow> P \<le> \<lceil> Q \<rceil>\<^bsub>S\<^esub>\<close>
+  by (meson order_trans wsstable_rely_mono)
+
+lemmas wsstable_rely_le_antimonoD = wsstable_rely_le_antimono[rotated]
+lemmas wsstable_rely_ge_monoD = wsstable_rely_ge_mono[rotated]
 
 subsection \<open>nested stabilisation\<close>
 
