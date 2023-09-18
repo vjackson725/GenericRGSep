@@ -400,7 +400,9 @@ inductive rgsat
 | rgsat_atom:
   \<open>rel_liftL p \<sqinter> b \<le> rel_liftR q \<Longrightarrow>
     b \<le> g \<Longrightarrow>
-    rgsat (Atomic b) r g p q\<close>
+    p' \<le> p \<^emph> f \<Longrightarrow>
+    q \<^emph> f \<le> q' \<Longrightarrow>
+    rgsat (Atomic b) r g p' q'\<close>
 inductive_cases rgsep_doneE[elim]: \<open>rgsat Done r g p q\<close>
 inductive_cases rgsep_iterE[elim]: \<open>rgsat (c\<^sup>\<star>) r g p q\<close>
 inductive_cases rgsep_parE[elim]: \<open>rgsat (s1 \<parallel> s2) r g p q\<close>
@@ -421,7 +423,7 @@ lemma rgsat_weaken:
      apply blast
     apply (meson order.eq_iff order.trans rgsat_ndet; fail)
    apply (meson order.eq_iff order.trans sup_mono rgsat_parallel; fail)
-  apply (fastforce intro!: rgsat_atom)
+  apply (meson order.trans rgsat_atom; fail)
   done
 
 lemma rgsat_iter':
@@ -441,24 +443,10 @@ lemma frame_conj_helper:
   apply (metis precise_f predicate1D wsstable_def wsstable_stronger)
   done
 
-lemma ex_inv:
-  \<open>
-      p \<^emph> f \<le> i' \<and>
-      i' \<le> p' \<^emph> f \<and>
-      q' \<^emph> \<lceil> f \<rceil>\<^bsub>r\<^esub> \<le> i' \<and>
-      i' \<le> q \<^emph> \<lceil> f \<rceil>\<^bsub>r\<^esub> \<Longrightarrow>
-      \<lceil> f \<rceil>\<^bsub>r\<^esub> \<le> f\<close>
-  nitpick
-  oops
-
 lemma rgsat_frame:
   assumes
     \<open>rgsat c r g p q\<close>
     \<open>rel_add_preserve (r\<^sup>*\<^sup>*)\<close>
-    \<comment> \<open> the variable restriction \<close>
-    \<open>atom_frame_pred f c\<close>
-   and frame_stable:
-   \<open>\<lceil> f \<rceil>\<^bsub>r \<squnion> g\<^esub> \<le> f\<close> (* Variation from Wickerson, but in the original. Needed in iter. *)
   shows
     \<open>rgsat c r g (p \<^emph> f) (q \<^emph> \<lceil> f \<rceil>\<^bsub>r \<squnion> g\<^esub>)\<close>
   using assms
@@ -473,24 +461,19 @@ next
   case (rgsat_iter c r g p' q' p i q)
   then show ?case
     apply (rule_tac rgsat.rgsat_iter[
-          where p'=\<open>p' \<^emph> f\<close> and q'=\<open>q' \<^emph> \<lceil> f \<rceil>\<^bsub>r \<squnion> g\<^esub>\<close> and i=\<open>i \<^emph> f\<close>])
-        apply (drule_tac x=\<open>f\<close> in meta_spec)
+          where p'=\<open>p' \<^emph> \<lceil> f \<rceil>\<^bsub>r \<squnion> g\<^esub>\<close> and q'=\<open>q' \<^emph> \<lceil> f \<rceil>\<^bsub>r \<squnion> g\<^esub>\<close> and i=\<open>i \<^emph> \<lceil> f \<rceil>\<^bsub>r \<squnion> g\<^esub>\<close>])
+        apply (drule_tac x=\<open>\<lceil> f \<rceil>\<^bsub>r \<squnion> g\<^esub>\<close> in meta_spec)
         apply fastforce
-       apply (simp add: sepconj_monoL; fail)
+       apply (simp add: sepconj_mono wsstable_stronger; fail)
       apply (simp add: sepconj_monoL; fail)
-     apply (rule sepconj_mono; blast)
-    apply (rule sepconj_mono; force)
+     apply (simp add: sepconj_monoL; fail)
+    apply (rule sepconj_mono; blast)
     done
 next
   case (rgsat_ndet s1 r g1 p q1 s2 g2 q2 g q)
 
-  have
-    \<open>\<lceil> f \<rceil>\<^bsub>r \<squnion> g1\<^esub> \<le> f\<close>
-    \<open>\<lceil> f \<rceil>\<^bsub>r \<squnion> g2\<^esub> \<le> f\<close>
-    using rgsat_ndet.hyps(5-6) rgsat_ndet.prems(3)
-    by (metis wsstable_rely_le_antimono[OF sup_mono[OF order.refl]])+
   then show ?case
-    using rgsat_ndet.prems(1,2) rgsat_ndet.hyps(2,4)[of f] rgsat_ndet.hyps(5-)
+    using rgsat_ndet.prems
     apply (simp add: sup_fun_def)
     apply (intro rgsat.rgsat_ndet[where
           ?g1.0=g1 and ?g2.0=g2 and ?q1.0=\<open>q1 \<^emph> \<lceil> f \<rceil>\<^bsub>r \<squnion> g1\<^esub>\<close> and ?q2.0=\<open>q2 \<^emph> \<lceil> f \<rceil>\<^bsub>r \<squnion> g2\<^esub>\<close>])
@@ -515,16 +498,18 @@ next
           defer
           apply blast
          apply blast
+        apply (simp add: sepconj_mono; fail)
+       apply (simp add: sepconj_mono; fail)
+
     sorry
 next
-  case (rgsat_atom p b q g r f)
+  case (rgsat_atom p b q g p' fa q' r f)
   then show ?case
-    apply -
-    apply (rule rgsat.rgsat_atom)
-     apply (rule order.trans[where b=\<open>rel_liftR (q \<^emph> f)\<close>])
-      apply (clarsimp simp add: sepconj_def le_fun_def, metis)
-     apply (clarsimp simp add: sepconj_monoR wsstable_stronger)
-    apply blast
+    apply (rule_tac rgsat.rgsat_atom[where f=\<open>fa \<^emph> f\<close>])
+       apply assumption
+      apply assumption
+     apply (metis sepconj_assoc sepconj_monoL)
+    apply (simp add: sepconj_mono wsstable_stronger sepconj_assoc[symmetric]; fail)
     done
 qed
 
