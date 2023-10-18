@@ -161,12 +161,12 @@ definition
 definition
   \<open>weak_rel_add_preserve r \<equiv>
     \<forall>p q.
-      (\<forall>h1 h2 x.
-        r\<^sup>=\<^sup>= (h1 + h2) x \<longrightarrow>
+      (\<forall>h1 h2 s.
+        r\<^sup>=\<^sup>= (h1 + h2) s \<longrightarrow>
         h1 ## h2 \<longrightarrow>
         p h1 \<longrightarrow>
         q h2 \<longrightarrow>
-        (\<exists>h1 h2. h1 ## h2 \<and> x = h1 + h2 \<and> (\<exists>s. r\<^sup>=\<^sup>= s h1 \<and> p s) \<and> (\<exists>s. r\<^sup>=\<^sup>= s h2 \<and> q s)))\<close>
+        (\<exists>s1 s2. s1 ## s2 \<and> s = s1 + s2 \<and> (\<exists>h1'. r\<^sup>=\<^sup>= h1' s1 \<and> p h1') \<and> (\<exists>h2'. r\<^sup>=\<^sup>= h2' s2 \<and> q h2')))\<close>
 
 lemma rel_add_preserve_impl_weak[intro,dest]:
   \<open>rel_add_preserve r \<Longrightarrow> weak_rel_add_preserve r\<close>
