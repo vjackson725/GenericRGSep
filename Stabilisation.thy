@@ -184,6 +184,33 @@ lemma swstable_preserves_precise[dest]:
 
 end
 
+context sep_alg
+begin
+
+definition
+  \<open>addcl_pred (r :: 'a \<Rightarrow> 'a \<Rightarrow> bool) r' \<equiv>
+    r \<le> r' \<and>
+    (\<forall>h1 h2 s.
+      disjoint h1 h2 \<longrightarrow>
+      r'\<^sup>=\<^sup>= (plus h1 h2) s \<longrightarrow>
+      (\<exists>s1 s2. disjoint s1 s2 \<and> s = plus s1 s2 \<and> r'\<^sup>=\<^sup>= h1 s1 \<and> r'\<^sup>=\<^sup>= h2 s2))\<close>
+
+definition \<open>addcl r \<equiv> Least (addcl_pred r)\<close>
+
+thm LeastI2_order
+
+lemma
+  \<open>\<exists>x. addcl_pred r x \<and> (\<forall>y. addcl_pred r y \<longrightarrow> x \<le> y)\<close>
+  apply (simp add: addcl_pred_def)
+  oops
+
+lemma
+  \<open>rel_add_preserve (addcl r)\<close>
+  apply (simp add: rel_add_preserve_def addcl_def)
+  oops
+
+end
+
 context cancel_perm_alg
 begin
 

@@ -523,12 +523,12 @@ lemma selfsep_iff: \<open>a ## a \<longleftrightarrow> a = 0\<close>
 
 end
 
-section \<open>Disjointness Separation Algebra\<close>
+section \<open>Trivial Self-disjointness Separation Algebra\<close>
 
-class disjoint_perm_alg = perm_alg +
+class trivial_selfdisjoint_perm_alg = perm_alg +
   assumes disjointness: \<open>a ## a \<Longrightarrow> a + a = b \<Longrightarrow> a = b\<close>
 
-class disjoint_sep_alg = sep_alg + disjoint_perm_alg
+class trivial_selfdisjoint_sep_alg = sep_alg + trivial_selfdisjoint_perm_alg
 
 section \<open>Cross-Split Separation Algebra\<close>
 
@@ -735,13 +735,44 @@ end
 
 class disjoint_parts_sep_alg = sep_alg + disjoint_parts_perm_alg
 
+section \<open> Trivial self-disjoint + halving (very boring) \<close>
 
-class disjoint_halving_cancel_perm_alg = halving_perm_alg + disjoint_perm_alg + cancel_perm_alg
+class trivial_halving_perm_alg = trivial_selfdisjoint_perm_alg + halving_perm_alg
 begin
 
-subclass disjoint_parts_perm_alg
-  by (standard, metis disjoint_add_rightL disjointness half_additive_split half_self_disjoint
-      partial_add_assoc partial_right_cancel2)
+lemma \<open>half a = a\<close>
+  by (simp add: disjointness half_additive_split half_self_disjoint)
+
+end
+
+section \<open> Labelled Permission algebra \<close>
+
+class labelled_perm_alg = perm_alg +
+  fixes same_labels :: \<open>'a \<Rightarrow> 'a \<Rightarrow> bool\<close>
+  assumes same_labels_equiv: \<open>equivp same_labels\<close>
+  assumes same_labels_add: \<open>\<And>a b. same_labels a b \<Longrightarrow> a ## b \<Longrightarrow> same_labels (a + b) a\<close>
+  assumes same_labels_separate:
+    \<open>\<And>a b c . a ## b \<Longrightarrow> same_labels (a + b) c \<Longrightarrow>
+      \<exists>ca cb. c = ca + cb \<and> same_labels a ca \<and> same_labels b cb\<close>
+begin
+
+lemma same_label_add2:
+  \<open>same_labels a b \<Longrightarrow> a ## b \<Longrightarrow> same_labels (a + b) b\<close>
+  using same_labels_equiv same_labels_add
+  by (metis equivp_symp disjoint_symm partial_add_commute)
+
+lemma units_have_same_labels:
+  \<open>\<forall>b. a ## b \<longrightarrow> a + b = b \<Longrightarrow> \<forall>b. a' ## b \<longrightarrow> a' + b = b \<Longrightarrow> same_labels a a'\<close>
+  nitpick
+  oops
+
+end
+
+class halving_labelled_perm_alg = halving_perm_alg + labelled_perm_alg
+begin
+
+lemma half_has_same_labels: \<open>same_labels a (half a)\<close>
+  by (metis equivp_reflp half_additive_split half_self_disjoint same_label_add2 same_labels_equiv)
 
 end
 
