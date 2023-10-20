@@ -272,6 +272,12 @@ lemma order_sandwich:
     \<open>k \<le> x \<and> P \<and> x \<le> k \<and> Q \<longleftrightarrow> x = k \<and> P \<and> Q\<close>
   by force+
 
+lemmas preordering_refl =
+  preordering.axioms(1)[THEN partial_preordering.refl]
+
+lemmas preordering_trans =
+  preordering.axioms(1)[THEN partial_preordering.trans]
+
 subsection \<open> Groups \<close>
 
 lemmas eq_diff_eq_comm =

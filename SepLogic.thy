@@ -206,7 +206,7 @@ lemma partial_add_double_assoc:
 
 subsection \<open> unit_add \<close>
 
-definition \<open>unit_padd a \<equiv> \<forall>b. a ## b \<longrightarrow> a + b = b\<close>
+definition \<open>unit_sepadd a \<equiv> \<forall>b. a ## b \<longrightarrow> a + b = b\<close>
 
 subsection \<open>sepdomeq\<close>
 
@@ -448,8 +448,8 @@ lemma gr_implies_not_zero: "m < n \<Longrightarrow> n \<noteq> 0"
   by auto
 
 lemma zero_only_unit:
-  \<open>unit_padd x \<Longrightarrow> x = 0\<close>
-  by (metis partial_add_0 partial_add_commute unit_padd_def zero_disjointR)
+  \<open>unit_sepadd x \<Longrightarrow> x = 0\<close>
+  by (metis partial_add_0 partial_add_commute unit_sepadd_def zero_disjointR)
 
 lemma sepadd_eq_0_iff_both_eq_0[simp]: "x ## y \<Longrightarrow> x + y = 0 \<longleftrightarrow> x = 0 \<and> y = 0"
   by (metis partial_le_plus le_zero_eq partial_add_0)
@@ -461,8 +461,8 @@ lemmas zero_order = zero_le le_zero_eq not_less_zero zero_less_iff_neq_zero not_
 
 subsection \<open>Misc\<close>
 
-lemma unit_padd_0: \<open>unit_padd 0\<close>
-  by (simp add: unit_padd_def)
+lemma unit_sepadd_0: \<open>unit_sepadd 0\<close>
+  by (simp add: unit_sepadd_def)
 
 lemma sep_add_0_right[simp]: "a + 0 = a"
   by (metis zero_disjointR partial_add_0 partial_add_commute)
@@ -749,7 +749,7 @@ class disjoint_parts_sep_alg = sep_alg + disjoint_parts_perm_alg
 section \<open> Indivisible units \<close>
 
 class indivisible_units_perm_alg = perm_alg +
-  assumes \<open>x ## y \<Longrightarrow> unit_padd (x + y) \<Longrightarrow> unit_padd x\<close>
+  assumes \<open>x ## y \<Longrightarrow> unit_sepadd (x + y) \<Longrightarrow> unit_sepadd x\<close>
 
 (* nondivisible_units_sep_alg = sep_alg,
     as there's exactly one unit element less than everything else. *)
@@ -767,77 +767,84 @@ end
 section \<open> Labelled Permission algebra \<close>
 
 class labelled_perm_alg = perm_alg + indivisible_units_perm_alg +
-  fixes same_labels :: \<open>'a \<Rightarrow> 'a \<Rightarrow> bool\<close>
-  assumes same_labels_equiv: \<open>equivp same_labels\<close>
-  assumes same_labels_add:
-    \<open>\<And>a b. same_labels a b \<Longrightarrow> a ## b \<Longrightarrow> same_labels (a + b) a\<close>
+  fixes labels_leq :: \<open>'a \<Rightarrow> 'a \<Rightarrow> bool\<close> (infix \<open>\<le>\<^sub>l\<close> 50)
+    and labels_less :: \<open>'a \<Rightarrow> 'a \<Rightarrow> bool\<close> (infix \<open><\<^sub>l\<close> 50)
+  assumes labels_leq_less_preorder:
+    \<open>preordering labels_leq labels_less\<close>
+  assumes labels_less_homomorphism: \<open>\<And>a b. a < b \<Longrightarrow> a <\<^sub>l b\<close>
+(*
   assumes same_labels_cancel:
     \<open>\<And>a b c. a ## c \<Longrightarrow> b ## c \<Longrightarrow> same_labels (a + c) (b + c) \<longleftrightarrow> same_labels a b\<close>
-  assumes less_not_same_labels:
-    \<open>\<And>a b. a < b \<Longrightarrow> \<not> same_labels a b\<close>
   assumes same_labels_split:
     \<open>a ## b \<Longrightarrow> same_labels (a + b) c \<Longrightarrow>
-      \<exists>ca cb. c = ca + cb \<and> same_labels a ca \<and> same_labels b cb\<close>
+      \<exists>ca cb. c = ca + cb \<and> same_labels a ca \<and> same_labels b cb\<close> *)
 begin
 
-lemma same_label_add2:
-  \<open>same_labels a b \<Longrightarrow> a ## b \<Longrightarrow> same_labels (a + b) b\<close>
-  using same_labels_equiv same_labels_add
-  by (metis equivp_symp disjoint_symm partial_add_commute)
+lemma labels_leq_homomorphism:
+  \<open>a \<le> b \<Longrightarrow> a \<le>\<^sub>l b\<close>
+  using labels_leq_less_preorder labels_less_homomorphism
+  by (metis order.order_iff_strict preordering.axioms(1) partial_preordering.refl
+      preordering.strict_implies_order)
+
+lemma labels_leq_add:
+  \<open>a ## b \<Longrightarrow> a \<le>\<^sub>l (a + b)\<close>
+  by (simp add: labels_leq_homomorphism)
+
+definition labels_eq :: \<open>'a \<Rightarrow> 'a \<Rightarrow> bool\<close> (infix \<open>=\<^sub>l\<close> 50) where
+  \<open>labels_eq a b \<equiv> a \<le>\<^sub>l b \<and> b \<le>\<^sub>l a\<close>
+
+lemma labels_eq_equivp: \<open>equivp (=\<^sub>l)\<close>
+  unfolding labels_eq_def
+  using labels_leq_less_preorder
+  by (force intro: equivpI reflpI sympI transpI dest: preordering_refl preordering_trans)
 
 lemma disjoint_units_have_same_labels:
   assumes
     \<open>a ## b\<close>
-    \<open>unit_padd a\<close>
-    \<open>unit_padd b\<close>
+    \<open>unit_sepadd a\<close>
+    \<open>unit_sepadd b\<close>
   shows
-    \<open>same_labels a b\<close>
-  using assms same_labels_equiv
-  by (metis equivp_reflp disjoint_symm partial_add_commute unit_padd_def)
+    \<open>a =\<^sub>l b\<close>
+  using assms
+  by (metis labels_eq_def labels_leq_add disjoint_symm unit_sepadd_def)
 
 lemma same_labels_as_unit_is_unit:
   assumes
     \<open>a ## b\<close>
-    \<open>unit_padd a\<close>
-    \<open>same_labels a b\<close>
+    \<open>unit_sepadd a\<close>
+    \<open>a =\<^sub>l b\<close>
   shows
-    \<open>unit_padd b\<close>
-  using assms same_labels_equiv
-  by (metis order.order_iff_strict less_not_same_labels partial_le_plus unit_padd_def)
+    \<open>unit_sepadd b\<close>
+  using assms
+  by (metis labels_eq_def order.order_iff_strict labels_leq_less_preorder labels_less_homomorphism
+      partial_le_plus unit_sepadd_def preordering.strict_iff_not)
 
 subsection  \<open> Label overlap \<close>
 
-definition \<open>label_overlap a b \<equiv>
-  (\<exists>ca cb. ca \<le> a \<and> cb \<le> b \<and> same_labels ca cb \<and> \<not> unit_padd ca \<and> \<not> unit_padd cb)\<close>
+definition \<open>label_overlap a b \<equiv> \<exists>c. c \<le>\<^sub>l a \<and> c \<le>\<^sub>l b \<and> \<not> unit_sepadd c\<close>
 
 lemma label_overlap_refl:
-  \<open>\<not> unit_padd a \<Longrightarrow> label_overlap a a\<close>
-  by (metis equivp_reflp label_overlap_def eq_refl same_labels_equiv)
+  \<open>\<not> unit_sepadd a \<Longrightarrow> label_overlap a a\<close>
+  using label_overlap_def labels_leq_homomorphism by blast
 
 lemma label_overlap_sym:
   \<open>label_overlap a b \<Longrightarrow> label_overlap b a\<close>
-  by (metis equivp_symp label_overlap_def same_labels_equiv)
+  using label_overlap_def by blast
 
 lemma same_labels_implies_label_overlap:
-  \<open>same_labels a b \<Longrightarrow> \<not> unit_padd a \<Longrightarrow> \<not> unit_padd b \<Longrightarrow> label_overlap a b\<close>
-  using label_overlap_def by auto
+  \<open>a =\<^sub>l b \<Longrightarrow> \<not> unit_sepadd a \<Longrightarrow> \<not> unit_sepadd b \<Longrightarrow> label_overlap a b\<close>
+  using label_overlap_def labels_eq_def labels_leq_homomorphism by blast
 
 end
 
 class labelled_sep_alg = sep_alg + labelled_perm_alg
 begin
 
-lemma units_have_same_labels_as_0:
-  assumes \<open>unit_padd a\<close>
-  shows \<open>same_labels a 0\<close>
-  using unit_padd_0
-  by (simp add: assms disjoint_units_have_same_labels)
-
-definition \<open>label_restrict l a \<equiv> (GREATEST a'. a' \<le> a \<and> (\<not> label_overlap a' l))\<close>
+definition \<open>label_restrict l a \<equiv> (GREATEST a'. a' \<le> a \<and> a' \<le>\<^sub>l l)\<close>
 
 lemma label_restrict_exists:
-  \<open>\<exists>x\<le>a. \<not> label_overlap x l \<and> (\<forall>y\<le>a. \<not> label_overlap y l \<longrightarrow> y \<le> x)\<close>
-  using label_overlap_def unit_padd_0 zero_le units_have_same_labels_as_0
+  \<open>\<exists>x\<le>a. x \<le>\<^sub>l l \<and> (\<forall>y\<le>a. y \<le>\<^sub>l l \<longrightarrow> y \<le> x)\<close>
+
   nitpick
   oops
 
