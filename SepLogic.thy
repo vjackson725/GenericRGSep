@@ -145,6 +145,8 @@ class perm_alg = disjoint + plus + order +
   assumes disjoint_add_right_commute: \<open>a ## c \<Longrightarrow> b ## a + c \<Longrightarrow> a ## (b + c)\<close>
   assumes positivity: \<open>a ## b \<Longrightarrow> a + b = c \<Longrightarrow> c ## c \<Longrightarrow> c + c = c \<Longrightarrow> a + a = a\<close>
   assumes less_iff_sepadd: \<open>a < b \<longleftrightarrow> a \<noteq> b \<and> (\<exists>c. a ## c \<and> b = a + c)\<close>
+  (* exclusion laws *)
+  (* assumes no_almost_units: \<open>(\<And>x. x ## u \<Longrightarrow> x + u = x) \<Longrightarrow> u ## u\<close> *)
 begin
 
 lemma le_iff_sepadd_weak: \<open>a \<le> b \<longleftrightarrow> a = b \<or> (\<exists>c. a ## c \<and> b = a + c)\<close>
@@ -201,6 +203,10 @@ lemma partial_add_double_assoc:
   \<open>a ## c \<Longrightarrow> b ## d \<Longrightarrow> c ## d \<Longrightarrow> b ## c + d \<Longrightarrow> a ## b + (c + d) \<Longrightarrow> a + b + (c + d) = (a + c) + (b + d)\<close>
   by (metis disjoint_add_rightR disjoint_add_rightL disjoint_add_right_commute partial_add_assoc
       partial_add_left_commute)
+
+subsection \<open> unit_add \<close>
+
+definition \<open>unit_padd a \<equiv> \<forall>b. a ## b \<longrightarrow> a + b = b\<close>
 
 subsection \<open>sepdomeq\<close>
 
@@ -441,6 +447,10 @@ lemma not_gr_zero[simp]: "\<not> 0 < n \<longleftrightarrow> n = 0"
 lemma gr_implies_not_zero: "m < n \<Longrightarrow> n \<noteq> 0"
   by auto
 
+lemma zero_only_unit:
+  \<open>unit_padd x \<Longrightarrow> x = 0\<close>
+  by (metis partial_add_0 partial_add_commute unit_padd_def zero_disjointR)
+
 lemma sepadd_eq_0_iff_both_eq_0[simp]: "x ## y \<Longrightarrow> x + y = 0 \<longleftrightarrow> x = 0 \<and> y = 0"
   by (metis partial_le_plus le_zero_eq partial_add_0)
 
@@ -450,6 +460,9 @@ lemma zero_eq_sepadd_iff_both_eq_0[simp]: "x ## y \<Longrightarrow> 0 = x + y \<
 lemmas zero_order = zero_le le_zero_eq not_less_zero zero_less_iff_neq_zero not_gr_zero
 
 subsection \<open>Misc\<close>
+
+lemma unit_padd_0: \<open>unit_padd 0\<close>
+  by (simp add: unit_padd_def)
 
 lemma sep_add_0_right[simp]: "a + 0 = a"
   by (metis zero_disjointR partial_add_0 partial_add_commute)
@@ -657,10 +670,8 @@ class halving_perm_alg = perm_alg +
   fixes half :: \<open>'a \<Rightarrow> 'a\<close>
   assumes half_additive_split: \<open>\<And>a. half a + half a = a\<close>
   assumes half_self_disjoint: \<open>\<And>a. half a ## half a\<close>
+  assumes half_sepadd_distrib: \<open>\<And>a b. a ## b \<Longrightarrow> half (a + b) = half a + half b\<close>
 begin
-
-lemma half_plus: \<open>half (a + b) = half a + half b\<close>
-  oops
 
 lemma half_disjoint_preservation_left: \<open>a ## b \<Longrightarrow> half a ## b\<close>
   by (metis disjoint_add_leftR half_additive_split half_self_disjoint)
@@ -735,6 +746,14 @@ end
 
 class disjoint_parts_sep_alg = sep_alg + disjoint_parts_perm_alg
 
+section \<open> Indivisible units \<close>
+
+class indivisible_units_perm_alg = perm_alg +
+  assumes \<open>x ## y \<Longrightarrow> unit_padd (x + y) \<Longrightarrow> unit_padd x\<close>
+
+(* nondivisible_units_sep_alg = sep_alg,
+    as there's exactly one unit element less than everything else. *)
+
 section \<open> Trivial self-disjoint + halving (very boring) \<close>
 
 class trivial_halving_perm_alg = trivial_selfdisjoint_perm_alg + halving_perm_alg
@@ -747,12 +766,17 @@ end
 
 section \<open> Labelled Permission algebra \<close>
 
-class labelled_perm_alg = perm_alg +
+class labelled_perm_alg = perm_alg + indivisible_units_perm_alg +
   fixes same_labels :: \<open>'a \<Rightarrow> 'a \<Rightarrow> bool\<close>
   assumes same_labels_equiv: \<open>equivp same_labels\<close>
-  assumes same_labels_add: \<open>\<And>a b. same_labels a b \<Longrightarrow> a ## b \<Longrightarrow> same_labels (a + b) a\<close>
-  assumes same_labels_separate:
-    \<open>\<And>a b c . a ## b \<Longrightarrow> same_labels (a + b) c \<Longrightarrow>
+  assumes same_labels_add:
+    \<open>\<And>a b. same_labels a b \<Longrightarrow> a ## b \<Longrightarrow> same_labels (a + b) a\<close>
+  assumes same_labels_cancel:
+    \<open>\<And>a b c. a ## c \<Longrightarrow> b ## c \<Longrightarrow> same_labels (a + c) (b + c) \<longleftrightarrow> same_labels a b\<close>
+  assumes less_not_same_labels:
+    \<open>\<And>a b. a < b \<Longrightarrow> \<not> same_labels a b\<close>
+  assumes same_labels_split:
+    \<open>a ## b \<Longrightarrow> same_labels (a + b) c \<Longrightarrow>
       \<exists>ca cb. c = ca + cb \<and> same_labels a ca \<and> same_labels b cb\<close>
 begin
 
@@ -761,8 +785,59 @@ lemma same_label_add2:
   using same_labels_equiv same_labels_add
   by (metis equivp_symp disjoint_symm partial_add_commute)
 
-lemma units_have_same_labels:
-  \<open>\<forall>b. a ## b \<longrightarrow> a + b = b \<Longrightarrow> \<forall>b. a' ## b \<longrightarrow> a' + b = b \<Longrightarrow> same_labels a a'\<close>
+lemma disjoint_units_have_same_labels:
+  assumes
+    \<open>a ## b\<close>
+    \<open>unit_padd a\<close>
+    \<open>unit_padd b\<close>
+  shows
+    \<open>same_labels a b\<close>
+  using assms same_labels_equiv
+  by (metis equivp_reflp disjoint_symm partial_add_commute unit_padd_def)
+
+lemma same_labels_as_unit_is_unit:
+  assumes
+    \<open>a ## b\<close>
+    \<open>unit_padd a\<close>
+    \<open>same_labels a b\<close>
+  shows
+    \<open>unit_padd b\<close>
+  using assms same_labels_equiv
+  by (metis order.order_iff_strict less_not_same_labels partial_le_plus unit_padd_def)
+
+subsection  \<open> Label overlap \<close>
+
+definition \<open>label_overlap a b \<equiv>
+  (\<exists>ca cb. ca \<le> a \<and> cb \<le> b \<and> same_labels ca cb \<and> \<not> unit_padd ca \<and> \<not> unit_padd cb)\<close>
+
+lemma label_overlap_refl:
+  \<open>\<not> unit_padd a \<Longrightarrow> label_overlap a a\<close>
+  by (metis equivp_reflp label_overlap_def eq_refl same_labels_equiv)
+
+lemma label_overlap_sym:
+  \<open>label_overlap a b \<Longrightarrow> label_overlap b a\<close>
+  by (metis equivp_symp label_overlap_def same_labels_equiv)
+
+lemma same_labels_implies_label_overlap:
+  \<open>same_labels a b \<Longrightarrow> \<not> unit_padd a \<Longrightarrow> \<not> unit_padd b \<Longrightarrow> label_overlap a b\<close>
+  using label_overlap_def by auto
+
+end
+
+class labelled_sep_alg = sep_alg + labelled_perm_alg
+begin
+
+lemma units_have_same_labels_as_0:
+  assumes \<open>unit_padd a\<close>
+  shows \<open>same_labels a 0\<close>
+  using unit_padd_0
+  by (simp add: assms disjoint_units_have_same_labels)
+
+definition \<open>label_restrict l a \<equiv> (GREATEST a'. a' \<le> a \<and> (\<not> label_overlap a' l))\<close>
+
+lemma label_restrict_exists:
+  \<open>\<exists>x\<le>a. \<not> label_overlap x l \<and> (\<forall>y\<le>a. \<not> label_overlap y l \<longrightarrow> y \<le> x)\<close>
+  using label_overlap_def unit_padd_0 zero_le units_have_same_labels_as_0
   nitpick
   oops
 
