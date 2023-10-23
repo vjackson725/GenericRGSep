@@ -133,6 +133,7 @@ lemma swstable_wsstable_absorb[simp]: \<open>R \<le> R' \<Longrightarrow> \<lflo
   by (metis (opaque_lifting) predicate2D rtranclp.rtrancl_refl rtranclp_trans rtranclp_mono)
 
 subsection \<open> Properties of stabilisation in a perm algebra \<close>
+
 context perm_alg
 begin
 
@@ -181,6 +182,40 @@ paragraph \<open> Preservation of addition over a relation \<close>
 lemma swstable_preserves_precise[dest]:
   \<open>precise p \<Longrightarrow> precise (\<lfloor> p \<rfloor>\<^bsub>r\<^esub>)\<close>
   by (clarsimp simp add: precise_def swstable_def)
+
+end
+
+
+context cancel_sep_alg
+begin
+
+paragraph \<open> Assumptionless semidistributivity \<close>
+
+definition seprel_restrict
+  :: \<open>('a \<Rightarrow> 'a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> 'a \<Rightarrow> bool)\<close>
+  (infixr \<open>\<restriction>\<^sub>r\<close> 60)
+  where
+  \<open>r \<restriction>\<^sub>r p \<equiv> \<lambda>a b. p a \<and> r a b\<close>
+
+definition sepadd_rel
+  :: \<open>('a \<Rightarrow> 'a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> 'a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> 'a \<Rightarrow> bool)\<close>
+  (infixr \<open>+\<^sub>r\<close> 60)
+  where
+  \<open>r1 +\<^sub>r r2 \<equiv> \<lambda>a b.
+    \<exists>a1 a2. a1 ## a2 \<and> a = a1 + a2 \<and>
+      (\<exists>b1 b2. b1 ## b2 \<and> b = b1 + b2 \<and>
+        r1 a1 b1 \<and> r2 a2 b2)\<close>
+
+lemma swstable_sepconj_semidistrib:
+  \<open>\<lfloor> P \<rfloor>\<^bsub>R1\<^esub> \<^emph> \<lfloor> Q \<rfloor>\<^bsub>R2\<^esub> \<le> \<lfloor> P \<^emph> Q \<rfloor>\<^bsub>R1 \<sqinter> rel_lift P +\<^sub>r R2 \<sqinter> rel_lift Q\<^esub>\<close>
+  unfolding swstable_def sepconj_def sepadd_rel_def
+  using rtranclp.cases by fastforce
+
+lemma wsstable_sepconj_semidistrib:
+  \<open>\<lceil> P \<^emph> Q \<rceil>\<^bsub>R1 \<sqinter> rel_lift P +\<^sub>r R2 \<sqinter> rel_lift Q\<^esub> \<le> \<lceil> P \<rceil>\<^bsub>R1\<^esub> \<^emph> \<lceil> Q \<rceil>\<^bsub>R2\<^esub>\<close>
+  unfolding wsstable_def sepconj_def sepadd_rel_def
+  apply clarsimp
+  oops
 
 end
 

@@ -99,6 +99,32 @@ next
   qed
 qed
 
+subsection \<open> Relations \<close>
+
+definition \<open>rel_liftL p \<equiv> \<lambda>a b. p a\<close>
+definition \<open>rel_liftR p \<equiv> \<lambda>a b. p b\<close>
+definition \<open>rel_lift p \<equiv> \<lambda>a b. p a \<and> p b\<close>
+
+lemma rel_liftL_unfold[simp]:
+  \<open>rel_liftL p a b = p a\<close>
+  by (simp add: rel_liftL_def)
+
+lemma rel_liftR_unfold[simp]:
+  \<open>rel_liftR p a b = p b\<close>
+  by (simp add: rel_liftR_def)
+
+lemma rel_subid_unfold[simp]:
+  \<open>rel_lift p a b = (p a \<and> p b)\<close>
+  by (simp add: rel_lift_def)
+
+lemma liftL_le_liftL[simp]:
+  \<open>rel_liftL p \<le> rel_liftL q \<longleftrightarrow> p \<le> q\<close>
+  by (simp add: rel_liftL_def le_fun_def)
+
+lemma liftR_le_liftR[simp]:
+  \<open>rel_liftR p \<le> rel_liftR q \<longleftrightarrow> p \<le> q\<close>
+  by (simp add: rel_liftR_def)
+
 subsection \<open> Function Properties \<close>
 
 lemmas bij_betw_disjoint_insert =

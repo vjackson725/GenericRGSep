@@ -772,9 +772,9 @@ class labelled_perm_alg = perm_alg + indivisible_units_perm_alg +
   assumes labels_leq_less_preorder:
     \<open>preordering labels_leq labels_less\<close>
   assumes labels_less_homomorphism: \<open>\<And>a b. a < b \<Longrightarrow> a <\<^sub>l b\<close>
+  assumes labels_leq_upper_bound:
+    \<open>\<And>a b c. a ## b \<Longrightarrow> a \<le>\<^sub>l c \<Longrightarrow> b \<le>\<^sub>l c \<Longrightarrow> a + b \<le>\<^sub>l c\<close>
 (*
-  assumes same_labels_cancel:
-    \<open>\<And>a b c. a ## c \<Longrightarrow> b ## c \<Longrightarrow> same_labels (a + c) (b + c) \<longleftrightarrow> same_labels a b\<close>
   assumes same_labels_split:
     \<open>a ## b \<Longrightarrow> same_labels (a + b) c \<Longrightarrow>
       \<exists>ca cb. c = ca + cb \<and> same_labels a ca \<and> same_labels b cb\<close> *)
@@ -853,8 +853,16 @@ end
 class halving_labelled_perm_alg = halving_perm_alg + labelled_perm_alg
 begin
 
-lemma half_has_same_labels: \<open>same_labels a (half a)\<close>
-  by (metis equivp_reflp half_additive_split half_self_disjoint same_label_add2 same_labels_equiv)
+lemma half_subseteq_labels: \<open>half a \<le>\<^sub>l a\<close>
+  by (metis half_additive_split half_self_disjoint labels_leq_homomorphism partial_le_plus2)
+
+lemma half_superseteq_labels: \<open>a \<le>\<^sub>l half a\<close>
+  by (metis half_additive_split half_self_disjoint labels_leq_upper_bound labels_leq_homomorphism
+      order.refl)
+
+lemma half_has_same_labels: \<open>half a =\<^sub>l a\<close>
+  by (simp add: half_subseteq_labels half_superseteq_labels labels_eq_def)
+  
 
 end
 
