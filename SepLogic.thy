@@ -525,7 +525,9 @@ lemma supported_intuitionistic_to_precise:
 
 end
 
-section \<open>Strongly Separated Separation Algebra\<close>
+section \<open> Permission/Separation Algebra Subclasses \<close>
+
+subsection \<open>Strongly Separated Separation Algebra\<close>
 
 class strong_separated_sep_alg = sep_alg +
   assumes only_zero_self_sep: \<open>a ## a \<Longrightarrow> a = 0\<close>
@@ -536,14 +538,14 @@ lemma selfsep_iff: \<open>a ## a \<longleftrightarrow> a = 0\<close>
 
 end
 
-section \<open>Trivial Self-disjointness Separation Algebra\<close>
+subsection \<open>Trivial Self-disjointness Separation Algebra\<close>
 
 class trivial_selfdisjoint_perm_alg = perm_alg +
   assumes disjointness: \<open>a ## a \<Longrightarrow> a + a = b \<Longrightarrow> a = b\<close>
 
 class trivial_selfdisjoint_sep_alg = sep_alg + trivial_selfdisjoint_perm_alg
 
-section \<open>Cross-Split Separation Algebra\<close>
+subsection \<open>Cross-Split Separation Algebra\<close>
 
 class crosssplit_perm_alg = perm_alg +
   assumes cross_split:
@@ -554,7 +556,7 @@ class crosssplit_perm_alg = perm_alg +
 
 class crosssplit_sep_alg = sep_alg + crosssplit_perm_alg
 
-section \<open>Right Cancellative Separation Logic\<close>
+subsection \<open>Cancellative Separation Logic\<close>
 
 class cancel_perm_alg = perm_alg +
   assumes partial_right_cancel[simp]: \<open>\<And>a b c. a ## c \<Longrightarrow> b ## c \<Longrightarrow> (a + c = b + c) = (a = b)\<close>
@@ -644,8 +646,6 @@ lemma strong_positivity:
   \<open>a ## b \<Longrightarrow> c ## c \<Longrightarrow> a + b = c \<Longrightarrow> c + c = c \<Longrightarrow> a = b \<and> b = c\<close>
   using weak_emp by force
 
-
-
 lemma \<open>(a \<^emph> \<top>) \<sqinter> (b \<^emph> \<top>) \<le> ((a \<^emph> b) \<squnion> (a \<sqinter> b)) \<^emph> \<top>\<close>
   nitpick[card=4]
   oops
@@ -700,7 +700,7 @@ end
 
 class halving_sep_alg = sep_alg + halving_perm_alg
 
-section \<open> Disjoint Parts Algebra \<close>
+subsection \<open> Disjoint Parts Algebra \<close>
 
 class disjoint_parts_perm_alg = perm_alg +
   assumes disjointness_left_plusI: \<open>a ## b \<Longrightarrow> a ## c \<Longrightarrow> b ## c \<Longrightarrow> a + b ## c\<close>
@@ -746,25 +746,41 @@ end
 
 class disjoint_parts_sep_alg = sep_alg + disjoint_parts_perm_alg
 
-section \<open> Indivisible units \<close>
+subsection \<open> Indivisible units \<close>
 
 class indivisible_units_perm_alg = perm_alg +
   assumes \<open>x ## y \<Longrightarrow> unit_sepadd (x + y) \<Longrightarrow> unit_sepadd x\<close>
 
 (* nondivisible_units_sep_alg = sep_alg,
     as there's exactly one unit element less than everything else. *)
+context sep_alg
+begin
+
+lemma \<open>x ## y \<Longrightarrow> unit_sepadd (x + y) \<Longrightarrow> unit_sepadd x\<close>
+  using zero_only_unit by fastforce
+
+end
 
 section \<open> Trivial self-disjoint + halving (very boring) \<close>
 
 class trivial_halving_perm_alg = trivial_selfdisjoint_perm_alg + halving_perm_alg
 begin
 
-lemma \<open>half a = a\<close>
+lemma trivial_half[simp]: \<open>half a = a\<close>
   by (simp add: disjointness half_additive_split half_self_disjoint)
 
 end
 
+
+
 section \<open> Labelled Permission algebra \<close>
+
+text \<open>
+  This subclass is supposed to be the algebraic version of a heap.
+  It introduces an order which must be compatible with, but can be more coarse than,
+  the subresource relation. The equivalence classes induced by this order represent
+  resources with the same set of labels.
+\<close>
 
 class labelled_perm_alg = perm_alg + indivisible_units_perm_alg +
   fixes labels_leq :: \<open>'a \<Rightarrow> 'a \<Rightarrow> bool\<close> (infix \<open>\<le>\<^sub>l\<close> 50)

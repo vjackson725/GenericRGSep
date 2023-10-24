@@ -132,10 +132,18 @@ lemma swstable_wsstable_absorb[simp]: \<open>R \<le> R' \<Longrightarrow> \<lflo
   unfolding wsstable_def swstable_def
   by (metis (opaque_lifting) predicate2D rtranclp.rtrancl_refl rtranclp_trans rtranclp_mono)
 
-subsection \<open> Properties of stabilisation in a perm algebra \<close>
+paragraph \<open> swstable preserves precision \<close>
+
+lemma swstable_preserves_precise[dest]:
+  \<open>precise p \<Longrightarrow> precise (\<lfloor> p \<rfloor>\<^bsub>r\<^esub>)\<close>
+  by (clarsimp simp add: precise_def swstable_def)
+
+section \<open> Properties of stabilisation in a perm algebra \<close>
 
 context perm_alg
 begin
+
+subsection \<open> Semidistributivity \<close>
 
 paragraph \<open> Preservation of addition over a relation \<close>
 
@@ -161,6 +169,8 @@ lemma rel_add_preserve_impl_weak[intro,dest]:
   unfolding weak_rel_add_preserve_def rel_add_preserve_def
   by meson
 
+paragraph \<open> Semidistributivity \<close>
+
 lemma swstable_sepconj_semidistrib:
   fixes R :: \<open>'a \<Rightarrow> 'a \<Rightarrow> bool\<close>
   assumes \<open>rel_add_preserve (R\<^sup>*\<^sup>*)\<close>
@@ -177,25 +187,7 @@ lemma wsstable_sepconj_semidistrib:
   unfolding weak_rel_add_preserve_def wsstable_def sepconj_def
   by force
 
-paragraph \<open> Preservation of addition over a relation \<close>
-
-lemma swstable_preserves_precise[dest]:
-  \<open>precise p \<Longrightarrow> precise (\<lfloor> p \<rfloor>\<^bsub>r\<^esub>)\<close>
-  by (clarsimp simp add: precise_def swstable_def)
-
-end
-
-
-context cancel_sep_alg
-begin
-
 paragraph \<open> Assumptionless semidistributivity \<close>
-
-definition seprel_restrict
-  :: \<open>('a \<Rightarrow> 'a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> 'a \<Rightarrow> bool)\<close>
-  (infixr \<open>\<restriction>\<^sub>r\<close> 60)
-  where
-  \<open>r \<restriction>\<^sub>r p \<equiv> \<lambda>a b. p a \<and> r a b\<close>
 
 definition sepadd_rel
   :: \<open>('a \<Rightarrow> 'a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> 'a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> 'a \<Rightarrow> bool)\<close>
@@ -206,15 +198,57 @@ definition sepadd_rel
       (\<exists>b1 b2. b1 ## b2 \<and> b = b1 + b2 \<and>
         r1 a1 b1 \<and> r2 a2 b2)\<close>
 
-lemma swstable_sepconj_semidistrib:
+lemma swstable_sepconj_semidistrib_forwards:
   \<open>\<lfloor> P \<rfloor>\<^bsub>R1\<^esub> \<^emph> \<lfloor> Q \<rfloor>\<^bsub>R2\<^esub> \<le> \<lfloor> P \<^emph> Q \<rfloor>\<^bsub>R1 \<sqinter> rel_lift P +\<^sub>r R2 \<sqinter> rel_lift Q\<^esub>\<close>
   unfolding swstable_def sepconj_def sepadd_rel_def
   using rtranclp.cases by fastforce
 
-lemma wsstable_sepconj_semidistrib:
+lemma wsstable_sepconj_semidistrib_backwards:
   \<open>\<lceil> P \<^emph> Q \<rceil>\<^bsub>R1 \<sqinter> rel_lift P +\<^sub>r R2 \<sqinter> rel_lift Q\<^esub> \<le> \<lceil> P \<rceil>\<^bsub>R1\<^esub> \<^emph> \<lceil> Q \<rceil>\<^bsub>R2\<^esub>\<close>
   unfolding wsstable_def sepconj_def sepadd_rel_def
+  by (force elim: rtranclp.cases)
+
+end
+
+context sep_alg
+begin
+
+paragraph \<open> rely splitting \<close>
+
+definition
+  \<open>subadd_cl r \<equiv> \<lambda>h1 s1.
+    \<exists>h2 s2.
+      r (h1 + h2) (s1 + s2) \<and>
+      h1 ## h2 \<and>
+      s1 ## s2\<close>
+
+lemma subadd_cl_preserves_refl:
+  \<open>reflp r \<Longrightarrow> reflp (subadd_cl r)\<close>
+  unfolding subadd_cl_def reflp_def
+  using le_iff_sepadd
+  by blast
+
+lemma swstable_sepconj_semidistrib_backwards:
+  fixes R :: \<open>'a \<Rightarrow> 'a \<Rightarrow> bool\<close>
+  assumes \<open>reflp R\<close> \<open>transp R\<close>
+    \<open>W = \<lfloor> P \<^emph> Q \<rfloor>\<^bsub>R\<^esub>\<close>
+  shows
+    \<open>\<lfloor> P \<rfloor>\<^bsub>subadd_cl R\<^esub> \<^emph> \<lfloor> Q \<rfloor>\<^bsub>subadd_cl R\<^esub> \<le> W\<close>
+  using assms
+  unfolding swstable_def sepconj_def subadd_cl_def
+  apply -
   apply clarsimp
+  (* problem: ## is not transitive, which means \<^sup>*\<^sup>* can't be reduced *)
+  oops
+
+lemma wsstable_sepconj_semidistrib_forwards:
+  assumes
+    \<open>reflp R\<close> \<open>transp R\<close>
+    \<open>R1 = (\<lambda>h1 s1. \<exists>h2 s2. R (h1 + h2) (s1 + s2) \<and> h1 ## h2 \<and> s1 ## s2 \<and> Q s2)\<close>
+    \<open>R2 = (\<lambda>h2 s2. \<exists>h1 s1. R (h1 + h2) (s1 + s2) \<and> h1 ## h2 \<and> s1 ## s2 \<and> P s1)\<close>
+  shows
+    \<open>\<lceil> P \<^emph> Q \<rceil>\<^bsub>R\<^esub> \<le> \<lceil> P \<rceil>\<^bsub>R1\<^esub> \<^emph> \<lceil> Q \<rceil>\<^bsub>R2\<^esub>\<close>
+  unfolding wsstable_def sepconj_def sepadd_rel_def
   oops
 
 end
