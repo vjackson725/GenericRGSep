@@ -471,11 +471,12 @@ definition half_prod :: \<open>'a \<times> 'b \<Rightarrow> 'a \<times> 'b\<clos
 
 instance
   apply standard
-      apply (simp add: half_prod_def half_additive_split)
-     apply (simp add: half_prod_def half_self_disjoint)
-    apply (simp add: stableres_prod_def stableres_concave)
-   apply (clarsimp simp add: stableres_prod_def)
-  apply (simp add: stableres_prod_def stableres_subres)
+       apply (simp add: half_prod_def half_additive_split; fail)
+      apply (simp add: half_prod_def half_self_disjoint; fail)
+     apply (simp add: half_prod_def half_sepadd_distrib; fail)
+    apply (simp add: stableres_prod_def stableres_concave; fail)
+   apply (clarsimp simp add: stableres_prod_def; fail)
+  apply (simp add: stableres_prod_def stableres_subres; fail)
   done
 
 end
