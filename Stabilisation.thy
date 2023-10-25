@@ -147,6 +147,10 @@ subsection \<open> Semidistributivity \<close>
 
 paragraph \<open> Preservation of addition over a relation \<close>
 
+text \<open> This is probably too strong a property to be useful. It essentially requires a rely
+      relating two states to also relate all subparts of those states in some consistent manner.
+      Compare this approach with the rely splitting approach later. \<close>
+
 definition
   \<open>rel_add_preserve r \<equiv>
     (\<forall>h1 h2 s.
@@ -187,96 +191,33 @@ lemma wsstable_sepconj_semidistrib:
   unfolding weak_rel_add_preserve_def wsstable_def sepconj_def
   by force
 
-paragraph \<open> Assumptionless semidistributivity \<close>
+paragraph \<open> Semidistributivity by rely merging \<close>
 
-definition sepadd_rel
-  :: \<open>('a \<Rightarrow> 'a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> 'a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> 'a \<Rightarrow> bool)\<close>
-  (infixr \<open>+\<^sub>r\<close> 60)
-  where
-  \<open>r1 +\<^sub>r r2 \<equiv> \<lambda>a b.
-    \<exists>a1 a2. a1 ## a2 \<and> a = a1 + a2 \<and>
-      (\<exists>b1 b2. b1 ## b2 \<and> b = b1 + b2 \<and>
-        r1 a1 b1 \<and> r2 a2 b2)\<close>
+definition
+  \<open>rely_merge r1 r2 \<equiv> (\<lambda>h s. \<forall>h1 h2. h = h1 + h2 \<longrightarrow> h1 ## h2 \<longrightarrow> ((r1\<^sup>*\<^sup>* h1) \<^emph> (r2\<^sup>*\<^sup>* h2)) s)\<close>
+
+lemma rely_merge_reflp: \<open>reflp (rely_merge r1 r2)\<close>
+  by (force simp add: reflp_def rely_merge_def sepconj_def)
+
+lemma rely_merge_transp: \<open>transp (rely_merge r1 r2)\<close>
+  by (force simp add: transp_def rely_merge_def sepconj_def)
+
+lemma rely_merge_rtranscl[simp]: \<open>(rely_merge r1 r2)\<^sup>*\<^sup>* = rely_merge r1 r2\<close>
+  by (simp add: rely_merge_reflp rely_merge_transp rtransp_rel_is_rtransclp)
 
 lemma swstable_sepconj_semidistrib_forwards:
-  \<open>\<lfloor> P \<rfloor>\<^bsub>R1\<^esub> \<^emph> \<lfloor> Q \<rfloor>\<^bsub>R2\<^esub> \<le> \<lfloor> P \<^emph> Q \<rfloor>\<^bsub>R1 \<sqinter> rel_lift P +\<^sub>r R2 \<sqinter> rel_lift Q\<^esub>\<close>
-  unfolding swstable_def sepconj_def sepadd_rel_def
-  using rtranclp.cases by fastforce
+  \<open>\<lfloor> P \<rfloor>\<^bsub>R1\<^esub> \<^emph> \<lfloor> Q \<rfloor>\<^bsub>R2\<^esub> \<le> \<lfloor> P \<^emph> Q \<rfloor>\<^bsub>rely_merge R1 R2\<^esub>\<close>
+  apply (clarsimp simp add: swstable_def sepconj_def fun_eq_iff)
+  apply (simp add: rely_merge_def sepconj_def)
+  apply blast
+  done
 
 lemma wsstable_sepconj_semidistrib_backwards:
-  \<open>\<lceil> P \<^emph> Q \<rceil>\<^bsub>R1 \<sqinter> rel_lift P +\<^sub>r R2 \<sqinter> rel_lift Q\<^esub> \<le> \<lceil> P \<rceil>\<^bsub>R1\<^esub> \<^emph> \<lceil> Q \<rceil>\<^bsub>R2\<^esub>\<close>
-  unfolding wsstable_def sepconj_def sepadd_rel_def
-  by (force elim: rtranclp.cases)
-
-end
-
-context sep_alg
-begin
-
-paragraph \<open> rely splitting \<close>
-
-definition
-  \<open>subadd_cl r \<equiv> \<lambda>h1 s1.
-    \<exists>h2 s2.
-      r (h1 + h2) (s1 + s2) \<and>
-      h1 ## h2 \<and>
-      s1 ## s2\<close>
-
-lemma subadd_cl_preserves_refl:
-  \<open>reflp r \<Longrightarrow> reflp (subadd_cl r)\<close>
-  unfolding subadd_cl_def reflp_def
-  using le_iff_sepadd
-  by blast
-
-lemma swstable_sepconj_semidistrib_backwards:
-  fixes R :: \<open>'a \<Rightarrow> 'a \<Rightarrow> bool\<close>
-  assumes \<open>reflp R\<close> \<open>transp R\<close>
-    \<open>W = \<lfloor> P \<^emph> Q \<rfloor>\<^bsub>R\<^esub>\<close>
-  shows
-    \<open>\<lfloor> P \<rfloor>\<^bsub>subadd_cl R\<^esub> \<^emph> \<lfloor> Q \<rfloor>\<^bsub>subadd_cl R\<^esub> \<le> W\<close>
-  using assms
-  unfolding swstable_def sepconj_def subadd_cl_def
-  apply -
-  apply clarsimp
-  (* problem: ## is not transitive, which means \<^sup>*\<^sup>* can't be reduced *)
-  oops
-
-lemma wsstable_sepconj_semidistrib_forwards:
-  assumes
-    \<open>reflp R\<close> \<open>transp R\<close>
-    \<open>R1 = (\<lambda>h1 s1. \<exists>h2 s2. R (h1 + h2) (s1 + s2) \<and> h1 ## h2 \<and> s1 ## s2 \<and> Q s2)\<close>
-    \<open>R2 = (\<lambda>h2 s2. \<exists>h1 s1. R (h1 + h2) (s1 + s2) \<and> h1 ## h2 \<and> s1 ## s2 \<and> P s1)\<close>
-  shows
-    \<open>\<lceil> P \<^emph> Q \<rceil>\<^bsub>R\<^esub> \<le> \<lceil> P \<rceil>\<^bsub>R1\<^esub> \<^emph> \<lceil> Q \<rceil>\<^bsub>R2\<^esub>\<close>
-  unfolding wsstable_def sepconj_def sepadd_rel_def
-  oops
-
-end
-
-context sep_alg
-begin
-
-definition
-  \<open>addcl_pred (r :: 'a \<Rightarrow> 'a \<Rightarrow> bool) r' \<equiv>
-    r \<le> r' \<and>
-    (\<forall>h1 h2 s.
-      disjoint h1 h2 \<longrightarrow>
-      r'\<^sup>=\<^sup>= (plus h1 h2) s \<longrightarrow>
-      (\<exists>s1 s2. disjoint s1 s2 \<and> s = plus s1 s2 \<and> r'\<^sup>=\<^sup>= h1 s1 \<and> r'\<^sup>=\<^sup>= h2 s2))\<close>
-
-definition \<open>addcl r \<equiv> Least (addcl_pred r)\<close>
-
-thm LeastI2_order
-
-lemma
-  \<open>\<exists>x. addcl_pred r x \<and> (\<forall>y. addcl_pred r y \<longrightarrow> x \<le> y)\<close>
-  apply (simp add: addcl_pred_def)
-  oops
-
-lemma
-  \<open>rel_add_preserve (addcl r)\<close>
-  apply (simp add: rel_add_preserve_def addcl_def)
-  oops
+  \<open>\<lceil> P \<^emph> Q \<rceil>\<^bsub>rely_merge R1 R2\<^esub> \<le> \<lceil> P \<rceil>\<^bsub>R1\<^esub> \<^emph> \<lceil> Q \<rceil>\<^bsub>R2\<^esub>\<close>
+  apply (clarsimp simp add: wsstable_def sepconj_def fun_eq_iff)
+  apply (simp add: rely_merge_def sepconj_def)
+  apply blast
+  done
 
 end
 
@@ -310,11 +251,9 @@ lemma wsstable_preserves_precise[dest]:
   apply (metis partial_left_cancel2 partial_right_cancelD)
   done
 
-thm rel_add_preserve_def
-
+\<comment> \<open>
 definition
   \<open>rel_add_compat r \<equiv> \<forall>a a' b b'. r a a' \<longrightarrow> r b b' \<longrightarrow> a ## b \<longrightarrow> a' ## b' \<longrightarrow> r (a + b) (b + b')\<close>
-
 
 lemma wsstable_preserves_precise2[dest]:
   assumes
@@ -323,6 +262,7 @@ lemma wsstable_preserves_precise2[dest]:
   shows
     \<open>precise p \<Longrightarrow> precise (\<lceil> p \<rceil>\<^bsub>r\<^esub>)\<close>
   oops
+\<close>
 
 end
 
