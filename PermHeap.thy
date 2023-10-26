@@ -550,8 +550,10 @@ lemma half_pheap_app[simp]:
 
 instance
   apply standard
-   apply (clarsimp simp add: pheap_eq_iff plus_hperm_def half_additive_split split: option.splits)
-  apply (clarsimp simp add: disjoint_pheap_def' half_self_disjoint)
+    apply (clarsimp simp add: pheap_eq_iff plus_hperm_def half_additive_split split: option.splits)
+   apply (clarsimp simp add: disjoint_pheap_def' half_self_disjoint)
+  apply (clarsimp simp add: pheap_eq_iff plus_hperm_def disjoint_pheap_def' half_sepadd_distrib
+      split: option.splits)
   done
 
 end

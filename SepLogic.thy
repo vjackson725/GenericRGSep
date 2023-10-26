@@ -182,6 +182,14 @@ lemma disjoint_add_leftR: \<open>a ## b \<Longrightarrow> a + b ## c \<Longright
 lemma disjoint_add_commuteL: \<open>c ## b \<Longrightarrow> c + b ## a \<Longrightarrow> a + b ## c\<close>
   by (simp add: disjoint_add_right_commute disjoint_symm)
 
+lemma disjoint_add_swap:
+  \<open>b ## c \<Longrightarrow> a ## b + c \<Longrightarrow> a + b ## c\<close>
+  using disjoint_add_commuteL disjoint_symm_iff partial_add_commute by auto
+
+lemma disjoint_add_swap2:
+  \<open>a ## b \<Longrightarrow> a + b ## c \<Longrightarrow> a ## b + c\<close>
+  by (metis disjoint_add_commuteL disjoint_add_leftR disjoint_symm partial_add_commute)
+
 lemma weak_positivity: \<open>a ## b \<Longrightarrow> a + b = c \<Longrightarrow> c ## c \<Longrightarrow> a ## a\<close>
   by (meson disjoint_add_rightL disjoint_symm)
 
@@ -204,7 +212,15 @@ lemma partial_add_double_assoc:
   by (metis disjoint_add_rightR disjoint_add_rightL disjoint_add_right_commute partial_add_assoc
       partial_add_left_commute)
 
-subsection \<open> unit_add \<close>
+lemma sepadd_left_mono:
+  \<open>a ## b \<Longrightarrow> a ## c \<Longrightarrow> b \<le> c \<Longrightarrow> a + b \<le> a + c\<close>
+  by (simp add: le_iff_sepadd_weak,
+      metis disjoint_add_rightR disjoint_add_swap partial_add_assoc)
+
+lemma sepadd_right_mono: \<open>a ## c \<Longrightarrow> b ## c \<Longrightarrow> a \<le> b \<Longrightarrow> a + c \<le> b + c\<close>
+  by (metis disjoint_symm_iff partial_add_commute sepadd_left_mono)
+
+subsection \<open> unit_sepadd \<close>
 
 definition \<open>unit_sepadd a \<equiv> \<forall>b. a ## b \<longrightarrow> a + b = b\<close>
 
@@ -245,6 +261,51 @@ lemma sepdomsubseteq_transp:
 lemma sepdomsubseteq_disjointD:
   \<open>sepdomsubseteq a b \<Longrightarrow> a ## c \<Longrightarrow> b ## c\<close>
   by (simp add: sepdomsubseteq_def)
+
+subsection \<open> Greatest lower bound \<close>
+
+definition
+  \<open>glb_exists a b \<equiv> \<exists>ab. ab \<le> a \<and> ab \<le> b \<and> (\<forall>ab'. ab' \<le> a \<longrightarrow> ab' \<le> b \<longrightarrow> ab' \<le> ab)\<close>
+
+definition \<open>glb a b \<equiv> (GREATEST ab. ab \<le> a \<and> ab \<le> b)\<close>
+
+lemma weak_distrib_law:
+  assumes
+    \<open>a ## b\<close>
+    \<open>a ## c\<close>
+    \<open>glb_exists b c\<close>
+    \<open>glb_exists (a + b) (a + c)\<close>
+  shows
+    \<open>a + glb b c \<le> glb (a + b) (a + c)\<close>
+proof -
+  obtain bc where
+    \<open>bc \<le> b\<close>
+    \<open>bc \<le> c\<close>
+    \<open>\<forall>bc'. bc' \<le> b \<longrightarrow> bc' \<le> c \<longrightarrow> bc' \<le> bc\<close>
+    using assms(3) glb_exists_def by blast
+  moreover obtain abac where
+    \<open>abac \<le> a + b\<close>
+    \<open>abac \<le> a + c\<close>
+    \<open>\<forall>abac'. abac' \<le> a + b \<longrightarrow> abac' \<le> a + c \<longrightarrow> abac' \<le> abac\<close>
+    using assms(4) glb_exists_def by blast
+  ultimately show ?thesis
+    unfolding glb_def
+    using assms(1,2)
+    apply -
+    apply (subst Greatest_equality[where x=bc], blast, blast)
+    apply (subst Greatest_equality[where x=abac], blast, blast)
+    apply (meson disjoint_preservation disjoint_symm_iff sepadd_left_mono)
+    done
+qed
+
+lemma weak_distrib_law2:
+  \<open>b ## c \<Longrightarrow>
+    glb_exists a b \<Longrightarrow>
+    glb_exists a c \<Longrightarrow>
+    glb_exists a (b + c) \<Longrightarrow>
+    glb a b + glb a c \<le> glb a (b + c)\<close>
+  text \<open> not true! \<close>
+  oops
 
 subsection \<open> Seplogic connectives \<close>
 
@@ -337,6 +398,7 @@ lemma sepconj_monoR[intro]:
 lemma sepconj_comm_imp:
   \<open>P \<^emph> Q \<le> Q \<^emph> P\<close>
   by (simp add: sepconj_comm)
+
 lemma sepimp_sepconjL:
   \<open>P \<^emph> Q \<midarrow>\<^emph> R = P \<midarrow>\<^emph> Q \<midarrow>\<^emph> R\<close>
   apply (clarsimp simp add: sepconj_def sepimp_def fun_eq_iff)
@@ -780,6 +842,10 @@ text \<open>
   It introduces an order which must be compatible with, but can be more coarse than,
   the subresource relation. The equivalence classes induced by this order represent
   resources with the same set of labels.
+
+  We want labels to form a distributive lattice, to take advantage of
+  Birkhoff's representation theorem.
+  TODO,sorry: The law \<open>labels_strong_distrib_law\<close> probably does this, but I need to check.
 \<close>
 
 class labelled_perm_alg = perm_alg + indivisible_units_perm_alg +
@@ -787,24 +853,24 @@ class labelled_perm_alg = perm_alg + indivisible_units_perm_alg +
     and labels_less :: \<open>'a \<Rightarrow> 'a \<Rightarrow> bool\<close> (infix \<open><\<^sub>l\<close> 50)
   assumes labels_leq_less_preorder:
     \<open>preordering labels_leq labels_less\<close>
-  assumes labels_less_homomorphism: \<open>\<And>a b. a < b \<Longrightarrow> a <\<^sub>l b\<close>
+  assumes labels_less_embeds: \<open>\<And>a b. a < b \<Longrightarrow> a <\<^sub>l b\<close>
   assumes labels_leq_upper_bound:
     \<open>\<And>a b c. a ## b \<Longrightarrow> a \<le>\<^sub>l c \<Longrightarrow> b \<le>\<^sub>l c \<Longrightarrow> a + b \<le>\<^sub>l c\<close>
-(*
-  assumes same_labels_split:
-    \<open>a ## b \<Longrightarrow> same_labels (a + b) c \<Longrightarrow>
-      \<exists>ca cb. c = ca + cb \<and> same_labels a ca \<and> same_labels b cb\<close> *)
+  assumes labels_strong_distrib_law:
+    \<open>\<And>a b c.
+      a ## b \<Longrightarrow> a ## c \<Longrightarrow> glb_exists b c \<Longrightarrow> glb_exists (a + b) (a + c) \<Longrightarrow>
+        glb (a + b) (a + c) \<le>\<^sub>l a + glb b c\<close>
 begin
 
-lemma labels_leq_homomorphism:
+lemma labels_leq_embeds:
   \<open>a \<le> b \<Longrightarrow> a \<le>\<^sub>l b\<close>
-  using labels_leq_less_preorder labels_less_homomorphism
+  using labels_leq_less_preorder labels_less_embeds
   by (metis order.order_iff_strict preordering.axioms(1) partial_preordering.refl
       preordering.strict_implies_order)
 
 lemma labels_leq_add:
   \<open>a ## b \<Longrightarrow> a \<le>\<^sub>l (a + b)\<close>
-  by (simp add: labels_leq_homomorphism)
+  by (simp add: labels_leq_embeds)
 
 definition labels_eq :: \<open>'a \<Rightarrow> 'a \<Rightarrow> bool\<close> (infix \<open>=\<^sub>l\<close> 50) where
   \<open>labels_eq a b \<equiv> a \<le>\<^sub>l b \<and> b \<le>\<^sub>l a\<close>
@@ -832,7 +898,7 @@ lemma same_labels_as_unit_is_unit:
   shows
     \<open>unit_sepadd b\<close>
   using assms
-  by (metis labels_eq_def order.order_iff_strict labels_leq_less_preorder labels_less_homomorphism
+  by (metis labels_eq_def order.order_iff_strict labels_leq_less_preorder labels_less_embeds
       partial_le_plus unit_sepadd_def preordering.strict_iff_not)
 
 subsection  \<open> Label overlap \<close>
@@ -841,7 +907,7 @@ definition \<open>label_overlap a b \<equiv> \<exists>c. c \<le>\<^sub>l a \<and
 
 lemma label_overlap_refl:
   \<open>\<not> unit_sepadd a \<Longrightarrow> label_overlap a a\<close>
-  using label_overlap_def labels_leq_homomorphism by blast
+  using label_overlap_def labels_leq_embeds by blast
 
 lemma label_overlap_sym:
   \<open>label_overlap a b \<Longrightarrow> label_overlap b a\<close>
@@ -849,20 +915,7 @@ lemma label_overlap_sym:
 
 lemma same_labels_implies_label_overlap:
   \<open>a =\<^sub>l b \<Longrightarrow> \<not> unit_sepadd a \<Longrightarrow> \<not> unit_sepadd b \<Longrightarrow> label_overlap a b\<close>
-  using label_overlap_def labels_eq_def labels_leq_homomorphism by blast
-
-end
-
-class labelled_sep_alg = sep_alg + labelled_perm_alg
-begin
-
-definition \<open>label_restrict l a \<equiv> (GREATEST a'. a' \<le> a \<and> a' \<le>\<^sub>l l)\<close>
-
-lemma label_restrict_exists:
-  \<open>\<exists>x\<le>a. x \<le>\<^sub>l l \<and> (\<forall>y\<le>a. y \<le>\<^sub>l l \<longrightarrow> y \<le> x)\<close>
-
-  nitpick
-  oops
+  using label_overlap_def labels_eq_def labels_leq_embeds by blast
 
 end
 
@@ -870,15 +923,14 @@ class halving_labelled_perm_alg = halving_perm_alg + labelled_perm_alg
 begin
 
 lemma half_subseteq_labels: \<open>half a \<le>\<^sub>l a\<close>
-  by (metis half_additive_split half_self_disjoint labels_leq_homomorphism partial_le_plus2)
+  by (metis half_additive_split half_self_disjoint labels_leq_embeds partial_le_plus2)
 
 lemma half_superseteq_labels: \<open>a \<le>\<^sub>l half a\<close>
-  by (metis half_additive_split half_self_disjoint labels_leq_upper_bound labels_leq_homomorphism
+  by (metis half_additive_split half_self_disjoint labels_leq_upper_bound labels_leq_embeds
       order.refl)
 
 lemma half_has_same_labels: \<open>half a =\<^sub>l a\<close>
   by (simp add: half_subseteq_labels half_superseteq_labels labels_eq_def)
-  
 
 end
 
