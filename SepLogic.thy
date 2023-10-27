@@ -479,7 +479,37 @@ end
 
 subsection \<open> Separation Algebras \<close>
 
-class sep_alg = perm_alg + disjoint_zero + order_bot +
+class multiunit_sep_alg = perm_alg +
+  fixes unitof :: \<open>'a \<Rightarrow> 'a\<close>
+  assumes unitof_disjoint[simp]: \<open>unitof a ## a\<close>
+  assumes unitof_is_unit[simp]: \<open>\<And>a b. unitof a ## b \<Longrightarrow> unitof a + b = b\<close>
+begin
+
+lemma unitof_disjoint2[simp]: \<open>a ## unitof a\<close>
+  by (simp add: disjoint_symm)
+
+lemma unitof_inherits_disjointness: \<open>a ## b \<Longrightarrow> unitof a ## b\<close>
+  by (metis disjoint_add_leftL unitof_disjoint unitof_is_unit)
+
+lemma unitof_is_unit2[simp]: \<open>\<And>a b. b ## unitof a \<Longrightarrow> unitof a + b = b\<close>
+  by (simp add: disjoint_symm_iff)
+
+lemma unitof_is_unitR[simp]: \<open>\<And>a b. unitof a ## b \<Longrightarrow> b + unitof a = b\<close>
+  using partial_add_commute unitof_is_unit by presburger
+
+lemma unitof_is_unitR2[simp]: \<open>\<And>a b. b ## unitof a \<Longrightarrow> b + unitof a = b\<close>
+  by (simp add: disjoint_symm_iff)
+
+lemma unitof_idem[simp]: \<open>unitof (unitof a) = unitof a\<close>
+  by (metis unitof_disjoint unitof_is_unit unitof_is_unitR2)
+
+lemma unitof_is_unit_sepadd: \<open>unit_sepadd (unitof a)\<close>
+  by (simp add: unit_sepadd_def)
+
+end
+
+
+class sep_alg = multiunit_sep_alg + disjoint_zero + order_bot +
   assumes partial_add_0[simp]: \<open>0 + a = a\<close>
 begin
 
@@ -508,6 +538,9 @@ lemma not_gr_zero[simp]: "\<not> 0 < n \<longleftrightarrow> n = 0"
 
 lemma gr_implies_not_zero: "m < n \<Longrightarrow> n \<noteq> 0"
   by auto
+
+lemma unitof_zero[simp]: \<open>unitof a = 0\<close>
+  by (metis partial_add_0 unitof_is_unitR zero_disjointR)
 
 lemma zero_only_unit:
   \<open>unit_sepadd x \<Longrightarrow> x = 0\<close>
@@ -940,24 +973,57 @@ end
 
 section \<open> Instances \<close>
 
-instantiation prod  :: (sep_alg,sep_alg) sep_alg
+instantiation prod :: (multiunit_sep_alg,multiunit_sep_alg) perm_alg
 begin
 
 definition plus_prod  :: \<open>'a \<times> 'b \<Rightarrow> 'a \<times> 'b \<Rightarrow> 'a \<times> 'b\<close> where
   \<open>plus_prod a b \<equiv> (fst a + fst b, snd a + snd b)\<close>
 declare plus_prod_def[simp]
 
-definition less_eq_prod  :: \<open>'a \<times> 'b \<Rightarrow> 'a \<times> 'b \<Rightarrow> bool\<close> where
-  \<open>less_eq_prod a b \<equiv> (fst a \<le> fst b \<and> snd a \<le> snd b)\<close>
-declare less_eq_prod_def[simp]
-
-definition less_prod  :: \<open>'a \<times> 'b \<Rightarrow> 'a \<times> 'b \<Rightarrow> bool\<close> where
-  \<open>less_prod x y \<equiv> fst x \<le> fst y \<and> snd x \<le> snd y \<and> (\<not> fst y \<le> fst x \<or> \<not> snd y \<le> snd x)\<close>
-declare less_prod_def[simp]
-
 definition disjoint_prod  :: \<open>'a \<times> 'b \<Rightarrow> 'a \<times> 'b \<Rightarrow> bool\<close> where
   \<open>disjoint_prod a b \<equiv> (fst a ## fst b \<and> snd a ## snd b)\<close>
 declare disjoint_prod_def[simp]
+
+definition less_eq_prod  :: \<open>'a \<times> 'b \<Rightarrow> 'a \<times> 'b \<Rightarrow> bool\<close> where
+  \<open>less_eq_prod a b \<equiv> fst a \<le> fst b \<and> snd a \<le> snd b\<close>
+declare less_eq_prod_def[simp]
+
+definition less_prod  :: \<open>'a \<times> 'b \<Rightarrow> 'a \<times> 'b \<Rightarrow> bool\<close> where
+  \<open>less_prod a b \<equiv> fst a < fst b \<and> snd a \<le> snd b \<or> fst a \<le> fst b \<and> snd a < snd b\<close>
+declare less_prod_def[simp]
+
+instance
+  apply standard
+            apply force
+           apply force
+          apply (force simp add: partial_add_assoc)
+         apply (force dest: partial_add_commute)
+        apply (force simp add: partial_add_assoc)
+       apply (force simp add: disjoint_symm_iff partial_add_commute)
+      apply (force simp add: disjoint_symm)
+     apply (force dest: disjoint_add_rightL)
+    apply (force dest: disjoint_add_right_commute)
+   apply (force dest: positivity)
+  apply (clarsimp simp add: less_iff_sepadd)
+  apply (simp add: le_iff_sepadd_weak, metis disjoint_symm_iff unitof_disjoint unitof_is_unitR2)
+  done
+
+end
+
+instantiation prod :: (multiunit_sep_alg,multiunit_sep_alg) multiunit_sep_alg
+begin
+
+definition unitof_prod  :: \<open>'a \<times> 'b \<Rightarrow> 'a \<times> 'b\<close> where
+  \<open>unitof a \<equiv> (unitof (fst a), unitof (snd a))\<close>
+declare unitof_prod_def[simp]
+
+instance
+  by standard force+
+
+end
+
+instantiation prod  :: (sep_alg,sep_alg) sep_alg
+begin
 
 definition zero_prod  :: \<open>'a \<times> 'b\<close> where
   \<open>zero_prod \<equiv> (0, 0)\<close>
@@ -968,27 +1034,10 @@ definition bot_prod  :: \<open>'a \<times> 'b\<close> where
 declare bot_prod_def[simp]
 
 instance
-  apply standard
-                 apply force+
-          apply (force simp add: partial_add_assoc)
-         apply (force dest: partial_add_commute)
-        apply (force simp add: disjoint_symm)
-       apply (force dest: disjoint_add_rightL)
-      apply (force dest: disjoint_add_right_commute)
-     apply (force dest: positivity)
-   apply (clarsimp simp add: less_iff_sepadd)
-    (* subgoal *)
-   apply (rename_tac a1 b1 a2 b2)
-   apply (case_tac \<open>a1 = a2\<close>)
-    apply (case_tac \<open>b1 = b2\<close>)
-     apply force
-    apply (metis le_iff_sepadd order_class.order_eq_iff)
-   apply (metis le_iff_sepadd order_class.order_eq_iff)
-    (* done *)
-  apply force
-  done
+  by standard force+
 
 end
+
 
 instantiation unit :: perm_alg
 begin
@@ -1000,6 +1049,34 @@ declare plus_unit_def[simp]
 definition disjoint_unit :: \<open>unit \<Rightarrow> unit \<Rightarrow> bool\<close> where
   \<open>disjoint_unit a b \<equiv> True\<close>
 declare disjoint_unit_def[simp]
+
+instance
+  by standard simp+
+
+end
+
+instantiation unit :: multiunit_sep_alg
+begin
+
+definition unitof_unit :: \<open>unit \<Rightarrow> unit\<close> where
+  \<open>unitof_unit \<equiv> \<lambda>_. ()\<close>
+declare unitof_unit_def[simp]
+
+instance
+  by standard simp+
+
+end
+
+instantiation unit :: sep_alg
+begin
+
+definition zero_unit :: \<open>unit\<close> where
+  \<open>zero_unit \<equiv> ()\<close>
+declare zero_unit_def[simp]
+
+definition bot_unit :: \<open>unit\<close> where
+  \<open>bot_unit \<equiv> ()\<close>
+declare bot_unit_def[simp]
 
 instance
   by standard simp+
