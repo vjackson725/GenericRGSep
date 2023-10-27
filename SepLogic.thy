@@ -418,9 +418,15 @@ definition precise :: \<open>('a \<Rightarrow> bool) \<Rightarrow> bool\<close> 
                   P h1 \<longrightarrow> P h2 \<longrightarrow> h1 ## h1' \<longrightarrow> h2 ## h2' \<longrightarrow> h1 + h1' = h2 + h2' \<longrightarrow>
                   h1 = h2\<close>
 
+(* TODO: rename intuitionistic to bring it in line with the seplogic jungle paper *)
 definition intuitionistic :: \<open>('a \<Rightarrow> bool) \<Rightarrow> bool\<close> where
   \<open>intuitionistic P \<equiv> \<forall>h h'. P h \<and> h \<le> h' \<longrightarrow> P h'\<close>
 
+lemma precise_to_intuitionistic:
+  \<open>precise P \<Longrightarrow> intuitionistic (P \<^emph> \<top>)\<close>
+  apply (simp add: sepconj_def precise_def intuitionistic_def)
+  apply (metis le_iff_sepadd_weak order_eq_iff order_trans)
+  done
 
 lemma strong_sepcoimp_imp_sepconj:
   \<open>(P \<^emph> \<top>) \<sqinter> (P \<sim>\<^emph> Q) \<le> P \<^emph> Q\<close>
@@ -477,27 +483,27 @@ lemma precise_to_supported:
 
 end
 
-subsection \<open> Separation Algebras \<close>
+subsection \<open> Multi-unit Separation Algebras \<close>
 
 class multiunit_sep_alg = perm_alg +
   fixes unitof :: \<open>'a \<Rightarrow> 'a\<close>
-  assumes unitof_disjoint[simp]: \<open>unitof a ## a\<close>
+  assumes unitof_disjoint[simp,intro!]: \<open>unitof a ## a\<close>
   assumes unitof_is_unit[simp]: \<open>\<And>a b. unitof a ## b \<Longrightarrow> unitof a + b = b\<close>
 begin
 
-lemma unitof_disjoint2[simp]: \<open>a ## unitof a\<close>
+lemma unitof_disjoint2[simp,intro!]: \<open>a ## unitof a\<close>
   by (simp add: disjoint_symm)
 
 lemma unitof_inherits_disjointness: \<open>a ## b \<Longrightarrow> unitof a ## b\<close>
   by (metis disjoint_add_leftL unitof_disjoint unitof_is_unit)
 
-lemma unitof_is_unit2[simp]: \<open>\<And>a b. b ## unitof a \<Longrightarrow> unitof a + b = b\<close>
+lemma unitof_is_unit2[simp]: \<open>b ## unitof a \<Longrightarrow> unitof a + b = b\<close>
   by (simp add: disjoint_symm_iff)
 
-lemma unitof_is_unitR[simp]: \<open>\<And>a b. unitof a ## b \<Longrightarrow> b + unitof a = b\<close>
+lemma unitof_is_unitR[simp]: \<open>unitof a ## b \<Longrightarrow> b + unitof a = b\<close>
   using partial_add_commute unitof_is_unit by presburger
 
-lemma unitof_is_unitR2[simp]: \<open>\<And>a b. b ## unitof a \<Longrightarrow> b + unitof a = b\<close>
+lemma unitof_is_unitR2[simp]: \<open>b ## unitof a \<Longrightarrow> b + unitof a = b\<close>
   by (simp add: disjoint_symm_iff)
 
 lemma unitof_idem[simp]: \<open>unitof (unitof a) = unitof a\<close>
@@ -506,61 +512,47 @@ lemma unitof_idem[simp]: \<open>unitof (unitof a) = unitof a\<close>
 lemma unitof_is_unit_sepadd: \<open>unit_sepadd (unitof a)\<close>
   by (simp add: unit_sepadd_def)
 
-end
-
-
-class sep_alg = multiunit_sep_alg + disjoint_zero + order_bot +
-  assumes partial_add_0[simp]: \<open>0 + a = a\<close>
-begin
-
 lemma le_iff_sepadd: \<open>a \<le> b \<longleftrightarrow> (\<exists>c. a ## c \<and> b = a + c)\<close>
-  by (metis order.order_iff_strict less_iff_sepadd partial_add_0 partial_add_commute zero_disjointR)
+  by (metis unitof_disjoint2 le_iff_sepadd_weak unitof_is_unitR2)
 
 subsection \<open>partial canonically_ordered_monoid_add lemmas\<close>
 
-lemma zero_le[simp]: \<open>0 \<le> x\<close>
-  by (metis partial_le_plus partial_add_0 zero_disjointL)
+lemma unitof_le[simp]: \<open>unitof x \<le> x\<close>
+  using partial_le_plus unitof_disjoint by fastforce
 
-lemma le_zero_eq[simp]: "n \<le> 0 \<longleftrightarrow> n = 0"
+lemma le_unitof_eq[simp]: \<open>x \<le> unitof x \<longleftrightarrow> x = unitof x\<close>
   by (auto intro: order.antisym)
 
-lemma not_less_zero[simp]: "\<not> n < 0"
+lemma not_less_unitof[simp]: \<open>\<not> x < unitof x\<close>
   by (auto simp: less_le)
 
-lemma zero_less_iff_neq_zero: "0 < n \<longleftrightarrow> n \<noteq> 0"
-  by (auto simp: less_le)
+lemma unitof_less_iff_neq_unitof: \<open>unitof x < x \<longleftrightarrow> x \<noteq> unitof x\<close>
+  by (metis antisym_conv2 unitof_le)
 
-lemma gr_zeroI: "(n = 0 \<Longrightarrow> False) \<Longrightarrow> 0 < n"
-  by (rule zero_less_iff_neq_zero[THEN iffD2]) iprover
+lemma gr_unitofI: "(x = unitof x \<Longrightarrow> False) \<Longrightarrow> unitof x < x"
+  using unitof_less_iff_neq_unitof by blast
 
-lemma not_gr_zero[simp]: "\<not> 0 < n \<longleftrightarrow> n = 0"
-  by (simp add: zero_less_iff_neq_zero)
+lemma not_gr_unitof[simp]: "\<not> unitof x < x \<longleftrightarrow> x = unitof x"
+  by (simp add: unitof_less_iff_neq_unitof)
 
-lemma gr_implies_not_zero: "m < n \<Longrightarrow> n \<noteq> 0"
-  by auto
+lemma gr_implies_not_unitof: "m < x \<Longrightarrow> x \<noteq> unitof x"
+  by (metis disjoint_preservation dual_order.strict_iff_not partial_le_plus2 unitof_disjoint
+      unitof_is_unitR2)
 
-lemma unitof_zero[simp]: \<open>unitof a = 0\<close>
-  by (metis partial_add_0 unitof_is_unitR zero_disjointR)
+lemma unitof_unit_sepadd:
+  \<open>unit_sepadd x \<Longrightarrow> unitof x = x\<close>
+  by (metis unit_sepadd_def unitof_disjoint2 unitof_is_unitR2)
 
-lemma zero_only_unit:
-  \<open>unit_sepadd x \<Longrightarrow> x = 0\<close>
-  by (metis partial_add_0 partial_add_commute unit_sepadd_def zero_disjointR)
+lemma sepadd_eq_unitof_iff_both_eq_unitof[simp]:
+  \<open>x ## y \<Longrightarrow> x + y = unitof (x + y) \<longleftrightarrow> x = unitof x \<and> y = unitof y\<close>
+  by (metis gr_implies_not_unitof dual_order.not_eq_order_implies_strict partial_le_plus2
+      unitof_is_unitR2)
 
-lemma sepadd_eq_0_iff_both_eq_0[simp]: "x ## y \<Longrightarrow> x + y = 0 \<longleftrightarrow> x = 0 \<and> y = 0"
-  by (metis partial_le_plus le_zero_eq partial_add_0)
+lemma unitof_eq_sepadd_iff_both_eq_unitof[simp]:
+  \<open>x ## y \<Longrightarrow> unitof (x + y) = x + y \<longleftrightarrow> x = unitof x \<and> y = unitof y\<close>
+  by (metis sepadd_eq_unitof_iff_both_eq_unitof)
 
-lemma zero_eq_sepadd_iff_both_eq_0[simp]: "x ## y \<Longrightarrow> 0 = x + y \<longleftrightarrow> x = 0 \<and> y = 0"
-  using sepadd_eq_0_iff_both_eq_0[of x y] unfolding eq_commute[of 0] .
-
-lemmas zero_order = zero_le le_zero_eq not_less_zero zero_less_iff_neq_zero not_gr_zero
-
-subsection \<open>Misc\<close>
-
-lemma unit_sepadd_0: \<open>unit_sepadd 0\<close>
-  by (simp add: unit_sepadd_def)
-
-lemma sep_add_0_right[simp]: "a + 0 = a"
-  by (metis zero_disjointR partial_add_0 partial_add_commute)
+lemmas unitof_order = unitof_le le_unitof_eq not_less_unitof unitof_less_iff_neq_unitof not_gr_unitof
 
 definition sepconj_mfault ::
   \<open>('a \<Rightarrow> bool) mfault \<Rightarrow> ('a \<Rightarrow> bool) mfault \<Rightarrow> ('a \<Rightarrow> bool) mfault\<close> (infixl \<open>\<^emph>\<^sub>f\<close> 88)
@@ -575,7 +567,7 @@ definition sepconj_mfault ::
 
 
 definition emp :: \<open>'a \<Rightarrow> bool\<close> where
-  \<open>emp \<equiv> (\<lambda>h. h = 0)\<close>
+  \<open>emp \<equiv> unit_sepadd\<close>
 
 definition emp_mfault :: \<open>('a \<Rightarrow> bool) mfault\<close> ("emp\<^sub>f") where
   \<open>emp\<^sub>f \<equiv> Success emp\<close>
@@ -585,33 +577,22 @@ fun iterated_sepconj :: \<open>('a \<Rightarrow> bool) list \<Rightarrow> ('a \<
 | \<open>iterated_sepconj [] = emp\<close>
 
 lemma emp_sepconj_unit[simp]: \<open>emp \<^emph> P = P\<close>
-  by (simp add: emp_def sepconj_def)
+  apply (simp add: emp_def sepconj_def unit_sepadd_def fun_eq_iff)
+  apply (metis disjoint_symm partial_add_commute unitof_disjoint unitof_is_unitR2)
+  done
 
 lemma emp_sepconj_unit_right[simp]: \<open>P \<^emph> emp = P\<close>
-  by (simp add: emp_def sepconj_def)
+  using emp_sepconj_unit sepconj_comm by force
 
 lemma secoimp_imp_sepconj:
   \<open>P \<sqinter> (P \<sim>\<^emph> Q) \<le> P \<^emph> (Q \<sqinter> emp)\<close>
-  unfolding sepcoimp_def sepconj_def le_fun_def le_bool_def emp_def
-  by force
-
-lemma not_coimp_emp:
-  \<open>h \<noteq> 0 \<Longrightarrow> (- (\<top> \<sim>\<^emph> emp)) h\<close>
-  apply (clarsimp simp add: sepcoimp_def emp_def)
-  apply (rule_tac x=0 in exI, force)
+  apply (simp add: sepcoimp_def sepconj_def le_fun_def emp_def unit_sepadd_def)
+  apply (metis unit_sepadd_def unitof_disjoint2 unitof_is_unitR2 unitof_is_unit_sepadd)
   done
 
-lemma le_iff_sepadd:
-  \<open>a \<le> b \<longleftrightarrow> (\<exists>c. b = a + c)\<close>
-  nitpick[card=2]
-  oops
-
-lemma precise_to_intuitionistic:
-  fixes P :: \<open>'a \<Rightarrow> bool\<close>
-  shows \<open>precise P \<Longrightarrow> intuitionistic (P \<^emph> \<top>)\<close>
-  apply (simp add: sepconj_def precise_def intuitionistic_def)
-  apply clarsimp
-  oops
+lemma not_coimp_emp:
+  \<open>\<not> unit_sepadd h \<Longrightarrow> (- (\<top> \<sim>\<^emph> emp)) h\<close>
+  by (force simp add: sepcoimp_def emp_def)
 
 lemma supported_intuitionistic_to_precise:
   \<open>supported P \<Longrightarrow> intuitionistic P \<Longrightarrow> precise (P \<sqinter> - (P \<^emph> (-emp)))\<close>
@@ -620,25 +601,86 @@ lemma supported_intuitionistic_to_precise:
 
 end
 
+subsection \<open> Separation Algebras (with a single unit) \<close>
+
+class sep_alg = multiunit_sep_alg + disjoint_zero + order_bot +
+  assumes sepadd_0[simp]: \<open>0 + a = a\<close>
+begin
+
+lemma sepadd_0_right[simp]: "a + 0 = a"
+  by (metis zero_disjointR sepadd_0 partial_add_commute)
+
+lemma unitof_zero[simp]: \<open>unitof a = 0\<close>
+  by (metis sepadd_0 unitof_is_unitR zero_disjointR)
+
+lemma zero_only_unit[simp]:
+  \<open>unit_sepadd x \<longleftrightarrow> x = 0\<close>
+  by (metis unitof_is_unit_sepadd unitof_unit_sepadd unitof_zero)
+
+subsection \<open>partial canonically_ordered_monoid_add lemmas\<close>
+
+lemma zero_le[simp]: \<open>0 \<le> x\<close>
+  using unitof_le by force
+
+lemma le_zero_eq[simp]: "n \<le> 0 \<longleftrightarrow> n = 0"
+  using le_unitof_eq by force
+
+lemma not_less_zero[simp]: "\<not> n < 0"
+  by (auto simp: less_le)
+
+lemma zero_less_iff_neq_zero: "0 < n \<longleftrightarrow> n \<noteq> 0"
+  by (auto simp: less_le)
+
+lemma gr_zeroI: "(n = 0 \<Longrightarrow> False) \<Longrightarrow> 0 < n"
+  using zero_less_iff_neq_zero by auto
+
+lemma not_gr_zero[simp]: "\<not> 0 < n \<longleftrightarrow> n = 0"
+  by (simp add: zero_less_iff_neq_zero)
+
+lemma gr_implies_not_zero: \<open>m < n \<Longrightarrow> n \<noteq> 0\<close>
+  by auto
+
+lemma sepadd_eq_0_iff_both_eq_0[simp]: \<open>x ## y \<Longrightarrow> x + y = 0 \<longleftrightarrow> x = 0 \<and> y = 0\<close>
+  by (metis partial_le_plus le_zero_eq sepadd_0)
+
+lemma zero_eq_sepadd_iff_both_eq_0[simp]: \<open>x ## y \<Longrightarrow> 0 = x + y \<longleftrightarrow> x = 0 \<and> y = 0\<close>
+  using sepadd_eq_0_iff_both_eq_0 by fastforce
+
+lemmas zero_order = zero_le le_zero_eq not_less_zero zero_less_iff_neq_zero not_gr_zero
+
+paragraph \<open> Separation Logic \<close>
+
+lemma not_coimp_emp0:
+  \<open>h \<noteq> 0 \<Longrightarrow> (- (\<top> \<sim>\<^emph> emp)) h\<close>
+  apply (clarsimp simp add: sepcoimp_def emp_def)
+  apply (rule_tac x=0 in exI, force)
+  done
+
+end
+
 section \<open> Permission/Separation Algebra Subclasses \<close>
 
 subsection \<open>Strongly Separated Separation Algebra\<close>
 
-class strong_separated_sep_alg = sep_alg +
-  assumes only_zero_self_sep: \<open>a ## a \<Longrightarrow> a = 0\<close>
+class strong_separated_multiunit_sep_alg = multiunit_sep_alg +
+  assumes only_unit_selfsep: \<open>a ## a \<Longrightarrow> unitof a = a\<close>
 begin
 
-lemma selfsep_iff: \<open>a ## a \<longleftrightarrow> a = 0\<close>
-  using only_zero_self_sep zero_disjointL by blast
+lemma selfsep_iff: \<open>a ## a \<longleftrightarrow> unitof a = a\<close>
+  by (metis only_unit_selfsep unitof_disjoint)
 
 end
+
+class strong_separated_sep_alg = sep_alg + strong_separated_multiunit_sep_alg
 
 subsection \<open>Trivial Self-disjointness Separation Algebra\<close>
 
 class trivial_selfdisjoint_perm_alg = perm_alg +
   assumes disjointness: \<open>a ## a \<Longrightarrow> a + a = b \<Longrightarrow> a = b\<close>
 
-class trivial_selfdisjoint_sep_alg = sep_alg + trivial_selfdisjoint_perm_alg
+class trivial_selfdisjoint_multiunit_sep_alg = multiunit_sep_alg + trivial_selfdisjoint_perm_alg
+
+class trivial_selfdisjoint_sep_alg = sep_alg + trivial_selfdisjoint_multiunit_sep_alg
 
 subsection \<open>Cross-Split Separation Algebra\<close>
 
@@ -649,7 +691,9 @@ class crosssplit_perm_alg = perm_alg +
       ac ## ad \<and> bc ## bd \<and> ac ## bc \<and> ad ## bd \<and>
       ac + ad = a \<and> bc + bd = b \<and> ac + bc = c \<and> ad + bd = d\<close>
 
-class crosssplit_sep_alg = sep_alg + crosssplit_perm_alg
+class crosssplit_multiunit_sep_alg = multiunit_sep_alg + crosssplit_perm_alg
+
+class crosssplit_sep_alg = sep_alg + crosssplit_multiunit_sep_alg
 
 subsection \<open>Cancellative Separation Logic\<close>
 
@@ -675,7 +719,6 @@ lemmas partial_right_cancelD = iffD1[OF partial_right_cancel, rotated 2]
 lemmas partial_right_cancel2D = iffD1[OF partial_right_cancel2, rotated 2]
 lemmas partial_left_cancelD = iffD1[OF partial_left_cancel, rotated 2]
 lemmas partial_left_cancel2D = iffD1[OF partial_left_cancel2, rotated 2]
-
 
 lemma precise_iff_conj_distrib:
   fixes P :: \<open>'a \<Rightarrow> bool\<close>
@@ -730,16 +773,18 @@ lemma precise_sepconj_eq_strong_sepcoimp:
 
 end
 
-class cancel_sep_alg = cancel_perm_alg + sep_alg
+class cancel_multiunit_sep_alg = cancel_perm_alg + multiunit_sep_alg
 begin
 
-lemma weak_emp:
-  \<open>a ## a \<and> a + a = a \<longleftrightarrow> a = 0\<close>
-  by (metis sep_add_0_right zero_disjointR partial_left_cancel2)
+lemma selfsep_selfadd_iff_unit:
+  \<open>a ## a \<and> a + a = a \<longleftrightarrow> unit_sepadd a\<close>
+  by (metis partial_right_cancelD unitof_disjoint2 unitof_inherits_disjointness unitof_is_unit2
+      unitof_is_unit_sepadd unitof_unit_sepadd)
 
 lemma strong_positivity:
   \<open>a ## b \<Longrightarrow> c ## c \<Longrightarrow> a + b = c \<Longrightarrow> c + c = c \<Longrightarrow> a = b \<and> b = c\<close>
-  using weak_emp by force
+  by (metis partial_right_cancelD positivity unit_sepadd_def weak_positivity
+      selfsep_selfadd_iff_unit)
 
 lemma \<open>(a \<^emph> \<top>) \<sqinter> (b \<^emph> \<top>) \<le> ((a \<^emph> b) \<squnion> (a \<sqinter> b)) \<^emph> \<top>\<close>
   nitpick[card=4]
@@ -759,7 +804,9 @@ qed
 
 end
 
-subsection \<open> Halving \<close>
+class cancel_sep_alg = cancel_multiunit_sep_alg + sep_alg
+
+subsection \<open> Halving separation algebra \<close>
 
 class halving_perm_alg = perm_alg +
   fixes half :: \<open>'a \<Rightarrow> 'a\<close>
@@ -793,7 +840,9 @@ lemma half_eq_full_imp_self_additive:
 
 end
 
-class halving_sep_alg = sep_alg + halving_perm_alg
+class halving_multiunit_sep_alg = multiunit_sep_alg + halving_perm_alg
+
+class halving_sep_alg = sep_alg + halving_multiunit_sep_alg
 
 subsection \<open> Disjoint Parts Algebra \<close>
 
@@ -839,26 +888,29 @@ lemma partial_add_double_assoc2:
 
 end
 
-class disjoint_parts_sep_alg = sep_alg + disjoint_parts_perm_alg
+class disjoint_parts_multiunit_sep_alg = multiunit_sep_alg + disjoint_parts_perm_alg
+
+class disjoint_parts_sep_alg = sep_alg + disjoint_parts_multiunit_sep_alg
 
 subsection \<open> Indivisible units \<close>
 
 class indivisible_units_perm_alg = perm_alg +
   assumes indivisible_units: \<open>x ## y \<Longrightarrow> unit_sepadd (x + y) \<Longrightarrow> unit_sepadd x\<close>
 
-(* nondivisible_units_sep_alg = sep_alg,
+(* indivisible_units + multiunit_sep_alg = multiunit_sep_alg,
     as there's exactly one unit element less than everything else. *)
-context sep_alg
+context multiunit_sep_alg
 begin
 
 subclass indivisible_units_perm_alg
 proof
   fix x y
   show \<open>x ## y \<Longrightarrow> unit_sepadd (x + y) \<Longrightarrow> unit_sepadd x\<close>
-    using zero_only_unit by force
+    by (metis sepadd_eq_unitof_iff_both_eq_unitof unitof_is_unit_sepadd unitof_unit_sepadd)
 qed
 
 end
+
 
 section \<open> Trivial self-disjoint + halving (very boring) \<close>
 
