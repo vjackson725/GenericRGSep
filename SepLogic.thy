@@ -811,15 +811,19 @@ class disjoint_parts_sep_alg = sep_alg + disjoint_parts_perm_alg
 subsection \<open> Indivisible units \<close>
 
 class indivisible_units_perm_alg = perm_alg +
-  assumes \<open>x ## y \<Longrightarrow> unit_sepadd (x + y) \<Longrightarrow> unit_sepadd x\<close>
+  assumes indivisible_units: \<open>x ## y \<Longrightarrow> unit_sepadd (x + y) \<Longrightarrow> unit_sepadd x\<close>
 
 (* nondivisible_units_sep_alg = sep_alg,
     as there's exactly one unit element less than everything else. *)
 context sep_alg
 begin
 
-lemma \<open>x ## y \<Longrightarrow> unit_sepadd (x + y) \<Longrightarrow> unit_sepadd x\<close>
-  using zero_only_unit by fastforce
+subclass indivisible_units_perm_alg
+proof
+  fix x y
+  show \<open>x ## y \<Longrightarrow> unit_sepadd (x + y) \<Longrightarrow> unit_sepadd x\<close>
+    using zero_only_unit by force
+qed
 
 end
 
@@ -1001,6 +1005,5 @@ instance
   by standard simp+
 
 end
-
 
 end
