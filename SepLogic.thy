@@ -673,6 +673,29 @@ end
 
 class strong_separated_sep_alg = sep_alg + strong_separated_multiunit_sep_alg
 
+subsection \<open> Separation Algebras with glb \<close>
+
+class glb_perm_alg = perm_alg + inf +
+  assumes sepinf_leqL[intro]: \<open>\<not> a ## b \<Longrightarrow> a \<sqinter> b \<le> a\<close>
+    and sepinf_leqR[intro]: \<open>\<not> a ## b \<Longrightarrow> a \<sqinter> b \<le> b\<close>
+    and sepinf_least[intro]: \<open>\<not> a ## b \<Longrightarrow> c \<le> a \<Longrightarrow> c \<le> b \<Longrightarrow> c \<le> a \<sqinter> b\<close>
+begin
+
+lemma nondisjoint_implies_glb_exists:
+  \<open>\<not> a ## b \<Longrightarrow> glb_exists a b\<close>
+  by (metis glb_exists_def sepinf_least sepinf_leqL sepinf_leqR)
+
+lemma glb_eq[simp]:
+  \<open>\<not> a ## b \<Longrightarrow> glb a b = a \<sqinter> b\<close>
+  unfolding glb_def
+  by (force intro: Greatest_equality)
+
+end
+
+class glb_multiunit_sep_alg = multiunit_sep_alg + glb_perm_alg
+
+class glb_sep_alg = sep_alg + glb_multiunit_sep_alg
+
 subsection \<open>Trivial Self-disjointness Separation Algebra\<close>
 
 class trivial_selfdisjoint_perm_alg = perm_alg +
