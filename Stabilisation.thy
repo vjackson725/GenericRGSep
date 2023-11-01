@@ -265,6 +265,7 @@ lemma wsstable_preserves_precise2[dest]:
 
 end
 
+
 class stable_sep_alg = halving_sep_alg +
   fixes stableres :: \<open>'a \<Rightarrow> 'a\<close>
   assumes stableres_concave[intro]: \<open>a ## b \<Longrightarrow> stableres a + stableres b \<le> stableres (a + b)\<close>

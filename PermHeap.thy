@@ -466,12 +466,21 @@ lemma le_map_pheapL:
 instantiation pheap :: (perm_alg,type,type) sep_alg
 begin
 
+
 lift_definition zero_pheap :: \<open>('a::perm_alg,'b,'c) pheap\<close> is \<open>Map.empty\<close>
   by simp
 
 lemma app_zero_pheap[simp]:
   \<open>0 \<bullet> x = None\<close>
   by (simp add: zero_pheap.rep_eq)
+
+lift_definition unitof_pheap :: \<open>('a::perm_alg,'b,'c) pheap \<Rightarrow> ('a::perm_alg,'b,'c) pheap\<close>
+  is \<open>\<lambda>_. Map.empty\<close>
+  by simp
+
+lemma app_unitof_pheap[simp]:
+  \<open>unitof h \<bullet> x = None\<close>
+  by (simp add: unitof_pheap.rep_eq)
 
 lemma bot_pheap_eq_zero_pheap:
   \<open>(\<bottom> :: ('a,'b,'c) pheap) = 0\<close>
@@ -497,7 +506,7 @@ lemma le_iff_sepadd_helper:
     apply (erule disjE; force simp add: less_iff_sepadd)
     done
   apply (force simp add: less_eq_pheap_def plus_hperm_def
-      disjoint_pheap_def disjoint_set_pheap_def partial_le_plus split: option.splits) 
+      disjoint_pheap_def disjoint_set_pheap_def split: option.splits) 
   done
 
 instance
@@ -530,7 +539,9 @@ instance
     apply (case_tac \<open>app_pheap c x\<close>, force)
     apply (force dest: positivity simp add: plus_perm_eq_Some_iff(2) split: option.splits)
     (* done *)
-   apply (metis le_iff_sepadd_helper less_le_not_le order_le_imp_less_or_eq)
+     apply (metis le_iff_sepadd_helper less_le_not_le order_le_imp_less_or_eq)
+    apply (force simp add: disjoint_pheap_def')
+   apply (force simp add: disjoint_pheap_def' pheap_eq_iff)
   apply (force simp add: pheap_eq_iff)
   done
 
@@ -574,6 +585,15 @@ instance
   apply (drule spec2, drule mp, rule refl)+
   apply (simp add: disjointness_left_plus_eq)
   done
+
+end
+
+
+lemma
+  fixes p :: \<open>(unit,unit,'y) pheap \<Rightarrow> bool\<close>
+  shows \<open>p \<le> q \<^emph> r \<Longrightarrow> \<exists>qa ra. p = qa \<^emph> ra \<and> qa \<le> q \<and> ra \<le> r\<close>
+  nitpick
+  oops
 
 end
 

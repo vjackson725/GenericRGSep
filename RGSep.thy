@@ -174,7 +174,7 @@ lemma opsem_envD:
   \<open>opsem r a s s' \<Longrightarrow> a = Env x y \<Longrightarrow> fst s = x \<and> fst s' = y \<and> snd s' = snd s \<and> r x y\<close>
   by (induct arbitrary: x y rule: opsem.induct) simp+
 
-lemma opsem_env_iff:
+lemma opsem_env_iff[simp]:
   \<open>opsem r (Env x y) s s' \<longleftrightarrow> fst s = x \<and> fst s' = y \<and> snd s' = snd s \<and> r x y\<close>
   by (metis env opsem_envD prod.collapse)
 
@@ -324,7 +324,6 @@ lemma env_chain_iff[simp]:
   \<open>env_chain (a # as) x z \<longleftrightarrow> (\<exists>y. a = Env x y \<and> env_chain as y z)\<close>
   by (force intro: env_chain.intros)+
 
-
 lemma opsem_rtrancl_start_done_all_env:
   assumes \<open>opsem_rtrancl r as (h, Done) s'\<close>
   shows \<open>env_chain as h (fst s')\<close>
@@ -337,22 +336,34 @@ proof -
     by force
 qed
 
-lemma opsem_rtrancl_start_done_in_rely:
-  assumes
-    \<open>opsem_rtrancl r as (h, Done) s'\<close>
-    \<open>reflp r\<close>
-    \<open>transp r\<close>
-  shows \<open>snd s' = Done \<and> r h (fst s')\<close>
+lemma opsem_rtrancl_start_done:
+  \<open>opsem_rtrancl r as (h, \<checkmark>) s' \<Longrightarrow> env_chain as h (fst s') \<and> snd s' = \<checkmark> \<and> r\<^sup>*\<^sup>* h (fst s')\<close>
 proof -
-  { fix s
-    have \<open>opsem_rtrancl r as s s' \<Longrightarrow> snd s = Done \<Longrightarrow> snd s' = Done \<and> r (fst s) (fst s')\<close>
-      using assms
-      by (induct arbitrary: s' rule: opsem_rtrancl_rev_induct)
-        (force dest: reflpD transpD)+
-  } then show ?thesis
-    using assms
-    by force
+  assume \<open>opsem_rtrancl r as (h, \<checkmark>) s'\<close>
+  moreover { fix s
+    have \<open>opsem_rtrancl r as s s' \<Longrightarrow> s = (h, \<checkmark>) \<Longrightarrow> env_chain as h (fst s') \<and> r\<^sup>*\<^sup>* h (fst s') \<and> snd s' = \<checkmark>\<close>
+      by (induct arbitrary: h rule: opsem_rtrancl.inducts) force+
+  }
+  ultimately show \<open>env_chain as h (fst s') \<and> snd s' = \<checkmark> \<and> r\<^sup>*\<^sup>* h (fst s')\<close>
+    by blast
 qed
+
+(*
+  fix h'
+  presume
+    \<open>env_chain as h h'\<close>
+    \<open>(r\<inverse>\<inverse>)\<^sup>*\<^sup>* h h'\<close>
+    \<open>h' = fst s'\<close>
+    \<open>snd s' = \<checkmark>\<close>
+  then show \<open>opsem_rtrancl r as (h, \<checkmark>) s'\<close>
+    apply (induct arbitrary: s' rule: env_chain.induct)
+     apply force
+    apply clarsimp
+    apply (rename_tac h1 bb h2)
+    apply (drule_tac x=h2 and y=\<checkmark> in meta_spec2, simp)
+    sorry
+qed fast+
+*)
 
 section \<open> Rely-Guarantee Separation Logic \<close>
 
@@ -362,8 +373,8 @@ inductive rgsat
   rgsat_done:
   \<open>\<lceil> p \<rceil>\<^bsub>r\<^esub> \<le> q \<Longrightarrow> rgsat Done r g p q\<close>
 | rgsat_iter:
-  \<open>rgsat c r g p' i \<Longrightarrow>
-      p \<le> i \<Longrightarrow> i \<le> p' \<Longrightarrow> i \<le> q \<Longrightarrow>
+  \<open>rgsat c r g p' q' \<Longrightarrow>
+      p \<le> i \<Longrightarrow> i \<le> p' \<Longrightarrow> q' \<le> i \<Longrightarrow> \<lceil> i \<rceil>\<^bsub>r\<^esub> \<le> q \<Longrightarrow>
       rgsat (c\<^sup>\<star>) r g p q\<close>
 | rgsat_ndet:
   \<open>rgsat s1 r g1 p q1 \<Longrightarrow>
@@ -384,33 +395,65 @@ inductive rgsat
     p' \<le> p \<^emph> f \<Longrightarrow>
     q \<^emph> f \<le> q' \<Longrightarrow>
     rgsat (Atomic b) r g p' q'\<close>
+| rgsat_weaken:
+  \<open>rgsat c r' g' p' q' \<Longrightarrow> p \<le> p' \<Longrightarrow> q' \<le> q \<Longrightarrow> r \<le> r' \<Longrightarrow> g' \<le> g \<Longrightarrow> rgsat c r g p q\<close>
+| rgsat_frame:
+  \<open>rgsat c r g p q \<Longrightarrow>
+    pa \<le> p \<^emph> f \<Longrightarrow>
+    q \<^emph> \<lceil> f \<rceil>\<^bsub>r \<squnion> g\<^esub> \<le> qa \<Longrightarrow>
+    atom_frame_pred f c \<Longrightarrow>
+    (\<forall>p. \<lceil> p \<^emph> f \<rceil>\<^bsub>r \<squnion> g\<^esub> \<le> \<lceil> p \<rceil>\<^bsub>r \<squnion> g\<^esub> \<^emph> \<lceil> f \<rceil>\<^bsub>r \<squnion> g\<^esub>) \<Longrightarrow>
+    rgsat c r g pa qa\<close>
+
 inductive_cases rgsep_doneE[elim]: \<open>rgsat Done r g p q\<close>
 inductive_cases rgsep_iterE[elim]: \<open>rgsat (c\<^sup>\<star>) r g p q\<close>
 inductive_cases rgsep_parE[elim]: \<open>rgsat (s1 \<parallel> s2) r g p q\<close>
 inductive_cases rgsep_atomE[elim]: \<open>rgsat (Atomic c) r g p q\<close>
 
-
+(*
 lemma rgsat_weaken:
-  \<open>rgsat c r' g' p' q' \<Longrightarrow>
-    p \<le> p' \<Longrightarrow> q' \<le> q \<Longrightarrow> r \<le> r' \<Longrightarrow> g' \<le> g \<Longrightarrow>
-    rgsat c r g p q\<close>
-  apply (induct arbitrary: p r g q rule: rgsat.induct)
-      apply (rule rgsat_done, metis le_supE sup.absorb_iff2 wsstable_disj_distrib wsstable_rely_mono)
-     apply (rule_tac i=i in rgsat_iter)
-        apply blast
-       apply (simp; fail)
-      apply (simp; fail)
-     apply blast
-    apply (meson order.eq_iff order.trans rgsat_ndet; fail)
-   apply (meson order.eq_iff order.trans sup_mono rgsat_parallel; fail)
-  apply (meson order.trans rgsat_atom; fail)
-  done
+  assumes
+    \<open>rgsat c r' g' p' q'\<close>
+    \<open>p \<le> p'\<close>
+    \<open>q' \<le> q\<close>
+    \<open>r \<le> r'\<close>
+    \<open>g' \<le> g\<close>
+  shows
+    \<open>rgsat c r g p q\<close>
+  using assms
+proof (induct arbitrary: p r g q rule: rgsat.induct)
+  case (rgsat_done p r q g p' r' g' q')
+  then show ?case
+    by (metis (no_types, lifting) rgsat.rgsat_done
+        le_sup_iff sup.absorb_iff2 wsstable_disj_distrib wsstable_rely_le_antimono)
+next
+  case (rgsat_iter c r g p' q' p i q pa ra ga qa)
+  then show ?case
+    by (meson order.refl order_trans rgsat.rgsat_iter wsstable_rely_le_antimono)
+next
+  case (rgsat_ndet s1 r g1 p q1 s2 g2 q2 g q)
+  then show ?case
+    by (meson order.eq_iff order.trans rgsat.rgsat_ndet)
+next
+  case (rgsat_parallel s1 r g2 g1 p1 q1 s2 p2 q2 g p q)
+  then show ?case
+    by (meson order.eq_iff order.trans sup_mono rgsat.rgsat_parallel)
+next
+  case (rgsat_atom p b q g p' f q' r)
+  then show ?case
+    by (meson order.trans rgsat.rgsat_atom)
+next
+  case (rgsat_frame c r g p q pf f qf pz rz gz qz)
+  then show ?case
+    sorry
+qed
+*)
+
 
 lemma rgsat_iter':
-  \<open>rgsat c r g i i \<Longrightarrow> rgsat (c\<^sup>\<star>) r g i i\<close>
-  using rgsat_iter[OF _ order.refl order.refl order.refl]
-  by blast
-  
+  \<open>rgsat c r g i i \<Longrightarrow> rgsat (c\<^sup>\<star>) r g i (\<lceil> i \<rceil>\<^bsub>r\<^esub>)\<close>
+  using rgsat_iter[OF _ _ _ order.refl]
+  oops
 
 lemma frame_conj_helper:
   fixes p1 :: \<open>'a::cancel_perm_alg \<Rightarrow> bool\<close>
@@ -423,14 +466,13 @@ lemma frame_conj_helper:
   apply (metis precise_f predicate1D wsstable_def wsstable_stronger)
   done
 
+(*
 lemma rgsat_frame:
   assumes
     \<open>rgsat c r g p q\<close>
     \<comment> \<open>atom_frame_pred f c\<close>
     and extra:
-    \<open>\<forall>p g'. g' \<le> g \<longrightarrow>
-        (\<lceil> p \<^emph> f \<rceil>\<^bsub>r \<squnion> g'\<^esub> \<le> \<lceil> p \<rceil>\<^bsub>r \<squnion> g'\<^esub> \<^emph> \<lceil> f \<rceil>\<^bsub>r \<squnion> g'\<^esub>) \<and>
-        (\<lceil> p \<^emph> \<lceil> f \<rceil>\<^bsub>r \<squnion> g\<^esub> \<rceil>\<^bsub>r \<squnion> g'\<^esub> \<le> \<lceil> p \<rceil>\<^bsub>r \<squnion> g'\<^esub> \<^emph> \<lceil> \<lceil> f \<rceil>\<^bsub>r \<squnion> g\<^esub> \<rceil>\<^bsub>r \<squnion> g'\<^esub>)\<close>
+    \<open>\<forall>g'\<le>g. \<forall>p. \<lceil> p \<^emph> f \<rceil>\<^bsub>r \<squnion> g'\<^esub> \<le> \<lceil> p \<rceil>\<^bsub>r \<squnion> g'\<^esub> \<^emph> \<lceil> f \<rceil>\<^bsub>r \<squnion> g'\<^esub>\<close>
   shows
     \<open>rgsat c r g (p \<^emph> f) (q \<^emph> \<lceil> f \<rceil>\<^bsub>r \<squnion> g\<^esub>)\<close>
   using assms
@@ -444,27 +486,25 @@ proof (induct arbitrary: f rule: rgsat.induct)
     apply (meson order_trans sepconj_mono sup_ge1 wsstable_rely_mono)
     done
 next
-  case (rgsat_iter c r g p' i p q)
+  case (rgsat_iter c r g p' q' i p q)
   then show ?case
-    apply (rule_tac rgsat.rgsat_iter[where p'=\<open>p' \<^emph> \<lceil> f \<rceil>\<^bsub>r \<squnion> g\<^esub>\<close> and i=\<open>i \<^emph> \<lceil> f \<rceil>\<^bsub>r \<squnion> g\<^esub>\<close>])
-       apply (drule meta_spec[of _ \<open>\<lceil> f \<rceil>\<^bsub>r \<squnion> g\<^esub>\<close>], drule meta_mp)
-        apply (metis (no_types, lifting) order_refl wsstable_absorb2)
-       apply (simp only: wsstable_absorb2[OF order.refl]; fail)
+    apply -
+    apply (rule_tac rgsat.rgsat_iter[where p'=\<open>p' \<^emph> f\<close> and q'=\<open>q' \<^emph> \<lceil> f \<rceil>\<^bsub>r \<squnion> g\<^esub>\<close> and i=\<open>i \<^emph> \<lceil> f \<rceil>\<^bsub>r \<squnion> g\<^esub>\<close>])
+        apply blast
+       apply (meson sepconj_monoR wsstable_stronger; fail)
       apply (metis sepconj_mono wsstable_stronger)
      apply (metis sepconj_monoL)
     apply (metis sepconj_monoL)
     done
 next
   case (rgsat_ndet s1 r g1 p q1 s2 g2 q2 g q)
-  then show ?case
+  show ?case
+    using rgsat_ndet.prems rgsat_ndet.hyps(5-)
     apply (simp add: sup_fun_def)
     apply (intro rgsat.rgsat_ndet[where
           ?g1.0=g1 and ?g2.0=g2 and ?q1.0=\<open>q1 \<^emph> \<lceil> f \<rceil>\<^bsub>r \<squnion> g1\<^esub>\<close> and ?q2.0=\<open>q2 \<^emph> \<lceil> f \<rceil>\<^bsub>r \<squnion> g2\<^esub>\<close>])
-    sorry
-         apply (rule rgsat_ndet.hyps(2), blast)
-         apply (simp; fail)
-        apply (rule rgsat_ndet.hyps(4), blast)
-        apply (simp; fail)
+         apply (rule rgsat_ndet.hyps(2), (simp; fail))
+        apply (rule rgsat_ndet.hyps(4), (simp; fail))
        apply blast
       apply blast
      apply (rule sepconj_mono[OF _ wsstable_rely_mono]; blast)
@@ -482,8 +522,8 @@ next
             ?p2.0=\<open>p2\<close> and
             ?q2.0=\<open>q2\<close>])
     subgoal
-      apply (drule meta_spec[of _ f], drule meta_mp, force, drule meta_mp)
-       apply (metis (no_types) le_sup_iff order.trans sup_assoc)
+      apply (drule meta_spec[of _ f], drule meta_mp)
+       apply (rule allI, drule_tac x=\<open>g2 \<squnion> g'\<close> in spec, simp, blast)
       apply force
       done
         apply force
@@ -502,6 +542,7 @@ next
     apply (simp add: sepconj_mono wsstable_stronger sepconj_assoc[symmetric]; fail)
     done
 qed
+*)
 
 lemma backwards_frame:
   \<open>rgsat c r g p q \<Longrightarrow> rel_add_preserve (r\<^sup>*\<^sup>*) \<Longrightarrow> rgsat c r g (p \<^emph> \<lfloor> f \<rfloor>\<^bsub>r \<squnion> g\<^esub>) (q \<^emph> f)\<close>
@@ -516,33 +557,38 @@ lemma backwards_done:
   by (rule rgsat_weaken[OF rgsat_done _ _ order.refl order.refl, where p'=\<open>\<lfloor> p \<rfloor>\<^bsub>r\<^esub>\<close> and q'=p])
     (clarsimp simp add: wsstable_def swstable_def le_fun_def)+
 
-
-lemma pre_soundness:
-  assumes opsem:
-    \<open>s \<midarrow>r, as\<rightarrow>\<^sup>\<star> s'\<close>
-    \<open>s = (h, c)\<close>
-    \<open>s' = (h', Done)\<close>
-    and rgsat: \<open>rgsat c r g p q\<close>
-    and rtrans_r:
-    \<open>reflp r\<close>
-    \<open>transp r\<close>
-    and r_mono_p: \<open>\<And>h h'. r h h' \<Longrightarrow> p h \<Longrightarrow> (\<lceil> p \<rceil>\<^bsub>r\<^esub>) h'\<close>
+lemma rgsat_soundness:
+  assumes rgsat: \<open>rgsat c r g p q\<close>
     and c_maintains_g: \<open>atoms_guarantee g c\<close>
-    and pre: \<open>p h\<close>
-  shows \<open>q h'\<close>
+  shows \<open>\<forall>h h' as. p h \<longrightarrow> (h, c) \<midarrow>r, as\<rightarrow>\<^sup>\<star> (h', Done) \<longrightarrow> q h'\<close>
   using assms
-proof (induct r as s s' arbitrary: g p q h c h' rule: opsem_rtrancl.induct)
-  case (base r s)
+proof (induct arbitrary: rule: rgsat.induct)
+  case (rgsat_done p r q g)
   then show ?case
     apply clarsimp
-    apply (erule rgsep_doneE)
-      apply clarsimp
-    apply (metis reflpE)
+    apply (drule opsem_rtrancl_start_done, clarsimp)
+    apply (meson predicate1D wsstable_def)
+    done
+next
+  case (rgsat_iter c r g p' q' p i q)
+  then show ?case
+    sledgehammer
     sorry
 next
-  case (step s r a s' as s'')
-  then show ?case
-    sorry
+  case (rgsat_ndet s1 r g1 p q1 s2 g2 q2 g q)
+  then show ?case sorry
+next
+  case (rgsat_parallel s1 r g2 g1 p1 q1 s2 p2 q2 g p q)
+  then show ?case sorry
+next
+  case (rgsat_atom p b q g p' f q' r)
+  then show ?case sorry
+next
+  case (rgsat_weaken c r' g' p' q' p q r g)
+  then show ?case sorry
+next
+  case (rgsat_frame c r g p q pa f qa)
+  then show ?case sorry
 qed
 
 end
