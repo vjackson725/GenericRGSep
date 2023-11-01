@@ -467,11 +467,31 @@ lemma sepconj_distrib_conj_imp_sepconj_eq_strong_sepcoimp:
   using assms sepconj_distrib_conj_iff_sepconj_eq_strong_sepcoimp
   by blast
 
-lemma sepconj_middle_monotone_left: \<open>A1 \<^emph> A2 \<le> B \<Longrightarrow> A1 \<^emph> C \<^emph> A2 \<le> C \<^emph> B\<close>
-  by (metis sepconj_assoc sepconj_comm sepconj_monoL)
 
-lemma sepconj_middle_monotone_right: \<open>A \<le> B1 \<^emph> B2 \<Longrightarrow> C \<^emph> A \<le> B1 \<^emph> C \<^emph> B2\<close>
-  by (metis sepconj_assoc sepconj_comm sepconj_monoL)
+lemma sepconj_middle_monotone_lhsR: \<open>A1 \<^emph> A2 \<le> B \<Longrightarrow> C \<le> D \<Longrightarrow> A1 \<^emph> C \<^emph> A2 \<le> B \<^emph> D\<close>
+  by (metis sepconj_assoc sepconj_comm sepconj_mono)
+
+lemma sepconj_middle_monotone_lhsL: \<open>A1 \<^emph> A2 \<le> B \<Longrightarrow> C \<le> D \<Longrightarrow> A1 \<^emph> C \<^emph> A2 \<le> D \<^emph> B\<close>
+  by (metis sepconj_assoc sepconj_comm sepconj_mono)
+
+lemma sepconj_middle_monotone_rhsR: \<open>A \<le> B1 \<^emph> B2 \<Longrightarrow> C \<le> D \<Longrightarrow> A \<^emph> C \<le> B1 \<^emph> D \<^emph> B2\<close>
+  by (metis sepconj_assoc sepconj_comm sepconj_mono)
+
+lemma sepconj_middle_monotone_rhsL: \<open>A \<le> B1 \<^emph> B2 \<Longrightarrow> C \<le> D \<Longrightarrow> C \<^emph> A \<le> B1 \<^emph> D \<^emph> B2\<close>
+  using sepconj_comm sepconj_middle_monotone_rhsR by presburger
+
+
+lemma sepconj_middle_monotone_lhsR2: \<open>A1 \<^emph> A2 \<le> B \<Longrightarrow> A1 \<^emph> C \<^emph> A2 \<le> B \<^emph> C\<close>
+  by (simp add: sepconj_middle_monotone_lhsR)
+
+lemma sepconj_middle_monotone_lhsL2: \<open>A1 \<^emph> A2 \<le> B \<Longrightarrow> A1 \<^emph> C \<^emph> A2 \<le> C \<^emph> B\<close>
+  by (simp add: sepconj_middle_monotone_lhsL)
+
+lemma sepconj_middle_monotone_rhsR2: \<open>A \<le> B1 \<^emph> B2 \<Longrightarrow> A \<^emph> C \<le> B1 \<^emph> C \<^emph> B2\<close>
+  by (simp add: sepconj_middle_monotone_rhsR)
+
+lemma sepconj_middle_monotone_rhsL2: \<open>A \<le> B1 \<^emph> B2 \<Longrightarrow> C \<^emph> A \<le> B1 \<^emph> C \<^emph> B2\<close>
+  by (simp add: sepconj_middle_monotone_rhsL)
 
 
 definition supported :: \<open>('a \<Rightarrow> bool) \<Rightarrow> bool\<close> where
@@ -818,7 +838,7 @@ proof -
   have F1: \<open>((a \<^emph> b) \<squnion> (a \<sqinter> b)) \<^emph> \<top> = (a \<^emph> b) \<^emph> \<top> \<squnion> (a \<sqinter> b) \<^emph> \<top>\<close>
     by (simp add: sepconj_comm sepconj_pdisj_distrib_left)
   moreover have \<open>a \<^emph> b \<^emph> \<top> \<le> (a \<^emph> \<top>) \<sqinter> (b \<^emph> \<top>)\<close>
-    by (metis le_infI sepconj_comm sepconj_middle_monotone_left top_greatest)
+    by (metis le_infI sepconj_comm sepconj_middle_monotone_lhsL2 top_greatest)
   moreover have \<open>(a \<sqinter> b) \<^emph> \<top> \<le> (a \<^emph> \<top>) \<sqinter> (b \<^emph> \<top>)\<close>
     by (simp add: sepconj_monoL)
   ultimately show ?thesis
