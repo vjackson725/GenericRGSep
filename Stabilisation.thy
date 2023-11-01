@@ -41,6 +41,10 @@ lemma stable_iff2:
   \<open>stable R p \<longleftrightarrow> \<lceil> p \<rceil>\<^bsub>R\<^esub> \<le> p\<close>
   by (simp add: stable_iff wsstable_weaker_iff_swstable_stronger)
 
+lemma stable_def2:
+  \<open>stable R p = (\<lceil> p \<rceil>\<^bsub>R\<^esub> = p)\<close>
+  by (simp add: antisym stable_iff2 wsstable_stronger)
+
 lemmas stableD[dest] = iffD1[OF stable_iff]
 lemmas stableD2[dest] = iffD1[OF stable_iff2]
 
