@@ -92,7 +92,16 @@ lemma all_atom_comm_simps[simp]:
   \<open>all_atom_comm p (Atomic b) \<longleftrightarrow> p b\<close>
   by fastforce+
 
-abbreviation \<open>atoms_guarantee g \<equiv> all_atom_comm ((\<le>) g)\<close>
+lemma all_atom_comm_mono:
+  \<open>p \<le> q \<Longrightarrow> all_atom_comm p c \<Longrightarrow> all_atom_comm q c\<close>
+  by (induct c) force+
+
+lemmas all_atom_comm_monoD =
+  all_atom_comm_mono[rotated]
+
+
+abbreviation \<open>atoms_guarantee g \<equiv>
+  all_atom_comm (\<lambda>b. b \<le> g \<and> (\<forall>s. Ex (g s) \<longrightarrow> Ex (b s)))\<close>
 
 subsection \<open> For the variable restriction \<close>
 
@@ -158,6 +167,7 @@ inductive_cases opsem_skipE[elim!]: \<open>opsem r a (h, Done) (h', c')\<close>
 inductive_cases opsem_envE[elim]: \<open>opsem r (Env x y) s s'\<close>
 
 lemma opsem_tau_iff:
+  \<open>opsem r Tau (h, Done) s' \<longleftrightarrow> False\<close>
   \<open>opsem r Tau (h, c1 ;; c2) s' \<longleftrightarrow>
     c1 = Done \<and> s' = (h, c2) \<or> (\<exists>h' c1'. opsem r Tau (h,c1) (h',c1') \<and> s' = (h', c1' ;; c2))\<close>
   \<open>opsem r Tau (h, c1 \<parallel> c2) s' \<longleftrightarrow>
@@ -295,8 +305,7 @@ lemma blocked_atom_stuck:
 
 lemma nondone_nonstuck:
   \<open>c \<noteq> Done \<Longrightarrow> \<forall>x. \<exists>y. g x y \<Longrightarrow> atoms_guarantee g c \<Longrightarrow> \<exists>s'. (h, c)  \<midarrow>r, Tau\<rightarrow> s'\<close>
-  by (induct c arbitrary: h)
-    (fastforce simp add: opsem_tau_iff)+
+  by (induct c arbitrary: h) (fastforce simp add: opsem_tau_iff)+
 
 lemma opsem_samecD:
   \<open>opsem r a s s' \<Longrightarrow> snd s' = snd s \<Longrightarrow> r (fst s) (fst s') \<and> a = Env (fst s) (fst s')\<close>
@@ -354,6 +363,12 @@ proof -
     by force
 qed
 
+lemma opsem_rtrancl_preserves_rely:
+ \<open>opsem_rtrancl r as s s' \<Longrightarrow> list_all (case_act True r) as\<close>
+  by (induct rule: opsem_rtrancl.induct)
+   (force simp add: opsem_env_step split: act.splits)+
+
+
 section \<open> Rely-Guarantee Separation Logic \<close>
 
 inductive rgsat
@@ -384,6 +399,13 @@ inductive rgsat
     p' \<le> p \<^emph> f \<Longrightarrow>
     q \<^emph> f \<le> q' \<Longrightarrow>
     rgsat (Atomic b) r g p' q'\<close>
+| rgsat_frame:
+  \<open>rgsat c r g p q \<Longrightarrow>
+    (\<forall>p. \<forall>g'\<le>g. (\<lceil> p \<^emph> f \<rceil>\<^bsub>r \<squnion> g'\<^esub> \<le> \<lceil> p \<rceil>\<^bsub>r \<squnion> g'\<^esub> \<^emph> \<lceil> f \<rceil>\<^bsub>r \<squnion> g'\<^esub>)) \<Longrightarrow>
+    (\<forall>h1 h2. g h1 h2 \<longrightarrow> (\<exists>h1a\<le>h1. f h1a) \<longrightarrow> (\<exists>h2a\<le>h2. f h2a)) \<Longrightarrow>
+    (\<forall>h1 h2. r h1 h2 \<longrightarrow> (\<exists>h1a\<le>h1. f h1a) \<longrightarrow> (\<exists>h2a\<le>h2. f h2a)) \<Longrightarrow>
+    stable (r \<squnion> g) f \<Longrightarrow>
+    rgsat c r g (p \<^emph> f) (q \<^emph> f)\<close>
 inductive_cases rgsep_doneE[elim]: \<open>rgsat Done r g p q\<close>
 inductive_cases rgsep_iterE[elim]: \<open>rgsat (c\<^sup>\<star>) r g p q\<close>
 inductive_cases rgsep_parE[elim]: \<open>rgsat (s1 \<parallel> s2) r g p q\<close>
@@ -404,8 +426,8 @@ lemma rgsat_weaken:
      apply (meson order.trans wsstable_rely_le_antimono; fail)
     apply (meson order.eq_iff order.trans rgsat_ndet; fail)
    apply (meson order.eq_iff order.trans sup_mono rgsat_parallel; fail)
-  apply (meson order.trans rgsat_atom; fail)
-  done
+   apply (meson order.trans rgsat_atom; fail)
+  sorry
 
 lemma rgsat_iter':
   \<open>rgsat c r g i i \<Longrightarrow> rgsat (c\<^sup>\<star>) r g i (\<lceil> i \<rceil>\<^bsub>r\<^esub>)\<close>
@@ -424,6 +446,7 @@ lemma frame_conj_helper:
   apply (metis precise_f predicate1D wsstable_def wsstable_stronger)
   done
 
+(*
 lemma rgsat_frame:
   assumes
     \<open>rgsat c r g p q\<close>
@@ -522,6 +545,7 @@ next
     apply (simp add: sepconj_mono wsstable_stronger sepconj_assoc[symmetric]; fail)
     done
 qed
+*)
 
 lemma backwards_frame:
   \<open>rgsat c r g p q \<Longrightarrow> rel_add_preserve (r\<^sup>*\<^sup>*) \<Longrightarrow> rgsat c r g (p \<^emph> \<lfloor> f \<rfloor>\<^bsub>r \<squnion> g\<^esub>) (q \<^emph> f)\<close>
@@ -533,73 +557,92 @@ lemma backwards_done:
     (clarsimp simp add: wsstable_def swstable_def le_fun_def)+
 
 
+lemma opsem_frame_strong:
+  \<open>opsem_rtrancl r as s s' \<Longrightarrow>
+    list_all (case_act True r) as \<Longrightarrow>
+    all_atom_comm (\<lambda>g. \<forall>h1 h2. g h1 h2 \<longrightarrow> (\<exists>h1a\<le>h1. f h1a) \<longrightarrow> (\<exists>h2a\<le>h2. f h2a)) (snd s) \<Longrightarrow>
+    (\<forall>h1 h2. r h1 h2 \<longrightarrow> (\<exists>h1a\<le>h1. f h1a) \<longrightarrow> (\<exists>h2a\<le>h2. f h2a)) \<Longrightarrow>
+    (\<exists>ha\<le>fst s. f ha) \<Longrightarrow>
+    (\<exists>ha'\<le>fst s'. f ha')\<close>
+proof (induct rule: opsem_rtrancl.induct)
+  case (step s r a s' as s'')
+
+  have a_cases: \<open>case a of Tau \<Rightarrow> True | Env a b \<Rightarrow> r a b\<close>
+    using step(4) by simp
+
+  have \<open>(\<exists>ha\<le>fst s'. f ha)
+        \<and> all_atom_comm (\<lambda>g. \<forall>h1 h2. g h1 h2 \<longrightarrow> (\<exists>h1a\<le>h1. f h1a) \<longrightarrow> (\<exists>h2a\<le>h2. f h2a)) (snd s')\<close>
+    using step(1,5-) a_cases
+  proof (induct rule: opsem.induct)
+    case (atom g h h' r)
+    then show ?case
+      by simp
+  next
+    case (env r h h' t)
+    then show ?case
+      by simp
+  qed force+
+  then show ?case
+    using step
+    by (clarsimp split: act.splits)
+qed fast
+
+lemma opsem_frame:
+  assumes
+    \<open>opsem_rtrancl r as s s'\<close>
+    \<open>\<forall>h1 h2. g h1 h2 \<longrightarrow> (\<exists>h1a\<le>h1. f h1a) \<longrightarrow> (\<exists>h2a\<le>h2. f h2a)\<close>
+    \<open>\<forall>h1 h2. r h1 h2 \<longrightarrow> (\<exists>h1a\<le>h1. f h1a) \<longrightarrow> (\<exists>h2a\<le>h2. f h2a)\<close>
+    \<open>atoms_guarantee g (snd s)\<close>
+    \<open>\<exists>ha\<le>fst s. f ha\<close>
+  shows
+    \<open>\<exists>ha'\<le>fst s'. f ha'\<close>
+  using assms
+  apply -
+  apply (rule opsem_frame_strong, assumption)
+  apply (frule opsem_rtrancl_preserves_rely)
+  apply (blast intro: all_atom_comm_monoD[where p=\<open>(\<lambda>b. b \<le> g \<and> (\<forall>s. Ex (g s) \<longrightarrow> Ex (b s)))\<close>])+
+  done
+
 lemma soundness_helper:
-  assumes opsem:
-    \<open>s \<midarrow>r, as\<rightarrow>\<^sup>\<star> s'\<close>
-    \<open>s = (h, c)\<close>
-    \<open>s' = (h', Done)\<close>
-    and rgsat: \<open>rgsat c r g p q\<close>
+  assumes rgsat: \<open>rgsat c r g p q\<close>
     and c_maintains_g: \<open>atoms_guarantee g c\<close>
+    and opsem: \<open>(h, c) \<midarrow>r, as\<rightarrow>\<^sup>\<star> (h', Done)\<close>
     and \<open>p h\<close>
   shows \<open>q h'\<close>
   using assms
-proof (induct r as s s' arbitrary: g p q h c h' rule: opsem_rtrancl.induct)
-  case (base r s)
+proof (induct c r g p q arbitrary: as h h' rule: rgsat.inducts)
+  case (rgsat_done p r q g)
   then show ?case
-    apply clarsimp
-    apply (erule rgsep_doneE)
-    apply (meson le_boolE le_funE wsstable_stronger)
-    done
+    by (force dest: opsem_rtrancl_start_done wsstable_impliesD)
 next
-  case (step s r a s' as s'')
+  case (rgsat_iter c r g p' q' p i q)
+  then show ?case sorry
+next
+  case (rgsat_ndet s1 r g1 p q1 s2 g2 q2 g q)
+  then show ?case sorry
+next
+  case (rgsat_parallel s1 r g2 g1 p1 q1 s2 p2 q2 g p q)
+  then show ?case sorry
+next
+  case (rgsat_atom p b q g p' f q' r)
+  then show ?case sorry
+next
+  case (rgsat_frame c r g p q f)
   then show ?case
-  proof (induct rule: opsem.inducts)
-    case (seq_left r a h c1 h' c1' c2)
-    then show ?case
-      apply clarsimp
-      apply (drule rgsat.cases; simp)
-      done
-  next
-    case (seq_right r h c2)
-    then show ?case
-      apply clarsimp
-      apply (drule rgsat.cases; simp)
-      done
-  next
-    case (ndet_left r h s t)
-    then show ?case sorry
-  next
-    case (ndet_right r h s t)
-    then show ?case sorry
-  next
-    case (par_step_left r a h s h' s' t)
-    then show ?case sorry
-  next
-    case (par_step_right r a h t h' t' s)
-    then show ?case sorry
-  next
-    case (par_left r h t)
-    then show ?case sorry
-  next
-    case (par_right r h s)
-    then show ?case sorry
-  next
-    case (iter r h c)
-    then show ?case sorry
-  next
-    case (atom g h h' r)
-    then show ?case sorry
-  next
-    case (env r h h' t)
-    then show ?case sorry
-  qed
+    apply (subst (asm)(3) sepconj_def)
+    apply clarsimp
+    apply (clarsimp simp add: sepconj_def)
+    apply (drule_tac r=r and g=g in opsem_frame, assumption, assumption)
+      apply force
+     apply (simp, metis partial_le_plus2)
+    apply clarsimp
+    sorry
 qed
 
 lemma soundness:
   assumes \<open>rgsat c r g p q\<close>
-    and c_maintains_g: \<open>atoms_guarantee g c\<close>
+    and \<open>atoms_guarantee g c\<close>
   shows \<open>(h, c) \<midarrow>r, as\<rightarrow>\<^sup>\<star> (h', Done) \<longrightarrow> p h \<longrightarrow> q h'\<close>
-  using assms
-  by (meson soundness_helper)
+  by (force intro: soundness_helper[OF assms])
 
 end
