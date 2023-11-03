@@ -46,7 +46,7 @@ lemma frame_closed_frame_cl_of_minimal_pairs_eq:
 section \<open> Language Definition \<close>
 
 datatype 'h comm =
-  Done (\<open>\<checkmark>\<close>)
+  Stop
   | Seq \<open>'h comm\<close> \<open>'h comm\<close> (infixr \<open>;;\<close> 75)
   | Par \<open>'h comm\<close> \<open>'h comm\<close> (infixr \<open>\<parallel>\<close> 65)
   | Ndet \<open>'h comm\<close> \<open>'h comm\<close> (infixr \<open>\<^bold>+\<close> 65)
@@ -69,14 +69,14 @@ lemma act_neq_iff[simp]:
 paragraph \<open> Predicate to ensure atomic actions have a given property \<close>
 
 inductive all_atom_comm :: \<open>(('h \<Rightarrow> 'h \<Rightarrow> bool) \<Rightarrow> bool) \<Rightarrow> 'h comm \<Rightarrow> bool\<close> where
-  skip[iff]: \<open>all_atom_comm p Done\<close>
+  skip[iff]: \<open>all_atom_comm p Stop\<close>
 | seq[intro!]: \<open>all_atom_comm p c1 \<Longrightarrow> all_atom_comm p c2 \<Longrightarrow> all_atom_comm p (c1 ;; c2)\<close>
 | par[intro!]: \<open>all_atom_comm p c1 \<Longrightarrow> all_atom_comm p c2 \<Longrightarrow> all_atom_comm p (c1 \<parallel> c2)\<close>
 | ndet[intro!]: \<open>all_atom_comm p c1 \<Longrightarrow> all_atom_comm p c2 \<Longrightarrow> all_atom_comm p (c1 \<^bold>+ c2)\<close>
 | iter[intro!]: \<open>all_atom_comm p c \<Longrightarrow> all_atom_comm p (c\<^sup>\<star>)\<close>
 | atom[intro!]: \<open>p b \<Longrightarrow> all_atom_comm p (Atomic b)\<close>
 
-inductive_cases all_atom_comm_doneE[elim!]: \<open>all_atom_comm p Done\<close>
+inductive_cases all_atom_comm_doneE[elim!]: \<open>all_atom_comm p Stop\<close>
 inductive_cases all_atom_comm_seqE[elim!]: \<open>all_atom_comm p (c1 ;; c2)\<close>
 inductive_cases all_atom_comm_ndetE[elim!]: \<open>all_atom_comm p (c1 \<^bold>+ c2)\<close>
 inductive_cases all_atom_comm_parE[elim!]: \<open>all_atom_comm p (c1 \<parallel> c2)\<close>
@@ -84,7 +84,7 @@ inductive_cases all_atom_comm_iterE[elim!]: \<open>all_atom_comm p (c\<^sup>\<st
 inductive_cases all_atom_comm_atomE[elim!]: \<open>all_atom_comm p (Atomic b)\<close>
 
 lemma all_atom_comm_simps[simp]:
-  \<open>all_atom_comm p Done \<longleftrightarrow> True\<close>
+  \<open>all_atom_comm p Stop \<longleftrightarrow> True\<close>
   \<open>all_atom_comm p (c1 ;; c2) \<longleftrightarrow> all_atom_comm p c1 \<and> all_atom_comm p c2\<close>
   \<open>all_atom_comm p (c1 \<^bold>+ c2) \<longleftrightarrow> all_atom_comm p c1 \<and> all_atom_comm p c2\<close>
   \<open>all_atom_comm p (c1 \<parallel> c2) \<longleftrightarrow> all_atom_comm p c1 \<and> all_atom_comm p c2\<close>
@@ -112,7 +112,7 @@ definition
       c\<close>
 
 lemma atom_frame_pred_simps[simp]:
-  \<open>atom_frame_pred p Done \<longleftrightarrow> True\<close>
+  \<open>atom_frame_pred p Stop \<longleftrightarrow> True\<close>
   \<open>atom_frame_pred p (c1 ;; c2) \<longleftrightarrow> atom_frame_pred p c1 \<and> atom_frame_pred p c2\<close>
   \<open>atom_frame_pred p (c1 \<^bold>+ c2) \<longleftrightarrow> atom_frame_pred p c1 \<and> atom_frame_pred p c2\<close>
   \<open>atom_frame_pred p (c1 \<parallel> c2) \<longleftrightarrow> atom_frame_pred p c1 \<and> atom_frame_pred p c2\<close>
@@ -135,58 +135,70 @@ lemma atom_frame_pred_mono:
 
 section \<open> Operational Semantics \<close>
 
-inductive opsem :: \<open>('h \<Rightarrow> 'h \<Rightarrow> bool) \<Rightarrow> 'h act \<Rightarrow> 'h \<times> 'h comm \<Rightarrow> 'h \<times> 'h comm \<Rightarrow> bool\<close> where
-  seq_left[intro!]: \<open>opsem r a (h,c1) (h',c1') \<Longrightarrow> opsem r a (h, c1 ;; c2) (h', c1' ;; c2)\<close>
-| seq_right[intro!]: \<open>opsem r Tau (h, Done ;; c2) (h, c2)\<close>
-| ndet_left[intro!]: \<open>opsem r Tau (h, s \<^bold>+ t) (h, s)\<close>
-| ndet_right[intro!]: \<open>opsem r Tau (h, s \<^bold>+ t) (h, t)\<close>
+inductive opsem :: \<open>'h act \<Rightarrow> 'h \<times> 'h comm \<Rightarrow> 'h \<times> 'h comm \<Rightarrow> bool\<close> where
+  seq_left[intro!]: \<open>opsem a (h,c1) (h',c1') \<Longrightarrow> opsem a (h, c1 ;; c2) (h', c1' ;; c2)\<close>
+| seq_right[intro!]: \<open>opsem Tau (h, Stop ;; c2) (h, c2)\<close>
+| ndet_left[intro!]: \<open>opsem Tau (h, s \<^bold>+ t) (h, s)\<close>
+| ndet_right[intro!]: \<open>opsem Tau (h, s \<^bold>+ t) (h, t)\<close>
 (*
 | extndet_resolve_left[intro]:
-  \<open>opsem r a (h, c1) (h', c1') \<Longrightarrow> a \<noteq> Tau \<Longrightarrow> opsem r a (h, c1 \<^bold>\<box> c2) (h', c1')\<close>
+  \<open>opsem a (h, c1) (h', c1') \<Longrightarrow> a \<noteq> Tau \<Longrightarrow> opsem a (h, c1 \<^bold>\<box> c2) (h', c1')\<close>
 | extndet_resolve_right[intro]:
-  \<open>opsem r a (h, c2) (h', c2') \<Longrightarrow> a \<noteq> Tau \<Longrightarrow> opsem r a (h, c1 \<^bold>\<box> c2) (h', c2')\<close>
+  \<open>opsem a (h, c2) (h', c2') \<Longrightarrow> a \<noteq> Tau \<Longrightarrow> opsem a (h, c1 \<^bold>\<box> c2) (h', c2')\<close>
 | extndet_step_left[intro]:
-  \<open>opsem r Tau (h, c1) (h', c1') \<Longrightarrow> opsem r Tau (h, c1 \<^bold>\<box> c2) (h', c1' \<^bold>\<box> c2)\<close>
+  \<open>opsem Tau (h, c1) (h', c1') \<Longrightarrow> opsem Tau (h, c1 \<^bold>\<box> c2) (h', c1' \<^bold>\<box> c2)\<close>
 | extndet_step_right[intro]:
-  \<open>opsem r Tau (h, c2) (h', c2') \<Longrightarrow> opsem r Tau (h, c1 \<^bold>\<box> c2) (h', c1 \<^bold>\<box> c2')\<close>
+  \<open>opsem Tau (h, c2) (h', c2') \<Longrightarrow> opsem Tau (h, c1 \<^bold>\<box> c2) (h', c1 \<^bold>\<box> c2')\<close>
 *)
-| par_step_left[intro]: \<open>opsem r a (h, s) (h', s') \<Longrightarrow> opsem r a (h, s \<parallel> t) (h', s' \<parallel> t)\<close>
-| par_step_right[intro]: \<open>opsem r a (h, t) (h', t') \<Longrightarrow> opsem r a (h, s \<parallel> t) (h', s \<parallel> t')\<close>
-| par_left[intro!]: \<open>opsem r Tau (h, Done \<parallel> t) (h, t)\<close>
-| par_right[intro!]: \<open>opsem r Tau (h, s \<parallel> Done) (h, s)\<close>
-| iter[intro]: \<open>opsem r Tau (h, c\<^sup>\<star>) (h, (Done \<^bold>+ c) ;; c\<^sup>\<star>)\<close>
-| atom[intro!]: \<open>g h h' \<Longrightarrow> opsem r Tau (h, Atomic g) (h', Done)\<close>
-| env[intro!]: \<open>r h h' \<Longrightarrow> opsem r (Env h h') (h, t) (h', t)\<close>
+| par_step_left[intro]: \<open>opsem a (h, s) (h', s') \<Longrightarrow> opsem a (h, s \<parallel> t) (h', s' \<parallel> t)\<close>
+| par_step_right[intro]: \<open>opsem a (h, t) (h', t') \<Longrightarrow> opsem a (h, s \<parallel> t) (h', s \<parallel> t')\<close>
+| par_left[intro!]: \<open>opsem Tau (h, Stop \<parallel> t) (h, t)\<close>
+| par_right[intro!]: \<open>opsem Tau (h, s \<parallel> Stop) (h, s)\<close>
+| iter[intro]: \<open>opsem Tau (h, c\<^sup>\<star>) (h, (Stop \<^bold>+ c) ;; c\<^sup>\<star>)\<close>
+| atom[intro!]: \<open>b h h' \<Longrightarrow> opsem Tau (h, Atomic b) (h', Stop)\<close>
+| env[intro!]: \<open>opsem (Env h h') (h, t) (h', t)\<close>
 
-inductive_cases opsem_seqE[elim!]: \<open>opsem r a (h, c1 ;; c2) (h', c')\<close>
-inductive_cases opsem_ndetE[elim!]: \<open>opsem r a (h, c1 \<^bold>+ c2) (h', c')\<close>
-inductive_cases opsem_parE[elim!]: \<open>opsem r a (h, c1 \<parallel>  c2) (h', c')\<close>
-inductive_cases opsem_iterE[elim!]: \<open>opsem r a (h, c\<^sup>\<star>) (h', c')\<close>
-inductive_cases opsem_atomE[elim!]: \<open>opsem r a (h, Atomic g) (h', c')\<close>
-inductive_cases opsem_skipE[elim!]: \<open>opsem r a (h, Done) (h', c')\<close>
-inductive_cases opsem_envE[elim]: \<open>opsem r (Env x y) s s'\<close>
+inductive_cases opsem_seqE[elim!]: \<open>opsem a (h, c1 ;; c2) (h', c')\<close>
+inductive_cases opsem_ndetE[elim!]: \<open>opsem a (h, c1 \<^bold>+ c2) (h', c')\<close>
+inductive_cases opsem_parE[elim!]: \<open>opsem a (h, c1 \<parallel>  c2) (h', c')\<close>
+inductive_cases opsem_iterE[elim!]: \<open>opsem a (h, c\<^sup>\<star>) (h', c')\<close>
+inductive_cases opsem_atomE[elim!]: \<open>opsem a (h, Atomic g) (h', c')\<close>
+inductive_cases opsem_skipE[elim!]: \<open>opsem a (h, Stop) (h', c')\<close>
+inductive_cases opsem_envE[elim]: \<open>opsem (Env x y) s s'\<close>
+
+paragraph \<open> Pretty operational semantics \<close>
+
+abbreviation(input) pretty_opsem :: \<open>_ \<Rightarrow> _ \<Rightarrow> _ \<Rightarrow> _\<close> (\<open>_ \<midarrow>(_)\<rightarrow> _\<close> [60,0,60] 60) where
+  \<open>hs \<midarrow>a\<rightarrow> ht \<equiv> opsem a hs ht\<close>
+
+subsection \<open> operational semantics lemmas \<close>
 
 lemma opsem_tau_iff:
-  \<open>opsem r Tau (h, Done) s' \<longleftrightarrow> False\<close>
-  \<open>opsem r Tau (h, c1 ;; c2) s' \<longleftrightarrow>
-    c1 = Done \<and> s' = (h, c2) \<or> (\<exists>h' c1'. opsem r Tau (h,c1) (h',c1') \<and> s' = (h', c1' ;; c2))\<close>
-  \<open>opsem r Tau (h, c1 \<parallel> c2) s' \<longleftrightarrow>
-    c1 = Done \<and> s' = (h, c2) \<or>
-    c2 = Done \<and> s' = (h, c1) \<or>
-    (\<exists>h' c1'. opsem r Tau (h,c1) (h',c1') \<and> s' = (h', c1' \<parallel> c2) \<or>
-    (\<exists>h' c2'. opsem r Tau (h,c2) (h',c2') \<and> s' = (h', c1 \<parallel> c2')))\<close>
-  \<open>opsem r Tau (h, c1 \<^bold>+ c2) s' \<longleftrightarrow> s' = (h, c2) \<or> s' = (h, c1)\<close>
-  \<open>opsem r Tau (h, c\<^sup>\<star>) s' \<longleftrightarrow> s' = (h, (Done \<^bold>+ c) ;; c\<^sup>\<star>)\<close>
-  \<open>opsem r Tau (h, Atomic g) s' \<longleftrightarrow> (\<exists>h'. g h h' \<and> s' = (h', Done))\<close>
+  \<open>opsem Tau (h, Stop) s' \<longleftrightarrow> False\<close>
+  \<open>opsem Tau (h, c1 ;; c2) s' \<longleftrightarrow>
+    c1 = Stop \<and> s' = (h, c2) \<or> (\<exists>h' c1'. opsem Tau (h,c1) (h',c1') \<and> s' = (h', c1' ;; c2))\<close>
+  \<open>opsem Tau (h, c1 \<parallel> c2) s' \<longleftrightarrow>
+    c1 = Stop \<and> s' = (h, c2) \<or>
+    c2 = Stop \<and> s' = (h, c1) \<or>
+    (\<exists>h' c1'. opsem Tau (h,c1) (h',c1') \<and> s' = (h', c1' \<parallel> c2) \<or>
+    (\<exists>h' c2'. opsem Tau (h,c2) (h',c2') \<and> s' = (h', c1 \<parallel> c2')))\<close>
+  \<open>opsem Tau (h, c1 \<^bold>+ c2) s' \<longleftrightarrow> s' = (h, c2) \<or> s' = (h, c1)\<close>
+  \<open>opsem Tau (h, c\<^sup>\<star>) s' \<longleftrightarrow> s' = (h, (Stop \<^bold>+ c) ;; c\<^sup>\<star>)\<close>
+  \<open>opsem Tau (h, Atomic g) s' \<longleftrightarrow> (\<exists>h'. g h h' \<and> s' = (h', Stop))\<close>
   by (cases s', force)+
 
 lemma opsem_envD:
-  \<open>opsem r a s s' \<Longrightarrow> a = Env x y \<Longrightarrow> fst s = x \<and> fst s' = y \<and> snd s' = snd s \<and> r x y\<close>
+  \<open>opsem a s s' \<Longrightarrow> a = Env x y \<Longrightarrow> fst s = x \<and> fst s' = y \<and> snd s' = snd s\<close>
   by (induct arbitrary: x y rule: opsem.induct) simp+
 
 lemma opsem_env_iff:
-  \<open>opsem r (Env x y) s s' \<longleftrightarrow> fst s = x \<and> fst s' = y \<and> snd s' = snd s \<and> r x y\<close>
+  \<open>opsem (Env x y) s s' \<longleftrightarrow> fst s = x \<and> fst s' = y \<and> snd s' = snd s\<close>
   by (metis env opsem_envD prod.collapse)
+
+lemma opsem_preserves_all_atom_comm:
+  \<open>opsem a s s' \<Longrightarrow> all_atom_comm p (snd s) \<Longrightarrow> all_atom_comm p (snd s')\<close>
+  by (induct rule: opsem.inducts) simp+
+
 
 subsubsection \<open>sugared atomic programs\<close>
 
@@ -200,13 +212,13 @@ lemma passert_simps[simp]:
   \<open>passert p a b \<longleftrightarrow> p a \<and> b = a\<close>
   by (force simp add: passert_def)
 
-lemma opsem_assert[intro!]: \<open>p h \<Longrightarrow> opsem r Tau (h, Assert p) (h, Done)\<close>
+lemma opsem_assert[intro!]: \<open>p h \<Longrightarrow> opsem Tau (h, Assert p) (h, Stop)\<close>
   by (simp add: opsem.atom passert_def)
 
-lemma opsem_assume[intro!]: \<open>q h' \<Longrightarrow> opsem r Tau (h, Assume q) (h', Done)\<close>
+lemma opsem_assume[intro!]: \<open>q h' \<Longrightarrow> opsem Tau (h, Assume q) (h', Stop)\<close>
   by (simp add: opsem.atom rel_liftR_def)
 
-lemma opsem_skip[intro!]: \<open>opsem r Tau (h, Skip) (h, Done)\<close>
+lemma opsem_skip[intro!]: \<open>opsem Tau (h, Skip) (h, Stop)\<close>
   by (simp add: opsem.atom passert_def)
 
 subsubsection \<open> Sugared programs \<close>
@@ -214,109 +226,90 @@ subsubsection \<open> Sugared programs \<close>
 abbreviation \<open>IfThenElse p ct cf \<equiv> Assert p ;; ct \<^bold>+ Assert (-p) ;; cf\<close>
 abbreviation \<open>WhileLoop p c \<equiv> (Assert p ;; c)\<^sup>\<star> ;; Assert (-p)\<close>
 
-paragraph \<open> Pretty operational semantics \<close>
-
-abbreviation(input) pretty_opsem :: \<open>_ \<Rightarrow> _ \<Rightarrow> _ \<Rightarrow> _ \<Rightarrow> _\<close> (\<open>_ \<midarrow>(_, _)\<rightarrow> _\<close> [60,0,60] 60) where
-  \<open>hs \<midarrow>r, a\<rightarrow> ht \<equiv> opsem r a hs ht\<close>
-
-lemma opsem_rely_monoD:
-  \<open>s \<midarrow>r, a\<rightarrow> s' \<Longrightarrow> r \<le> r' \<Longrightarrow> s \<midarrow>r', a\<rightarrow> s'\<close>
-  by (induct rule: opsem.induct) force+
-
-lemmas opsem_rely_mono = opsem_rely_monoD[rotated]
-
 subsection \<open> Operational semantics transitive closure \<close>
 
-(* TODO: infinite behaviour *)
+(* TODO: infinite behaviou*)
 (* TODO: actions *)
 inductive opsem_rtrancl
-  :: \<open>('a \<Rightarrow> 'a \<Rightarrow> bool) \<Rightarrow> 'a act list \<Rightarrow> 'a \<times> 'a comm \<Rightarrow> 'a \<times> 'a comm \<Rightarrow> bool\<close>
+  :: \<open>'a act list \<Rightarrow> 'a \<times> 'a comm \<Rightarrow> 'a \<times> 'a comm \<Rightarrow> bool\<close>
   where
-  base[intro!]: \<open>opsem_rtrancl r [] s s\<close>
-| step[intro!]: \<open>s \<midarrow>r, a\<rightarrow> s' \<Longrightarrow> opsem_rtrancl r as s' s'' \<Longrightarrow> opsem_rtrancl r (a # as) s s''\<close>
+  base[intro!]: \<open>opsem_rtrancl [] s s\<close>
+| step[intro!]: \<open>s \<midarrow>a\<rightarrow> s' \<Longrightarrow> opsem_rtrancl as s' s'' \<Longrightarrow> opsem_rtrancl (a # as) s s''\<close>
 
-inductive_cases opsem_rtrancl_NilE[elim!]: \<open>opsem_rtrancl r [] s s'\<close>
-inductive_cases opsem_rtrancl_ConsE[elim!]: \<open>opsem_rtrancl r (a # as) s s'\<close>
+inductive_cases opsem_rtrancl_NilE[elim!]: \<open>opsem_rtrancl [] s s'\<close>
+inductive_cases opsem_rtrancl_ConsE[elim!]: \<open>opsem_rtrancl (a # as) s s'\<close>
 
 lemma opsem_rtrancl_iff[simp]:
-  \<open>opsem_rtrancl r [] s s' \<longleftrightarrow> s' = s\<close>
-  \<open>opsem_rtrancl r (a # as) s s'' \<longleftrightarrow> (\<exists>s'. (s \<midarrow>r, a\<rightarrow> s') \<and> opsem_rtrancl r as s' s'')\<close>
+  \<open>opsem_rtrancl [] s s' \<longleftrightarrow> s' = s\<close>
+  \<open>opsem_rtrancl (a # as) s s'' \<longleftrightarrow> (\<exists>s'. (s \<midarrow>a\<rightarrow> s') \<and> opsem_rtrancl as s' s'')\<close>
   by force+
 
 paragraph \<open> pretty opsem transitive closure \<close>
 
-abbreviation(input) pretty_opsem_rtrancl :: \<open>_ \<Rightarrow> _ \<Rightarrow> _ \<Rightarrow> _ \<Rightarrow> _\<close> (\<open>_ \<midarrow>(_, _)\<rightarrow>\<^sup>\<star> _\<close> [60,0,0,60] 60) where
-  \<open>hs \<midarrow>r, as\<rightarrow>\<^sup>\<star> ht \<equiv> opsem_rtrancl r as hs ht\<close>
+abbreviation(input) pretty_opsem_rtrancl :: \<open>_ \<Rightarrow> _ \<Rightarrow> _ \<Rightarrow> _\<close> (\<open>_ \<midarrow>(_)\<rightarrow>\<^sup>\<star> _\<close> [60,0,60] 60) where
+  \<open>hs \<midarrow>as\<rightarrow>\<^sup>\<star> ht \<equiv> opsem_rtrancl as hs ht\<close>
 
 subsection \<open> Theorems about the operational semantics \<close>
 
 paragraph \<open> Reverse-cons transitive closure rules \<close>
 
 lemma opsem_rtrancl_step_rev:
-  \<open>opsem_rtrancl r as s s' \<Longrightarrow> s' \<midarrow>r, a\<rightarrow> s'' \<Longrightarrow> opsem_rtrancl r (as @ [a]) s s''\<close>
+  \<open>opsem_rtrancl as s s' \<Longrightarrow> s' \<midarrow>a\<rightarrow> s'' \<Longrightarrow> opsem_rtrancl (as @ [a]) s s''\<close>
   apply (induct rule: opsem_rtrancl.induct)
    apply (metis append_self_conv2 opsem_rtrancl.simps)
   apply force
   done
 
 lemma opsem_rtrancl_step_revE:
-  \<open>opsem_rtrancl r (as @ [a]) s s'' \<Longrightarrow> (\<And>s'. opsem_rtrancl r as s s' \<Longrightarrow> opsem r a s' s'' \<Longrightarrow> P) \<Longrightarrow> P\<close>
-  by (induct as arbitrary: r a s s'') force+
+  \<open>opsem_rtrancl (as @ [a]) s s'' \<Longrightarrow> (\<And>s'. opsem_rtrancl as s s' \<Longrightarrow> opsem a s' s'' \<Longrightarrow> P) \<Longrightarrow> P\<close>
+  by (induct as arbitrary: a s s'') force+
 
 lemma opsem_rtrancl_rev_cons_iff[simp]:
-  \<open>opsem_rtrancl r (as @ [a]) s s'' \<longleftrightarrow> (\<exists>s'. opsem_rtrancl r as s s' \<and> (s' \<midarrow>r, a\<rightarrow> s''))\<close>
+  \<open>opsem_rtrancl (as @ [a]) s s'' \<longleftrightarrow> (\<exists>s'. opsem_rtrancl as s s' \<and> (s' \<midarrow>a\<rightarrow> s''))\<close>
   by (meson opsem_rtrancl_step_rev opsem_rtrancl_step_revE)
 
-
-lemma opsem_rtrancl_rely_monoD:
-  \<open>s \<midarrow>r, as\<rightarrow>\<^sup>\<star> s' \<Longrightarrow> r \<le> r' \<Longrightarrow> s \<midarrow>r', as\<rightarrow>\<^sup>\<star> s'\<close>
-  by (induct rule: opsem_rtrancl.induct)
-    (fastforce dest: opsem_rely_monoD[where r'=r'])+
-
-lemmas opsem_rtrancl_rely_mono = opsem_rtrancl_rely_monoD[rotated]
-
 lemma opsem_rtrancl_stepI:
-  \<open>s \<midarrow>r, a\<rightarrow> s' \<Longrightarrow> s \<midarrow>r, [a]\<rightarrow>\<^sup>\<star> s'\<close>
+  \<open>s \<midarrow>a\<rightarrow> s' \<Longrightarrow> s \<midarrow>[a]\<rightarrow>\<^sup>\<star> s'\<close>
   by blast
 
 lemma opsem_rtrancl_trans:
-  \<open>s \<midarrow>r1, as1\<rightarrow>\<^sup>\<star> s' \<Longrightarrow> s' \<midarrow>r2, as2\<rightarrow>\<^sup>\<star> s'' \<Longrightarrow> s \<midarrow>r1 \<squnion> r2, as1 @ as2\<rightarrow>\<^sup>\<star> s''\<close>
-  by (induct arbitrary: r2 as2 s'' rule: opsem_rtrancl.induct)
-    (force intro: opsem_rely_mono opsem_rtrancl_rely_mono)+
+  \<open>s \<midarrow>as1\<rightarrow>\<^sup>\<star> s' \<Longrightarrow> s' \<midarrow>as2\<rightarrow>\<^sup>\<star> s'' \<Longrightarrow> s \<midarrow>as1 @ as2\<rightarrow>\<^sup>\<star> s''\<close>
+  by (induct arbitrary: as2 s'' rule: opsem_rtrancl.induct)
+    force+
 
 lemma opsem_rtrancl_rev_induct[consumes 1, case_names Nil Snoc]:
-  \<open>opsem_rtrancl r as s s' \<Longrightarrow>
+  \<open>opsem_rtrancl as s s' \<Longrightarrow>
     (\<And>r s. P r [] s s) \<Longrightarrow>
     (\<And>s r a s' as s''.
-      opsem_rtrancl r as s s' \<Longrightarrow>
-      opsem r a s' s'' \<Longrightarrow>
+      opsem_rtrancl as s s' \<Longrightarrow>
+      opsem a s' s'' \<Longrightarrow>
       P r as s s' \<Longrightarrow>
       P r (as @ [a]) s s'') \<Longrightarrow>
     P r as s s'\<close>
   by (induct as arbitrary: s s' rule: rev_induct) force+
 
 lemma done_stuck:
-  \<open>\<nexists>s'. (h, Done)  \<midarrow>r, Tau\<rightarrow> s'\<close>
+  \<open>\<nexists>s'. (h, Stop)  \<midarrow>Tau\<rightarrow> s'\<close>
   by force
 
 lemma blocked_atom_stuck:
-  \<open>\<nexists>h'. g h h' \<Longrightarrow> \<nexists>s'. (h, Atomic g)  \<midarrow>r, Tau\<rightarrow> s'\<close>
+  \<open>\<nexists>h'. g h h' \<Longrightarrow> \<nexists>s'. (h, Atomic g)  \<midarrow>Tau\<rightarrow> s'\<close>
   by force
 
 lemma nondone_nonstuck:
-  \<open>c \<noteq> Done \<Longrightarrow> \<forall>x. \<exists>y. g x y \<Longrightarrow> atoms_guarantee g c \<Longrightarrow> \<exists>s'. (h, c)  \<midarrow>r, Tau\<rightarrow> s'\<close>
+  \<open>c \<noteq> Stop \<Longrightarrow> \<forall>x. \<exists>y. g x y \<Longrightarrow> atoms_guarantee g c \<Longrightarrow> \<exists>s'. (h, c)  \<midarrow>Tau\<rightarrow> s'\<close>
   by (induct c arbitrary: h) (fastforce simp add: opsem_tau_iff)+
 
 lemma opsem_samecD:
-  \<open>opsem r a s s' \<Longrightarrow> snd s' = snd s \<Longrightarrow> r (fst s) (fst s') \<and> a = Env (fst s) (fst s')\<close>
+  \<open>opsem a s s' \<Longrightarrow> snd s' = snd s \<Longrightarrow> a = Env (fst s) (fst s')\<close>
   by (induct rule: opsem.induct) force+
 
 lemma opsem_samec:
-  \<open>opsem r a (h, c) (h', c) \<longleftrightarrow> r h h' \<and> a = Env h h'\<close>
+  \<open>opsem a (h, c) (h', c) \<longleftrightarrow> a = Env h h'\<close>
   by (force dest: opsem_samecD)
 
 lemma opsem_env_step:
-  \<open>opsem r (Env h h') (ha, ca) (hb, cb) \<longleftrightarrow> ha = h \<and> hb = h' \<and> r h h' \<and> cb = ca\<close>
+  \<open>opsem (Env h h') (ha, ca) (hb, cb) \<longleftrightarrow> ha = h \<and> hb = h' \<and> cb = ca\<close>
   using opsem_envD by fastforce
 
 paragraph \<open> relation for reasoning about the effect if several environment steps \<close>
@@ -329,53 +322,49 @@ inductive_cases env_chain_NilE[elim!]: \<open>env_chain [] x z\<close>
 inductive_cases env_chain_ConsE[elim!]: \<open>env_chain (a # as) x z\<close>
 
 lemma env_chain_iff[simp]:
-  \<open>env_chain [] x x \<longleftrightarrow> True\<close>
+  \<open>env_chain [] x z \<longleftrightarrow> x = z\<close>
   \<open>env_chain (a # as) x z \<longleftrightarrow> (\<exists>y. a = Env x y \<and> env_chain as y z)\<close>
   by (force intro: env_chain.intros)+
 
+lemma env_chain_rely:
+  assumes
+    \<open>env_chain as h h'\<close>
+    \<open>list_all (case_act True r) as\<close>
+  shows
+    \<open>r\<^sup>*\<^sup>* h h'\<close>
+  using assms
+  by (induct rule: env_chain.induct) force+
+
+paragraph \<open> Stopped opsem lemmas \<close>
 
 lemma opsem_rtrancl_start_done:
-  assumes \<open>opsem_rtrancl r as (h, Done) s'\<close>
-  shows \<open>env_chain as h (fst s') \<and> snd s' = Done \<and> r\<^sup>*\<^sup>* h (fst s')\<close>
-proof -
-  { fix s
-    have \<open>opsem_rtrancl r as s s' \<Longrightarrow> snd s = Done \<Longrightarrow> env_chain as (fst s) (fst s') \<and> snd s' = Done \<and> r\<^sup>*\<^sup>* (fst s) (fst s')\<close>
-      by (induct arbitrary: h rule: opsem_rtrancl.induct) force+
-  } then show ?thesis
-    using assms
-    by force
-qed
+  assumes \<open>snd s = Stop\<close>
+  shows \<open>opsem_rtrancl as s s' \<longleftrightarrow> env_chain as (fst s) (fst s') \<and> snd s' = Stop\<close>
+  using assms
+  apply (intro iffI)
+   apply (rotate_tac, induct rule: opsem_rtrancl.induct; force)
+  apply (induct as arbitrary: s s'; force simp add: prod.expand)
+  done
+  
 
-lemma opsem_rtrancl_start_done_in_rely:
+lemma opsem_rtrancl_by_rely:
   assumes
-    \<open>opsem_rtrancl r as (h, Done) s'\<close>
-    \<open>reflp r\<close>
-    \<open>transp r\<close>
-  shows \<open>snd s' = Done \<and> r h (fst s')\<close>
-proof -
-  { fix s
-    have \<open>opsem_rtrancl r as s s' \<Longrightarrow> snd s = Done \<Longrightarrow> snd s' = Done \<and> r (fst s) (fst s')\<close>
-      using assms
-      by (induct arbitrary: s' rule: opsem_rtrancl_rev_induct)
-        (force dest: reflpD transpD)+
-  } then show ?thesis
-    using assms
-    by force
-qed
-
-lemma opsem_rtrancl_preserves_rely:
- \<open>opsem_rtrancl r as s s' \<Longrightarrow> list_all (case_act True r) as\<close>
-  by (induct rule: opsem_rtrancl.induct)
-   (force simp add: opsem_env_step split: act.splits)+
-
+    \<open>opsem_rtrancl as (h, Stop) s'\<close>
+    \<open>list_all (case_act True r) as\<close>
+  shows
+    \<open>r\<^sup>*\<^sup>* h (fst s')\<close>
+  using assms
+  by (metis env_chain_rely fst_conv opsem_rtrancl_start_done snd_conv)
 
 section \<open> Rely-Guarantee Separation Logic \<close>
+
+definition \<open>semantic_frame f \<equiv> \<lambda>h1 h2. (\<exists>h1a\<le>h1. f h1a) \<longrightarrow> (\<exists>h2a\<le>h2. f h2a)\<close>
 
 inductive rgsat
   :: \<open>('h::perm_alg) comm \<Rightarrow> ('h \<Rightarrow> 'h \<Rightarrow> bool) \<Rightarrow> ('h \<Rightarrow> 'h \<Rightarrow> bool) \<Rightarrow> ('h \<Rightarrow> bool) \<Rightarrow> ('h \<Rightarrow> bool) \<Rightarrow> bool\<close>
   where
   rgsat_done:
-  \<open>\<lceil> p \<rceil>\<^bsub>r\<^esub> \<le> q \<Longrightarrow> rgsat Done r g p q\<close>
+  \<open>\<lceil> p \<rceil>\<^bsub>r\<^esub> \<le> q \<Longrightarrow> rgsat Stop r g p q\<close>
 | rgsat_iter:
   \<open>rgsat c r g p' q' \<Longrightarrow>
       p \<le> i \<Longrightarrow> i \<le> p' \<Longrightarrow> q' \<le> i \<Longrightarrow> \<lceil> i \<rceil>\<^bsub>r\<^esub> \<le> q \<Longrightarrow>
@@ -402,11 +391,11 @@ inductive rgsat
 | rgsat_frame:
   \<open>rgsat c r g p q \<Longrightarrow>
     (\<forall>p. \<forall>g'\<le>g. (\<lceil> p \<^emph> f \<rceil>\<^bsub>r \<squnion> g'\<^esub> \<le> \<lceil> p \<rceil>\<^bsub>r \<squnion> g'\<^esub> \<^emph> \<lceil> f \<rceil>\<^bsub>r \<squnion> g'\<^esub>)) \<Longrightarrow>
-    (\<forall>h1 h2. g h1 h2 \<longrightarrow> (\<exists>h1a\<le>h1. f h1a) \<longrightarrow> (\<exists>h2a\<le>h2. f h2a)) \<Longrightarrow>
-    (\<forall>h1 h2. r h1 h2 \<longrightarrow> (\<exists>h1a\<le>h1. f h1a) \<longrightarrow> (\<exists>h2a\<le>h2. f h2a)) \<Longrightarrow>
+    g \<le> semantic_frame f \<Longrightarrow>
+    r \<le> semantic_frame f \<Longrightarrow>
     stable (r \<squnion> g) f \<Longrightarrow>
     rgsat c r g (p \<^emph> f) (q \<^emph> f)\<close>
-inductive_cases rgsep_doneE[elim]: \<open>rgsat Done r g p q\<close>
+inductive_cases rgsep_doneE[elim]: \<open>rgsat Stop r g p q\<close>
 inductive_cases rgsep_iterE[elim]: \<open>rgsat (c\<^sup>\<star>) r g p q\<close>
 inductive_cases rgsep_parE[elim]: \<open>rgsat (s1 \<parallel> s2) r g p q\<close>
 inductive_cases rgsep_atomE[elim]: \<open>rgsat (Atomic c) r g p q\<close>
@@ -552,68 +541,67 @@ lemma backwards_frame:
   oops
 
 lemma backwards_done:
-  \<open>rgsat Done r g (\<lfloor> p \<rfloor>\<^bsub>r\<^esub>) p\<close>
+  \<open>rgsat Stop r g (\<lfloor> p \<rfloor>\<^bsub>r\<^esub>) p\<close>
   by (rule rgsat_weaken[OF rgsat_done _ _ order.refl order.refl, where p'=\<open>\<lfloor> p \<rfloor>\<^bsub>r\<^esub>\<close> and q'=p])
     (clarsimp simp add: wsstable_def swstable_def le_fun_def)+
 
 
 lemma opsem_frame_strong:
-  \<open>opsem_rtrancl r as s s' \<Longrightarrow>
+  \<open>opsem_rtrancl as s s' \<Longrightarrow>
     list_all (case_act True r) as \<Longrightarrow>
     all_atom_comm (\<lambda>g. \<forall>h1 h2. g h1 h2 \<longrightarrow> (\<exists>h1a\<le>h1. f h1a) \<longrightarrow> (\<exists>h2a\<le>h2. f h2a)) (snd s) \<Longrightarrow>
     (\<forall>h1 h2. r h1 h2 \<longrightarrow> (\<exists>h1a\<le>h1. f h1a) \<longrightarrow> (\<exists>h2a\<le>h2. f h2a)) \<Longrightarrow>
     (\<exists>ha\<le>fst s. f ha) \<Longrightarrow>
     (\<exists>ha'\<le>fst s'. f ha')\<close>
 proof (induct rule: opsem_rtrancl.induct)
-  case (step s r a s' as s'')
+  case (step s a s' as s'')
 
-  have a_cases: \<open>case a of Tau \<Rightarrow> True | Env a b \<Rightarrow> r a b\<close>
+  have a_cases: \<open>case_act True r a\<close>
     using step(4) by simp
 
   have \<open>(\<exists>ha\<le>fst s'. f ha)
         \<and> all_atom_comm (\<lambda>g. \<forall>h1 h2. g h1 h2 \<longrightarrow> (\<exists>h1a\<le>h1. f h1a) \<longrightarrow> (\<exists>h2a\<le>h2. f h2a)) (snd s')\<close>
     using step(1,5-) a_cases
-  proof (induct rule: opsem.induct)
-    case (atom g h h' r)
-    then show ?case
-      by simp
-  next
-    case (env r h h' t)
-    then show ?case
-      by simp
-  qed force+
+    by (induct rule: opsem.induct) force+
   then show ?case
     using step
     by (clarsimp split: act.splits)
 qed fast
 
+
 lemma opsem_frame:
-  assumes
-    \<open>opsem_rtrancl r as s s'\<close>
-    \<open>\<forall>h1 h2. g h1 h2 \<longrightarrow> (\<exists>h1a\<le>h1. f h1a) \<longrightarrow> (\<exists>h2a\<le>h2. f h2a)\<close>
-    \<open>\<forall>h1 h2. r h1 h2 \<longrightarrow> (\<exists>h1a\<le>h1. f h1a) \<longrightarrow> (\<exists>h2a\<le>h2. f h2a)\<close>
-    \<open>atoms_guarantee g (snd s)\<close>
-    \<open>\<exists>ha\<le>fst s. f ha\<close>
-  shows
-    \<open>\<exists>ha'\<le>fst s'. f ha'\<close>
-  using assms
-  apply -
-  apply (rule opsem_frame_strong, assumption)
-  apply (frule opsem_rtrancl_preserves_rely)
-  apply (blast intro: all_atom_comm_monoD[where p=\<open>(\<lambda>b. b \<le> g \<and> (\<forall>s. Ex (g s) \<longrightarrow> Ex (b s)))\<close>])+
+  \<open>opsem a s s' \<Longrightarrow>
+     case_act True (semantic_frame f) a \<Longrightarrow>
+     all_atom_comm (\<lambda>b. b \<le> semantic_frame f) (snd s) \<Longrightarrow>
+     (\<exists>ha\<le>fst s. f ha) \<Longrightarrow> (\<exists>ha'\<le>fst s'. f ha')\<close>
+  by (induct rule: opsem.inducts) (force simp add: semantic_frame_def)+
+
+lemma opsem_rtrancl_frame:
+  \<open>opsem_rtrancl as s s' \<Longrightarrow>
+     list_all (case_act True (semantic_frame f)) as \<Longrightarrow>
+     all_atom_comm (\<lambda>b. b \<le> semantic_frame f) (snd s) \<Longrightarrow>
+     (\<exists>ha\<le>fst s. f ha) \<Longrightarrow> (\<exists>ha'\<le>fst s'. f ha')\<close>
+  apply (induct rule: opsem_rtrancl.inducts)
+   apply clarsimp
+  apply clarsimp
+  apply (frule opsem_frame, force, force, force)
+  apply (metis fst_conv opsem_preserves_all_atom_comm snd_conv)
   done
 
+
 lemma soundness_helper:
-  assumes rgsat: \<open>rgsat c r g p q\<close>
-    and c_maintains_g: \<open>atoms_guarantee g c\<close>
-    and opsem: \<open>(h, c) \<midarrow>r, as\<rightarrow>\<^sup>\<star> (h', Done)\<close>
+  fixes p q :: \<open>'a::multiunit_sep_alg \<Rightarrow> bool\<close>
+  assumes \<open>rgsat c r g p q\<close>
+    and \<open>list_all (case_act True r) as\<close>
+    and \<open>atoms_guarantee g c\<close>
+    and \<open>(h, c) \<midarrow>as\<rightarrow>\<^sup>\<star> (h', Stop)\<close>
     and \<open>p h\<close>
   shows \<open>q h'\<close>
   using assms
 proof (induct c r g p q arbitrary: as h h' rule: rgsat.inducts)
   case (rgsat_done p r q g)
   then show ?case
-    by (force dest: opsem_rtrancl_start_done wsstable_impliesD)
+    by (simp add: opsem_rtrancl_start_done, meson env_chain_rely wsstable_impliesD)
 next
   case (rgsat_iter c r g p' q' p i q)
   then show ?case sorry
@@ -630,19 +618,34 @@ next
   case (rgsat_frame c r g p q f)
   then show ?case
     apply (subst (asm)(3) sepconj_def)
+    apply (subst sepconj_def)
     apply clarsimp
-    apply (clarsimp simp add: sepconj_def)
-    apply (drule_tac r=r and g=g in opsem_frame, assumption, assumption)
-      apply force
-     apply (simp, metis partial_le_plus2)
+    apply (frule opsem_rtrancl_frame[where f=f])
+       apply (rule rev_predicate1D[OF _ list.pred_mono], assumption)
+       apply (force simp add: le_fun_def split: act.splits)
+      apply (rule all_atom_comm_monoD, force, blast)
+     apply (simp, meson partial_le_plus2)
+    apply clarsimp
+    apply (subst (asm) le_iff_sepadd)
+    apply clarsimp
+    apply (rename_tac h2' h1')
+    apply (rule_tac x=h1' in exI)
+    apply (rule_tac x=h2' in exI)
+    apply (clarsimp simp add: disjoint_symm_iff partial_add_commute)
+    apply (drule_tac meta_spec)
+    apply (drule_tac x=h1 in meta_spec)
+    apply (drule_tac x=h1' in meta_spec)
     apply clarsimp
     sorry
 qed
 
+
 lemma soundness:
+  fixes p q :: \<open>'a::multiunit_sep_alg \<Rightarrow> bool\<close>
   assumes \<open>rgsat c r g p q\<close>
+    and \<open>list_all (case_act True r) as\<close>
     and \<open>atoms_guarantee g c\<close>
-  shows \<open>(h, c) \<midarrow>r, as\<rightarrow>\<^sup>\<star> (h', Done) \<longrightarrow> p h \<longrightarrow> q h'\<close>
+  shows \<open>(h, c) \<midarrow>as\<rightarrow>\<^sup>\<star> (h', Stop) \<longrightarrow> p h \<longrightarrow> q h'\<close>
   by (force intro: soundness_helper[OF assms])
 
 end
