@@ -26,9 +26,9 @@ lemma swstable_weaker[intro!]: \<open>\<lfloor> P \<rfloor>\<^bsub>R\<^esub> \<l
 lemma wsstable_stronger[intro!]: \<open>P \<le> \<lceil> P \<rceil>\<^bsub>R\<^esub>\<close>
   by (force simp add: wsstable_def)
 
-lemma wsstable_weaker_iff_swstable_stronger:
-  \<open>p \<le> \<lfloor> p \<rfloor>\<^bsub>R\<^esub> \<longleftrightarrow> \<lceil> p \<rceil>\<^bsub>R\<^esub> \<le> p\<close>
-  by (force simp add: wsstable_def swstable_def le_fun_def)
+lemma wsstable_strongerI[intro!]:
+  \<open>P s \<Longrightarrow> R\<^sup>*\<^sup>* s s' \<Longrightarrow> (\<lceil> P \<rceil>\<^bsub>R\<^esub>) s'\<close>
+  by (force simp add: wsstable_def)
 
 lemma implies_swstableD:
   \<open>p \<le> \<lfloor> q \<rfloor>\<^bsub>r\<^esub> \<Longrightarrow> r\<^sup>*\<^sup>* s s' \<Longrightarrow> p s \<Longrightarrow> q s'\<close>
@@ -38,6 +38,10 @@ lemma wsstable_impliesD:
   \<open>\<lceil> p \<rceil>\<^bsub>r\<^esub> \<le> q \<Longrightarrow> r\<^sup>*\<^sup>* s s' \<Longrightarrow> p s \<Longrightarrow> q s'\<close>
   by (force simp add: wsstable_def le_fun_def)
 
+
+lemma wsstable_weaker_iff_swstable_stronger:
+  \<open>p \<le> \<lfloor> p \<rfloor>\<^bsub>R\<^esub> \<longleftrightarrow> \<lceil> p \<rceil>\<^bsub>R\<^esub> \<le> p\<close>
+  by (force simp add: wsstable_def swstable_def le_fun_def)
 
 definition stable :: \<open>('a \<Rightarrow> 'a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool) \<Rightarrow> bool\<close> where
   \<open>stable R p \<equiv> \<lfloor> p \<rfloor>\<^bsub>R\<^esub> = p\<close>

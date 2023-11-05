@@ -207,6 +207,14 @@ lemma disjoint_preservation:
   \<open>a' \<le> a \<Longrightarrow> a ## b \<Longrightarrow> a' ## b\<close>
   by (metis disjoint_add_leftL order.order_iff_strict less_iff_sepadd)
 
+lemma partial_add_assoc2:
+  \<open>a ## b \<Longrightarrow> a + b ## c \<Longrightarrow> (a + b) + c = a + (b + c)\<close>
+  using disjoint_add_leftL disjoint_add_leftR local.partial_add_assoc by blast
+
+lemma partial_add_assoc3:
+  \<open>b ## c \<Longrightarrow> a ## b + c \<Longrightarrow> (a + b) + c = a + (b + c)\<close>
+  by (meson disjoint_add_rightR disjoint_add_rightL partial_add_assoc)
+
 lemma partial_add_double_assoc:
   \<open>a ## c \<Longrightarrow> b ## d \<Longrightarrow> c ## d \<Longrightarrow> b ## c + d \<Longrightarrow> a ## b + (c + d) \<Longrightarrow> a + b + (c + d) = (a + c) + (b + d)\<close>
   by (metis disjoint_add_rightR disjoint_add_rightL disjoint_add_right_commute partial_add_assoc
@@ -571,6 +579,14 @@ lemma sepadd_eq_unitof_iff_both_eq_unitof[simp]:
 lemma unitof_eq_sepadd_iff_both_eq_unitof[simp]:
   \<open>x ## y \<Longrightarrow> unitof (x + y) = x + y \<longleftrightarrow> x = unitof x \<and> y = unitof y\<close>
   by (metis sepadd_eq_unitof_iff_both_eq_unitof)
+
+lemma disjoint_same_unit:
+  \<open>a ## b \<Longrightarrow> unitof a = unitof b\<close>
+  by (metis disjoint_symm_iff unitof_inherits_disjointness unitof_is_unit2 unitof_is_unitR2)
+
+lemma common_disjoint_same_unit:
+  \<open>a ## c \<Longrightarrow> b ## c \<Longrightarrow> unitof a = unitof b\<close>
+  by (metis disjoint_symm_iff unitof_inherits_disjointness unitof_is_unit2 unitof_is_unitR2)
 
 lemmas unitof_order = unitof_le le_unitof_eq not_less_unitof unitof_less_iff_neq_unitof not_gr_unitof
 
