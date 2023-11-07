@@ -897,16 +897,54 @@ lemma safe_weaken:
     safe as c h r g q\<close>
   by (induct rule: safe.induct) force+
 
+lemma opstep_tau_extendD:
+  \<open>opstep a s s' \<Longrightarrow>
+    a = Tau \<Longrightarrow>
+    all_atom_comm (\<lambda>b. \<forall>s s'. b s s' \<longrightarrow> (\<forall>sa\<ge>s. \<exists>sa'\<ge>s'. b sa sa')) (snd s) \<Longrightarrow>
+    fst s ## h2 \<Longrightarrow>
+    \<exists>h''\<ge>fst s'. opstep a (fst s + h2, snd s) (h'', snd s')\<close>
+  apply (induct rule: opstep.induct)
+            apply force+
+           apply (simp, metis partial_le_plus opstep.seq_right)
+          apply (simp, metis partial_le_plus opstep.ndet_left)
+         apply (simp, metis partial_le_plus opstep.ndet_right)
+        apply force
+       apply force
+      apply (simp, metis partial_le_plus opstep.par_left)
+     apply (simp, metis partial_le_plus opstep.par_right)
+    apply (simp, metis partial_le_plus opstep.iter)
+   apply (simp, metis partial_le_plus opstep.atom)
+  apply force
+  done
+
+lemma can_compute_frame:
+  \<open>can_compute s \<Longrightarrow>
+    all_atom_comm (\<lambda>b. \<forall>s s'. b s s' \<longrightarrow> (\<forall>sa\<ge>s. \<exists>sa'\<ge>s'. b sa sa')) (snd s) \<Longrightarrow>
+    fst s ## r \<Longrightarrow>
+    can_compute (fst s + r, snd s)\<close>
+  unfolding can_compute_def
+  using opstep_tau_extendD by blast
+
+lemma safe_step_post:
+  \<open>safe as c h r g q \<Longrightarrow>
+    all_atom_comm (\<lambda>b. \<forall>s s'. b s s' \<longrightarrow> (\<forall>sa\<ge>s. \<exists>sa'\<ge>s'. b sa sa')) (snd s) \<Longrightarrow>
+    opstep Tau (h, c) (h', c') \<Longrightarrow>
+    g h h' \<Longrightarrow>
+    (q h \<longrightarrow> q' h') \<Longrightarrow>
+    safe (Tau # as) c' h' r g q'\<close>
+  oops
+
 lemma safe_induct:
-  \<open>(\<And>h. i h \<Longrightarrow> safe as c h r g i) \<Longrightarrow>
+  \<open>safe as c h r g i \<Longrightarrow>
     reflp g \<Longrightarrow>
     all_atom_comm (\<lambda>y. y \<le> g) c \<Longrightarrow>
-    safe as (c\<^sup>\<star>) h r g i\<close>
+    i \<le> q \<Longrightarrow>
+    safe as (c\<^sup>\<star>) h r g q\<close>
   apply (induct as arbitrary: c h)
    apply force
-
   apply (case_tac a)
    apply (clarsimp simp add: safe_Cons_iff can_compute_iff)
+   apply (drule meta_spec2, drule meta_mp, blast, drule meta_mp, force simp add: opstep_preserves_all_atom_comm)
 
   oops
 
