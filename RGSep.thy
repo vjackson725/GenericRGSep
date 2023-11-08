@@ -159,13 +159,15 @@ inductive opstep :: \<open>('h::perm_alg) act \<Rightarrow> 'h \<times> 'h comm 
 (* FIXME: testing out an external env relation *)
 | env[intro!]: \<open>opstep (Env a b) (h, t) (h', t)\<close>
 
-inductive_cases opstep_seqE[elim!]: \<open>opstep a (h, c1 ;; c2) (h', c')\<close>
-inductive_cases opstep_ndetE[elim!]: \<open>opstep a (h, c1 \<^bold>+ c2) (h', c')\<close>
-inductive_cases opstep_parE[elim!]: \<open>opstep a (h, c1 \<parallel>  c2) (h', c')\<close>
-inductive_cases opstep_iterE[elim!]: \<open>opstep a (h, c\<^sup>\<star>) (h', c')\<close>
-inductive_cases opstep_atomE[elim!]: \<open>opstep a (h, Atomic g) (h', c')\<close>
-inductive_cases opstep_skipE[elim!]: \<open>opstep a (h, Stop) (h', c')\<close>
+inductive_cases opstep_tauE[elim]: \<open>opstep Tau (h, c) (h', c')\<close>
 inductive_cases opstep_envE[elim]: \<open>opstep (Env x y) s s'\<close>
+
+inductive_cases opstep_tau_seqE[elim!]: \<open>opstep Tau (h, c1 ;; c2) (h', c')\<close>
+inductive_cases opstep_tau_ndetE[elim!]: \<open>opstep Tau (h, c1 \<^bold>+ c2) (h', c')\<close>
+inductive_cases opstep_tau_parE[elim!]: \<open>opstep Tau (h, c1 \<parallel>  c2) (h', c')\<close>
+inductive_cases opstep_tau_iterE[elim!]: \<open>opstep Tau (h, c\<^sup>\<star>) (h', c')\<close>
+inductive_cases opstep_tau_atomE[elim!]: \<open>opstep Tau (h, Atomic g) (h', c')\<close>
+inductive_cases opstep_tau_skipE[elim!]: \<open>opstep Tau (h, Stop) (h', c')\<close>
 
 paragraph \<open> Pretty operational semantics \<close>
 
@@ -347,7 +349,8 @@ lemma opsem_trans:
 
 lemma stopped_opsem_no_taus:
   \<open>s \<midarrow>as\<rightarrow>\<^sup>\<star> s' \<Longrightarrow> snd s = Stop \<Longrightarrow> list_all (case_act False \<top>) as\<close>
-  by (induct rule: opsem.induct) force+
+  by (induct rule: opsem.induct)
+    (force elim: opstep.cases)+
 
 lemma opsem_rev_induct[consumes 1, case_names Nil Snoc]:
   \<open>opsem as s s' \<Longrightarrow>
@@ -748,7 +751,7 @@ lemma safe_Cons_iff:
         (c' = Stop \<longrightarrow> q h') \<and>
         r h h' \<and>
         safe as c' h' r g q))\<close>
-  by (cases a; force)
+  by (cases a; fastforce)
 
 lemma opstep_tau_frame:
   \<open>opstep a s s' \<Longrightarrow>
@@ -934,17 +937,41 @@ lemma safe_step_post:
     safe (Tau # as) c' h' r g q'\<close>
   oops
 
-lemma safe_induct:
-  \<open>safe as c h r g i \<Longrightarrow>
-    reflp g \<Longrightarrow>
-    all_atom_comm (\<lambda>y. y \<le> g) c \<Longrightarrow>
-    i \<le> q \<Longrightarrow>
-    safe as (c\<^sup>\<star>) h r g q\<close>
-  apply (induct as arbitrary: c h)
-   apply force
-  apply (case_tac a)
-   apply (clarsimp simp add: safe_Cons_iff can_compute_iff)
-   apply (drule meta_spec2, drule meta_mp, blast, drule meta_mp, force simp add: opstep_preserves_all_atom_comm)
+
+lemma safe_iter_stepI:
+  \<open>reflp g \<Longrightarrow> safe as ((Stop \<^bold>+ c) ;; c\<^sup>\<star>) h r g i \<Longrightarrow> safe (Tau # as) (c\<^sup>\<star>) h r g i\<close>
+  by (force simp add: can_compute_iff reflpD )
+
+lemma safe_iter_step_iff:
+  \<open>reflp g \<Longrightarrow> safe (Tau # as) (c\<^sup>\<star>) h r g i \<longleftrightarrow> safe as ((Stop \<^bold>+ c) ;; c\<^sup>\<star>) h r g i\<close>
+  using safe_iter_stepI by blast
+
+
+lemma safe_seq:
+  assumes inductive_assms:
+    \<open>safe as1 c1 h r g q1\<close>
+    \<open>\<And>h. q1 h \<Longrightarrow> safe as2 c2 h r g q2\<close>
+    and global_assms:
+    \<open>reflp g\<close>
+  shows
+    \<open>safe (as1 @ as2) (c1 ;; c2) h r g q2\<close>
+  using inductive_assms
+proof (induct rule: safe.inducts)
+  case (safe_base c1 h r g q1)
+  then show ?case
+    apply clarsimp
+    sledgehammer
+next
+  case (safe_tau h c h' c' g q as r)
+  then show ?case
+    apply -
+    sorry
+next
+  case (safe_env h c h1 h2 h' c' r q as g)
+  then show ?case
+    sorry
+qed
+
 
   oops
 
