@@ -45,49 +45,81 @@ lemma frame_closed_frame_cl_of_minimal_pairs_eq:
 
 section \<open> Language Definition \<close>
 
-datatype 'h comm =
-  Stop
-  | Seq \<open>'h comm\<close> \<open>'h comm\<close> (infixr \<open>;;\<close> 75)
-  | Par \<open>'h comm\<close> \<open>'h comm\<close> (infixr \<open>\<parallel>\<close> 65)
-  | Ndet \<open>'h comm\<close> \<open>'h comm\<close> (infixr \<open>\<^bold>+\<close> 65)
-  | ExtNdet \<open>'h comm\<close> \<open>'h comm\<close> (infixr \<open>\<^bold>\<box>\<close> 65)
-  | Iter \<open>'h comm\<close> (\<open>_\<^sup>\<star>\<close> [80] 80)
-  | Atomic \<open>'h \<Rightarrow> 'h \<Rightarrow> bool\<close>
+subsection \<open> Actions \<close>
 
 datatype 'h act =
     Tau
   | Env 'h 'h
 
-lemma act_neq_iff[simp]:
+lemma act_neq_tau_iff[simp]:
   \<open>a \<noteq> Tau \<longleftrightarrow> (\<exists>x y. a = Env x y)\<close>
   \<open>Tau \<noteq> a \<longleftrightarrow> (\<exists>x y. a = Env x y)\<close>
-  by (metis act.distinct(1) act.exhaust)+
+  by (metis act.distinct(2-) act.exhaust)+
 
+subsection \<open> Commands \<close>
+
+datatype 'h comm =
+  Skip
+  | Seq \<open>'h comm\<close> \<open>'h comm\<close> (infixr \<open>;;\<close> 75)
+  | Par \<open>'h comm\<close> \<open>'h comm\<close> (infixr \<open>\<parallel>\<close> 65)
+  | Ndet \<open>'h comm\<close> \<open>'h comm\<close> (infixr \<open>\<^bold>+\<close> 65)
+  | Iter \<open>'h comm\<close> (\<open>_\<^sup>\<star>\<close> [80] 80)
+  | Atomic \<open>'h \<Rightarrow> 'h \<Rightarrow> bool\<close>
+
+paragraph \<open> Predicate to determine if a command is a subexpression of another \<close>
+
+primrec comm_subexpr :: \<open>'a comm \<Rightarrow> 'a comm \<Rightarrow> bool\<close> where
+  \<open>comm_subexpr c Skip = (c = Skip)\<close>
+| \<open>comm_subexpr c (c1' ;; c2') = (c = c1' ;; c2' \<or> comm_subexpr c c1' \<or> comm_subexpr c c2')\<close>
+| \<open>comm_subexpr c (c1' \<parallel> c2') = (c = c1' \<parallel> c2' \<or> comm_subexpr c c1' \<or> comm_subexpr c c2')\<close>
+| \<open>comm_subexpr c (c1' \<^bold>+ c2') = (c = c1' \<^bold>+ c2' \<or> comm_subexpr c c1' \<or> comm_subexpr c c2')\<close>
+| \<open>comm_subexpr c (c'\<^sup>\<star>) = (c = c'\<^sup>\<star> \<or> comm_subexpr c c')\<close>
+| \<open>comm_subexpr c (Atomic b) = (c = Atomic b)\<close>
+
+lemma comm_subexpr_refl:
+  \<open>comm_subexpr c c\<close>
+  by (induct c) simp+
+
+lemma comm_subexpr_trans:
+  \<open>comm_subexpr c1 c2 \<Longrightarrow> comm_subexpr c2 c3 \<Longrightarrow> comm_subexpr c1 c3\<close>
+  by (induct c3 arbitrary: c1 c2) force+
+
+lemma comm_subexpr_antisym:
+  \<open>comm_subexpr c1 c2 \<Longrightarrow> comm_subexpr c2 c1 \<Longrightarrow> c1 = c2\<close>
+  by (induct c2 arbitrary: c1)
+    (metis comm_subexpr.simps comm_subexpr_refl comm_subexpr_trans)+
+
+lemma no_comm_subexpr_constructors[simp]:
+  \<open>comm_subexpr (c1 ;; c2) c1 \<longleftrightarrow> False\<close>
+  \<open>comm_subexpr (c1 ;; c2) c2 \<longleftrightarrow> False\<close>
+  \<open>comm_subexpr (c1 \<^bold>+ c2) c1 \<longleftrightarrow> False\<close>
+  \<open>comm_subexpr (c1 \<^bold>+ c2) c2 \<longleftrightarrow> False\<close>
+  \<open>comm_subexpr (c1 \<parallel> c2) c1 \<longleftrightarrow> False\<close>
+  \<open>comm_subexpr (c1 \<parallel> c2) c2 \<longleftrightarrow> False\<close>
+  \<open>comm_subexpr (c\<^sup>\<star>) c \<longleftrightarrow> False\<close>
+  by (fastforce simp add: comm_subexpr_refl dest: comm_subexpr_antisym)+
 
 paragraph \<open> Predicate to ensure atomic actions have a given property \<close>
 
 inductive all_atom_comm :: \<open>(('h \<Rightarrow> 'h \<Rightarrow> bool) \<Rightarrow> bool) \<Rightarrow> 'h comm \<Rightarrow> bool\<close> where
-  skip[iff]: \<open>all_atom_comm p Stop\<close>
+  skip[iff]: \<open>all_atom_comm p Skip\<close>
 | seq[intro!]: \<open>all_atom_comm p c1 \<Longrightarrow> all_atom_comm p c2 \<Longrightarrow> all_atom_comm p (c1 ;; c2)\<close>
 | par[intro!]: \<open>all_atom_comm p c1 \<Longrightarrow> all_atom_comm p c2 \<Longrightarrow> all_atom_comm p (c1 \<parallel> c2)\<close>
 | ndet[intro!]: \<open>all_atom_comm p c1 \<Longrightarrow> all_atom_comm p c2 \<Longrightarrow> all_atom_comm p (c1 \<^bold>+ c2)\<close>
-| extndet[intro!]: \<open>all_atom_comm p c1 \<Longrightarrow> all_atom_comm p c2 \<Longrightarrow> all_atom_comm p (c1 \<^bold>\<box> c2)\<close>
 | iter[intro!]: \<open>all_atom_comm p c \<Longrightarrow> all_atom_comm p (c\<^sup>\<star>)\<close>
 | atom[intro!]: \<open>p b \<Longrightarrow> all_atom_comm p (Atomic b)\<close>
 
-inductive_cases all_atom_comm_doneE[elim!]: \<open>all_atom_comm p Stop\<close>
+inductive_cases all_atom_comm_doneE[elim!]: \<open>all_atom_comm p Skip\<close>
 inductive_cases all_atom_comm_seqE[elim!]: \<open>all_atom_comm p (c1 ;; c2)\<close>
 inductive_cases all_atom_comm_ndetE[elim!]: \<open>all_atom_comm p (c1 \<^bold>+ c2)\<close>
-inductive_cases all_atom_comm_extndetE[elim!]: \<open>all_atom_comm p (c1 \<^bold>\<box> c2)\<close>
 inductive_cases all_atom_comm_parE[elim!]: \<open>all_atom_comm p (c1 \<parallel> c2)\<close>
 inductive_cases all_atom_comm_iterE[elim!]: \<open>all_atom_comm p (c\<^sup>\<star>)\<close>
 inductive_cases all_atom_comm_atomE[elim!]: \<open>all_atom_comm p (Atomic b)\<close>
 
 lemma all_atom_comm_simps[simp]:
-  \<open>all_atom_comm p Stop \<longleftrightarrow> True\<close>
+  \<open>all_atom_comm p Skip \<longleftrightarrow> True\<close>
   \<open>all_atom_comm p (c1 ;; c2) \<longleftrightarrow> all_atom_comm p c1 \<and> all_atom_comm p c2\<close>
   \<open>all_atom_comm p (c1 \<^bold>+ c2) \<longleftrightarrow> all_atom_comm p c1 \<and> all_atom_comm p c2\<close>
-  \<open>all_atom_comm p (c1 \<^bold>\<box> c2) \<longleftrightarrow> all_atom_comm p c1 \<and> all_atom_comm p c2\<close>
   \<open>all_atom_comm p (c1 \<parallel> c2) \<longleftrightarrow> all_atom_comm p c1 \<and> all_atom_comm p c2\<close>
   \<open>all_atom_comm p (c\<^sup>\<star>) \<longleftrightarrow> all_atom_comm p c\<close>
   \<open>all_atom_comm p (Atomic b) \<longleftrightarrow> p b\<close>
@@ -113,10 +145,9 @@ definition
       c\<close>
 
 lemma atom_frame_pred_simps[simp]:
-  \<open>atom_frame_pred p Stop \<longleftrightarrow> True\<close>
+  \<open>atom_frame_pred p Skip \<longleftrightarrow> True\<close>
   \<open>atom_frame_pred p (c1 ;; c2) \<longleftrightarrow> atom_frame_pred p c1 \<and> atom_frame_pred p c2\<close>
   \<open>atom_frame_pred p (c1 \<^bold>+ c2) \<longleftrightarrow> atom_frame_pred p c1 \<and> atom_frame_pred p c2\<close>
-  \<open>atom_frame_pred p (c1 \<^bold>\<box> c2) \<longleftrightarrow> atom_frame_pred p c1 \<and> atom_frame_pred p c2\<close>
   \<open>atom_frame_pred p (c1 \<parallel> c2) \<longleftrightarrow> atom_frame_pred p c1 \<and> atom_frame_pred p c2\<close>
   \<open>atom_frame_pred p (c\<^sup>\<star>) \<longleftrightarrow> atom_frame_pred p c\<close>
   \<open>atom_frame_pred p (Atomic b) \<longleftrightarrow>
@@ -138,37 +169,31 @@ lemma atom_frame_pred_mono:
 section \<open> Operational Semantics \<close>
 
 inductive opstep :: \<open>('h::perm_alg) act \<Rightarrow> 'h \<times> 'h comm \<Rightarrow> 'h \<times> 'h comm \<Rightarrow> bool\<close> where
-  seq_left[intro!]: \<open>opstep a (h,c1) (h',c1') \<Longrightarrow> opstep a (h, c1 ;; c2) (h', c1' ;; c2)\<close>
-| seq_right[intro!]: \<open>opstep Tau (h, Stop ;; c2) (h, c2)\<close>
-| ndet_left[intro!]: \<open>opstep Tau (h, s \<^bold>+ t) (h, s)\<close>
-| ndet_right[intro!]: \<open>opstep Tau (h, s \<^bold>+ t) (h, t)\<close>
-| extndet_resolve_left[intro]:
-  \<open>opstep a (h, c1) (h', c1') \<Longrightarrow> a \<noteq> Tau \<Longrightarrow> opstep a (h, c1 \<^bold>\<box> c2) (h', c1')\<close>
-| extndet_resolve_right[intro]:
-  \<open>opstep a (h, c2) (h', c2') \<Longrightarrow> a \<noteq> Tau \<Longrightarrow> opstep a (h, c1 \<^bold>\<box> c2) (h', c2')\<close>
-| extndet_step_left[intro]:
-  \<open>opstep Tau (h, c1) (h', c1') \<Longrightarrow> opstep Tau (h, c1 \<^bold>\<box> c2) (h', c1' \<^bold>\<box> c2)\<close>
-| extndet_step_right[intro]:
-  \<open>opstep Tau (h, c2) (h', c2') \<Longrightarrow> opstep Tau (h, c1 \<^bold>\<box> c2) (h', c1 \<^bold>\<box> c2')\<close>
-| par_step_left[intro]: \<open>opstep a (h, s) (h', s') \<Longrightarrow> opstep a (h, s \<parallel> t) (h', s' \<parallel> t)\<close>
-| par_step_right[intro]: \<open>opstep a (h, t) (h', t') \<Longrightarrow> opstep a (h, s \<parallel> t) (h', s \<parallel> t')\<close>
-| par_left[intro!]: \<open>opstep Tau (h, Stop \<parallel> t) (h, t)\<close>
-| par_right[intro!]: \<open>opstep Tau (h, s \<parallel> Stop) (h, s)\<close>
-| iter[intro]: \<open>opstep Tau (h, c\<^sup>\<star>) (h, (Stop \<^bold>+ c) ;; c\<^sup>\<star>)\<close>
-| atom[intro!]: \<open>b h h' \<Longrightarrow> opstep Tau (h, Atomic b) (h', Stop)\<close>
+  seq_left[intro!]: \<open> opstep a (h, c1) (h', c1') \<Longrightarrow> opstep a (h, c1 ;; c2) (h', c1' ;; c2)\<close>
+| seq_right[intro!]: \<open>opstep Tau (h, Skip ;; c2) (h, c2)\<close>
+| ndet_left[intro]: \<open>opstep Tau (h, c1) s' \<Longrightarrow> opstep Tau (h, c1 \<^bold>+ c2) s'\<close>
+| ndet_right[intro]: \<open>opstep Tau (h, c2) s' \<Longrightarrow> opstep Tau (h, c1 \<^bold>+ c2) s'\<close>
+| ndet_skip_left[intro!]: \<open>opstep Tau (h, Skip \<^bold>+ c2) (h, Skip)\<close>
+| ndet_skip_right[intro!]: \<open>opstep Tau (h, c1 \<^bold>+ Skip) (h, Skip)\<close>
+| par_left[intro]: \<open>opstep a (h, s) (h', s') \<Longrightarrow> opstep a (h, s \<parallel> t) (h', s' \<parallel> t)\<close>
+| par_right[intro]: \<open>opstep a (h, t) (h', t') \<Longrightarrow> opstep a (h, s \<parallel> t) (h', s \<parallel> t')\<close>
+| par_skip_left[intro!]: \<open>opstep Tau (h, Skip \<parallel> s2) (h, s2)\<close>
+| par_skip_right[intro!]: \<open>opstep Tau (h, s1 \<parallel> Skip) (h, s1)\<close>
+| iter_skip[intro]: \<open>opstep Tau (h, c\<^sup>\<star>) (h, Skip)\<close>
+| iter_step[intro]: \<open>opstep Tau (h, c\<^sup>\<star>) (h, c ;; c\<^sup>\<star>)\<close>
+| atom[intro!]: \<open>b h h' \<Longrightarrow> opstep Tau (h, Atomic b) (h', Skip)\<close>
 (* FIXME: testing out an external env relation *)
-| env[intro!]: \<open>opstep (Env a b) (h, t) (h', t)\<close>
+| env[intro!]: \<open>opstep (Env a b) (h, c) (h', c)\<close>
 
 inductive_cases opstep_tauE[elim]: \<open>opstep Tau (h, c) (h', c')\<close>
 inductive_cases opstep_envE[elim]: \<open>opstep (Env x y) s s'\<close>
 
-inductive_cases opstep_tau_seqE[elim!]: \<open>opstep Tau (h, c1 ;; c2) (h', c')\<close>
-inductive_cases opstep_tau_ndetE[elim!]: \<open>opstep Tau (h, c1 \<^bold>+ c2) (h', c')\<close>
-inductive_cases opstep_tau_extndetE[elim!]: \<open>opstep Tau (h, c1 \<^bold>\<box> c2) (h', c')\<close>
-inductive_cases opstep_tau_parE[elim!]: \<open>opstep Tau (h, c1 \<parallel>  c2) (h', c')\<close>
-inductive_cases opstep_tau_iterE[elim!]: \<open>opstep Tau (h, c\<^sup>\<star>) (h', c')\<close>
-inductive_cases opstep_tau_atomE[elim!]: \<open>opstep Tau (h, Atomic g) (h', c')\<close>
-inductive_cases opstep_tau_skipE[elim!]: \<open>opstep Tau (h, Stop) (h', c')\<close>
+inductive_cases opstep_tau_seqE[elim!]: \<open>opstep Tau (h, c1 ;; c2) s'\<close>
+inductive_cases opstep_tau_ndetE[elim!]: \<open>opstep Tau (h, c1 \<^bold>+ c2) s'\<close>
+inductive_cases opstep_tau_parE[elim!]: \<open>opstep Tau (h, c1 \<parallel>  c2) s'\<close>
+inductive_cases opstep_tau_iterE[elim!]: \<open>opstep Tau (h, c\<^sup>\<star>) s'\<close>
+inductive_cases opstep_tau_atomE[elim!]: \<open>opstep Tau (h, Atomic g) s'\<close>
+inductive_cases opstep_tau_skipE[elim!]: \<open>opstep Tau (h, Skip) s'\<close>
 
 paragraph \<open> Pretty operational semantics \<close>
 
@@ -178,18 +203,23 @@ abbreviation(input) pretty_opstep :: \<open>_ \<Rightarrow> _ \<Rightarrow> _ \<
 subsection \<open> operational semantics lemmas \<close>
 
 lemma opstep_tau_iff:
-  \<open>opstep Tau (h, Stop) s' \<longleftrightarrow> False\<close>
+  \<open>opstep Tau (h, Skip) s' \<longleftrightarrow> False\<close>
   \<open>opstep Tau (h, c1 ;; c2) s' \<longleftrightarrow>
-    c1 = Stop \<and> s' = (h, c2) \<or> (\<exists>h' c1'. opstep Tau (h,c1) (h',c1') \<and> s' = (h', c1' ;; c2))\<close>
+    c1 = Skip \<and> s' = (h, c2) \<or>
+    (\<exists>h' c1'. opstep Tau (h,c1) (h',c1') \<and> s' = (h', c1' ;; c2))\<close>
   \<open>opstep Tau (h, c1 \<parallel> c2) s' \<longleftrightarrow>
-    c1 = Stop \<and> s' = (h, c2) \<or>
-    c2 = Stop \<and> s' = (h, c1) \<or>
-    (\<exists>h' c1'. opstep Tau (h,c1) (h',c1') \<and> s' = (h', c1' \<parallel> c2) \<or>
-    (\<exists>h' c2'. opstep Tau (h,c2) (h',c2') \<and> s' = (h', c1 \<parallel> c2')))\<close>
-  \<open>opstep Tau (h, c1 \<^bold>+ c2) s' \<longleftrightarrow> s' = (h, c2) \<or> s' = (h, c1)\<close>
-  \<open>opstep Tau (h, c\<^sup>\<star>) s' \<longleftrightarrow> s' = (h, (Stop \<^bold>+ c) ;; c\<^sup>\<star>)\<close>
-  \<open>opstep Tau (h, Atomic g) s' \<longleftrightarrow> (\<exists>h'. g h h' \<and> s' = (h', Stop))\<close>
-  by (cases s', force)+
+    c1 = Skip \<and> s' = (h, c2) \<or>
+    c2 = Skip \<and> s' = (h, c1) \<or>
+    (\<exists>h' c1'. opstep Tau (h,c1) (h',c1') \<and> s' = (h', c1' \<parallel> c2)) \<or>
+    (\<exists>h' c2'. opstep Tau (h,c2) (h',c2') \<and> s' = (h', c1 \<parallel> c2'))\<close>
+  \<open>opstep Tau (h, c1 \<^bold>+ c2) s' \<longleftrightarrow>
+    c1 = Skip \<and> s' = (h, Skip) \<or>
+    c2 = Skip \<and> s' = (h, Skip) \<or>
+    opstep Tau (h, c1) s' \<or>
+    opstep Tau (h, c2) s'\<close>
+  \<open>opstep Tau (h, c\<^sup>\<star>) s' \<longleftrightarrow> s' = (h, Skip) \<or> s' = (h, c ;; c\<^sup>\<star>)\<close>
+  \<open>opstep Tau (h, Atomic g) s' \<longleftrightarrow> (\<exists>h'. g h h' \<and> s' = (h', Skip))\<close>
+  by (force simp add: opstep.simps[where ?a2.0=\<open>(h, c1 \<^bold>+ c2)\<close>])+
 
 (*
 lemma opstep_envD:
@@ -234,11 +264,55 @@ lemma opstep_preserves_all_atom_comm:
   by (induct rule: opstep.inducts) simp+
 *)
 
+lemma opstep_to_ndet_no_subexprL:
+  \<open>opstep a s s' \<Longrightarrow> snd s' = c1 \<^bold>+ c2 \<Longrightarrow> comm_subexpr (snd s) c1 \<Longrightarrow> False\<close>
+  apply (induct arbitrary: c1 c2 rule: opstep.inducts)
+               apply force
+              apply (metis comm.distinct(13) comm_subexpr.simps(2,4) comm_subexpr_antisym snd_conv)
+             apply (simp, meson comm_subexpr.simps(4) comm_subexpr_refl comm_subexpr_trans)
+            apply (simp, meson comm_subexpr.simps(4) comm_subexpr_refl comm_subexpr_trans)
+           apply force
+          apply force
+         apply force
+        apply force
+       apply (metis comm.distinct(19) comm_subexpr.simps(3,4) comm_subexpr_antisym snd_conv)
+      apply (metis comm.distinct(19) comm_subexpr.simps(3,4) comm_subexpr_antisym snd_conv)
+     apply force
+    apply force
+   apply force
+  apply force
+  done
+
+lemma opstep_to_ndet_no_subexprR:
+  \<open>opstep a s s' \<Longrightarrow> snd s' = c1 \<^bold>+ c2 \<Longrightarrow> comm_subexpr (snd s) c2 \<Longrightarrow> False\<close>
+  apply (induct arbitrary: c1 c2 rule: opstep.inducts)
+               apply force
+              apply (metis comm.distinct(13) comm_subexpr.simps(2,4) comm_subexpr_antisym snd_conv)
+             apply (simp, meson comm_subexpr.simps(4) comm_subexpr_refl comm_subexpr_trans)
+            apply (simp, meson comm_subexpr.simps(4) comm_subexpr_refl comm_subexpr_trans)
+           apply force
+          apply force
+         apply force
+        apply force
+       apply (metis comm.distinct(19) comm_subexpr.simps(3,4) comm_subexpr_antisym snd_conv)
+      apply (metis comm.distinct(19) comm_subexpr.simps(3,4) comm_subexpr_antisym snd_conv)
+     apply force
+    apply force
+   apply force
+  apply force
+  done
+
 lemma opstep_same_commD:
   \<open>opstep a s s' \<Longrightarrow> snd s' = snd s \<Longrightarrow> (\<exists>s1 s2. a = Env s1 s2)\<close>
 (* a = Env (fst s) (fst s') \<or>
     (\<exists>h h' hf. a = Env h h' \<and> h ## hf \<and> h' ## hf \<and> fst s = h + hf \<and> fst s' = h' + hf) *)
-  by (induct rule: opstep.induct) force+
+  apply (induct rule: opstep.induct)
+               apply force
+              apply force
+             apply (metis comm_subexpr_refl opstep_to_ndet_no_subexprL snd_conv)
+            apply (metis comm_subexpr_refl opstep_to_ndet_no_subexprR snd_conv)
+           apply force+
+  done
 
 (*
 lemma opstep_same_comm:
@@ -250,6 +324,7 @@ lemma opstep_same_comm:
   apply (force simp add: opstep_env_iff)
   done
 *)
+
 lemma all_atom_comm_opstep:
   assumes
     \<open>opstep a (h, c) (h', c')\<close>
@@ -277,7 +352,6 @@ definition \<open>passert p \<equiv> \<lambda>a b. p a \<and> a = b\<close>
 
 abbreviation \<open>Assert p \<equiv> Atomic (passert p)\<close>
 abbreviation \<open>Assume p \<equiv> Atomic (\<lambda>a. p)\<close>
-abbreviation \<open>Skip \<equiv> Atomic (=)\<close>
 
 lemmas Assert_def = arg_cong[where f=Atomic, OF meta_eq_to_obj_eq[OF passert_def]]
 
@@ -285,18 +359,15 @@ lemma passert_simps[simp]:
   \<open>passert p a b \<longleftrightarrow> p a \<and> b = a\<close>
   by (force simp add: passert_def)
 
-lemma opstep_assert[intro!]: \<open>p h \<Longrightarrow> opstep Tau (h, Assert p) (h, Stop)\<close>
+lemma opstep_assert[intro!]: \<open>p h \<Longrightarrow> opstep Tau (h, Assert p) (h, Skip)\<close>
   by (simp add: opstep.atom passert_def)
 
-lemma opstep_assume[intro!]: \<open>q h' \<Longrightarrow> opstep Tau (h, Assume q) (h', Stop)\<close>
+lemma opstep_assume[intro!]: \<open>q h' \<Longrightarrow> opstep Tau (h, Assume q) (h', Skip)\<close>
   by (simp add: opstep.atom rel_liftR_def)
-
-lemma opstep_skip[intro!]: \<open>opstep Tau (h, Skip) (h, Stop)\<close>
-  by (simp add: opstep.atom passert_def)
 
 subsubsection \<open> Sugared programs \<close>
 
-abbreviation \<open>IfThenElse p ct cf \<equiv> Assert p ;; ct \<^bold>\<box> Assert (-p) ;; cf\<close>
+abbreviation \<open>IfThenElse p ct cf \<equiv> Assert p ;; ct \<^bold>+ Assert (-p) ;; cf\<close>
 abbreviation \<open>WhileLoop p c \<equiv> (Assert p ;; c)\<^sup>\<star> ;; Assert (-p)\<close>
 
 subsection \<open> Operational Semantics \<close>
@@ -348,8 +419,8 @@ lemma opsem_trans:
   by (induct arbitrary: as2 s'' rule: opsem.induct)
     force+
 
-lemma stopped_opsem_no_taus:
-  \<open>s \<midarrow>as\<rightarrow>\<^sup>\<star> s' \<Longrightarrow> snd s = Stop \<Longrightarrow> list_all (case_act False \<top>) as\<close>
+lemma skipped_opsem_no_taus:
+  \<open>s \<midarrow>as\<rightarrow>\<^sup>\<star> s' \<Longrightarrow> snd s = Skip \<Longrightarrow> list_all (case_act False \<top>) as\<close>
   by (induct rule: opsem.induct)
     (force elim: opstep.cases)+
 
@@ -364,28 +435,26 @@ lemma opsem_rev_induct[consumes 1, case_names Nil Snoc]:
     P r as s s'\<close>
   by (induct as arbitrary: s s' rule: rev_induct) force+
 
-subsubsection \<open> Stopped and Aborted Programs \<close>
+subsubsection \<open> Skipped and Aborted Programs \<close>
 
 definition \<open>can_compute s \<equiv> \<exists>s'. s \<midarrow>Tau\<rightarrow> s'\<close>
 
 lemma can_compute_iff:
-  \<open>can_compute (h, Stop) \<longleftrightarrow> False\<close>
+  \<open>can_compute (h, Skip) \<longleftrightarrow> False\<close>
   \<open>can_compute (h, Atomic b) \<longleftrightarrow> (\<exists>h'. b h h')\<close>
-  \<open>can_compute (h, c1 ;; c2) \<longleftrightarrow> c1 = Stop \<or> can_compute (h,c1)\<close>
+  \<open>can_compute (h, c1 ;; c2) \<longleftrightarrow> c1 = Skip \<or> can_compute (h,c1)\<close>
   \<open>can_compute (h, c1 \<parallel> c2) \<longleftrightarrow>
-    c1 = Stop \<or> c2 = Stop \<or> can_compute (h,c1) \<or> can_compute (h,c2)\<close>
-  \<open>can_compute (h, c1 \<^bold>+ c2) \<longleftrightarrow> True\<close>
-  \<open>can_compute (h, c1 \<^bold>\<box> c2) \<longleftrightarrow> can_compute (h,c1) \<or> can_compute (h,c2)\<close>
+    c1 = Skip \<or> c2 = Skip \<or> can_compute (h,c1) \<or> can_compute (h,c2)\<close>
+  \<open>can_compute (h, c1 \<^bold>+ c2) \<longleftrightarrow>
+    c1 = Skip \<or> c2 = Skip \<or> can_compute (h,c1) \<or> can_compute (h,c2)\<close>
   \<open>can_compute (h, c\<^sup>\<star>) \<longleftrightarrow> True\<close>
   \<open>can_compute (h, Atomic g) \<longleftrightarrow> (\<exists>h'. g h h')\<close>
-  by (simp add: can_compute_def opstep_tau_iff, blast?)+
+  by (simp add: can_compute_def opstep_tau_iff, fast?)+
 
-lemma not_stop_can_compute:
-  \<open>c \<noteq> Stop \<Longrightarrow> \<exists>y. g h y \<Longrightarrow> atoms_guarantee g c \<Longrightarrow> can_compute (h, c)\<close>
-  apply (induct c arbitrary: h)
-        apply (fastforce simp add: can_compute_iff)+
-    apply clarsimp
-  oops
+lemma not_skip_can_compute:
+  \<open>c \<noteq> Skip \<Longrightarrow> \<exists>y. g h y \<Longrightarrow> atoms_guarantee g c \<Longrightarrow> can_compute (h, c)\<close>
+  by (induct c arbitrary: h)
+    (fastforce simp add: can_compute_iff)+
 
 (*
 paragraph \<open> relation for reasoning about the effect if several environment steps \<close>
@@ -440,7 +509,7 @@ inductive rgsat
   :: \<open>('h::perm_alg) comm \<Rightarrow> ('h \<Rightarrow> 'h \<Rightarrow> bool) \<Rightarrow> ('h \<Rightarrow> 'h \<Rightarrow> bool) \<Rightarrow> ('h \<Rightarrow> bool) \<Rightarrow> ('h \<Rightarrow> bool) \<Rightarrow> bool\<close>
   where
   rgsat_done:
-  \<open>\<lceil> p \<rceil>\<^bsub>r\<^esub> \<le> q \<Longrightarrow> rgsat Stop r g p q\<close>
+  \<open>\<lceil> p \<rceil>\<^bsub>r\<^esub> \<le> q \<Longrightarrow> rgsat Skip r g p q\<close>
 | rgsat_iter:
   \<open>rgsat c r g p' q' \<Longrightarrow>
       p \<le> i \<Longrightarrow> i \<le> p' \<Longrightarrow> q' \<le> i \<Longrightarrow> \<lceil> i \<rceil>\<^bsub>r\<^esub> \<le> q \<Longrightarrow>
@@ -451,12 +520,6 @@ inductive rgsat
     g1 \<le> g \<Longrightarrow> g2 \<le> g \<Longrightarrow>
     q1 \<le> q \<Longrightarrow> q2 \<le> q \<Longrightarrow>
     rgsat (s1 \<^bold>+ s2) r g p q\<close>
-| rgsat_extndet:
-  \<open>rgsat s1 r g1 p q1 \<Longrightarrow>
-    rgsat s2 r g2 p q2 \<Longrightarrow>
-    g1 \<le> g \<Longrightarrow> g2 \<le> g \<Longrightarrow>
-    q1 \<le> q \<Longrightarrow> q2 \<le> q \<Longrightarrow>
-    rgsat (s1 \<^bold>\<box> s2) r g p q\<close>
 | rgsat_parallel:
   \<open>rgsat s1 (r \<squnion> g2) g1 p1 q1 \<Longrightarrow>
     rgsat s2 (r \<squnion> g1) g2 p2 q2 \<Longrightarrow>
@@ -475,7 +538,7 @@ inductive rgsat
     all_atom_comm (frame_consistent f) c \<Longrightarrow>
     frame_consistent f r \<Longrightarrow>
     rgsat c r g (p \<^emph> f) (q \<^emph> f)\<close>
-inductive_cases rgsep_doneE[elim]: \<open>rgsat Stop r g p q\<close>
+inductive_cases rgsep_doneE[elim]: \<open>rgsat Skip r g p q\<close>
 inductive_cases rgsep_iterE[elim]: \<open>rgsat (c\<^sup>\<star>) r g p q\<close>
 inductive_cases rgsep_parE[elim]: \<open>rgsat (s1 \<parallel> s2) r g p q\<close>
 inductive_cases rgsep_atomE[elim]: \<open>rgsat (Atomic c) r g p q\<close>
@@ -486,15 +549,14 @@ lemma rgsat_weaken:
     p \<le> p' \<Longrightarrow> q' \<le> q \<Longrightarrow> r \<le> r' \<Longrightarrow> g' \<le> g \<Longrightarrow>
     rgsat c r g p q\<close>
   apply (induct arbitrary: p r g q rule: rgsat.induct)
-        apply (rule rgsat_done, metis le_supE sup.absorb_iff2 wsstable_disj_distrib wsstable_rely_mono)
-       apply (rule_tac i=i in rgsat_iter)
-           apply blast
-          apply (simp; fail)
+       apply (rule rgsat_done, metis le_supE sup.absorb_iff2 wsstable_disj_distrib wsstable_rely_mono)
+      apply (rule_tac i=i in rgsat_iter)
+          apply blast
          apply (simp; fail)
-        apply blast
-       apply (meson order.trans wsstable_rely_le_antimono; fail)
-      apply (meson order.eq_iff order.trans rgsat_ndet; fail)
-  subgoal sorry
+        apply (simp; fail)
+       apply blast
+      apply (meson order.trans wsstable_rely_le_antimono; fail)
+     apply (meson order.eq_iff order.trans rgsat_ndet; fail)
     apply (meson order.eq_iff order.trans sup_mono rgsat_parallel; fail)
    apply (meson order.trans rgsat_atom; fail)
   sorry
@@ -622,7 +684,7 @@ lemma backwards_frame:
   oops
 
 lemma backwards_done:
-  \<open>rgsat Stop r g (\<lfloor> p \<rfloor>\<^bsub>r\<^esub>) p\<close>
+  \<open>rgsat Skip r g (\<lfloor> p \<rfloor>\<^bsub>r\<^esub>) p\<close>
   by (rule rgsat_weaken[OF rgsat_done _ _ order.refl order.refl, where p'=\<open>\<lfloor> p \<rfloor>\<^bsub>r\<^esub>\<close> and q'=p])
     (clarsimp simp add: wsstable_def swstable_def le_fun_def)+
 
@@ -724,8 +786,8 @@ inductive safe
     \<comment> \<open> there is a tau move, which respects the guarantee \<close>
     (h, c) \<midarrow>Tau\<rightarrow> (h', c') \<Longrightarrow>
     g h h' \<Longrightarrow>                                              
-    \<comment> \<open> if stopped, the postcondition is established \<close>
-    (c' = Stop \<longrightarrow> q h') \<Longrightarrow>
+    \<comment> \<open> if skipped, the postcondition is established \<close>
+    (c' = Skip \<longrightarrow> q h') \<Longrightarrow>
     \<comment> \<open> the subsequent execution is safe \<close>
     safe as c' h' r g q \<Longrightarrow>
     safe (Tau # as) c h r g q\<close>
@@ -735,7 +797,7 @@ inductive safe
     \<comment> \<open> the command respects the rely \<close>
     r h h' \<Longrightarrow>
     \<comment> \<open> the command respects the postcondition \<close>
-    (c' = Stop \<longrightarrow> q h') \<Longrightarrow>
+    (c' = Skip \<longrightarrow> q h') \<Longrightarrow>
     \<comment> \<open> the subsequent execution is safe \<close>
     safe as c' h' r g q \<Longrightarrow>
     safe (Env h1 h2 # as) c h r g q\<close>
@@ -755,12 +817,12 @@ lemma safe_Cons_iff:
       (\<forall>hf. h ## hf \<longrightarrow> can_compute (h + hf, c)) \<and>
       (h, c) \<midarrow>Tau\<rightarrow> (h', c') \<and>
       g h h' \<and>
-      (c' = Stop \<longrightarrow> q h') \<and>
+      (c' = Skip \<longrightarrow> q h') \<and>
       safe as c' h' r g q) \<or>
     (\<exists>h1 h2. a = Env h1 h2 \<and>
       (\<exists>h' c'.
         (h, c) \<midarrow>Env h1 h2\<rightarrow> (h', c') \<and>
-        (c' = Stop \<longrightarrow> q h') \<and>
+        (c' = Skip \<longrightarrow> q h') \<and>
         r h h' \<and>
         safe as c' h' r g q))\<close>
   by (cases a; fastforce)
@@ -798,12 +860,11 @@ proof -
   {
     fix a s s'
     have \<open>opstep a s s' \<Longrightarrow> \<exists>x y. a = Env x y \<Longrightarrow> case_act True r a \<Longrightarrow> snd s' = snd s\<close>
-      by (induct arbitrary: h c h' c' rule: opstep.inducts)
-        (force simp add: reflpD)+
+      by (induct arbitrary: h c h' c' rule: opstep.inducts) force+
   }
   then show ?thesis
     using assms
-    by auto
+    by force
 qed
 
 lemma opstep_preserves_all_atom_comm:
@@ -841,7 +902,7 @@ lemma safe_frame:
         apply (simp add: disjoint_add_swap2 partial_add_assoc2; fail)
        apply assumption
       apply (drule opstep_tau_guarantee[where s=\<open>(_ + _, _)\<close>]; force)
-     apply (fastforce simp add: sepconj_def)
+     apply (metis sepconj_def)
     apply (fastforce dest: opstep_preserves_all_atom_comm)
     done
   subgoal
@@ -876,7 +937,7 @@ lemma safe_frame2:
         apply (simp add: disjoint_add_swap2 partial_add_assoc2; fail)
        apply assumption
       apply (drule opstep_tau_guarantee[where s=\<open>(_ + _, _)\<close>]; force)
-     apply (fastforce simp add: sepconj_def)
+     apply (metis predicate1D sepconj_def wsstable_stronger)
     apply (force dest: opstep_preserves_all_atom_comm)
     done
   subgoal
@@ -893,13 +954,13 @@ lemma safe_frame2:
     done
   done
 
-lemma safe_stop:
+lemma safe_skip:
   assumes
     \<open>list_all (case_act False \<top>) as\<close>
     \<open>reflp r\<close>
     \<open>q h\<close>
   shows
-    \<open>safe as Stop h r g q\<close>
+    \<open>safe as Skip h r g q\<close>
   using assms
   apply (induct as)
    apply force
@@ -918,19 +979,8 @@ lemma opstep_tau_extendD:
     all_atom_comm (\<lambda>b. \<forall>s s'. b s s' \<longrightarrow> (\<forall>sa\<ge>s. \<exists>sa'\<ge>s'. b sa sa')) (snd s) \<Longrightarrow>
     fst s ## h2 \<Longrightarrow>
     \<exists>h''\<ge>fst s'. opstep a (fst s + h2, snd s) (h'', snd s')\<close>
-  apply (induct rule: opstep.induct)
-            apply force+
-           apply (simp, metis partial_le_plus opstep.seq_right)
-          apply (simp, metis partial_le_plus opstep.ndet_left)
-         apply (simp, metis partial_le_plus opstep.ndet_right)
-        apply force
-       apply force
-      apply (simp, metis partial_le_plus opstep.par_left)
-     apply (simp, metis partial_le_plus opstep.par_right)
-    apply (simp, metis partial_le_plus opstep.iter)
-   apply (simp, metis partial_le_plus opstep.atom)
-  apply force
-  done
+  by (induct rule: opstep.induct)
+    (force dest: partial_le_plus)+
 
 lemma can_compute_frame:
   \<open>can_compute s \<Longrightarrow>
@@ -940,58 +990,31 @@ lemma can_compute_frame:
   unfolding can_compute_def
   using opstep_tau_extendD by blast
 
-lemma safe_step_post:
-  \<open>safe as c h r g q \<Longrightarrow>
-    all_atom_comm (\<lambda>b. \<forall>s s'. b s s' \<longrightarrow> (\<forall>sa\<ge>s. \<exists>sa'\<ge>s'. b sa sa')) (snd s) \<Longrightarrow>
-    opstep Tau (h, c) (h', c') \<Longrightarrow>
-    g h h' \<Longrightarrow>
-    (q h \<longrightarrow> q' h') \<Longrightarrow>
-    safe (Tau # as) c' h' r g q'\<close>
-  oops
-
-
-lemma safe_iter_stepI:
-  \<open>reflp g \<Longrightarrow> safe as ((Stop \<^bold>+ c) ;; c\<^sup>\<star>) h r g i \<Longrightarrow> safe (Tau # as) (c\<^sup>\<star>) h r g i\<close>
-  by (force simp add: can_compute_iff reflpD )
-
-lemma safe_iter_step_iff:
-  \<open>reflp g \<Longrightarrow> safe (Tau # as) (c\<^sup>\<star>) h r g i \<longleftrightarrow> safe as ((Stop \<^bold>+ c) ;; c\<^sup>\<star>) h r g i\<close>
-  using safe_iter_stepI by blast
-
-
-lemma safe_seq:
+lemma safe_subtrace:
   assumes inductive_assms:
-    \<open>safe as1 c1 h r g q1\<close>
-    \<open>\<And>h. q1 h \<Longrightarrow> safe as2 c2 h r g q2\<close>
-    and global_assms:
-    \<open>reflp g\<close>
+    \<open>safe as c h r g q\<close>
+    \<open>as = as1 @ as2\<close>
   shows
-    \<open>safe (as1 @ as2) (c1 ;; c2) h r g q2\<close>
+    \<open>safe as1 c h r g q\<close>
   using inductive_assms
-proof (induct rule: safe.inducts)
+proof (induct arbitrary: as1 as2 rule: safe.inducts)
   case (safe_base c1 h r g q1)
-  then show ?case
-    apply clarsimp
-    sledgehammer
+  then show ?case by fast
 next
   case (safe_tau h c h' c' g q as r)
   then show ?case
-    apply -
-    sorry
+    by (fastforce simp add: Cons_eq_append_conv)
 next
   case (safe_env h c h1 h2 h' c' r q as g)
   then show ?case
-    sorry
+    by (fastforce simp add: Cons_eq_append_conv)
 qed
-
-
-  oops
 
 lemma soundness:
   fixes p q :: \<open>'a::perm_alg \<Rightarrow> bool\<close>
   assumes \<open>rgsat c r g p q\<close>
     and \<open>all_atom_comm ((\<ge>) g) c\<close>
-    and \<open>c = Stop \<longrightarrow> list_all (case_act False \<top>) as\<close>
+    and \<open>c = Skip \<longrightarrow> list_all (case_act False \<top>) as\<close>
     and \<open>p h\<close>
     and \<open>reflp r\<close>
     and \<open>reflp g\<close>
@@ -1000,13 +1023,10 @@ lemma soundness:
 proof (induct c r g p q arbitrary: as h rule: rgsat.inducts)
   case (rgsat_done p r q g as h)
   then show ?case
-    by (force intro: safe_stop)
+    by (force intro: safe_skip)
 next
   case (rgsat_iter c r g p' q' p i q)
-  then show ?case
-    apply clarsimp
-
-    sorry
+  then show ?case sorry
 next
   case (rgsat_ndet s1 r g1 p q1 s2 g2 q2 g q)
   then show ?case sorry

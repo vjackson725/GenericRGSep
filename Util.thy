@@ -61,6 +61,10 @@ lemma exsome_conj_some_imp:
   \<open>(\<exists>x. y = Some x) \<and> (\<forall>x. y = Some x \<longrightarrow> P x) \<longleftrightarrow> (\<exists>x. y = Some x \<and> P x)\<close>
   by blast
 
+lemma ex_eq_pair_iff[simp]:
+  \<open>(\<exists>x y. a = (x, y) \<and> P x y) \<longleftrightarrow> P (fst a) (snd a)\<close>
+  by force
+
 lemma prod_eq_decompose:
   \<open>a = (b,c) \<longleftrightarrow> fst a = b \<and> snd a = c\<close>
   \<open>(b,c) = a \<longleftrightarrow> fst a = b \<and> snd a = c\<close>
