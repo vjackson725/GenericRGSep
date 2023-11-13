@@ -109,6 +109,9 @@ definition \<open>rel_liftL p \<equiv> \<lambda>a b. p a\<close>
 definition \<open>rel_liftR p \<equiv> \<lambda>a b. p b\<close>
 definition \<open>rel_lift p \<equiv> \<lambda>a b. p a \<and> p b\<close>
 
+definition \<open>pre_state r \<equiv> \<lambda>a. \<exists>b. r a b\<close>
+definition \<open>post_state r \<equiv> \<lambda>b. \<exists>a. r a b\<close>
+
 lemma rel_liftL_unfold[simp]:
   \<open>rel_liftL p a b = p a\<close>
   by (simp add: rel_liftL_def)
@@ -308,6 +311,14 @@ lemmas preordering_refl =
 lemmas preordering_trans =
   preordering.axioms(1)[THEN partial_preordering.trans]
 
+context order
+begin
+
+definition covered_by :: \<open>'a \<Rightarrow> 'a \<Rightarrow> bool\<close> (infix \<open>\<prec>\<close> 50) where
+  \<open>x \<prec> y \<equiv> x < y \<and> (\<forall>z. x \<le> z \<longrightarrow> z < y \<longrightarrow> z = x)\<close>
+
+end
+
 subsection \<open> Groups \<close>
 
 lemmas eq_diff_eq_comm =
@@ -415,6 +426,14 @@ lemma max_mult_extract_right_mult_left:
     \<open>0 > p \<Longrightarrow> max x (p * y) = p * min (x/p) y\<close>
   by (metis max_mult_extract_right_mult_right mult.commute)+
 
+lemma ordered_comm_monoid_add_add_min_assoc:
+  fixes x y z k :: \<open>'a :: ordered_comm_monoid_add\<close>
+  assumes \<open>x \<ge> 0\<close> \<open>z \<ge> 0\<close>
+  shows \<open>min k (min k (x + y) + z) = min k (x + min k (y + z))\<close>
+  using assms
+  by (clarsimp simp add: min_def add.commute add.left_commute add_increasing add_increasing2 eq_iff,
+      metis add.assoc add_increasing2)
+
 section \<open> Sequencing Algebra \<close>
 
 text \<open> Note this is a subalgebra of a relation algebra. \<close>
@@ -423,26 +442,18 @@ class seq =
   fixes seq :: \<open>'a \<Rightarrow> 'a \<Rightarrow> 'a\<close> (infixr \<open>\<triangleright>\<close> 110)
 
 class skip =
-  fixes skip :: 'a (\<open>\<I>\<close>)
+  fixes skip :: 'a (\<open>SKIP\<close>)
 
 class monoid_seq = seq + skip +
   assumes seq_assoc[algebra_simps, algebra_split_simps]: \<open>(a \<triangleright> b) \<triangleright> c = a \<triangleright> (b \<triangleright> c)\<close>
-    and add_skip_left[simp]: \<open>\<I> \<triangleright> a = a\<close>
-    and add_skip_right[simp]: \<open>a \<triangleright> \<I> = a\<close>
+    and add_skip_left[simp]: \<open>SKIP \<triangleright> a = a\<close>
+    and add_skip_right[simp]: \<open>a \<triangleright> SKIP = a\<close>
 begin
 
 sublocale monoid seq skip
   by standard (simp add: seq_assoc)+
 
 end
-
-lemma ordered_comm_monoid_add_add_min_assoc:
-  fixes x y z k :: \<open>'a :: ordered_comm_monoid_add\<close>
-  assumes \<open>x \<ge> 0\<close> \<open>z \<ge> 0\<close>
-  shows \<open>min k (min k (x + y) + z) = min k (x + min k (y + z))\<close>
-  using assms
-  by (clarsimp simp add: min_def add.commute add.left_commute add_increasing add_increasing2 eq_iff,
-      metis add.assoc add_increasing2)
 
 section \<open>Top Extension\<close>
 

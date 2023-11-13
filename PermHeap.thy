@@ -589,12 +589,4 @@ instance
 end
 
 
-lemma
-  fixes p :: \<open>(unit,unit,'y) pheap \<Rightarrow> bool\<close>
-  shows \<open>p \<le> q \<^emph> r \<Longrightarrow> \<exists>qa ra. p = qa \<^emph> ra \<and> qa \<le> q \<and> ra \<le> r\<close>
-  nitpick
-  oops
-
-end
-
 end

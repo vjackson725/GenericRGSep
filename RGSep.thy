@@ -566,7 +566,7 @@ section \<open> Rely-Guarantee Separation Logic \<close>
 inductive rgsat
   :: \<open>('h::perm_alg) comm \<Rightarrow> ('h \<Rightarrow> 'h \<Rightarrow> bool) \<Rightarrow> ('h \<Rightarrow> 'h \<Rightarrow> bool) \<Rightarrow> ('h \<Rightarrow> bool) \<Rightarrow> ('h \<Rightarrow> bool) \<Rightarrow> bool\<close>
   where
-  rgsat_done:
+  rgsat_skip:
   \<open>\<lceil> p \<rceil>\<^bsub>r\<^esub> \<le> q \<Longrightarrow> rgsat Skip r g p q\<close>
 | rgsat_iter:
   \<open>rgsat c r g p' q' \<Longrightarrow>
@@ -600,7 +600,6 @@ inductive_cases rgsep_doneE[elim]: \<open>rgsat Skip r g p q\<close>
 inductive_cases rgsep_iterE[elim]: \<open>rgsat (c\<^sup>\<star>) r g p q\<close>
 inductive_cases rgsep_parE[elim]: \<open>rgsat (s1 \<parallel> s2) r g p q\<close>
 inductive_cases rgsep_atomE[elim]: \<open>rgsat (Atomic c) r g p q\<close>
-
 
 lemma rgsat_weaken:
   \<open>rgsat c r' g' p' q' \<Longrightarrow>
