@@ -52,6 +52,15 @@ definition
   \<open>framed_subresource_rel (ha::'a::perm_alg) ha' h h' \<equiv>
     ha = h \<and> ha' = h' \<or> (\<exists>hf. ha ## hf \<and> ha' ## hf \<and> h = ha + hf \<and> h' = ha' + hf)\<close>
 
+lemma framed_subresource_relI1:
+  \<open>ha = h \<Longrightarrow> ha' = h' \<Longrightarrow> framed_subresource_rel ha ha' h h'\<close>
+  by (simp add: framed_subresource_rel_def)
+
+lemma framed_subresource_relI2:
+  \<open>ha ## hf \<Longrightarrow> ha' ## hf \<Longrightarrow> h = ha + hf \<Longrightarrow> h' = ha' + hf \<Longrightarrow>
+    framed_subresource_rel ha ha' h h'\<close>
+  by (force simp add: framed_subresource_rel_def)
+
 lemma framed_subresource_rel_refl[intro!]:
   \<open>framed_subresource_rel h h' h h'\<close>
   by (simp add: framed_subresource_rel_def)
@@ -192,6 +201,15 @@ lemma atom_frame_pred_mono:
 
 section \<open> Operational Semantics \<close>
 
+definition \<open>frame_consistent f b \<equiv>
+  \<forall>h1 h2. b h1 h2 \<longrightarrow>
+    (\<forall>hf1. h1 ## hf1 \<longrightarrow> f hf1 \<longrightarrow>
+      (\<exists>hf2. h2 ## hf2 \<and> f hf2 \<and> b (h1 + hf1) (h2 + hf2)))\<close>
+
+definition
+  \<open>frame_closed r \<equiv>
+    \<forall>h h'. r h h' \<longrightarrow> (\<forall>hf. h ## hf \<longrightarrow> h' ## hf \<longrightarrow> r (h + hf) (h' + hf))\<close>
+
 subsection \<open> Actions \<close>
 
 datatype 'h act =
@@ -233,9 +251,10 @@ inductive opstep :: \<open>('h::perm_alg) act \<Rightarrow> 'h \<times> 'h comm 
   \<open>b ha ha' \<Longrightarrow>
     framed_subresource_rel ha ha' h h' \<Longrightarrow>
     opstep (Local ha ha') (h, Atomic b) (h', Skip)\<close>
-(* FIXME: testing out an external env relation *)
 | env[intro!]:
-  \<open>framed_subresource_rel ha ha' (fst s) (fst s') \<Longrightarrow> snd s' = snd s \<Longrightarrow> opstep (Env ha ha') s s'\<close>
+  \<open>framed_subresource_rel ha ha' (fst s) (fst s') \<Longrightarrow>
+    snd s' = snd s \<Longrightarrow>
+    opstep (Env ha ha') s s'\<close>
 
 inductive_cases opstep_tauE[elim]: \<open>opstep Tau s s'\<close>
 inductive_cases opstep_localE[elim]: \<open>opstep (Local x y) s s'\<close>
@@ -368,7 +387,28 @@ lemma opstep_frame:
   by (induct rule: opstep.induct)
     (force simp add: framed_subresource_rel_frame)+
 
+lemma opstep_frame_consistent:
+  \<open>opstep a s s' \<Longrightarrow>
+    all_atom_comm (frame_consistent f) (snd s) \<Longrightarrow>
+    fst s ## hf \<Longrightarrow>
+    f hf \<Longrightarrow>
+    \<exists>hf'. f hf' \<and> fst s' ## hf' \<and> opstep a (fst s + hf, snd s) (fst s' + hf', snd s')\<close>
+  apply (induct arbitrary: hf rule: opstep.inducts)
+               apply force+
+   apply (clarsimp simp add: framed_subresource_rel_def frame_consistent_def)
+   apply (erule disjE)
+    apply (clarsimp, rename_tac h' h hf)
+    apply (drule spec2, drule mp, assumption)
+    apply (drule_tac x=hf in spec, drule mp, assumption)
+    apply (clarsimp, rename_tac hf')
+    apply (rule_tac x=hf' in exI)
+    apply clarsimp
+    apply (rule framed_subresource_relI2)
+  oops
+
 subsubsection \<open>sugared atomic programs\<close>
+
+
 
 definition \<open>passert p \<equiv> \<lambda>a b. p a \<and> a = b\<close>
 
@@ -523,13 +563,6 @@ lemma env_chain_rely:
 
 section \<open> Rely-Guarantee Separation Logic \<close>
 
-definition \<open>semantic_frame f \<equiv> \<lambda>h1 h2. (\<exists>h1a\<le>h1. f h1a) \<longrightarrow> (\<exists>h2a\<le>h2. f h2a)\<close>
-
-definition \<open>frame_consistent f b \<equiv>
-  \<forall>h1 h2. b h1 h2 \<longrightarrow>
-    (\<forall>hf1. h1 ## hf1 \<longrightarrow> f hf1 \<longrightarrow>
-      (\<exists>hf2. h2 ## hf2 \<and> f hf2 \<and> b (h1 + hf1) (h2 + hf2)))\<close>
-
 inductive rgsat
   :: \<open>('h::perm_alg) comm \<Rightarrow> ('h \<Rightarrow> 'h \<Rightarrow> bool) \<Rightarrow> ('h \<Rightarrow> 'h \<Rightarrow> bool) \<Rightarrow> ('h \<Rightarrow> bool) \<Rightarrow> ('h \<Rightarrow> bool) \<Rightarrow> bool\<close>
   where
@@ -612,28 +645,6 @@ lemma backwards_done:
   by (rule rgsat_weaken[OF rgsat_done _ _ order.refl order.refl, where p'=\<open>\<lfloor> p \<rfloor>\<^bsub>r\<^esub>\<close> and q'=p])
     (clarsimp simp add: wsstable_def swstable_def le_fun_def)+
 
-lemma implies_semantic_frame_sepconj:
-  fixes f1 :: \<open>'a :: multiunit_sep_alg \<Rightarrow> bool\<close>
-  assumes
-    \<open>r \<le> semantic_frame f1\<close>
-    \<open>r \<le> semantic_frame f2\<close>
-    \<open>\<forall>h1 h2. f1 h1 \<longrightarrow> f2 h2 \<longrightarrow> h1 ## h2\<close>
-    \<open>\<forall>h1 h2 h. f1 h1 \<longrightarrow> f2 h2 \<longrightarrow> h1 \<le> h \<longrightarrow> h2 \<le> h \<longrightarrow> h1 + h2 \<le> h\<close>
-  shows
-    \<open>r \<le> semantic_frame (f1 \<^emph> f2)\<close>
-  using assms
-  apply (clarsimp simp add: semantic_frame_def sepconj_def le_fun_def)
-  apply (rename_tac h1' h2' h1 h2)
-  apply (drule_tac x=h1' and y=h2' in spec2, drule mp, assumption)
-  apply (drule_tac x=h1' and y=h2' in spec2, drule mp, assumption)
-  apply (drule mp, rule_tac x=h1 in exI, metis order.trans partial_le_plus)
-  apply (drule mp, rule_tac x=h2 in exI, metis order.trans partial_le_plus2)
-  apply clarsimp
-  apply (rename_tac h1a h2a)
-  apply (rule_tac x=\<open>h1a + h2a\<close> in exI)
-  apply blast
-  done
-
 inductive safe
   :: \<open>('s::perm_alg) act list \<Rightarrow> 's comm \<Rightarrow> 's \<Rightarrow>
         ('s \<Rightarrow> 's \<Rightarrow> bool) \<Rightarrow> ('s \<Rightarrow> 's \<Rightarrow> bool) \<Rightarrow> ('s \<Rightarrow> bool) \<Rightarrow> bool\<close>
@@ -643,7 +654,7 @@ inductive safe
   \<open>\<comment> \<open> the command does not fail + respects the guarantee \<close>
     (h, c) \<midarrow>a\<rightarrow> (h', c') \<Longrightarrow>
     \<comment> \<open> the command is frame safe \<close>
-    (\<forall>hf. h ## hf \<longrightarrow> h' ## hf \<and> (h + hf, c) \<midarrow>a\<rightarrow> (h' + hf, c')) \<Longrightarrow>
+    (\<forall>hf. h ## hf \<longrightarrow> h' ## hf \<longrightarrow> (h + hf, c) \<midarrow>a\<rightarrow> (h' + hf, c')) \<Longrightarrow>
     \<comment> \<open> env steps respect the rely \<close>
     (\<forall>ha ha'. a = Env ha ha' \<longrightarrow> r ha ha' \<and> framed_subresource_rel h h' h h') \<Longrightarrow>
     \<comment> \<open> local steps respect the guarantee \<close>
@@ -665,12 +676,12 @@ lemma safe_cons_iff:
   \<open>safe (a # as) c h r g q \<longleftrightarrow>
     (\<exists>h' c'.
       (h, c) \<midarrow>a\<rightarrow> (h', c') \<and>
-      (\<forall>hf. h ## hf \<longrightarrow> h' ## hf \<and> (h + hf, c) \<midarrow>a\<rightarrow> (h' + hf, c')) \<and>
+      (\<forall>hf. h ## hf \<longrightarrow> h' ## hf \<longrightarrow> (h + hf, c) \<midarrow>a\<rightarrow> (h' + hf, c')) \<and>
       (\<forall>ha ha'. a = Env ha ha' \<longrightarrow> r ha ha' \<and> framed_subresource_rel h h' h h') \<and>
       (\<forall>ha ha'. a = Local ha ha' \<longrightarrow> g ha ha') \<and>
       (c' = Skip \<longrightarrow> q h') \<and>
       safe as c' h' r g q)\<close>
-  by auto
+  by (rule iffI, blast, force)
 
 lemma opstep_nonenv_frame:
   \<open>opstep a s s' \<Longrightarrow>
@@ -735,6 +746,8 @@ qed
 
 lemmas rev_opstep_preserves_all_atom_comm = opstep_preserves_all_atom_comm[rotated]
 
+thm opstep_frame
+
 lemma safe_frame:
   \<open>safe as c h r g q \<Longrightarrow>
     all_atom_comm (frame_consistent f) c \<Longrightarrow>
@@ -749,7 +762,8 @@ proof (induct arbitrary: hf rule: safe.induct)
   moreover have
     \<open>h' ## hf1\<close>
     \<open>opstep a (h + hf1, c) (h' + hf1, c')\<close>
-    using safe_cons.hyps(2) safe_cons.prems(5) by blast+
+    using safe_cons.hyps(2) safe_cons.prems(1,5)
+    sledgehammer
   ultimately show ?case
     apply -
     apply (rule safe.safe_cons)
@@ -791,8 +805,10 @@ qed fast
 
 lemma safe_skip:
   assumes
-    \<open>\<exists>s'. (h, Skip) \<midarrow>as\<rightarrow>\<^sup>\<star> s' \<and> (\<forall>hf. (h + hf, Skip) \<midarrow>as\<rightarrow>\<^sup>\<star> (fst s' + hf, snd s'))\<close>
-    \<open>reflp r\<close>
+    \<open>\<exists>s'. (h, Skip) \<midarrow>as\<rightarrow>\<^sup>\<star> s'\<close>
+    \<open>list_all (case_act \<top> g r) as\<close>
+    \<open>\<forall>h h'. r h h' \<longrightarrow> q h \<longrightarrow> q h'\<close>
+    \<open>\<forall>h h'. r h h' \<longrightarrow> (\<forall>hf. h ## hf \<longrightarrow> h' ## hf \<longrightarrow> r (h + hf) (h' + hf))\<close>
     \<open>q h\<close>
   shows
     \<open>safe as Skip h r g q\<close>
@@ -803,18 +819,28 @@ proof (induct as arbitrary: h)
     \<open>opsem as (h', Skip) se\<close>
     \<open>a = Env ha ha'\<close>
     \<open>framed_subresource_rel ha ha' h h'\<close>
-    using Cons.prems(1)
+    \<open>r ha ha'\<close>
+    using Cons.prems(1-)
     by force
-  then show ?case
+  moreover then have \<open>safe as Skip h' r g q\<close>
     using Cons.prems(2-)
-    apply clarsimp
+    apply (intro Cons.hyps)
+        apply blast
+       apply force
+      apply force
+     apply force
+    apply (simp add: framed_subresource_rel_def, blast)
+    done
+  ultimately show ?case
+    using Cons.prems
     apply (intro safe_cons)
-         apply (clarsimp split: act.splits)
-         apply (clarsimp simp add: framed_subresource_rel_def)
-
-         apply (erule disjE)
-          apply clarsimp
-    sorry
+         apply (force split: act.splits)
+        apply (force simp add: framed_subresource_rel_frame)
+       apply force
+      apply force
+     apply (simp add: framed_subresource_rel_def, blast)
+    apply force
+    done
 qed force
 
 lemma safe_weaken:
@@ -863,16 +889,20 @@ lemma soundness:
     \<comment>\<open>and \<open>all_atom_comm ((\<ge>) g) c\<close>\<close>
     and \<open>list_all (case_act \<top> g r) as\<close>
     and \<open>c = Skip \<longrightarrow> list_all (case_act \<bottom> \<bottom> (\<lambda>ha ha'. \<exists>h'. framed_subresource_rel ha ha' h h')) as\<close>
+    and 
+      \<open>\<exists>s'. (h, Skip) \<midarrow>as\<rightarrow>\<^sup>\<star> s'\<close>
+      \<open>\<forall>h h'. r h h' \<longrightarrow> q h \<longrightarrow> q h'\<close>
+      \<open>frame_closed_rel r\<close>
+      \<open>\<forall>h h'. r h h' \<longrightarrow> (\<forall>hf. h ## hf \<longrightarrow> h' ## hf \<longrightarrow> r (h + hf) (h' + hf))\<close>
+\<comment>\<open> and \<open>reflp r\<close>
+    and \<open>reflp g\<close>  \<close>
     and \<open>p h\<close>
-    and \<open>reflp r\<close>
-    and \<open>reflp g\<close>
   shows \<open>safe as c h r g q\<close>
   using assms
 proof (induct c r g p q arbitrary: as h rule: rgsat.inducts)
   case (rgsat_done p r q g as h)
   then show ?case
-    apply clarsimp
-    by (force intro: safe_skip)
+    by (blast intro: safe_skip)
 next
   case (rgsat_iter c r g p' q' p i q)
   then show ?case sorry
