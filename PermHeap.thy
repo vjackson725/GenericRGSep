@@ -150,7 +150,7 @@ lift_definition skip_pheap :: \<open>('a::perm_alg,'b,'c) pheap\<close> is \<ope
   by simp
 
 lemma skip_app_pheap[simp]:
-  \<open>\<I> \<bullet> x = None\<close>
+  \<open>SKIP \<bullet> x = None\<close>
   by (simp add: skip_pheap.rep_eq)
 
 instance
@@ -330,8 +330,8 @@ lemma disjoint_restrict_pheap_iff[simp]:
   by (force simp add: disjoint_set_pheap_def Ball_def)+
 
 lemma disjoint_skip[iff]:
-  \<open>\<I> ##\<^bsub>A\<^esub> b\<close>
-  \<open>a ##\<^bsub>A\<^esub> \<I>\<close>
+  \<open>SKIP ##\<^bsub>A\<^esub> b\<close>
+  \<open>a ##\<^bsub>A\<^esub> SKIP\<close>
   by (clarsimp simp add: disjoint_set_pheap_def)+
 
 lemma disjoint_seq[simp]:

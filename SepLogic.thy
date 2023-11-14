@@ -209,7 +209,7 @@ lemma disjoint_preservation:
 
 lemma partial_add_assoc2:
   \<open>a ## b \<Longrightarrow> a + b ## c \<Longrightarrow> (a + b) + c = a + (b + c)\<close>
-  using disjoint_add_leftL disjoint_add_leftR local.partial_add_assoc by blast
+  using disjoint_add_leftL disjoint_add_leftR partial_add_assoc by blast
 
 lemma partial_add_assoc3:
   \<open>b ## c \<Longrightarrow> a ## b + c \<Longrightarrow> (a + b) + c = a + (b + c)\<close>
@@ -712,28 +712,141 @@ end
 
 class strong_separated_sep_alg = sep_alg + strong_separated_multiunit_sep_alg
 
+section \<open> compatibility \<close>
+
+context perm_alg
+begin
+
+definition compatible :: \<open>'a \<Rightarrow> 'a \<Rightarrow> bool\<close> where
+  \<open>compatible \<equiv> (##)\<^sup>*\<^sup>*\<close>
+
+lemma disjoint_is_compatible_refl:
+  \<open>compatible a a\<close>
+  by (simp add: compatible_def)
+
+lemma disjoint_is_compatible:
+  \<open>a ## b \<Longrightarrow> compatible a b\<close>
+  by (simp add: compatible_def)
+
+lemma trans_disjoint_is_compatible:
+  \<open>a ## b \<Longrightarrow> b ## c \<Longrightarrow> compatible a c\<close>
+  by (simp add: compatible_def)
+
+lemma disjoint_units_identical:
+  \<open>a ## b \<Longrightarrow> unit_sepadd a \<Longrightarrow> unit_sepadd b \<Longrightarrow> a = b\<close>
+  by (metis disjoint_symm partial_add_commute unit_sepadd_def)
+
+lemma trans_disjoint_units_identical:
+  \<open>a ## b \<Longrightarrow> b ## c \<Longrightarrow> unit_sepadd a \<Longrightarrow> unit_sepadd c \<Longrightarrow> a = c\<close>
+  by (metis disjoint_units_identical disjoint_add_leftL unit_sepadd_def)
+
+lemma trans_compatible_units_identical:
+  \<open>compatible b z \<Longrightarrow> a ## b \<Longrightarrow> unit_sepadd a \<Longrightarrow> unit_sepadd z \<Longrightarrow> a = z\<close>
+  unfolding compatible_def
+  apply (induct rule: converse_rtranclp_induct)
+  apply (force dest: disjoint_units_identical)
+  apply (metis disjoint_add_leftL unit_sepadd_def)
+  done
+
+lemma compatible_units_identical:
+  \<open>compatible a z \<Longrightarrow> unit_sepadd a \<Longrightarrow> unit_sepadd z \<Longrightarrow> a = z\<close>
+  by (metis compatible_def converse_rtranclpE trans_compatible_units_identical)
+
+end
+
+(* almost a sep_alg, in that if there was a unit, it would be a sepalgebra *)
+class compatible_perm_alg = perm_alg +
+  assumes all_compatible: \<open>compatible a b\<close>
+
+
+context multiunit_sep_alg
+begin
+
+lemma same_unit_compatible:
+  \<open>unitof a = unitof b \<Longrightarrow> compatible a b\<close>
+  by (metis trans_disjoint_is_compatible unitof_disjoint unitof_disjoint2)
+
+lemma compatible_then_same_unit:
+  \<open>compatible a b \<Longrightarrow> unitof a = unitof b\<close>
+  by (metis compatible_def trans_compatible_units_identical unitof_disjoint unitof_disjoint2
+      unitof_is_unit_sepadd rtranclp.rtrancl_into_rtrancl)
+
+end
+
+(* compatible multiunit sep algebras collapse *)
+class compatible_multiunit_sep_alg = compatible_perm_alg + multiunit_sep_alg
+begin
+
+lemma exactly_one_unit: \<open>\<exists>!u. unit_sepadd u\<close>
+  using all_compatible compatible_units_identical unitof_is_unit_sepadd by blast
+
+definition \<open>the_unit \<equiv> The unit_sepadd\<close>
+
+lemma the_unit_is_a_unit:
+  \<open>unit_sepadd the_unit\<close>
+  unfolding the_unit_def
+  by (rule theI', simp add: exactly_one_unit)
+
+lemma is_sep_alg:
+  \<open>class.sep_alg the_unit (\<le>) (<) the_unit (##) (+) (\<lambda>_. the_unit)\<close>
+  apply standard
+      apply (metis exactly_one_unit unitof_is_unit_sepadd unitof_le the_unit_is_a_unit)
+     apply (metis exactly_one_unit unitof_disjoint unitof_is_unit_sepadd the_unit_is_a_unit)
+    apply (metis exactly_one_unit unitof_disjoint2 unitof_is_unit_sepadd the_unit_is_a_unit)
+   apply (metis exactly_one_unit unitof_disjoint2 unitof_is_unit2 unitof_is_unit_sepadd
+      the_unit_is_a_unit)
+  apply (metis exactly_one_unit unitof_disjoint2 unitof_is_unit2 unitof_is_unit_sepadd
+      the_unit_is_a_unit)
+  done
+
+end
+
+context sep_alg
+begin
+
+subclass compatible_perm_alg
+  by standard
+    (simp add: same_unit_compatible)
+
+end
+
 subsection \<open> Separation Algebras with glb \<close>
 
 class glb_perm_alg = perm_alg + inf +
-  assumes sepinf_leqL[intro]: \<open>\<not> a ## b \<Longrightarrow> a \<sqinter> b \<le> a\<close>
-    and sepinf_leqR[intro]: \<open>\<not> a ## b \<Longrightarrow> a \<sqinter> b \<le> b\<close>
-    and sepinf_least[intro]: \<open>\<not> a ## b \<Longrightarrow> c \<le> a \<Longrightarrow> c \<le> b \<Longrightarrow> c \<le> a \<sqinter> b\<close>
+  assumes sepinf_leqL[intro]: \<open>compatible a b \<Longrightarrow> a \<sqinter> b \<le> a\<close>
+    and sepinf_leqR[intro]: \<open>compatible a b \<Longrightarrow> a \<sqinter> b \<le> b\<close>
+    and sepinf_least[intro]: \<open>compatible a b \<Longrightarrow> c \<le> a \<Longrightarrow> c \<le> b \<Longrightarrow> c \<le> a \<sqinter> b\<close>
 begin
 
 lemma nondisjoint_implies_glb_exists:
-  \<open>\<not> a ## b \<Longrightarrow> glb_exists a b\<close>
+  \<open>compatible a b \<Longrightarrow> glb_exists a b\<close>
   by (metis glb_exists_def sepinf_least sepinf_leqL sepinf_leqR)
 
 lemma glb_eq[simp]:
-  \<open>\<not> a ## b \<Longrightarrow> glb a b = a \<sqinter> b\<close>
+  \<open>compatible a b \<Longrightarrow> glb a b = a \<sqinter> b\<close>
   unfolding glb_def
   by (force intro: Greatest_equality)
+
+end
+
+class compatible_glb_perm_alg = glb_perm_alg + compatible_perm_alg
+begin
+
+subclass semilattice_inf
+  by standard
+    (simp add: all_compatible sepinf_leqL sepinf_leqR sepinf_least)+
 
 end
 
 class glb_multiunit_sep_alg = multiunit_sep_alg + glb_perm_alg
 
 class glb_sep_alg = sep_alg + glb_multiunit_sep_alg
+begin
+
+subclass compatible_glb_perm_alg
+  by standard
+
+end
 
 subsection \<open>Trivial Self-disjointness Separation Algebra\<close>
 
