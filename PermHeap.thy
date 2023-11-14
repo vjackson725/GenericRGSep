@@ -589,4 +589,103 @@ instance
 end
 
 
+instantiation pheap :: (compatible_glb_perm_alg, type, type) glb_sep_alg
+begin
+
+lift_definition inf_pheap :: \<open>('a,'b,'c) pheap \<Rightarrow> ('a,'b,'c) pheap \<Rightarrow> ('a,'b,'c) pheap\<close> is
+  \<open>\<lambda>ha hb.
+    (\<lambda>x. case ha x of Some (pa, va) \<Rightarrow>
+          (case hb x of Some (pb, vb) \<Rightarrow>
+            if va = vb
+            then Some (pa \<sqinter> pb, va)
+            else None
+          | None \<Rightarrow> None)
+        | None \<Rightarrow> None)\<close>
+  by (simp add: dom_def option.case_eq_if)
+
+lemma app_inf_pheap_eq:
+  fixes a b :: \<open>('a,'b,'c) pheap\<close>
+  shows
+  \<open>(a \<sqinter> b) \<bullet> x =
+    (case a \<bullet> x of Some (pa, va) \<Rightarrow>
+          (case b \<bullet> x of Some (pb, vb) \<Rightarrow>
+            if va = vb
+            then Some (pa \<sqinter> pb, va)
+            else None
+          | None \<Rightarrow> None)
+        | None \<Rightarrow> None)\<close>
+  by (simp add: inf_pheap.rep_eq split: option.splits)
+
+instance
+  apply standard
+    apply (force simp add: less_eq_pheap_def app_inf_pheap_eq split: option.splits)
+   apply (force simp add: less_eq_pheap_def app_inf_pheap_eq split: option.splits)
+
+  apply (simp add: all_compatible less_eq_pheap_def app_inf_pheap_eq split: option.splits)
+  apply clarsimp
+  apply (rule conjI, metis not_Some_prod_eq)
+  apply clarsimp
+  apply (rename_tac pa va)
+  apply (rule conjI, metis not_Some_prod_eq)
+  apply clarsimp
+  apply (rename_tac pb vb)
+  apply (rule conjI)
+   apply fastforce
+  apply clarsimp
+  apply (rule ccontr)
+  apply fastforce
+  done
+
+end
+
+
+instantiation pheap :: (compatible_glb_perm_alg, type, type) distrib_glb_sep_alg
+begin
+
+lift_definition inf_pheap :: \<open>('a,'b,'c) pheap \<Rightarrow> ('a,'b,'c) pheap \<Rightarrow> ('a,'b,'c) pheap\<close> is
+  \<open>\<lambda>ha hb.
+    (\<lambda>x. case ha x of Some (pa, va) \<Rightarrow>
+          (case hb x of Some (pb, vb) \<Rightarrow>
+            if va = vb
+            then Some (pa \<sqinter> pb, va)
+            else None
+          | None \<Rightarrow> None)
+        | None \<Rightarrow> None)\<close>
+  by (simp add: dom_def option.case_eq_if)
+
+lemma app_inf_pheap_eq:
+  fixes a b :: \<open>('a,'b,'c) pheap\<close>
+  shows
+  \<open>(a \<sqinter> b) \<bullet> x =
+    (case a \<bullet> x of Some (pa, va) \<Rightarrow>
+          (case b \<bullet> x of Some (pb, vb) \<Rightarrow>
+            if va = vb
+            then Some (pa \<sqinter> pb, va)
+            else None
+          | None \<Rightarrow> None)
+        | None \<Rightarrow> None)\<close>
+  by (simp add: inf_pheap.rep_eq split: option.splits)
+
+instance
+  apply standard
+    apply (force simp add: less_eq_pheap_def app_inf_pheap_eq split: option.splits)
+   apply (force simp add: less_eq_pheap_def app_inf_pheap_eq split: option.splits)
+
+  apply (simp add: all_compatible less_eq_pheap_def app_inf_pheap_eq split: option.splits)
+  apply clarsimp
+  apply (rule conjI, metis not_Some_prod_eq)
+  apply clarsimp
+  apply (rename_tac pa va)
+  apply (rule conjI, metis not_Some_prod_eq)
+  apply clarsimp
+  apply (rename_tac pb vb)
+  apply (rule conjI)
+   apply fastforce
+  apply clarsimp
+  apply (rule ccontr)
+  apply fastforce
+  done
+
+end
+
 end

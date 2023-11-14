@@ -2,61 +2,113 @@ theory Experimental
   imports Stabilisation PermHeap
 begin
 
+section \<open> Labelled Permission algebra \<close>
+
+text \<open>
+  This subclass is supposed to be the algebraic version of a heap.
+  It introduces an order which must be compatible with, but can be more coarse than,
+  the subresource relation. The equivalence classes induced by this order represent
+  resources with the same set of labels.
+
+  We want labels to form a distributive lattice, to take advantage of
+  Birkhoff's representation theorem.
+  TODO,sorry: The law \<open>labels_strong_distrib_law\<close> probably does this, but I need to check.
+\<close>
+
+class labelled_perm_alg = perm_alg + indivisible_units_perm_alg +
+  fixes labels_leq :: \<open>'a \<Rightarrow> 'a \<Rightarrow> bool\<close> (infix \<open>\<le>\<^sub>l\<close> 50)
+    and labels_less :: \<open>'a \<Rightarrow> 'a \<Rightarrow> bool\<close> (infix \<open><\<^sub>l\<close> 50)
+  assumes labels_leq_less_preorder:
+    \<open>preordering labels_leq labels_less\<close>
+  assumes labels_less_embeds: \<open>\<And>a b. a < b \<Longrightarrow> a <\<^sub>l b\<close>
+  assumes labels_leq_upper_bound:
+    \<open>\<And>a b c. a ## b \<Longrightarrow> a \<le>\<^sub>l c \<Longrightarrow> b \<le>\<^sub>l c \<Longrightarrow> a + b \<le>\<^sub>l c\<close>
+  assumes labels_strong_distrib_law:
+    \<open>\<And>a b c.
+      a ## b \<Longrightarrow> a ## c \<Longrightarrow> glb_exists b c \<Longrightarrow> glb_exists (a + b) (a + c) \<Longrightarrow>
+        glb (a + b) (a + c) \<le>\<^sub>l a + glb b c\<close>
+begin
+
+lemma labels_leq_embeds:
+  \<open>a \<le> b \<Longrightarrow> a \<le>\<^sub>l b\<close>
+  using labels_leq_less_preorder labels_less_embeds
+  by (metis order.order_iff_strict preordering.axioms(1) partial_preordering.refl
+      preordering.strict_implies_order)
+
+lemma labels_leq_add:
+  \<open>a ## b \<Longrightarrow> a \<le>\<^sub>l (a + b)\<close>
+  by (simp add: labels_leq_embeds)
+
+definition labels_eq :: \<open>'a \<Rightarrow> 'a \<Rightarrow> bool\<close> (infix \<open>=\<^sub>l\<close> 50) where
+  \<open>labels_eq a b \<equiv> a \<le>\<^sub>l b \<and> b \<le>\<^sub>l a\<close>
+
+lemma labels_eq_equivp: \<open>equivp (=\<^sub>l)\<close>
+  unfolding labels_eq_def
+  using labels_leq_less_preorder
+  by (force intro: equivpI reflpI sympI transpI dest: preordering_refl preordering_trans)
+
+lemma disjoint_units_have_same_labels:
+  assumes
+    \<open>a ## b\<close>
+    \<open>unit_sepadd a\<close>
+    \<open>unit_sepadd b\<close>
+  shows
+    \<open>a =\<^sub>l b\<close>
+  using assms
+  by (metis labels_eq_def labels_leq_add disjoint_symm unit_sepadd_def)
+
+lemma same_labels_as_unit_is_unit:
+  assumes
+    \<open>a ## b\<close>
+    \<open>unit_sepadd a\<close>
+    \<open>a =\<^sub>l b\<close>
+  shows
+    \<open>unit_sepadd b\<close>
+  using assms
+  by (metis labels_eq_def order.order_iff_strict labels_leq_less_preorder labels_less_embeds
+      partial_le_plus unit_sepadd_def preordering.strict_iff_not)
+
+subsection  \<open> Label overlap \<close>
+
+definition \<open>label_overlap a b \<equiv> \<exists>c. c \<le>\<^sub>l a \<and> c \<le>\<^sub>l b \<and> \<not> unit_sepadd c\<close>
+
+lemma label_overlap_refl:
+  \<open>\<not> unit_sepadd a \<Longrightarrow> label_overlap a a\<close>
+  using label_overlap_def labels_leq_embeds by blast
+
+lemma label_overlap_sym:
+  \<open>label_overlap a b \<Longrightarrow> label_overlap b a\<close>
+  using label_overlap_def by blast
+
+lemma same_labels_implies_label_overlap:
+  \<open>a =\<^sub>l b \<Longrightarrow> \<not> unit_sepadd a \<Longrightarrow> \<not> unit_sepadd b \<Longrightarrow> label_overlap a b\<close>
+  using label_overlap_def labels_eq_def labels_leq_embeds by blast
+
+end
+
+class halving_labelled_perm_alg = halving_perm_alg + labelled_perm_alg
+begin
+
+lemma half_subseteq_labels: \<open>half a \<le>\<^sub>l a\<close>
+  by (metis half_additive_split half_self_disjoint labels_leq_embeds partial_le_plus2)
+
+lemma half_superseteq_labels: \<open>a \<le>\<^sub>l half a\<close>
+  by (metis half_additive_split half_self_disjoint labels_leq_upper_bound labels_leq_embeds
+      order.refl)
+
+lemma half_has_same_labels: \<open>half a =\<^sub>l a\<close>
+  by (simp add: half_subseteq_labels half_superseteq_labels labels_eq_def)
+
+end
+
+section \<open> \<close>
+
 context perm_alg
 begin
 
 (* sepadd irreducible *)
 definition sepadd_irr :: \<open>'a \<Rightarrow> bool\<close> where
   \<open>sepadd_irr x \<equiv> (\<not> unit_sepadd x) \<and> (\<forall>a b. a < x \<longrightarrow> b < x \<longrightarrow> a ## b \<longrightarrow> a + b < x)\<close>
-
-end
-
-instantiation pheap :: (compatible_glb_perm_alg, type, type) glb_sep_alg
-begin
-
-lift_definition inf_pheap :: \<open>('a,'b,'c) pheap \<Rightarrow> ('a,'b,'c) pheap \<Rightarrow> ('a,'b,'c) pheap\<close> is
-  \<open>\<lambda>ha hb.
-    (\<lambda>x. case ha x of Some (pa, va) \<Rightarrow>
-          (case hb x of Some (pb, vb) \<Rightarrow>
-            if va = vb
-            then Some (pa \<sqinter> pb, va)
-            else None
-          | None \<Rightarrow> None)
-        | None \<Rightarrow> None)\<close>
-  by (simp add: dom_def option.case_eq_if)
-
-lemma app_inf_pheap_eq:
-  fixes a b :: \<open>('a,'b,'c) pheap\<close>
-  shows
-  \<open>(a \<sqinter> b) \<bullet> x =
-    (case a \<bullet> x of Some (pa, va) \<Rightarrow>
-          (case b \<bullet> x of Some (pb, vb) \<Rightarrow>
-            if va = vb
-            then Some (pa \<sqinter> pb, va)
-            else None
-          | None \<Rightarrow> None)
-        | None \<Rightarrow> None)\<close>
-  by (simp add: inf_pheap.rep_eq split: option.splits)
-
-instance
-  apply standard
-    apply (force simp add: less_eq_pheap_def app_inf_pheap_eq split: option.splits)
-   apply (force simp add: less_eq_pheap_def app_inf_pheap_eq split: option.splits)
-
-  apply (simp add: all_compatible less_eq_pheap_def app_inf_pheap_eq split: option.splits)
-  apply clarsimp
-  apply (rule conjI, metis not_Some_prod_eq)
-  apply clarsimp
-  apply (rename_tac pa va)
-  apply (rule conjI, metis not_Some_prod_eq)
-  apply clarsimp
-  apply (rename_tac pb vb)
-  apply (rule conjI)
-   apply fastforce
-  apply clarsimp
-  apply (rule ccontr)
-  apply fastforce
-  done
 
 end
 
