@@ -463,6 +463,8 @@ lemma le_map_pheapL:
   \<open>map_pheap fp fv a \<le> a \<longleftrightarrow> (\<forall>x p v. app_pheap a x = Some (p, v) \<longrightarrow> fp p \<le> p \<and> fv v = v)\<close>
   by (force simp add: less_eq_pheap_def)
 
+section \<open> Pheaps are a sepalgebra \<close>
+
 instantiation pheap :: (perm_alg,type,type) sep_alg
 begin
 
@@ -547,6 +549,8 @@ instance
 
 end
 
+subsection \<open> halving algebra \<close>
+
 instantiation pheap :: (halving_perm_alg,type,type) halving_sep_alg
 begin
 
@@ -569,6 +573,7 @@ instance
 
 end
 
+subsection \<open> disjoint parts algebra \<close>
 
 instantiation pheap :: (disjoint_parts_perm_alg,type,type) disjoint_parts_perm_alg
 begin
@@ -588,8 +593,28 @@ instance
 
 end
 
+subsection \<open> cancellative algebra \<close>
 
-instantiation pheap :: (compatible_glb_perm_alg, type, type) glb_sep_alg
+instantiation pheap :: (cancel_no_unit_perm_alg, type, type) cancel_sep_alg
+begin
+
+lemma plus_hperm_partial_right_cancel:
+  fixes a b c :: \<open>('a \<times> 'v) option\<close>
+  shows
+    \<open>(\<forall>a' c'. a = Some a' \<longrightarrow> c = Some c' \<longrightarrow> fst a' ## fst c' \<and> snd a' = snd c') \<Longrightarrow>
+      (\<forall>b' c'. b = Some b' \<longrightarrow> c = Some c' \<longrightarrow> fst b' ## fst c' \<and> snd b' = snd c') \<Longrightarrow>
+      (a \<oplus>\<^sub>p c = b \<oplus>\<^sub>p c) \<longleftrightarrow> (a = b)\<close>
+  by (fastforce simp add: plus_hperm_def split: option.splits prod.splits)
+
+instance
+  by standard
+    (force simp add: disjoint_pheap_def' pheap_eq_iff plus_hperm_partial_right_cancel)
+
+end
+
+subsection \<open> glb + distributive algebras \<close>
+
+instantiation pheap :: (allcompatible_glb_perm_alg, type, type) glb_sep_alg
 begin
 
 lift_definition inf_pheap :: \<open>('a,'b,'c) pheap \<Rightarrow> ('a,'b,'c) pheap \<Rightarrow> ('a,'b,'c) pheap\<close> is
@@ -638,53 +663,15 @@ instance
 
 end
 
-
-instantiation pheap :: (compatible_glb_perm_alg, type, type) distrib_glb_sep_alg
+instantiation pheap :: (distrib_perm_alg, type, type) distrib_sep_alg
 begin
 
-lift_definition inf_pheap :: \<open>('a,'b,'c) pheap \<Rightarrow> ('a,'b,'c) pheap \<Rightarrow> ('a,'b,'c) pheap\<close> is
-  \<open>\<lambda>ha hb.
-    (\<lambda>x. case ha x of Some (pa, va) \<Rightarrow>
-          (case hb x of Some (pb, vb) \<Rightarrow>
-            if va = vb
-            then Some (pa \<sqinter> pb, va)
-            else None
-          | None \<Rightarrow> None)
-        | None \<Rightarrow> None)\<close>
-  by (simp add: dom_def option.case_eq_if)
-
-lemma app_inf_pheap_eq:
-  fixes a b :: \<open>('a,'b,'c) pheap\<close>
-  shows
-  \<open>(a \<sqinter> b) \<bullet> x =
-    (case a \<bullet> x of Some (pa, va) \<Rightarrow>
-          (case b \<bullet> x of Some (pb, vb) \<Rightarrow>
-            if va = vb
-            then Some (pa \<sqinter> pb, va)
-            else None
-          | None \<Rightarrow> None)
-        | None \<Rightarrow> None)\<close>
-  by (simp add: inf_pheap.rep_eq split: option.splits)
+(* TODO: not good enough for (0,1] permissions ! *)
 
 instance
-  apply standard
-    apply (force simp add: less_eq_pheap_def app_inf_pheap_eq split: option.splits)
-   apply (force simp add: less_eq_pheap_def app_inf_pheap_eq split: option.splits)
-
-  apply (simp add: all_compatible less_eq_pheap_def app_inf_pheap_eq split: option.splits)
-  apply clarsimp
-  apply (rule conjI, metis not_Some_prod_eq)
-  apply clarsimp
-  apply (rename_tac pa va)
-  apply (rule conjI, metis not_Some_prod_eq)
-  apply clarsimp
-  apply (rename_tac pb vb)
-  apply (rule conjI)
-   apply fastforce
-  apply clarsimp
-  apply (rule ccontr)
-  apply fastforce
-  done
+  by standard
+    (fastforce simp add: disjoint_pheap_def' pheap_eq_iff app_inf_pheap_eq inf_add_distrib1
+      split: option.splits)
 
 end
 

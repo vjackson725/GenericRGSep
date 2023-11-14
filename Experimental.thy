@@ -130,21 +130,12 @@ lemma sepadd_irr_eq2:
 
 end
 
-class distrib_sep_alg = glb_sep_alg +
-  assumes inf_add_distrib1:
-    \<open>\<And>x a b. a ## b \<Longrightarrow> x \<sqinter> (a + b) = (x \<sqinter> a) + (x \<sqinter> b)\<close>
+class big_sep_alg = distrib_sep_alg + cancel_perm_alg
 begin
 
 lemma False
   nitpick
   oops
-
-lemma inf_add_distrib2:
-    \<open>\<And>x a b. a ## b \<Longrightarrow> (a + b) \<sqinter> x = (a \<sqinter> x) + (b \<sqinter> x)\<close>
-  by (simp add: inf_add_distrib1 inf_commute)
-
-lemma distrib_join_disjoint: \<open>a ## b \<Longrightarrow> x \<sqinter> a ## x \<sqinter> b\<close>
-  by (meson disjoint_preservation disjoint_symm inf.cobounded2)
 
 lemma sepadd_irr_distrib_eq:
   shows \<open>sepadd_irr x \<longleftrightarrow> x \<noteq> 0 \<and> (\<forall>a b. a ## b \<longrightarrow> x \<le> a + b \<longrightarrow> x \<le> a \<or> x \<le> b)\<close>
@@ -154,15 +145,6 @@ lemma sepadd_irr_distrib_eq:
       le_iff_sepadd order.strict_implies_not_eq inf.cobounded1 inf.cobounded2 neq_le_trans)
   apply (force simp add: order.strict_iff_not inf.absorb_iff2 inf_add_distrib1)
   done
-
-end
-
-class big_sep_alg = disjoint_parts_sep_alg + cancel_perm_alg
-begin
-
-lemma False
-  nitpick
-  oops
 
 definition \<open>foundation a \<equiv> {j. j \<le> a \<and> sepadd_irr j}\<close>
 

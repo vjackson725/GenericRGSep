@@ -270,51 +270,6 @@ lemma sepdomsubseteq_disjointD:
   \<open>sepdomsubseteq a b \<Longrightarrow> a ## c \<Longrightarrow> b ## c\<close>
   by (simp add: sepdomsubseteq_def)
 
-subsection \<open> Greatest lower bound \<close>
-
-definition
-  \<open>glb_exists a b \<equiv> \<exists>ab. ab \<le> a \<and> ab \<le> b \<and> (\<forall>ab'. ab' \<le> a \<longrightarrow> ab' \<le> b \<longrightarrow> ab' \<le> ab)\<close>
-
-definition \<open>glb a b \<equiv> (GREATEST ab. ab \<le> a \<and> ab \<le> b)\<close>
-
-lemma weak_distrib_law:
-  assumes
-    \<open>a ## b\<close>
-    \<open>a ## c\<close>
-    \<open>glb_exists b c\<close>
-    \<open>glb_exists (a + b) (a + c)\<close>
-  shows
-    \<open>a + glb b c \<le> glb (a + b) (a + c)\<close>
-proof -
-  obtain bc where
-    \<open>bc \<le> b\<close>
-    \<open>bc \<le> c\<close>
-    \<open>\<forall>bc'. bc' \<le> b \<longrightarrow> bc' \<le> c \<longrightarrow> bc' \<le> bc\<close>
-    using assms(3) glb_exists_def by blast
-  moreover obtain abac where
-    \<open>abac \<le> a + b\<close>
-    \<open>abac \<le> a + c\<close>
-    \<open>\<forall>abac'. abac' \<le> a + b \<longrightarrow> abac' \<le> a + c \<longrightarrow> abac' \<le> abac\<close>
-    using assms(4) glb_exists_def by blast
-  ultimately show ?thesis
-    unfolding glb_def
-    using assms(1,2)
-    apply -
-    apply (subst Greatest_equality[where x=bc], blast, blast)
-    apply (subst Greatest_equality[where x=abac], blast, blast)
-    apply (meson disjoint_preservation disjoint_symm_iff sepadd_left_mono)
-    done
-qed
-
-lemma weak_distrib_law2:
-  \<open>b ## c \<Longrightarrow>
-    glb_exists a b \<Longrightarrow>
-    glb_exists a c \<Longrightarrow>
-    glb_exists a (b + c) \<Longrightarrow>
-    glb a b + glb a c \<le> glb a (b + c)\<close>
-  text \<open> not true! \<close>
-  oops
-
 subsection \<open> Seplogic connectives \<close>
 
 definition sepconj :: \<open>('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool)\<close> (infixl \<open>\<^emph>\<close> 88) where
@@ -699,19 +654,6 @@ end
 
 section \<open> Permission/Separation Algebra Subclasses \<close>
 
-subsection \<open>Strongly Separated Separation Algebra\<close>
-
-class strong_separated_multiunit_sep_alg = multiunit_sep_alg +
-  assumes only_unit_selfsep: \<open>a ## a \<Longrightarrow> unitof a = a\<close>
-begin
-
-lemma selfsep_iff: \<open>a ## a \<longleftrightarrow> unitof a = a\<close>
-  by (metis only_unit_selfsep unitof_disjoint)
-
-end
-
-class strong_separated_sep_alg = sep_alg + strong_separated_multiunit_sep_alg
-
 section \<open> compatibility \<close>
 
 context perm_alg
@@ -755,7 +697,7 @@ lemma compatible_units_identical:
 end
 
 (* almost a sep_alg, in that if there was a unit, it would be a sepalgebra *)
-class compatible_perm_alg = perm_alg +
+class allcompatible_perm_alg = perm_alg +
   assumes all_compatible: \<open>compatible a b\<close>
 
 
@@ -774,7 +716,7 @@ lemma compatible_then_same_unit:
 end
 
 (* compatible multiunit sep algebras collapse *)
-class compatible_multiunit_sep_alg = compatible_perm_alg + multiunit_sep_alg
+class allcompatible_multiunit_sep_alg = allcompatible_perm_alg + multiunit_sep_alg
 begin
 
 lemma exactly_one_unit: \<open>\<exists>!u. unit_sepadd u\<close>
@@ -804,13 +746,121 @@ end
 context sep_alg
 begin
 
-subclass compatible_perm_alg
+subclass allcompatible_perm_alg
   by standard
     (simp add: same_unit_compatible)
 
 end
 
+subsection \<open>Strongly Separated Separation Algebra\<close>
+
+class strong_separated_multiunit_sep_alg = multiunit_sep_alg +
+  assumes only_unit_selfsep: \<open>a ## a \<Longrightarrow> unitof a = a\<close>
+begin
+
+lemma selfsep_iff: \<open>a ## a \<longleftrightarrow> unitof a = a\<close>
+  by (metis only_unit_selfsep unitof_disjoint)
+
+end
+
+class strong_separated_sep_alg = sep_alg + strong_separated_multiunit_sep_alg
+
+subsection \<open> Disjoint Parts Algebra \<close>
+
+class disjoint_parts_perm_alg = perm_alg +
+  assumes disjointness_left_plusI: \<open>a ## b \<Longrightarrow> a ## c \<Longrightarrow> b ## c \<Longrightarrow> a + b ## c\<close>
+begin
+
+lemmas disjointness_left_plusI' =
+  disjointness_left_plusI
+  disjointness_left_plusI[OF disjoint_symm]
+  disjointness_left_plusI[OF _ disjoint_symm]
+  disjointness_left_plusI[OF _ _ disjoint_symm]
+  disjointness_left_plusI[OF _ disjoint_symm disjoint_symm]
+  disjointness_left_plusI[OF disjoint_symm _ disjoint_symm]
+  disjointness_left_plusI[OF disjoint_symm disjoint_symm]
+  disjointness_left_plusI[OF disjoint_symm disjoint_symm disjoint_symm]
+
+lemma disjointness_right_plusI:
+  \<open>a ## b \<Longrightarrow> a ## c \<Longrightarrow> b ## c \<Longrightarrow> a ## b + c\<close>
+  using disjointness_left_plusI disjoint_symm by auto
+
+lemmas disjointness_right_plusI' =
+  disjointness_right_plusI
+  disjointness_right_plusI[OF disjoint_symm]
+  disjointness_right_plusI[OF _ disjoint_symm]
+  disjointness_right_plusI[OF _ _ disjoint_symm]
+  disjointness_right_plusI[OF _ disjoint_symm disjoint_symm]
+  disjointness_right_plusI[OF disjoint_symm _ disjoint_symm]
+  disjointness_right_plusI[OF disjoint_symm disjoint_symm]
+  disjointness_right_plusI[OF disjoint_symm disjoint_symm disjoint_symm]
+
+lemma disjointness_left_plus_eq:
+  \<open>a ## b \<Longrightarrow> a + b ## c \<longleftrightarrow> a ## c \<and> b ## c\<close>
+  by (metis disjointness_left_plusI disjoint_add_leftL disjoint_add_leftR)
+
+lemma disjointness_right_plus_eq:
+  \<open>b ## c \<Longrightarrow> a ## b + c \<longleftrightarrow> a ## b \<and> a ## c\<close>
+  by (metis disjointness_right_plusI disjoint_add_rightL disjoint_add_rightR)
+
+lemma partial_add_double_assoc2:
+  \<open>a ## b \<Longrightarrow> a ## c \<Longrightarrow> a ## d \<Longrightarrow> b ## c \<Longrightarrow> b ## d \<Longrightarrow> c ## d \<Longrightarrow> a + b + (c + d) = (a + c) + (b + d)\<close>
+  by (meson disjointness_right_plusI partial_add_double_assoc)
+
+end
+
+class disjoint_parts_multiunit_sep_alg = multiunit_sep_alg + disjoint_parts_perm_alg
+
+class disjoint_parts_sep_alg = sep_alg + disjoint_parts_multiunit_sep_alg
+
 subsection \<open> Separation Algebras with glb \<close>
+
+(*
+subsection \<open> Greatest lower bound \<close>
+
+definition
+  \<open>glb_exists a b \<equiv> \<exists>ab. ab \<le> a \<and> ab \<le> b \<and> (\<forall>ab'. ab' \<le> a \<longrightarrow> ab' \<le> b \<longrightarrow> ab' \<le> ab)\<close>
+
+definition \<open>glb a b \<equiv> (GREATEST ab. ab \<le> a \<and> ab \<le> b)\<close>
+
+lemma weak_distrib_law:
+  assumes
+    \<open>a ## b\<close>
+    \<open>a ## c\<close>
+    \<open>glb_exists b c\<close>
+    \<open>glb_exists (a + b) (a + c)\<close>
+  shows
+    \<open>a + glb b c \<le> glb (a + b) (a + c)\<close>
+proof -
+  obtain bc where
+    \<open>bc \<le> b\<close>
+    \<open>bc \<le> c\<close>
+    \<open>\<forall>bc'. bc' \<le> b \<longrightarrow> bc' \<le> c \<longrightarrow> bc' \<le> bc\<close>
+    using assms(3) glb_exists_def by blast
+  moreover obtain abac where
+    \<open>abac \<le> a + b\<close>
+    \<open>abac \<le> a + c\<close>
+    \<open>\<forall>abac'. abac' \<le> a + b \<longrightarrow> abac' \<le> a + c \<longrightarrow> abac' \<le> abac\<close>
+    using assms(4) glb_exists_def by blast
+  ultimately show ?thesis
+    unfolding glb_def
+    using assms(1,2)
+    apply -
+    apply (subst Greatest_equality[where x=bc], blast, blast)
+    apply (subst Greatest_equality[where x=abac], blast, blast)
+    apply (meson disjoint_preservation disjoint_symm_iff sepadd_left_mono)
+    done
+qed
+
+lemma weak_distrib_law2:
+  \<open>b ## c \<Longrightarrow>
+    glb_exists a b \<Longrightarrow>
+    glb_exists a c \<Longrightarrow>
+    glb_exists a (b + c) \<Longrightarrow>
+    glb a b + glb a c \<le> glb a (b + c)\<close>
+  text \<open> not true! \<close>
+  oops
+*)
 
 class glb_perm_alg = perm_alg + inf +
   assumes sepinf_leqL[intro]: \<open>compatible a b \<Longrightarrow> a \<sqinter> b \<le> a\<close>
@@ -818,18 +868,9 @@ class glb_perm_alg = perm_alg + inf +
     and sepinf_least[intro]: \<open>compatible a b \<Longrightarrow> c \<le> a \<Longrightarrow> c \<le> b \<Longrightarrow> c \<le> a \<sqinter> b\<close>
 begin
 
-lemma nondisjoint_implies_glb_exists:
-  \<open>compatible a b \<Longrightarrow> glb_exists a b\<close>
-  by (metis glb_exists_def sepinf_least sepinf_leqL sepinf_leqR)
-
-lemma glb_eq[simp]:
-  \<open>compatible a b \<Longrightarrow> glb a b = a \<sqinter> b\<close>
-  unfolding glb_def
-  by (force intro: Greatest_equality)
-
 end
 
-class compatible_glb_perm_alg = glb_perm_alg + compatible_perm_alg
+class allcompatible_glb_perm_alg = glb_perm_alg + allcompatible_perm_alg
 begin
 
 subclass semilattice_inf
@@ -843,10 +884,32 @@ class glb_multiunit_sep_alg = multiunit_sep_alg + glb_perm_alg
 class glb_sep_alg = sep_alg + glb_multiunit_sep_alg
 begin
 
-subclass compatible_glb_perm_alg
+subclass allcompatible_glb_perm_alg
   by standard
 
 end
+
+subsubsection \<open> distributive glb/add \<close>
+
+(* TODO: generalise this to non-compatible algebras *)
+class distrib_perm_alg = allcompatible_glb_perm_alg +
+  assumes inf_add_distrib1:
+    \<open>\<And>x a b. a ## b \<Longrightarrow> x \<sqinter> (a + b) = (x \<sqinter> a) + (x \<sqinter> b)\<close>
+begin
+
+lemma left_glb_preserves_disjoint:
+  \<open>a ## b \<Longrightarrow> (x \<sqinter> a) ## (x \<sqinter> b)\<close>
+  by (meson disjoint_preservation disjoint_symm inf.cobounded2)
+
+lemma inf_add_distrib2:
+    \<open>\<And>x a b. a ## b \<Longrightarrow> (a + b) \<sqinter> x = (a \<sqinter> x) + (b \<sqinter> x)\<close>
+  by (simp add: inf_add_distrib1 inf_commute)
+
+end
+
+(* multiunit algebras collapse to a sep alg *)
+
+class distrib_sep_alg = sep_alg + distrib_perm_alg
 
 subsection \<open>Trivial Self-disjointness Separation Algebra\<close>
 
@@ -894,6 +957,47 @@ lemmas partial_right_cancelD = iffD1[OF partial_right_cancel, rotated 2]
 lemmas partial_right_cancel2D = iffD1[OF partial_right_cancel2, rotated 2]
 lemmas partial_left_cancelD = iffD1[OF partial_left_cancel, rotated 2]
 lemmas partial_left_cancel2D = iffD1[OF partial_left_cancel2, rotated 2]
+
+lemma cancel_right_to_unit:
+  assumes
+    \<open>a ## b\<close>
+    \<open>a + b = b\<close>
+  shows \<open>unit_sepadd a\<close>
+proof (clarsimp simp add: unit_sepadd_def)
+  fix c
+  assume D0:
+    \<open>a ## c\<close>
+
+  have E1: \<open>a = a + a\<close>
+  proof -
+    have \<open>b ## a + a\<close>
+      using assms
+      by (simp add: disjoint_add_swap disjoint_symm)
+    moreover have \<open>b + a = b + (a + a)\<close>
+      using assms
+      by (metis partial_add_assoc3 partial_add_commute disjoint_add_swap disjoint_symm)
+    ultimately show ?thesis
+      using assms(1)
+      by (simp add: disjoint_symm_iff)
+  qed
+
+  have D1: \<open>c + a ## a\<close>
+    using assms D0 E1
+    by (metis disjoint_add_commuteL disjoint_add_rightL)
+
+  have \<open>a + c = a + (c + a)\<close>
+    using assms D0 E1
+    by (metis disjoint_add_rightL partial_add_assoc partial_add_commute)
+  then show \<open>a + c = c\<close>
+    using D0 D1
+    by (metis partial_left_cancelD disjoint_symm partial_add_commute)
+qed
+
+lemma cancel_left_to_unit:
+  \<open>a ## b \<Longrightarrow> a + b = a \<Longrightarrow> unit_sepadd b\<close>
+  by (metis cancel_right_to_unit disjoint_symm partial_add_commute)
+
+paragraph \<open> Seplogic \<close>
 
 lemma precise_iff_conj_distrib:
   fixes P :: \<open>'a \<Rightarrow> bool\<close>
@@ -981,6 +1085,28 @@ end
 
 class cancel_sep_alg = cancel_multiunit_sep_alg + sep_alg
 
+subsection \<open>No-unit perm alg\<close>
+
+text \<open>
+  Here we create a perm_alg without any unit.
+  Such an algebra is necessary to prove permission heaps are cancellative.
+\<close>
+class no_unit_perm_alg = perm_alg +
+  assumes no_units: \<open>\<not> unit_sepadd a\<close>
+
+class cancel_no_unit_perm_alg = no_unit_perm_alg + cancel_perm_alg
+begin
+
+lemma no_unit_cancel_rightD[dest]:
+  \<open>a ## b \<Longrightarrow> a + b = b \<Longrightarrow> False\<close>
+  using cancel_right_to_unit no_units by blast
+
+lemma no_unit_cancel_leftD[dest]:
+  \<open>a ## b \<Longrightarrow> a + b = a \<Longrightarrow> False\<close>
+  using cancel_left_to_unit no_units by blast
+
+end
+
 subsection \<open> Halving separation algebra \<close>
 
 class halving_perm_alg = perm_alg +
@@ -1018,54 +1144,6 @@ end
 class halving_multiunit_sep_alg = multiunit_sep_alg + halving_perm_alg
 
 class halving_sep_alg = sep_alg + halving_multiunit_sep_alg
-
-subsection \<open> Disjoint Parts Algebra \<close>
-
-class disjoint_parts_perm_alg = perm_alg +
-  assumes disjointness_left_plusI: \<open>a ## b \<Longrightarrow> a ## c \<Longrightarrow> b ## c \<Longrightarrow> a + b ## c\<close>
-begin
-
-lemmas disjointness_left_plusI' =
-  disjointness_left_plusI
-  disjointness_left_plusI[OF disjoint_symm]
-  disjointness_left_plusI[OF _ disjoint_symm]
-  disjointness_left_plusI[OF _ _ disjoint_symm]
-  disjointness_left_plusI[OF _ disjoint_symm disjoint_symm]
-  disjointness_left_plusI[OF disjoint_symm _ disjoint_symm]
-  disjointness_left_plusI[OF disjoint_symm disjoint_symm]
-  disjointness_left_plusI[OF disjoint_symm disjoint_symm disjoint_symm]
-
-lemma disjointness_right_plusI:
-  \<open>a ## b \<Longrightarrow> a ## c \<Longrightarrow> b ## c \<Longrightarrow> a ## b + c\<close>
-  using disjointness_left_plusI disjoint_symm by auto
-
-lemmas disjointness_right_plusI' =
-  disjointness_right_plusI
-  disjointness_right_plusI[OF disjoint_symm]
-  disjointness_right_plusI[OF _ disjoint_symm]
-  disjointness_right_plusI[OF _ _ disjoint_symm]
-  disjointness_right_plusI[OF _ disjoint_symm disjoint_symm]
-  disjointness_right_plusI[OF disjoint_symm _ disjoint_symm]
-  disjointness_right_plusI[OF disjoint_symm disjoint_symm]
-  disjointness_right_plusI[OF disjoint_symm disjoint_symm disjoint_symm]
-
-lemma disjointness_left_plus_eq:
-  \<open>a ## b \<Longrightarrow> a + b ## c \<longleftrightarrow> a ## c \<and> b ## c\<close>
-  by (metis disjointness_left_plusI disjoint_add_leftL disjoint_add_leftR)
-
-lemma disjointness_right_plus_eq:
-  \<open>b ## c \<Longrightarrow> a ## b + c \<longleftrightarrow> a ## b \<and> a ## c\<close>
-  by (metis disjointness_right_plusI disjoint_add_rightL disjoint_add_rightR)
-
-lemma partial_add_double_assoc2:
-  \<open>a ## b \<Longrightarrow> a ## c \<Longrightarrow> a ## d \<Longrightarrow> b ## c \<Longrightarrow> b ## d \<Longrightarrow> c ## d \<Longrightarrow> a + b + (c + d) = (a + c) + (b + d)\<close>
-  by (meson disjointness_right_plusI partial_add_double_assoc)
-
-end
-
-class disjoint_parts_multiunit_sep_alg = multiunit_sep_alg + disjoint_parts_perm_alg
-
-class disjoint_parts_sep_alg = sep_alg + disjoint_parts_multiunit_sep_alg
 
 subsection \<open> Indivisible units \<close>
 
