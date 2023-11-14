@@ -813,62 +813,144 @@ class disjoint_parts_multiunit_sep_alg = multiunit_sep_alg + disjoint_parts_perm
 
 class disjoint_parts_sep_alg = sep_alg + disjoint_parts_multiunit_sep_alg
 
-subsection \<open> Separation Algebras with glb \<close>
+subsection \<open> weak glb / lub \<close>
 
-(*
-subsection \<open> Greatest lower bound \<close>
+context perm_alg
+begin
 
 definition
   \<open>glb_exists a b \<equiv> \<exists>ab. ab \<le> a \<and> ab \<le> b \<and> (\<forall>ab'. ab' \<le> a \<longrightarrow> ab' \<le> b \<longrightarrow> ab' \<le> ab)\<close>
 
 definition \<open>glb a b \<equiv> (GREATEST ab. ab \<le> a \<and> ab \<le> b)\<close>
 
-lemma weak_distrib_law:
-  assumes
-    \<open>a ## b\<close>
-    \<open>a ## c\<close>
-    \<open>glb_exists b c\<close>
-    \<open>glb_exists (a + b) (a + c)\<close>
-  shows
-    \<open>a + glb b c \<le> glb (a + b) (a + c)\<close>
-proof -
-  obtain bc where
-    \<open>bc \<le> b\<close>
-    \<open>bc \<le> c\<close>
-    \<open>\<forall>bc'. bc' \<le> b \<longrightarrow> bc' \<le> c \<longrightarrow> bc' \<le> bc\<close>
-    using assms(3) glb_exists_def by blast
-  moreover obtain abac where
-    \<open>abac \<le> a + b\<close>
-    \<open>abac \<le> a + c\<close>
-    \<open>\<forall>abac'. abac' \<le> a + b \<longrightarrow> abac' \<le> a + c \<longrightarrow> abac' \<le> abac\<close>
-    using assms(4) glb_exists_def by blast
-  ultimately show ?thesis
-    unfolding glb_def
-    using assms(1,2)
-    apply -
-    apply (subst Greatest_equality[where x=bc], blast, blast)
-    apply (subst Greatest_equality[where x=abac], blast, blast)
-    apply (meson disjoint_preservation disjoint_symm_iff sepadd_left_mono)
-    done
-qed
+definition
+  \<open>lub_exists a b \<equiv> \<exists>ab. a \<le> ab \<and> b \<le> ab \<and> (\<forall>ab'. a \<le> ab' \<longrightarrow> b \<le> ab' \<longrightarrow> ab \<le> ab')\<close>
 
-lemma weak_distrib_law2:
-  \<open>b ## c \<Longrightarrow>
-    glb_exists a b \<Longrightarrow>
-    glb_exists a c \<Longrightarrow>
-    glb_exists a (b + c) \<Longrightarrow>
-    glb a b + glb a c \<le> glb a (b + c)\<close>
+definition \<open>lub a b \<equiv> (LEAST ab. a \<le> ab \<and> b \<le> ab)\<close>
+
+
+lemma lub_glb_distrib_weak:
+  assumes
+    \<open>glb_exists b c\<close>
+    \<open>lub_exists a (glb b c)\<close>
+    \<open>lub_exists a b\<close>
+    \<open>lub_exists a c\<close>
+    \<open>glb_exists (lub a b) (lub a c)\<close>
+  shows
+    \<open>lub a (glb b c) \<le> glb (lub a b) (lub a c)\<close>
+  using assms
+  unfolding glb_exists_def lub_exists_def lub_def glb_def
+  by (clarsimp simp add: Greatest_equality Least_equality)
+
+lemma lub_glb_distrib_strong:
+  assumes
+    \<open>glb_exists b c\<close>
+    \<open>lub_exists a (glb b c)\<close>
+    \<open>lub_exists a b\<close>
+    \<open>lub_exists a c\<close>
+    \<open>glb_exists (lub a b) (lub a c)\<close>
+  shows
+    \<open>glb (lub a b) (lub a c) \<le> lub a (glb b c)\<close>
+  text \<open> not true \<close>
+  nitpick
+  oops
+
+lemma glb_lub_distrib_weak:
+  assumes
+    \<open>glb_exists a b\<close>
+    \<open>glb_exists a c\<close>
+    \<open>lub_exists (glb a b) (glb a c)\<close>
+    \<open>lub_exists b c\<close>
+    \<open>glb_exists a (lub b c)\<close>
+  shows
+  \<open>lub (glb a b) (glb a c) \<le> glb a (lub b c)\<close>
+  using assms
+  unfolding glb_exists_def lub_exists_def lub_def glb_def
+  by (force simp add: Greatest_equality Least_equality)
+
+lemma glb_lub_distrib_strong:
+  assumes
+    \<open>glb_exists a b\<close>
+    \<open>glb_exists a c\<close>
+    \<open>lub_exists (glb a b) (glb a c)\<close>
+    \<open>lub_exists b c\<close>
+    \<open>glb_exists a (lub b c)\<close>
+  shows
+  \<open>glb a (lub b c) \<le> lub (glb a b) (glb a c)\<close>
   text \<open> not true! \<close>
   oops
-*)
+
+paragraph \<open> with addition \<close>
+
+lemma \<open>a ## b \<Longrightarrow> lub_exists a b \<Longrightarrow> lub a b \<le> a + b\<close>
+  unfolding lub_exists_def lub_def
+  by (auto simp add: Least_equality)
+
+lemma \<open>a ## b \<Longrightarrow> lub_exists a b \<Longrightarrow> lub a b \<ge> a + b\<close>
+  text \<open> not true! \<close>
+  oops
+
+
+lemma add_glb_distrib_weak:
+  assumes
+    \<open>glb_exists b c\<close>
+    \<open>a ## (glb b c)\<close>
+    \<open>a ## b\<close>
+    \<open>a ## c\<close>
+    \<open>glb_exists (a + b) (a + c)\<close>
+  shows
+    \<open>a + (glb b c) \<le> glb (a + b) (a + c)\<close>
+  using assms
+  unfolding glb_exists_def glb_def
+  by (clarsimp simp add: Greatest_equality, metis sepadd_left_mono)
+
+lemma add_glb_distrib_strong:
+  assumes
+    \<open>glb_exists b c\<close>
+    \<open>a ## (glb b c)\<close>
+    \<open>a ## b\<close>
+    \<open>a ## c\<close>
+    \<open>glb_exists (a + b) (a + c)\<close>
+  shows
+    \<open>glb (a + b) (a + c) \<le> a + (glb b c)\<close>
+  text \<open> not true \<close>
+  nitpick
+  oops
+
+lemma glb_add_distrib_weak:
+  assumes
+    \<open>glb_exists a b\<close>
+    \<open>glb_exists a c\<close>
+    \<open>(glb a b) ## (glb a c)\<close>
+    \<open>b ## c\<close>
+    \<open>glb_exists a (b + c)\<close>
+  shows
+    \<open>(glb a b) + (glb a c) \<le> glb a (b + c)\<close>
+  text \<open> not true \<close>
+  nitpick
+  oops
+
+lemma glb_add_distrib_strong:
+  assumes
+    \<open>glb_exists a b\<close>
+    \<open>glb_exists a c\<close>
+    \<open>(glb a b) ## (glb a c)\<close>
+    \<open>b ## c\<close>
+    \<open>glb_exists a (b + c)\<close>
+  shows
+  \<open>glb a (b + c) \<le> (glb a b) + (glb a c)\<close>
+  text \<open> not true \<close>
+  nitpick
+  oops
+
+end
+
+subsection \<open> Separation Algebras with glb \<close>
 
 class glb_perm_alg = perm_alg + inf +
   assumes sepinf_leqL[intro]: \<open>compatible a b \<Longrightarrow> a \<sqinter> b \<le> a\<close>
     and sepinf_leqR[intro]: \<open>compatible a b \<Longrightarrow> a \<sqinter> b \<le> b\<close>
     and sepinf_least[intro]: \<open>compatible a b \<Longrightarrow> c \<le> a \<Longrightarrow> c \<le> b \<Longrightarrow> c \<le> a \<sqinter> b\<close>
-begin
-
-end
 
 class allcompatible_glb_perm_alg = glb_perm_alg + allcompatible_perm_alg
 begin
