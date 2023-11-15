@@ -2,39 +2,6 @@ theory RGSep
   imports Stabilisation
 begin
 
-section \<open> Framed relations between perm_algs \<close>
-
-context perm_alg
-begin
-
-definition
-  \<open>rel_maintains_fwd r \<equiv>
-    \<lambda>a. (\<forall>b\<le>a. \<forall>x y. r x y \<longrightarrow> b \<le> x \<longrightarrow> b \<le> y)\<close>
-
-lemma rel_changes_rtranclp[simp]:
-  \<open>rel_maintains_fwd r\<^sup>*\<^sup>* = rel_maintains_fwd r\<close>
-proof (rule ext, rule iffI)
-  fix a
-  assume \<open>rel_maintains_fwd r\<^sup>*\<^sup>* a\<close>
-  then show \<open>rel_maintains_fwd r a\<close>
-    by (simp add: rel_maintains_fwd_def, blast)
-next
-  fix a
-  assume A1: \<open>rel_maintains_fwd r a\<close>
-  show \<open>rel_maintains_fwd r\<^sup>*\<^sup>* a\<close>
-    unfolding rel_maintains_fwd_def
-  proof (intro allI impI)
-    fix b x y
-    assume \<open>r\<^sup>*\<^sup>* x y\<close> \<open>b \<le> a\<close> \<open>b \<le> x\<close> 
-    then show \<open>b \<le> y\<close>
-      using A1
-      by (induct rule: rtranclp_induct)
-        (simp add: rel_maintains_fwd_def)+
-  qed
-qed
-
-end
-
 section \<open> frame consistent predicate \<close>
 
 definition \<open>frame_pred_extends f b \<equiv>

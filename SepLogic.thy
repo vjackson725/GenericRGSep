@@ -1102,10 +1102,10 @@ proof (rule iffI)
 
     have \<open>(P \<^emph> ((=) h1')) (h2+h2')\<close>
       using precise_assms partial_add_commute disjoint_symm sepconj_def
-      by (metis (mono_tags, lifting) perm_alg_class.sepconj_def)
+      by (metis (mono_tags, lifting))
     moreover have \<open>(P \<^emph> ((=) h2')) (h2+h2')\<close>
       using precise_assms partial_add_commute disjoint_symm sepconj_def
-      by (metis (mono_tags, lifting) perm_alg_class.sepconj_def)
+      by (metis (mono_tags, lifting))
     ultimately have \<open>(P \<^emph> ((=) h1' \<sqinter> (=) h2')) (h2+h2')\<close>
       using distrib_assm precise_assms
       by simp

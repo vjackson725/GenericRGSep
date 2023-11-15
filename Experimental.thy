@@ -131,6 +131,14 @@ lemma sepadd_irr_eq2:
 end
 
 
+lemma (in distrib_sep_alg) sepadd_irr_distrib_eq:
+  shows \<open>sepadd_irr x \<longleftrightarrow> x \<noteq> 0 \<and> (\<forall>a b. a ## b \<longrightarrow> x \<le> a + b \<longrightarrow> x \<le> a \<or> x \<le> b)\<close>
+  unfolding sepadd_irr_eq
+  apply (rule iffI)
+   apply (simp add: inf.order_iff inf_add_distrib1, metis disjoint_add_rightL disjoint_preservation
+      le_iff_sepadd order.strict_implies_not_eq inf.cobounded1 inf.cobounded2 neq_le_trans)
+  apply (force simp add: order.strict_iff_not inf.absorb_iff2 inf_add_distrib1)
+  done
 
 class big_sep_alg = distrib_sep_alg + cancel_perm_alg
 begin
@@ -139,14 +147,6 @@ lemma False
   nitpick
   oops
 
-lemma sepadd_irr_distrib_eq:
-  shows \<open>sepadd_irr x \<longleftrightarrow> x \<noteq> 0 \<and> (\<forall>a b. a ## b \<longrightarrow> x \<le> a + b \<longrightarrow> x \<le> a \<or> x \<le> b)\<close>
-  unfolding sepadd_irr_eq
-  apply (rule iffI)
-   apply (simp add: inf.order_iff inf_add_distrib1, metis disjoint_add_rightL disjoint_preservation
-      le_iff_sepadd order.strict_implies_not_eq inf.cobounded1 inf.cobounded2 neq_le_trans)
-  apply (force simp add: order.strict_iff_not inf.absorb_iff2 inf_add_distrib1)
-  done
 
 definition \<open>foundation a \<equiv> {j. j \<le> a \<and> sepadd_irr j}\<close>
 
@@ -186,12 +186,25 @@ lemma wsstable_sepconj_semidistrib_backwards:
   nitpick
   oops
 
-lemma ws_semidistrib_increasing:
-  \<open>P \<^emph> Q \<le> rel_maintains_fwd r \<Longrightarrow> \<lceil> P \<^emph> Q \<rceil>\<^bsub>r\<^esub> \<le> \<lceil> P \<rceil>\<^bsub>r\<^esub> \<^emph> \<lceil> Q \<rceil>\<^bsub>r\<^esub>\<close>
+definition \<open>downset x \<equiv> {y. y\<le>x}\<close>
+
+lemma wsstable_semidistrib_disjoint_pre_state:
+  \<open>\<forall>h. (P \<^emph> Q) h \<longrightarrow> \<not> pre_state r h \<Longrightarrow>
+    \<lceil> P \<^emph> Q \<rceil>\<^bsub>r\<^esub> \<le> \<lceil> P \<rceil>\<^bsub>r\<^esub> \<^emph> \<lceil> Q \<rceil>\<^bsub>r\<^esub>\<close>
+  apply (simp add: wsstable_def sepconj_def fun_eq_iff le_fun_def pre_state_def)
+  apply (metis converse_rtranclpE rtranclp.rtrancl_refl)
+  done
+
+lemma (in glb_sep_alg) wsstable_semidistrib_disjoint_pre_state:
+  \<open>\<forall>h1 h2. (P \<^emph> Q) h1 \<longrightarrow> pre_state r h2 \<longrightarrow> h1 \<sqinter> h2 = 0 \<Longrightarrow>
+    \<lceil> P \<^emph> Q \<rceil>\<^bsub>r\<^esub> \<le> \<lceil> P \<rceil>\<^bsub>r\<^esub> \<^emph> \<lceil> Q \<rceil>\<^bsub>r\<^esub>\<close>
   apply (clarsimp simp add: wsstable_def sepconj_def fun_eq_iff le_fun_def)
   apply (clarsimp simp del: all_simps(5) simp add: imp_ex imp_conjL)
-  apply (simp only: rel_changes_rtranclp[of r, symmetric], simp only: rel_maintains_fwd_def)
-  oops
+  apply (simp add: pre_state_def)
+  apply (metis converse_rtranclpE inf_idem sepadd_0_right sepadd_eq_0_iff_both_eq_0 zero_disjointR
+      rtranclp.rtrancl_refl)
+  done
+
 (*
   alloc a; dealloc a
 *)
@@ -291,6 +304,19 @@ lemma
   shows
     \<open>(q \<le> qy)\<close>
   oops
+
+end
+
+
+class finite_sep_alg = distrib_sep_alg +
+  assumes finite_univ: \<open>finite (UNIV :: 'a set)\<close>
+  fixes \<II> :: \<open>'a set\<close>
+  assumes \<open>\<II> = Collect sepadd_irr\<close>
+begin
+
+lemma \<open>sepadd_irr a \<Longrightarrow> sepadd_irr b \<Longrightarrow> a \<noteq> b \<Longrightarrow> a \<le> c \<Longrightarrow> b \<le> c \<Longrightarrow> a ## b\<close>
+  apply (clarsimp simp add: sepadd_irr_distrib_eq)
+  by (metis disjoint_preservation disjoint_symm dual_order.antisym le_iff_sepadd)
 
 end
 
