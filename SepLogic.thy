@@ -145,8 +145,12 @@ class perm_alg = disjoint + plus + order +
   assumes disjoint_add_right_commute: \<open>a ## c \<Longrightarrow> b ## a + c \<Longrightarrow> a ## (b + c)\<close>
   assumes positivity: \<open>a ## b \<Longrightarrow> a + b = c \<Longrightarrow> c ## c \<Longrightarrow> c + c = c \<Longrightarrow> a + a = a\<close>
   assumes less_iff_sepadd: \<open>a < b \<longleftrightarrow> a \<noteq> b \<and> (\<exists>c. a ## c \<and> b = a + c)\<close>
-  (* exclusion laws *)
   (* assumes no_almost_units: \<open>(\<And>x. x ## u \<Longrightarrow> x + u = x) \<Longrightarrow> u ## u\<close> *)
+  (* assumes indivisible_units:
+      \<open>x ## y \<Longrightarrow>
+        \<forall>z. x + y ## z \<longrightarrow> (x + y) + z = z \<Longrightarrow>
+        \<forall>z. x ## z \<longrightarrow> x + z = z\<close>
+    (* has it's own class *) *)
 begin
 
 lemma le_iff_sepadd_weak: \<open>a \<le> b \<longleftrightarrow> a = b \<or> (\<exists>c. a ## c \<and> b = a + c)\<close>
@@ -1232,7 +1236,7 @@ subsection \<open> Indivisible units \<close>
 class indivisible_units_perm_alg = perm_alg +
   assumes indivisible_units: \<open>x ## y \<Longrightarrow> unit_sepadd (x + y) \<Longrightarrow> unit_sepadd x\<close>
 
-(* indivisible_units + multiunit_sep_alg = multiunit_sep_alg,
+(* indivisible_units + multiunit_sep_alg = sep_alg,
     as there's exactly one unit element less than everything else. *)
 context multiunit_sep_alg
 begin
@@ -1256,6 +1260,8 @@ lemma trivial_half[simp]: \<open>half a = a\<close>
   by (simp add: disjointness half_additive_split half_self_disjoint)
 
 end
+
+
 
 section \<open> Instances \<close>
 

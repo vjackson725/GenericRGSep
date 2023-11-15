@@ -46,23 +46,27 @@ lemma wsstable_weaker_iff_swstable_stronger:
 definition stable :: \<open>('a \<Rightarrow> 'a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool) \<Rightarrow> bool\<close> where
   \<open>stable R p \<equiv> \<lfloor> p \<rfloor>\<^bsub>R\<^esub> = p\<close>
 
-lemma stable_iff:
+lemma stable_eq:
   \<open>stable R p \<longleftrightarrow> p \<le> \<lfloor> p \<rfloor>\<^bsub>R\<^esub>\<close>
   by (simp add: stable_def antisym swstable_weaker)
 
-lemma stable_iff2:
+lemma stable_eq2:
   \<open>stable R p \<longleftrightarrow> \<lceil> p \<rceil>\<^bsub>R\<^esub> \<le> p\<close>
-  by (simp add: stable_iff wsstable_weaker_iff_swstable_stronger)
+  by (simp add: stable_eq wsstable_weaker_iff_swstable_stronger)
 
 lemma stable_def2:
   \<open>stable R p = (\<lceil> p \<rceil>\<^bsub>R\<^esub> = p)\<close>
-  by (simp add: antisym stable_iff2 wsstable_stronger)
+  by (simp add: antisym stable_eq2 wsstable_stronger)
 
-lemmas stableD[dest] = iffD1[OF stable_iff]
-lemmas stableD2[dest] = iffD1[OF stable_iff2]
+lemmas stableD[dest] = iffD1[OF stable_eq]
+lemmas stableD2[dest] = iffD1[OF stable_eq2]
 
-lemmas stableI[intro] = iffD2[OF stable_iff]
-lemmas stableI2[intro] = iffD2[OF stable_iff2]
+lemmas stableI[intro] = iffD2[OF stable_eq]
+lemmas stableI2[intro] = iffD2[OF stable_eq2]
+
+lemma stable_iff:
+  \<open>stable r p \<longleftrightarrow> (\<forall>x y. r\<^sup>*\<^sup>* x y \<longrightarrow> p x \<longrightarrow> p y)\<close>
+  by (metis predicate1I stableI stable_def2 swstable_def wsstable_strongerI)
 
 lemma stable_antimono:
   \<open>r1 \<le> r2 \<Longrightarrow> stable r2 p \<Longrightarrow> stable r1 p\<close>
