@@ -2,18 +2,23 @@ theory Soundness1
   imports RGSep
 begin
 
-
-subsection \<open> Seperation algebras + relations \<close>
-
-section \<open> Operational Semantics \<close>
+section \<open> Frame relations \<close>
 
 definition
-  \<open>frame_closed r \<equiv>
-    \<forall>h h'. r h h' \<longrightarrow> (\<forall>hf. h ## hf \<longrightarrow> h' ## hf \<longrightarrow> r (h + hf) (h' + hf))\<close>
+  \<open>frame_pred_closed p r \<equiv>
+    \<forall>h h'. r h h' \<longrightarrow> (\<forall>hf. p hf \<longrightarrow> h ## hf \<longrightarrow> h' ## hf \<longrightarrow> r (h + hf) (h' + hf))\<close>
+
+abbreviation \<open>frame_closed \<equiv> frame_pred_closed \<top>\<close>
+
+lemma frame_pred_closed_antimono:
+  \<open>q \<le> p \<Longrightarrow> frame_pred_closed p r \<Longrightarrow> frame_pred_closed q r\<close>
+  by (force simp add: frame_pred_closed_def)
 
 definition
   \<open>frame_pred_safe f \<equiv>
     \<lambda>r. \<forall>x x' z z'. r x x' \<longrightarrow> f z \<longrightarrow> f z' \<longrightarrow> x ## z \<longrightarrow> x' ## z' \<longrightarrow> r (x+z) (x'+z')\<close>
+
+section \<open> Operational Semantics \<close>
 
 subsection \<open> Actions \<close>
 
@@ -162,18 +167,40 @@ lemma opstep_frameI:
   using assms opstep_frameD
   by fastforce
 
-lemma opstep_frame_pred_preserving:
+lemma opstep_frame_pred_extends:
   assumes
     \<open>s1 \<midarrow>a\<rightarrow> s2\<close>
-    \<open>all_atom_comm (frame_pred_preserving f) (snd s1)\<close>
+    \<open>all_atom_comm (frame_pred_extends f) (snd s1)\<close>
     \<open>fst s1 ## hf\<close>
     \<open>f hf\<close>
   shows
     \<open>\<exists>hf'. f hf' \<and> fst s2 ## hf' \<and> (fst s1 + hf, snd s1) \<midarrow>a\<rightarrow> (fst s2 + hf', snd s2)\<close>
   using assms
   by (induct arbitrary: hf rule: opstep.inducts)
-    (force simp add: frame_pred_preserving_def)+
+    (force simp add: frame_pred_extends_def)+
 
+lemma opstep_frame_pred_maintainsD:
+  assumes
+    \<open>s1 \<midarrow>a\<rightarrow> s2\<close>
+    \<open>all_atom_comm (frame_pred_maintains f) (snd s1)\<close>
+    \<open>fst s1 ## hf\<close>
+    \<open>f hf\<close>
+  shows
+    \<open>fst s2 ## hf \<and> (fst s1 + hf, snd s1) \<midarrow>a\<rightarrow> (fst s2 + hf, snd s2)\<close>
+  using assms
+  by (induct arbitrary: hf rule: opstep.inducts)
+    (force simp add: frame_pred_maintains_def opstep_iff)+
+
+lemma opstep_frame_pred_maintainsI:
+  assumes
+    \<open>(h, c) \<midarrow>a\<rightarrow> (h', c')\<close>
+    \<open>all_atom_comm (frame_pred_maintains f) c\<close>
+    \<open>h ## hf\<close>
+    \<open>f hf\<close>
+  shows
+    \<open>h' ## hf \<and> (h + hf, c) \<midarrow>a\<rightarrow> (h' + hf, c')\<close>
+  using assms
+  by (force dest: opstep_frame_pred_maintainsD)
 
 subsubsection \<open>sugared atomic programs\<close>
 
@@ -402,17 +429,10 @@ qed
 
 lemmas rev_opstep_preserves_all_atom_comm = opstep_preserves_all_atom_comm[rotated]
 
-lemma \<open>all_atom_comm (frame_pred_preserving f) c \<Longrightarrow>
-        all_atom_comm (\<lambda>b. b \<le> g) c \<Longrightarrow>
-        frame_pred_safe f g\<close>
-  apply (induct c)
-
-  sorry
-
-lemma frame_safe:
+lemma safe_frame:
   \<open>safe n c h r g q \<Longrightarrow>
-    frame_pred_preserving f r \<Longrightarrow>
-    all_atom_comm (frame_pred_preserving f) c \<Longrightarrow>
+    all_atom_comm (frame_pred_extends f) c \<Longrightarrow>
+    frame_pred_extends f r \<Longrightarrow>
     frame_pred_safe f g \<Longrightarrow>
     h ## hf \<Longrightarrow>
     f hf \<Longrightarrow>
@@ -427,7 +447,7 @@ next
     \<open>f hf'\<close>
     \<open>h' ## hf'\<close>
     \<open>opstep a (h + hf, c) (h' + hf', c')\<close>
-    using safe_step opstep_frame_pred_preserving safe_step
+    using safe_step opstep_frame_pred_extends safe_step
     by (metis fst_conv snd_conv)
   moreover then have \<open>safe n c' (h' + hf') r g (q \<^emph> f)\<close>
     using safe_step
@@ -446,11 +466,54 @@ next
   case (safe_env r h h' c q n g)
   then show ?case
     apply -
-    apply (clarsimp simp add: frame_pred_preserving_def[of f r])
+    apply (clarsimp simp add: frame_pred_extends_def[of f r])
     apply (drule spec2, drule mp, assumption, drule spec, drule mp, assumption)
     apply (metis safe.safe_env sepconj_def)
     done
 qed
+
+lemma safe_frame2:
+  \<open>safe n c h r g q \<Longrightarrow>
+    all_atom_comm (frame_pred_maintains f) c \<Longrightarrow>
+    frame_pred_extends f r \<Longrightarrow>
+    frame_pred_closed f g \<Longrightarrow>
+    h ## hf \<Longrightarrow>
+    f hf \<Longrightarrow>
+    safe n c (h + hf) r g (q \<^emph> f)\<close>
+proof (induct arbitrary: hf rule: safe.induct)
+  case safe_nil
+  then show ?case by fast
+next
+  case (safe_step h c a h' c' g q n r)
+
+  have
+    \<open>h' ## hf\<close>
+    \<open>opstep a (h + hf, c) (h' + hf, c')\<close>
+    using safe_step opstep_frame_pred_maintainsI
+    by metis+
+  moreover then have \<open>safe n c' (h' + hf) r g (q \<^emph> f)\<close>
+    using safe_step
+    by (blast dest: opstep_preserves_all_atom_comm)
+  ultimately show ?case
+    using safe_step.prems safe_step.hyps(1-5)
+    apply -
+    apply (rule safe.safe_step)
+        apply assumption
+       apply (blast intro: opstep_frameI)
+      apply (simp add: frame_pred_closed_def; fail)
+     apply (metis sepconj_def)
+    apply force
+    done
+next
+  case (safe_env r h h' c q n g)
+  then show ?case
+    apply -
+    apply (clarsimp simp add: frame_pred_extends_def[of f r])
+    apply (drule spec2, drule mp, assumption, drule spec, drule mp, assumption)
+    apply (metis safe.safe_env sepconj_def)
+    done
+qed
+
 
 lemma safe_skip:
   \<open>(\<forall>h. q h \<longrightarrow> (\<exists>h'. r h h' \<and> q h')) \<Longrightarrow>
@@ -524,7 +587,8 @@ lemma soundness:
   fixes p q :: \<open>'a::perm_alg \<Rightarrow> bool\<close>
   assumes \<open>rgsat c r g p q\<close>
     and \<open>p h\<close>
-    and \<open>\<forall>h. q h \<longrightarrow> (\<exists>h'. r h h' \<and> q h')\<close>
+    and \<open>frame_closed g\<close>
+    and \<open>c = Skip \<longrightarrow> (\<forall>h. q h \<longrightarrow> (\<exists>h'. r h h' \<and> q h'))\<close>
   shows \<open>safe as c h r g q\<close>
   using assms
 proof (induct c r g p q arbitrary: as h rule: rgsat.inducts)
@@ -533,7 +597,9 @@ proof (induct c r g p q arbitrary: as h rule: rgsat.inducts)
     by (force intro: safe_skip)
 next
   case (rgsat_iter c r g p' q' p i q)
-  then show ?case sorry
+  then show ?case
+    apply clarsimp
+    sorry
 next
   case (rgsat_ndet s1 r g1 p q1 s2 g2 q2 g q)
   then show ?case sorry
@@ -554,19 +620,17 @@ next
     using rgsat_frame.prems
     by (clarsimp simp add: sepconj_def)
   moreover then have \<open>safe as c h1 r g q\<close>
+    using rgsat_frame.prems
+    apply -
+    apply (rule rgsat_frame.hyps(2))
+      apply blast
+     apply blast
+    apply (clarsimp simp add: sepconj_def)
+    
     sorry
   ultimately show ?case
-    using rgsat_frame.hyps rgsat_frame.prems
-    apply -
-    apply clarsimp
-    apply (rule frame_safe)
-         apply blast
-        apply blast
-       apply blast
-      defer
-      apply blast
-    apply blast
-    sorry
+    using rgsat_frame
+    by (force intro!: safe_frame2 simp add: frame_pred_closed_def)
 next
   case (rgsat_weaken c r' g' p' q' p q r g)
   then show ?case sorry

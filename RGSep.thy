@@ -2,6 +2,108 @@ theory RGSep
   imports Stabilisation
 begin
 
+section \<open> Framed relations between perm_algs \<close>
+
+context perm_alg
+begin
+
+definition
+  \<open>rel_maintains_fwd r \<equiv>
+    \<lambda>a. (\<forall>b\<le>a. \<forall>x y. r x y \<longrightarrow> b \<le> x \<longrightarrow> b \<le> y)\<close>
+
+lemma rel_changes_rtranclp[simp]:
+  \<open>rel_maintains_fwd r\<^sup>*\<^sup>* = rel_maintains_fwd r\<close>
+proof (rule ext, rule iffI)
+  fix a
+  assume \<open>rel_maintains_fwd r\<^sup>*\<^sup>* a\<close>
+  then show \<open>rel_maintains_fwd r a\<close>
+    by (simp add: rel_maintains_fwd_def, blast)
+next
+  fix a
+  assume A1: \<open>rel_maintains_fwd r a\<close>
+  show \<open>rel_maintains_fwd r\<^sup>*\<^sup>* a\<close>
+    unfolding rel_maintains_fwd_def
+  proof (intro allI impI)
+    fix b x y
+    assume \<open>r\<^sup>*\<^sup>* x y\<close> \<open>b \<le> a\<close> \<open>b \<le> x\<close> 
+    then show \<open>b \<le> y\<close>
+      using A1
+      by (induct rule: rtranclp_induct)
+        (simp add: rel_maintains_fwd_def)+
+  qed
+qed
+
+end
+
+section \<open> frame consistent predicate \<close>
+
+definition \<open>frame_pred_extends f b \<equiv>
+  \<forall>h1 h2 hf1.
+    b h1 h2 \<longrightarrow> h1 ## hf1 \<longrightarrow> f hf1 \<longrightarrow>
+      (\<exists>hf2. h2 ## hf2 \<and> f hf2 \<and> b (h1 + hf1) (h2 + hf2))\<close>
+
+definition
+  \<open>frame_pred_maintains f r \<equiv>
+    \<forall>x y z. r x y \<longrightarrow> f z \<longrightarrow> x ## z \<longrightarrow> (y ## z \<and> r (x+z) (y+z))\<close>
+
+lemma frame_pred_maintains_implies_extends:
+  \<open>frame_pred_maintains f \<le> frame_pred_extends f\<close>
+  unfolding frame_pred_maintains_def frame_pred_extends_def
+  by auto
+
+subsection \<open> Framed step relation \<close>
+
+context perm_alg
+begin
+
+text \<open>
+  This predicate ensures that an update between two subresources preserve the rest of the heap.
+  We need this in the perm_alg case, when we don't necessarily have a unit.
+\<close>
+definition
+  \<open>framed_subresource_rel (ha::'a) ha' h h' \<equiv>
+    ha = h \<and> ha' = h' \<or> (\<exists>hf. ha ## hf \<and> ha' ## hf \<and> h = ha + hf \<and> h' = ha' + hf)\<close>
+
+lemma framed_subresource_relI1:
+  \<open>ha = h \<Longrightarrow> ha' = h' \<Longrightarrow> framed_subresource_rel ha ha' h h'\<close>
+  by (simp add: framed_subresource_rel_def)
+
+lemma framed_subresource_relI2:
+  \<open>ha ## hf \<Longrightarrow> ha' ## hf \<Longrightarrow> h = ha + hf \<Longrightarrow> h' = ha' + hf \<Longrightarrow>
+    framed_subresource_rel ha ha' h h'\<close>
+  by (force simp add: framed_subresource_rel_def)
+
+lemma framed_subresource_rel_refl[intro!]:
+  \<open>framed_subresource_rel h h' h h'\<close>
+  by (simp add: framed_subresource_rel_def)
+
+lemma framed_subresource_rel_frame:
+  \<open>framed_subresource_rel ha ha' h h' \<Longrightarrow>
+    h ## hf \<Longrightarrow>
+    h' ## hf \<Longrightarrow>
+    framed_subresource_rel ha ha' (h + hf) (h' + hf)\<close>
+  using disjoint_add_swap2 partial_add_assoc2
+  apply (simp add: framed_subresource_rel_def)
+  apply (rule disjI2)
+  apply (auto; fail)
+  done
+
+end
+
+lemma (in multiunit_sep_alg) mu_sep_alg_compatible_framed_subresource_rel_iff:
+  assumes
+    \<open>compatible h h'\<close>
+  shows
+  \<open>framed_subresource_rel ha ha' h h' \<longleftrightarrow>
+    (\<exists>hf. ha ## hf \<and> ha' ## hf \<and> h = ha + hf \<and> h' = ha' + hf)\<close>
+  by (metis assms compatible_then_same_unit framed_subresource_rel_def unitof_disjoint2
+      unitof_is_unitR2)
+
+lemma (in sep_alg) sep_alg_framed_subresource_rel_iff:
+  \<open>framed_subresource_rel ha ha' h h' \<longleftrightarrow>
+    (\<exists>hf. ha ## hf \<and> ha' ## hf \<and> h = ha + hf \<and> h' = ha' + hf)\<close>
+  by (metis framed_subresource_rel_def sepadd_0_right zero_disjointR)
+
 
 section \<open> Language Definition \<close>
 
@@ -95,12 +197,6 @@ lemmas all_atom_comm_pred_monoD =
 abbreviation \<open>atoms_guarantee g \<equiv>
   all_atom_comm (\<lambda>b. b \<le> g \<and> (\<forall>s. Ex (g s) \<longrightarrow> Ex (b s)))\<close>
 
-section \<open> frame consistent predicate \<close>
-
-definition \<open>frame_pred_preserving f b \<equiv>
-  \<forall>h1 h2. b h1 h2 \<longrightarrow>
-    (\<forall>hf1. h1 ## hf1 \<longrightarrow> f hf1 \<longrightarrow>
-      (\<exists>hf2. h2 ## hf2 \<and> f hf2 \<and> b (h1 + hf1) (h2 + hf2)))\<close>
 
 section \<open> Rely-Guarantee Separation Logic \<close>
 
@@ -134,8 +230,8 @@ inductive rgsat
     rgsat (Atomic b) r g p' q'\<close>
 | rgsat_frame:
   \<open>rgsat c r g p q \<Longrightarrow>
-    all_atom_comm (frame_pred_preserving f) c \<Longrightarrow>
-    frame_pred_preserving f r \<Longrightarrow>
+    all_atom_comm (frame_pred_maintains f) c \<Longrightarrow>
+    frame_pred_extends f r \<Longrightarrow>
     rgsat c r g (p \<^emph> f) (q \<^emph> f)\<close>
 | rgsat_weaken:
   \<open>rgsat c r' g' p' q' \<Longrightarrow>

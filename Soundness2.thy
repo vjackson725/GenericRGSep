@@ -42,40 +42,6 @@ lemma frame_closed_frame_cl_of_minimal_pairs_eq:
   apply clarsimp
   oops
 
-subsection \<open> Framed step relation \<close>
-
-(* we need this in the perm_alg case, when we don't necessarily have a unit. *)
-text \<open>
-  This predicate ensures that an update between two subresources preserve the rest of the heap.
-\<close>
-definition
-  \<open>framed_subresource_rel (ha::'a::perm_alg) ha' h h' \<equiv>
-    ha = h \<and> ha' = h' \<or> (\<exists>hf. ha ## hf \<and> ha' ## hf \<and> h = ha + hf \<and> h' = ha' + hf)\<close>
-
-lemma framed_subresource_relI1:
-  \<open>ha = h \<Longrightarrow> ha' = h' \<Longrightarrow> framed_subresource_rel ha ha' h h'\<close>
-  by (simp add: framed_subresource_rel_def)
-
-lemma framed_subresource_relI2:
-  \<open>ha ## hf \<Longrightarrow> ha' ## hf \<Longrightarrow> h = ha + hf \<Longrightarrow> h' = ha' + hf \<Longrightarrow>
-    framed_subresource_rel ha ha' h h'\<close>
-  by (force simp add: framed_subresource_rel_def)
-
-lemma framed_subresource_rel_refl[intro!]:
-  \<open>framed_subresource_rel h h' h h'\<close>
-  by (simp add: framed_subresource_rel_def)
-
-lemma framed_subresource_rel_frame:
-  \<open>framed_subresource_rel ha ha' h h' \<Longrightarrow>
-    h ## hf \<Longrightarrow>
-    h' ## hf \<Longrightarrow>
-    framed_subresource_rel ha ha' (h + hf) (h' + hf)\<close>
-  using disjoint_add_swap2 partial_add_assoc2
-  apply (simp add: framed_subresource_rel_def)
-  apply (rule disjI2)
-  apply (auto; fail)
-  done
-
 section \<open> Operational Semantics \<close>
 
 definition

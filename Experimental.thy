@@ -1,5 +1,5 @@
 theory Experimental
-  imports Stabilisation PermHeap
+  imports RGSep PermHeap
 begin
 
 section \<open> Labelled Permission algebra \<close>
@@ -130,6 +130,8 @@ lemma sepadd_irr_eq2:
 
 end
 
+
+
 class big_sep_alg = distrib_sep_alg + cancel_perm_alg
 begin
 
@@ -149,13 +151,47 @@ lemma sepadd_irr_distrib_eq:
 definition \<open>foundation a \<equiv> {j. j \<le> a \<and> sepadd_irr j}\<close>
 
 definition
+  \<open>frame_closed b \<equiv> (\<forall>x y f. b x y \<longrightarrow> x ## f \<longrightarrow> y ## f \<longrightarrow> b (x + f) (y + f))\<close>
+
+definition
   \<open>good_prog b \<equiv>
+      (\<forall>j. sepadd_irr j \<longrightarrow>
+        ((\<exists>x y. b x y \<and> j \<le> x \<and> \<not> j \<le> y) \<longrightarrow> (\<forall>x' y'. b x' y' \<longrightarrow> j \<le> x' \<and> \<not> j \<le> y')) \<and>
+        ((\<exists>x y. b x y \<and> \<not> j \<le> x \<and> j \<le> y) \<longrightarrow> (\<forall>x' y'. b x' y' \<longrightarrow> \<not> j \<le> x' \<and> j \<le> y'))
+      ) \<and> frame_closed b\<close>
+
+definition \<open>framecl r \<equiv> (\<lambda>a b. (\<exists>x y. r x y \<and> framed_subresource_rel x y a b))\<close>
+
+lemma framecl_frame_closed:
+  \<open>frame_closed (framecl b)\<close>
+  by (force simp add: frame_closed_def framecl_def intro: framed_subresource_rel_frame)
+
+definition
+  \<open>rgsep_rely S \<equiv> (\<lambda>a b. \<exists>x y. (x, y) \<in> S \<and> framed_subresource_rel x y a b)\<^sup>*\<^sup>*\<close>
+
+definition
+  \<open>good_rely b \<equiv>
       (\<forall>j. sepadd_irr j \<longrightarrow>
         ((\<exists>x y. b x y \<and> j \<le> x \<and> \<not> j \<le> y) \<longrightarrow> (\<forall>x' y'. b x' y' \<longrightarrow> j \<le> x' \<and> \<not> j \<le> y')) \<and>
         ((\<exists>x y. b x y \<and> \<not> j \<le> x \<and> j \<le> y) \<longrightarrow> (\<forall>x' y'. b x' y' \<longrightarrow> \<not> j \<le> x' \<and> j \<le> y'))
       ) \<and>
       (\<forall>x y f. b x y \<longrightarrow> x ## f \<longrightarrow> y ## f \<longrightarrow> b (x + f) (y + f))\<close>
 
+lemma wsstable_sepconj_semidistrib_backwards:
+  \<open>r = rgsep_rely S \<Longrightarrow>
+    X = \<lceil> P \<^emph> Q \<rceil>\<^bsub>r\<^esub> \<Longrightarrow>
+    Y = \<lceil> P \<rceil>\<^bsub>r\<^esub> \<Longrightarrow>
+    Z = \<lceil> Q \<rceil>\<^bsub>r\<^esub> \<Longrightarrow>
+    X \<le> Y \<^emph> Z\<close>
+  nitpick
+  oops
+
+lemma ws_semidistrib_increasing:
+  \<open>P \<^emph> Q \<le> rel_maintains_fwd r \<Longrightarrow> \<lceil> P \<^emph> Q \<rceil>\<^bsub>r\<^esub> \<le> \<lceil> P \<rceil>\<^bsub>r\<^esub> \<^emph> \<lceil> Q \<rceil>\<^bsub>r\<^esub>\<close>
+  apply (clarsimp simp add: wsstable_def sepconj_def fun_eq_iff le_fun_def)
+  apply (clarsimp simp del: all_simps(5) simp add: imp_ex imp_conjL)
+  apply (simp only: rel_changes_rtranclp[of r, symmetric], simp only: rel_maintains_fwd_def)
+  oops
 (*
   alloc a; dealloc a
 *)
