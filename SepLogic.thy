@@ -145,12 +145,6 @@ class perm_alg = disjoint + plus + order +
   assumes disjoint_add_right_commute: \<open>a ## c \<Longrightarrow> b ## a + c \<Longrightarrow> a ## (b + c)\<close>
   assumes positivity: \<open>a ## b \<Longrightarrow> a + b = c \<Longrightarrow> c ## c \<Longrightarrow> c + c = c \<Longrightarrow> a + a = a\<close>
   assumes less_iff_sepadd: \<open>a < b \<longleftrightarrow> a \<noteq> b \<and> (\<exists>c. a ## c \<and> b = a + c)\<close>
-  (* assumes no_almost_units: \<open>(\<And>x. x ## u \<Longrightarrow> x + u = x) \<Longrightarrow> u ## u\<close> *)
-  (* assumes indivisible_units:
-      \<open>x ## y \<Longrightarrow>
-        \<forall>z. x + y ## z \<longrightarrow> (x + y) + z = z \<Longrightarrow>
-        \<forall>z. x ## z \<longrightarrow> x + z = z\<close>
-    (* has it's own class *) *)
 begin
 
 lemma le_iff_sepadd_weak: \<open>a \<le> b \<longleftrightarrow> a = b \<or> (\<exists>c. a ## c \<and> b = a + c)\<close>
@@ -211,6 +205,10 @@ lemma disjoint_preservation:
   \<open>a' \<le> a \<Longrightarrow> a ## b \<Longrightarrow> a' ## b\<close>
   by (metis disjoint_add_leftL order.order_iff_strict less_iff_sepadd)
 
+lemma disjoint_preservation2:
+  \<open>b' \<le> b \<Longrightarrow> a ## b \<Longrightarrow> a ## b'\<close>
+  using disjoint_preservation disjoint_symm by blast
+
 lemma partial_add_assoc2:
   \<open>a ## b \<Longrightarrow> a + b ## c \<Longrightarrow> (a + b) + c = a + (b + c)\<close>
   using disjoint_add_leftL disjoint_add_leftR partial_add_assoc by blast
@@ -236,13 +234,43 @@ subsection \<open> unit_sepadd \<close>
 
 definition \<open>unit_sepadd a \<equiv> a ## a \<and> (\<forall>b. a ## b \<longrightarrow> a + b = b)\<close>
 
-text \<open>
-  Not true, I call these 'amost units'.
-  They should probably be banned.
-\<close>
-lemma \<open>(\<forall>b. a ## b \<longrightarrow> a + b = b) \<Longrightarrow> a ## a\<close>
-  nitpick
-  oops
+lemma below_unit_impl_unit:
+  \<open>a \<le> b \<Longrightarrow> unit_sepadd b \<Longrightarrow> unit_sepadd a\<close>
+  unfolding unit_sepadd_def
+  by (metis disjoint_add_rightL order.antisym le_iff_sepadd_weak)
+
+lemma units_least: \<open>unit_sepadd x \<Longrightarrow> x ## y \<Longrightarrow> x \<le> y\<close>
+  using le_iff_sepadd_weak unit_sepadd_def by auto
+
+lemma almost_units_are_nondisjoint_to_everything:
+  \<open>(\<forall>b. a ## b \<longrightarrow> a + b = b) \<Longrightarrow> \<not> a ## a \<Longrightarrow> \<not> a ## b\<close>
+  by (metis disjoint_add_leftL disjoint_symm)
+
+lemma units_separate_to_units: \<open>x ## y \<Longrightarrow> unit_sepadd (x + y) \<Longrightarrow> unit_sepadd x\<close>
+  using below_unit_impl_unit partial_le_plus by blast
+
+lemma unit_sepadd_left: \<open>unit_sepadd u \<Longrightarrow> u ## a \<Longrightarrow> u + a = a\<close>
+  using unit_sepadd_def by auto
+
+lemma unit_sepadd_right: \<open>unit_sepadd u \<Longrightarrow> a ## u \<Longrightarrow> a + u = a\<close>
+  by (metis disjoint_symm partial_add_commute unit_sepadd_left)
+
+lemma add_unit_sepadd_add_iff_parts_unit_sepadd[simp]:
+  \<open>x ## y \<Longrightarrow> unit_sepadd (x + y) \<longleftrightarrow> unit_sepadd x \<and> unit_sepadd y\<close>
+  by (metis unit_sepadd_def units_separate_to_units)
+
+subsection \<open> zero_sepadd \<close>
+
+definition \<open>zero_sepadd a \<equiv> a ## a \<and> (\<forall>b. a ## b \<longrightarrow> a + b = a)\<close>
+
+lemma above_zero_impl_zero:
+  \<open>a \<le> b \<Longrightarrow> zero_sepadd a \<Longrightarrow> zero_sepadd b\<close>
+  unfolding zero_sepadd_def
+  using le_iff_sepadd_weak by force
+
+(* obvious, but a nice dual to the unit case *)
+lemma zeros_add_to_zero: \<open>x ## y \<Longrightarrow> zero_sepadd x \<Longrightarrow> zero_sepadd (x + y)\<close>
+  by (simp add: zero_sepadd_def)
 
 subsection \<open>sepdomeq\<close>
 
@@ -711,7 +739,13 @@ end
 (* almost a sep_alg, in that if there was a unit, it would be a sepalgebra *)
 class allcompatible_perm_alg = perm_alg +
   assumes all_compatible: \<open>compatible a b\<close>
+begin
 
+lemma all_units_eq:
+  \<open>unit_sepadd a \<Longrightarrow> unit_sepadd b \<Longrightarrow> a = b\<close>
+  by (simp add: all_compatible compatible_units_identical)
+
+end
 
 context multiunit_sep_alg
 begin
@@ -984,6 +1018,37 @@ class glb_perm_alg = perm_alg + inf +
   assumes sepinf_leqL[intro]: \<open>compatible a b \<Longrightarrow> a \<sqinter> b \<le> a\<close>
     and sepinf_leqR[intro]: \<open>compatible a b \<Longrightarrow> a \<sqinter> b \<le> b\<close>
     and sepinf_least[intro]: \<open>compatible a b \<Longrightarrow> c \<le> a \<Longrightarrow> c \<le> b \<Longrightarrow> c \<le> a \<sqinter> b\<close>
+begin
+
+lemma glb_disjointL: \<open>a ## b \<Longrightarrow> compatible a c \<Longrightarrow> a \<sqinter> c ## b\<close>
+  using disjoint_preservation by blast
+
+lemma glb_disjointR: \<open>a ## b \<Longrightarrow> compatible b c \<Longrightarrow> a ## b \<sqinter> c\<close>
+  using disjoint_preservation2 by blast
+
+lemma disjoint_glb_of_add_impl_disjoint_glb_part:
+  \<open>a ## b \<Longrightarrow>
+    compatible a c \<Longrightarrow>
+    compatible (a + b) c \<Longrightarrow>
+    (a + b) \<sqinter> c ## y \<Longrightarrow>
+    a \<sqinter> c ## y\<close>
+  by (meson disjoint_preservation order.trans partial_le_plus sepinf_least sepinf_leqL sepinf_leqR)
+
+lemma glb_of_unit_is_unit:
+  \<open>compatible a b \<Longrightarrow> unit_sepadd a \<Longrightarrow> unit_sepadd (a \<sqinter> b)\<close>
+  using below_unit_impl_unit by blast
+
+lemma glb_of_unit_eq_that_unit[simp]:
+  \<open>compatible a b \<Longrightarrow> unit_sepadd a \<Longrightarrow> a \<sqinter> b = a\<close>
+  by (meson glb_of_unit_is_unit disjoint_is_compatible_refl disjoint_preservation sepinf_leqL
+      trans_compatible_units_identical unit_sepadd_def)
+
+lemma glb_of_unit_eq_that_unit2[simp]:
+  \<open>compatible a b \<Longrightarrow> unit_sepadd b \<Longrightarrow> a \<sqinter> b = b\<close>
+  by (metis disjoint_preservation2 order.antisym partial_le_plus sepinf_leqR unit_sepadd_def)
+
+end
+
 
 class allcompatible_glb_perm_alg = glb_perm_alg + allcompatible_perm_alg
 begin
@@ -1264,25 +1329,6 @@ end
 class halving_multiunit_sep_alg = multiunit_sep_alg + halving_perm_alg
 
 class halving_sep_alg = sep_alg + halving_multiunit_sep_alg
-
-subsection \<open> Indivisible units \<close>
-
-class indivisible_units_perm_alg = perm_alg +
-  assumes indivisible_units: \<open>x ## y \<Longrightarrow> unit_sepadd (x + y) \<Longrightarrow> unit_sepadd x\<close>
-
-(* indivisible_units + multiunit_sep_alg = sep_alg,
-    as there's exactly one unit element less than everything else. *)
-context multiunit_sep_alg
-begin
-
-subclass indivisible_units_perm_alg
-proof
-  fix x y
-  show \<open>x ## y \<Longrightarrow> unit_sepadd (x + y) \<Longrightarrow> unit_sepadd x\<close>
-    by (metis sepadd_eq_unitof_iff_both_eq_unitof unitof_is_unit_sepadd unitof_unit_sepadd)
-qed
-
-end
 
 
 section \<open> Trivial self-disjoint + halving (very boring) \<close>

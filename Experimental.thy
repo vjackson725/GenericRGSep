@@ -2,6 +2,154 @@ theory Experimental
   imports RGSep PermHeap
 begin
 
+section \<open> predicate transformer reasoning + other nice definitions \<close>
+
+definition (in order) \<open>downset x \<equiv> {y. y\<le>x}\<close>
+
+context perm_alg
+begin
+
+text \<open> addition irreducible; cf. join/meet irreducible \<close>
+definition sepadd_irr :: \<open>'a \<Rightarrow> bool\<close> where
+  \<open>sepadd_irr x \<equiv> (\<not> unit_sepadd x) \<and> (\<forall>a b. a < x \<longrightarrow> b < x \<longrightarrow> a ## b \<longrightarrow> a + b < x)\<close>
+
+definition \<open>foundation a \<equiv> {j. j \<le> a \<and> sepadd_irr j}\<close>
+
+definition \<open>frame_closed b \<equiv> (\<forall>x y f. b x y \<longrightarrow> x ## f \<longrightarrow> y ## f \<longrightarrow> b (x + f) (y + f))\<close>
+definition \<open>framecl r \<equiv> (\<lambda>a b. (\<exists>x y. r x y \<and> framed_subresource_rel x y a b))\<close>
+
+lemma framecl_frame_closed:
+  \<open>frame_closed (framecl b)\<close>
+  by (force simp add: frame_closed_def framecl_def intro: framed_subresource_rel_frame)
+
+end
+
+definition \<open>deterministic r \<equiv> (\<forall>x y1 y2. r x y1 \<longrightarrow> r x y2 \<longrightarrow> y1 = y2)\<close>
+
+definition \<open>changedom r \<equiv> \<lambda>x. \<exists>y. r x y \<and> y \<noteq> x\<close>
+
+lemma changedom_rtranclp[simp]:
+  \<open>changedom (r\<^sup>*\<^sup>*) = changedom r\<close>
+proof -
+  { fix x y
+    assume \<open>r\<^sup>*\<^sup>* x y\<close> \<open>y \<noteq> x\<close>
+    then have \<open>\<exists>y. r x y \<and> y \<noteq> x\<close>
+      by (induct rule: rtranclp_induct) blast+
+  } then show ?thesis
+    by (fastforce simp add: changedom_def dest: r_into_rtranclp[of r])
+qed
+
+text \<open> strongest postcondition, by way of relations \<close>
+definition \<open>sp r p \<equiv> \<lambda>y. (\<exists>x. r x y \<and> p x)\<close>
+
+text \<open> weakest liberal precondition, by way of relations \<close>
+definition \<open>wlp r q \<equiv> \<lambda>x. (\<forall>y. r x y \<longrightarrow> q y)\<close>
+
+
+lemma \<open>p \<le> q \<Longrightarrow> wlp r p \<le> wlp r q\<close>
+  by (force simp add: wlp_def)
+
+lemma \<open>wlp r \<top> = \<top>\<close>
+  by (force simp add: wlp_def)
+
+lemma \<open>wlp r (p \<sqinter> q) = wlp r p \<sqinter> wlp r q\<close>
+  by (force simp add: wlp_def)
+
+lemma \<open>wlp r (\<Sqinter>P) = \<Sqinter>{wlp r p| p. p \<in> P}\<close>
+  by (fastforce simp add: wlp_def)
+
+lemma \<open>wlp r \<bottom> = - pre_state r\<close>
+  by (simp add: wlp_def fun_eq_iff pre_state_def)
+
+lemma \<open>wlp r p \<squnion> wlp r q \<le> wlp r (p \<squnion> q)\<close>
+  by (force simp add: wlp_def)
+
+lemma \<open>deterministic r \<Longrightarrow> wlp r p \<squnion> wlp r q = wlp r (p \<squnion> q)\<close>
+  by (force simp add: deterministic_def wlp_def)
+
+lemma wlp_Sup_semidistrib: \<open>\<Squnion>{wlp r p| p. p \<in> P} \<le> wlp r (\<Squnion>P)\<close>
+  by (force simp add: wlp_def)
+
+lemma
+  assumes \<open>deterministic r\<close>
+    and \<open>P \<noteq> {}\<close>
+  shows \<open>wlp r (\<Squnion>P) = \<Squnion>{wlp r p| p. p \<in> P}\<close>
+proof (rule order.antisym; auto simp add: wlp_def)
+  fix x
+  assume \<open>\<forall>y. r x y \<longrightarrow> (\<exists>px\<in>P. px y)\<close>
+  then obtain px where \<open>r x \<le> px\<close> \<open>px \<in> P\<close>
+    using assms unfolding deterministic_def
+    by (metis ex_in_conv predicate1I)
+  then show \<open>\<exists>q. (\<exists>p. q = (\<lambda>x. \<forall>y. r x y \<longrightarrow> p y) \<and> p \<in> P) \<and> q x\<close>
+    by blast
+qed
+
+lemma \<open>wlp (=) p = p\<close>
+  by (force simp add: wlp_def)
+
+lemma \<open>wlp \<bottom> p = \<top>\<close>
+  by (force simp add: wlp_def)
+
+lemma \<open>p < \<top> \<Longrightarrow> wlp \<top> p = \<bottom>\<close>
+  by (force simp add: wlp_def less_fun_def)
+
+lemma \<open>wlp (r1 \<squnion> r2) p = wlp r1 p \<sqinter> wlp r2 p\<close>
+  by (force simp add: wlp_def fun_eq_iff)
+
+lemma \<open>wlp r1 p \<squnion> wlp r2 p \<le> wlp (r1 \<sqinter> r2) p\<close>
+  by (force simp add: wlp_def fun_eq_iff)
+
+
+lemma \<open>p \<le> q \<Longrightarrow> sp r p \<le> sp r q\<close>
+  by (force simp add: sp_def)
+
+lemma \<open>sp r \<bottom> = \<bottom>\<close>
+  by (force simp add: sp_def)
+
+lemma \<open>sp r (p \<squnion> q) = sp r p \<squnion> sp r q\<close>
+  by (force simp add: sp_def)
+
+lemma \<open>\<Squnion>{sp r p| p. p \<in> P} = sp r (\<Squnion>P)\<close>
+  by (fastforce simp add: sp_def)
+
+
+lemma \<open>sp r \<top> = post_state r\<close>
+  by (clarsimp simp add: sp_def post_state_def fun_eq_iff)
+
+lemma \<open>sp r (p \<sqinter> q) \<le> sp r p \<sqinter> sp r q\<close>
+  by (force simp add: sp_def)
+
+lemma \<open>deterministic (r\<inverse>\<inverse>) \<Longrightarrow> sp r (p \<sqinter> q) = sp r p \<sqinter> sp r q\<close>
+  by (simp add: sp_def deterministic_def, blast)
+
+lemma sp_Inf_semidistrib: \<open>sp r (\<Sqinter>P) \<le> \<Sqinter>{sp r p| p. p \<in> P}\<close>
+  by (fastforce simp add: sp_def)
+
+lemma
+  assumes \<open>deterministic (r\<inverse>\<inverse>)\<close>
+    and \<open>P \<noteq> {}\<close>
+  shows \<open>sp r (\<Sqinter>P) = \<Sqinter>{sp r p| p. p \<in> P}\<close>
+  using assms
+  apply (intro order.antisym sp_Inf_semidistrib)
+  apply (clarsimp simp add: sp_def imp_ex deterministic_def)
+  apply (metis ex_in_conv)
+  done
+
+lemma \<open>sp (=) p = p\<close>
+  by (force simp add: sp_def)
+
+lemma \<open>sp \<bottom> p = \<bottom>\<close>
+  by (force simp add: sp_def)
+
+lemma \<open>\<bottom> < p \<Longrightarrow> sp \<top> p = \<top>\<close>
+  by (force simp add: sp_def less_fun_def fun_eq_iff)
+
+lemma \<open>sp (r1 \<squnion> r2) p = sp r1 p \<squnion> sp r2 p\<close>
+  by (force simp add: sp_def)
+
+lemma \<open>sp (r1 \<sqinter> r2) p \<le> sp r1 p \<sqinter> sp r2 p\<close>
+  by (force simp add: sp_def)
+
 section \<open> Labelled Permission algebra \<close>
 
 text \<open>
@@ -15,7 +163,7 @@ text \<open>
   TODO,sorry: The law \<open>labels_strong_distrib_law\<close> probably does this, but I need to check.
 \<close>
 
-class labelled_perm_alg = perm_alg + indivisible_units_perm_alg +
+class labelled_perm_alg = perm_alg +
   fixes labels_leq :: \<open>'a \<Rightarrow> 'a \<Rightarrow> bool\<close> (infix \<open>\<le>\<^sub>l\<close> 50)
     and labels_less :: \<open>'a \<Rightarrow> 'a \<Rightarrow> bool\<close> (infix \<open><\<^sub>l\<close> 50)
   assumes labels_leq_less_preorder:
@@ -101,16 +249,7 @@ lemma half_has_same_labels: \<open>half a =\<^sub>l a\<close>
 
 end
 
-section \<open> \<close>
 
-context perm_alg
-begin
-
-(* sepadd irreducible *)
-definition sepadd_irr :: \<open>'a \<Rightarrow> bool\<close> where
-  \<open>sepadd_irr x \<equiv> (\<not> unit_sepadd x) \<and> (\<forall>a b. a < x \<longrightarrow> b < x \<longrightarrow> a ## b \<longrightarrow> a + b < x)\<close>
-
-end
 
 context sep_alg
 begin
@@ -148,23 +287,12 @@ lemma False
   oops
 
 
-definition \<open>foundation a \<equiv> {j. j \<le> a \<and> sepadd_irr j}\<close>
-
-definition
-  \<open>frame_closed b \<equiv> (\<forall>x y f. b x y \<longrightarrow> x ## f \<longrightarrow> y ## f \<longrightarrow> b (x + f) (y + f))\<close>
-
 definition
   \<open>good_prog b \<equiv>
       (\<forall>j. sepadd_irr j \<longrightarrow>
         ((\<exists>x y. b x y \<and> j \<le> x \<and> \<not> j \<le> y) \<longrightarrow> (\<forall>x' y'. b x' y' \<longrightarrow> j \<le> x' \<and> \<not> j \<le> y')) \<and>
         ((\<exists>x y. b x y \<and> \<not> j \<le> x \<and> j \<le> y) \<longrightarrow> (\<forall>x' y'. b x' y' \<longrightarrow> \<not> j \<le> x' \<and> j \<le> y'))
       ) \<and> frame_closed b\<close>
-
-definition \<open>framecl r \<equiv> (\<lambda>a b. (\<exists>x y. r x y \<and> framed_subresource_rel x y a b))\<close>
-
-lemma framecl_frame_closed:
-  \<open>frame_closed (framecl b)\<close>
-  by (force simp add: frame_closed_def framecl_def intro: framed_subresource_rel_frame)
 
 definition
   \<open>rgsep_rely S \<equiv> (\<lambda>a b. \<exists>x y. (x, y) \<in> S \<and> framed_subresource_rel x y a b)\<^sup>*\<^sup>*\<close>
@@ -179,6 +307,7 @@ definition
 
 lemma wsstable_sepconj_semidistrib_backwards:
   \<open>r = rgsep_rely S \<Longrightarrow>
+    S = {a} \<Longrightarrow>
     X = \<lceil> P \<^emph> Q \<rceil>\<^bsub>r\<^esub> \<Longrightarrow>
     Y = \<lceil> P \<rceil>\<^bsub>r\<^esub> \<Longrightarrow>
     Z = \<lceil> Q \<rceil>\<^bsub>r\<^esub> \<Longrightarrow>
@@ -186,153 +315,57 @@ lemma wsstable_sepconj_semidistrib_backwards:
   nitpick
   oops
 
-definition \<open>downset x \<equiv> {y. y\<le>x}\<close>
-
-(*
-  alloc a; dealloc a
-*)
-
-lemma
-  fixes p :: \<open>'a \<Rightarrow> bool\<close>
-  assumes
-    \<open>good_prog b\<close>
-    and
-    \<open>z \<le> pre_state b\<close>
-    \<open>r = b\<^sup>*\<^sup>*\<close>
-    \<open>\<exists>!h. z h\<close>
-    \<open>\<exists>h. p h\<close>
-    \<open>\<exists>!h. p1 h\<close>
-    \<open>\<exists>!h. p2 h\<close>
-    and \<open>J = Collect sepadd_irr\<close>
-    and \<open>p = p1 \<^emph> p2\<close>
-    and \<open>p' = \<lceil> p \<rceil>\<^bsub>r\<^esub>\<close>
-    and \<open>pb = \<lceil> p1 \<rceil>\<^bsub>r\<^esub> \<^emph> \<lceil> p2 \<rceil>\<^bsub>r\<^esub>\<close>
-    and \<open>\<exists>h. (p \<^emph> z) h\<close>
-  shows
-    \<open>J = J \<union> J \<and> (p' \<le> pb)\<close>
-  nitpick
-  oops
-
-lemma
-  fixes p :: \<open>'a \<Rightarrow> bool\<close>
-  assumes
-    \<open>good_prog b1\<close>
-    \<open>good_prog b2\<close>
-    \<open>good_prog b3\<close>
-    and
-    \<open>\<exists>!h. p h\<close>
-    \<open>r1 = (b2 \<squnion> b3)\<^sup>*\<^sup>*\<close>
-    \<open>r2 = (b1 \<squnion> b3)\<^sup>*\<^sup>*\<close>
-    \<open>r12 = (b3)\<^sup>*\<^sup>*\<close>
-    \<open>r3 = (b1 \<squnion> b2)\<^sup>*\<^sup>*\<close>
-    \<open>p = p12 \<^emph> p3\<close>
-    \<open>\<lceil> p12 \<rceil>\<^bsub>r12\<^esub> = p1 \<^emph> p2\<close>
-    \<open>p1 = \<lfloor> p1 \<rfloor>\<^bsub>r1\<^esub>\<close>
-    \<open>p2 = \<lfloor> p2 \<rfloor>\<^bsub>r2\<^esub>\<close>
-    \<open>p3 = \<lfloor> p3 \<rfloor>\<^bsub>r3\<^esub>\<close>
-    \<open>p1x \<le> pre_state b1\<close>
-    \<open>p2x \<le> pre_state b2\<close>
-    \<open>p3x \<le> pre_state b3\<close>
-    \<open>q1 = \<lceil> post_state (rel_liftL p1 \<sqinter> b1) \<rceil>\<^bsub>r1\<^esub>\<close>
-    \<open>q2 = \<lceil> post_state (rel_liftL p2 \<sqinter> b2) \<rceil>\<^bsub>r2\<^esub>\<close>
-    \<open>q3 = \<lceil> post_state (rel_liftL p3 \<sqinter> b3) \<rceil>\<^bsub>r3\<^esub>\<close>
-    \<open>q = q1 \<^emph> q2 \<^emph> q3\<close>
-    \<open>\<exists>!h. p1 h\<close>
-    \<open>\<exists>!h. p12 h\<close>
-    \<open>\<exists>!h. p2 h\<close>
-    \<open>\<exists>!h. p3 h\<close>
-    \<open>\<exists>!h. q h\<close>
-  and \<comment> \<open> bad reasoning \<close>
-    \<open>p12 = p1b \<^emph> p2b\<close>
-    \<open>\<lceil> p1b \<rceil>\<^bsub>r12\<^esub> = \<lfloor> p1bx \<rfloor>\<^bsub>r1\<^esub>\<close>
-    \<open>\<lceil> p2b \<rceil>\<^bsub>r12\<^esub> = \<lfloor> p2bx \<rfloor>\<^bsub>r2\<^esub>\<close>
-    \<open>p1bx \<le> pre_state b1\<close>
-    \<open>p2bx \<le> pre_state b2\<close>
-    \<open>q1b = \<lceil> post_state (rel_liftL p1bx \<sqinter> b1) \<rceil>\<^bsub>r1\<^esub>\<close>
-    \<open>q2b = \<lceil> post_state (rel_liftL p2bx \<sqinter> b2) \<rceil>\<^bsub>r2\<^esub>\<close>
-    \<open>qy = q1b \<^emph> q2b \<^emph> q3\<close>
-    and \<open>J = Collect sepadd_irr\<close>
-  shows
-    \<open>J = J \<union> J \<and> (q \<le> qy)\<close>
-  oops
-
-lemma
-  fixes p :: \<open>'a \<Rightarrow> bool\<close>
-  assumes
-    \<open>good_prog b1\<close>
-    \<open>good_prog b2\<close>
-    \<open>good_prog b3\<close>
-    and
-    \<open>\<exists>!h. p h\<close>
-    \<open>r1 = (b2 \<squnion> b3)\<^sup>*\<^sup>*\<close>
-    \<open>r2 = (b1 \<squnion> b3)\<^sup>*\<^sup>*\<close>
-    \<open>r12 = (b3)\<^sup>*\<^sup>*\<close>
-    \<open>r3 = (b1 \<squnion> b2)\<^sup>*\<^sup>*\<close>
-    \<open>p = p12 \<^emph> p3\<close>
-    \<open>\<lceil> p12 \<rceil>\<^bsub>r12\<^esub> = p1 \<^emph> p2\<close>
-    \<open>p1 \<le> pre_state b1\<close>
-    \<open>p2 \<le> pre_state b2\<close>
-    \<open>p3 \<le> pre_state b3\<close>
-    \<open>p1 = \<lfloor> p1 \<rfloor>\<^bsub>r1\<^esub>\<close>
-    \<open>p2 = \<lfloor> p2 \<rfloor>\<^bsub>r1\<^esub>\<close>
-    \<open>p3 = \<lfloor> p3 \<rfloor>\<^bsub>r1\<^esub>\<close>
-    \<open>q1 = \<lceil> post_state (rel_liftL p1 \<sqinter> b1) \<rceil>\<^bsub>r1\<^esub>\<close>
-    \<open>q2 = \<lceil> post_state (rel_liftL p2 \<sqinter> b2) \<rceil>\<^bsub>r2\<^esub>\<close>
-    \<open>q3 = \<lceil> post_state (rel_liftL p3 \<sqinter> b3) \<rceil>\<^bsub>r3\<^esub>\<close>
-    \<open>q = \<lceil> q1 \<^emph> q2 \<rceil>\<^bsub>r12\<^esub> \<^emph> q3\<close>
-  and \<comment> \<open> bad reasoning \<close>
-    \<open>q1b = \<lceil> q1 \<rceil>\<^bsub>r12\<^esub>\<close>
-    \<open>q2b = \<lceil> q2 \<rceil>\<^bsub>r12\<^esub> \<close>
-    \<open>qy = q1b \<^emph> q2b \<^emph> q3\<close>
-  shows
-    \<open>(q \<le> qy)\<close>
-  oops
-
-end
-
-
-
-lemma (in perm_alg) wsstable_semidistrib_not_pre_state:
-  \<open>\<forall>h. (P \<^emph> Q) h \<longrightarrow> \<not> pre_state r h \<Longrightarrow>
-    \<lceil> P \<^emph> Q \<rceil>\<^bsub>r\<^esub> \<le> \<lceil> P \<rceil>\<^bsub>r\<^esub> \<^emph> \<lceil> Q \<rceil>\<^bsub>r\<^esub>\<close>
-  apply (simp add: wsstable_def sepconj_def fun_eq_iff le_fun_def pre_state_def)
-  apply (metis converse_rtranclpE rtranclp.rtrancl_refl)
-  done
-
-lemma (in glb_sep_alg) wsstable_semidistrib_disjoint_pre_state:
-  \<open>\<forall>h1 h2. (P \<^emph> Q) h1 \<longrightarrow> pre_state r h2 \<longrightarrow> h1 \<sqinter> h2 = 0 \<Longrightarrow>
+lemma (in perm_alg) wsstable_semidistrib_no_pre_state:
+  \<open>\<forall>h1 h2. (P \<^emph> Q) h1 \<longrightarrow> \<not> pre_state r h1 \<Longrightarrow>
     \<lceil> P \<^emph> Q \<rceil>\<^bsub>r\<^esub> \<le> \<lceil> P \<rceil>\<^bsub>r\<^esub> \<^emph> \<lceil> Q \<rceil>\<^bsub>r\<^esub>\<close>
   apply (clarsimp simp add: wsstable_def sepconj_def fun_eq_iff le_fun_def)
   apply (clarsimp simp del: all_simps(5) simp add: imp_ex imp_conjL)
   apply (simp add: pre_state_def)
-  apply (metis converse_rtranclpE inf_idem sepadd_0_right sepadd_eq_0_iff_both_eq_0 zero_disjointR
-      rtranclp.rtrancl_refl)
+  apply (metis converse_rtranclpE rtranclp.rtrancl_refl)
   done
 
-lemma (in perm_alg)
-  \<open>unit_sepadd a \<Longrightarrow> b \<le> a \<Longrightarrow> unit_sepadd b\<close>
-  by (metis disjoint_add_rightL dual_order.antisym le_iff_sepadd_weak unit_sepadd_def)
+lemma (in glb_sep_alg) wsstable_semidistrib_disjoint_pre_state:
+  \<open>\<forall>h1 h2. (P \<^emph> Q) h1 \<longrightarrow> changedom r h2 \<longrightarrow> h1 \<sqinter> h2 = 0 \<Longrightarrow>
+    \<lceil> P \<^emph> Q \<rceil>\<^bsub>r\<^esub> \<le> \<lceil> P \<rceil>\<^bsub>r\<^esub> \<^emph> \<lceil> Q \<rceil>\<^bsub>r\<^esub>\<close>
+  apply (simp only: changedom_rtranclp[symmetric, of r], clarsimp simp add: changedom_def)
+  apply (clarsimp simp add: wsstable_def sepconj_def changedom_def le_fun_def fun_eq_iff
+      imp_ex imp_conjL simp del: all_simps(5))
+  apply (drule spec2, drule mp, assumption, drule mp, assumption, drule mp, assumption)
+  apply (drule spec2, drule mp, assumption)
+  apply clarsimp
+  apply fastforce
+  done
 
-class test_perm_alg = indivisible_units_perm_alg + disjoint_parts_perm_alg + strong_sep_perm_alg
-begin
+lemma (in allcompatible_glb_perm_alg) wsstable_semidistrib_disjoint_pre_state_strong:
+  \<open>\<forall>h1 h2. (P \<^emph> Q) h1 \<longrightarrow> pre_state (r\<^sup>*\<^sup>*) h2 \<longrightarrow> unit_sepadd (h1 \<sqinter> h2) \<Longrightarrow>
+    \<lceil> P \<^emph> Q \<rceil>\<^bsub>r\<^esub> \<le> \<lceil> P \<rceil>\<^bsub>r\<^esub> \<^emph> \<lceil> Q \<rceil>\<^bsub>r\<^esub>\<close>
+  apply (clarsimp simp add: wsstable_def sepconj_def pre_state_def le_fun_def
+      fun_eq_iff imp_ex imp_conjL simp del: all_simps(5))
+  apply (drule spec2, drule spec, drule mp, assumption, drule mp, assumption, drule mp, assumption,
+      drule spec, drule mp, assumption)
+  apply clarsimp
+  apply (drule all_units_eq, force)
+  apply (clarsimp simp add: unit_sepadd_left)
+  apply (metis all_compatible glb_of_unit_eq_that_unit2 inf.absorb_iff2 le_iff_sepadd_weak
+      unit_sepadd_left rtranclp.simps)
+  done
 
-definition \<open>changedom r \<equiv> \<lambda>x. \<exists>y. r x y \<and> y \<noteq> x\<close>
-
-lemma wsstable_semidistrib_disjoint_pre_state:
-  \<open>\<forall>h h'. P h \<longrightarrow> changedom r h' \<longrightarrow> h ## h' \<Longrightarrow>
-    \<forall>h h'. Q h \<longrightarrow> changedom r h' \<longrightarrow> h ## h' \<Longrightarrow>
-    \<forall>h h'. (P \<^emph> Q) h \<longrightarrow> changedom r h' \<longrightarrow> h ## h' \<Longrightarrow>
-    reflp r \<Longrightarrow>
-    transp r \<Longrightarrow>
-    X = \<lceil> P \<^emph> Q \<rceil>\<^bsub>r\<^esub> \<Longrightarrow>
-    Y = \<lceil> P \<rceil>\<^bsub>r\<^esub> \<Longrightarrow>
-    Z = \<lceil> Q \<rceil>\<^bsub>r\<^esub> \<Longrightarrow>
-    YZ = Y \<^emph> Z \<Longrightarrow>
-    X \<le> YZ\<close>
+(* The situation that we want to prove is *)
+lemma (in perm_alg) wsstable_semidistrib_realistic:
+  \<open>p = pab \<^emph> pc \<Longrightarrow>
+    r = c\<^sup>*\<^sup>* \<Longrightarrow>
+    \<lceil> pab \<rceil>\<^bsub>c\<^esub> = pa' \<^emph> pb' \<Longrightarrow>
+    pab = pa \<^emph> pb \<Longrightarrow>
+    wpa' = \<lceil> pa \<rceil>\<^bsub>c\<^esub> \<Longrightarrow>
+    wpb' = \<lceil> pb \<rceil>\<^bsub>c\<^esub> \<Longrightarrow>
+    \<lceil> sp a pa' \<rceil>\<^bsub>b \<squnion> c\<^esub> \<^emph> \<lceil> sp b pb' \<rceil>\<^bsub>a \<squnion> c\<^esub> \<^emph> \<lceil> sp c pc \<rceil>\<^bsub>a \<squnion> b\<^esub>
+    \<le>
+    \<lceil> sp a wpa' \<rceil>\<^bsub>b \<squnion> c\<^esub> \<^emph> \<lceil> sp b wpb' \<rceil>\<^bsub>a \<squnion> c\<^esub> \<^emph> \<lceil> sp c pc \<rceil>\<^bsub>a \<squnion> b\<^esub>\<close>
   nitpick
-  sorry
+  oops
 
-end
+
+
 
 
 class finite_sep_alg = distrib_sep_alg +
