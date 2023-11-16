@@ -188,23 +188,6 @@ lemma wsstable_sepconj_semidistrib_backwards:
 
 definition \<open>downset x \<equiv> {y. y\<le>x}\<close>
 
-lemma wsstable_semidistrib_disjoint_pre_state:
-  \<open>\<forall>h. (P \<^emph> Q) h \<longrightarrow> \<not> pre_state r h \<Longrightarrow>
-    \<lceil> P \<^emph> Q \<rceil>\<^bsub>r\<^esub> \<le> \<lceil> P \<rceil>\<^bsub>r\<^esub> \<^emph> \<lceil> Q \<rceil>\<^bsub>r\<^esub>\<close>
-  apply (simp add: wsstable_def sepconj_def fun_eq_iff le_fun_def pre_state_def)
-  apply (metis converse_rtranclpE rtranclp.rtrancl_refl)
-  done
-
-lemma (in glb_sep_alg) wsstable_semidistrib_disjoint_pre_state:
-  \<open>\<forall>h1 h2. (P \<^emph> Q) h1 \<longrightarrow> pre_state r h2 \<longrightarrow> h1 \<sqinter> h2 = 0 \<Longrightarrow>
-    \<lceil> P \<^emph> Q \<rceil>\<^bsub>r\<^esub> \<le> \<lceil> P \<rceil>\<^bsub>r\<^esub> \<^emph> \<lceil> Q \<rceil>\<^bsub>r\<^esub>\<close>
-  apply (clarsimp simp add: wsstable_def sepconj_def fun_eq_iff le_fun_def)
-  apply (clarsimp simp del: all_simps(5) simp add: imp_ex imp_conjL)
-  apply (simp add: pre_state_def)
-  apply (metis converse_rtranclpE inf_idem sepadd_0_right sepadd_eq_0_iff_both_eq_0 zero_disjointR
-      rtranclp.rtrancl_refl)
-  done
-
 (*
   alloc a; dealloc a
 *)
@@ -304,6 +287,50 @@ lemma
   shows
     \<open>(q \<le> qy)\<close>
   oops
+
+end
+
+
+
+lemma (in perm_alg) wsstable_semidistrib_not_pre_state:
+  \<open>\<forall>h. (P \<^emph> Q) h \<longrightarrow> \<not> pre_state r h \<Longrightarrow>
+    \<lceil> P \<^emph> Q \<rceil>\<^bsub>r\<^esub> \<le> \<lceil> P \<rceil>\<^bsub>r\<^esub> \<^emph> \<lceil> Q \<rceil>\<^bsub>r\<^esub>\<close>
+  apply (simp add: wsstable_def sepconj_def fun_eq_iff le_fun_def pre_state_def)
+  apply (metis converse_rtranclpE rtranclp.rtrancl_refl)
+  done
+
+lemma (in glb_sep_alg) wsstable_semidistrib_disjoint_pre_state:
+  \<open>\<forall>h1 h2. (P \<^emph> Q) h1 \<longrightarrow> pre_state r h2 \<longrightarrow> h1 \<sqinter> h2 = 0 \<Longrightarrow>
+    \<lceil> P \<^emph> Q \<rceil>\<^bsub>r\<^esub> \<le> \<lceil> P \<rceil>\<^bsub>r\<^esub> \<^emph> \<lceil> Q \<rceil>\<^bsub>r\<^esub>\<close>
+  apply (clarsimp simp add: wsstable_def sepconj_def fun_eq_iff le_fun_def)
+  apply (clarsimp simp del: all_simps(5) simp add: imp_ex imp_conjL)
+  apply (simp add: pre_state_def)
+  apply (metis converse_rtranclpE inf_idem sepadd_0_right sepadd_eq_0_iff_both_eq_0 zero_disjointR
+      rtranclp.rtrancl_refl)
+  done
+
+lemma (in perm_alg)
+  \<open>unit_sepadd a \<Longrightarrow> b \<le> a \<Longrightarrow> unit_sepadd b\<close>
+  by (metis disjoint_add_rightL dual_order.antisym le_iff_sepadd_weak unit_sepadd_def)
+
+class test_perm_alg = indivisible_units_perm_alg + disjoint_parts_perm_alg + strong_sep_perm_alg
+begin
+
+definition \<open>changedom r \<equiv> \<lambda>x. \<exists>y. r x y \<and> y \<noteq> x\<close>
+
+lemma wsstable_semidistrib_disjoint_pre_state:
+  \<open>\<forall>h h'. P h \<longrightarrow> changedom r h' \<longrightarrow> h ## h' \<Longrightarrow>
+    \<forall>h h'. Q h \<longrightarrow> changedom r h' \<longrightarrow> h ## h' \<Longrightarrow>
+    \<forall>h h'. (P \<^emph> Q) h \<longrightarrow> changedom r h' \<longrightarrow> h ## h' \<Longrightarrow>
+    reflp r \<Longrightarrow>
+    transp r \<Longrightarrow>
+    X = \<lceil> P \<^emph> Q \<rceil>\<^bsub>r\<^esub> \<Longrightarrow>
+    Y = \<lceil> P \<rceil>\<^bsub>r\<^esub> \<Longrightarrow>
+    Z = \<lceil> Q \<rceil>\<^bsub>r\<^esub> \<Longrightarrow>
+    YZ = Y \<^emph> Z \<Longrightarrow>
+    X \<le> YZ\<close>
+  nitpick
+  sorry
 
 end
 

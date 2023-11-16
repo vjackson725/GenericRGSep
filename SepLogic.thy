@@ -234,7 +234,15 @@ lemma sepadd_right_mono: \<open>a ## c \<Longrightarrow> b ## c \<Longrightarrow
 
 subsection \<open> unit_sepadd \<close>
 
-definition \<open>unit_sepadd a \<equiv> \<forall>b. a ## b \<longrightarrow> a + b = b\<close>
+definition \<open>unit_sepadd a \<equiv> a ## a \<and> (\<forall>b. a ## b \<longrightarrow> a + b = b)\<close>
+
+text \<open>
+  Not true, I call these 'amost units'.
+  They should probably be banned.
+\<close>
+lemma \<open>(\<forall>b. a ## b \<longrightarrow> a + b = b) \<Longrightarrow> a ## a\<close>
+  nitpick
+  oops
 
 subsection \<open>sepdomeq\<close>
 
@@ -500,7 +508,7 @@ lemma unitof_idem[simp]: \<open>unitof (unitof a) = unitof a\<close>
   by (metis unitof_disjoint unitof_is_unit unitof_is_unitR2)
 
 lemma unitof_is_unit_sepadd: \<open>unit_sepadd (unitof a)\<close>
-  by (simp add: unit_sepadd_def)
+  by (simp add: unit_sepadd_def unitof_inherits_disjointness)
 
 lemma le_iff_sepadd: \<open>a \<le> b \<longleftrightarrow> (\<exists>c. a ## c \<and> b = a + c)\<close>
   by (metis unitof_disjoint2 le_iff_sepadd_weak unitof_is_unitR2)
@@ -758,16 +766,37 @@ end
 
 subsection \<open>Strongly Separated Separation Algebra\<close>
 
-class strong_separated_multiunit_sep_alg = multiunit_sep_alg +
-  assumes only_unit_selfsep: \<open>a ## a \<Longrightarrow> unitof a = a\<close>
+class strong_sep_perm_alg = perm_alg +
+  assumes selfsep_implies_unit: \<open>a ## a \<Longrightarrow> unit_sepadd a\<close>
 begin
 
-lemma selfsep_iff: \<open>a ## a \<longleftrightarrow> unitof a = a\<close>
-  by (metis only_unit_selfsep unitof_disjoint)
+lemma selfsep_iff:
+  \<open>a ## a \<longleftrightarrow> unit_sepadd a\<close>
+  using selfsep_implies_unit unit_sepadd_def by blast
 
 end
 
-class strong_separated_sep_alg = sep_alg + strong_separated_multiunit_sep_alg
+class strong_sep_multiunit_sep_alg = multiunit_sep_alg + strong_sep_perm_alg
+begin
+
+lemma mu_selfsep_iff: \<open>a ## a \<longleftrightarrow> unitof a = a\<close>
+  by (metis selfsep_iff unitof_disjoint unitof_unit_sepadd)
+
+lemma mu_selfsep_implies_unit: \<open>a ## a \<Longrightarrow> unitof a = a\<close>
+  by (metis mu_selfsep_iff)
+
+end
+
+class strong_separated_sep_alg = sep_alg + strong_sep_multiunit_sep_alg
+begin
+
+lemma sepalg_selfsep_iff: \<open>a ## a \<longleftrightarrow> a = 0\<close>
+  by (simp add: selfsep_iff)
+
+lemma sepalg_selfsep_implies_unit: \<open>a ## a \<Longrightarrow> a = 0\<close>
+  by (metis sepalg_selfsep_iff)
+
+end
 
 subsection \<open> Disjoint Parts Algebra \<close>
 
@@ -1049,7 +1078,12 @@ lemma cancel_right_to_unit:
     \<open>a ## b\<close>
     \<open>a + b = b\<close>
   shows \<open>unit_sepadd a\<close>
-proof (clarsimp simp add: unit_sepadd_def)
+  unfolding unit_sepadd_def
+proof (intro conjI allI impI)
+  show Daa: \<open>a ## a\<close>
+    using assms
+    by (metis disjoint_add_rightL)
+
   fix c
   assume D0:
     \<open>a ## c\<close>
@@ -1063,17 +1097,17 @@ proof (clarsimp simp add: unit_sepadd_def)
       using assms
       by (metis partial_add_assoc3 partial_add_commute disjoint_add_swap disjoint_symm)
     ultimately show ?thesis
-      using assms(1)
+      using assms
       by (simp add: disjoint_symm_iff)
   qed
 
   have D1: \<open>c + a ## a\<close>
-    using assms D0 E1
-    by (metis disjoint_add_commuteL disjoint_add_rightL)
+    using assms D0 E1 Daa
+    by (metis disjoint_add_commuteL)
 
   have \<open>a + c = a + (c + a)\<close>
-    using assms D0 E1
-    by (metis disjoint_add_rightL partial_add_assoc partial_add_commute)
+    using assms D0 E1 Daa
+    by (metis partial_add_assoc partial_add_commute)
   then show \<open>a + c = c\<close>
     using D0 D1
     by (metis partial_left_cancelD disjoint_symm partial_add_commute)
