@@ -296,12 +296,12 @@ begin
 
 lemma stableres_mono: \<open>a \<le> b \<Longrightarrow> stableres a \<le> stableres b\<close>
   unfolding le_iff_sepadd
-  by (metis disjoint_preservation disjoint_symm order.trans le_iff_sepadd stableres_concave
+  by (metis disjoint_preservation disjoint_sym order.trans le_iff_sepadd stableres_concave
       stableres_subres)
 
 lemma stableres_disjoint_preservation:
   \<open>a ## b \<Longrightarrow> stableres a ## stableres b\<close>
-  by (meson disjoint_preservation disjoint_symm stableres_subres)
+  by (meson disjoint_preservation disjoint_sym stableres_subres)
 
 lemma stableres_plus_idem:
   \<open>stableres a ## stableres b \<Longrightarrow> stableres (stableres a + stableres b) = stableres a + stableres b\<close>
@@ -360,7 +360,7 @@ proof -
     apply -
     apply (metis disjoint_add_leftL half_disjoint_preservation_right stableres_disjoint_preservation)
     apply (metis disjoint_add_leftR half_disjoint_preservation_right stableres_disjoint_preservation)
-    apply (metis disjoint_add_rightR disjoint_add_right_commute disjoint_symm_iff partial_add_commute stableres_disjoint_preservation)
+    apply (metis disjoint_add_rightR disjoint_add_right_commute disjoint_sym_iff partial_add_commute stableres_disjoint_preservation)
     apply (metis disjoint_add_leftL disjoint_add_commuteL disjoint_add_leftR half_disjoint_distribL partial_add_commute stableres_disjoint_preservation)
     done
 
@@ -411,6 +411,7 @@ lemma swstable_necessitation: \<open>\<top> \<le> P \<Longrightarrow> \<top> \<l
   by (metis order_eq_refl swstable_wsstable_absorb top.extremum_uniqueI wsstable_stronger)
 
 lemma swstable_impl_distrib: \<open>\<box>(P \<leadsto> Q) \<sqinter> \<box> P \<le> \<box> Q\<close>
+  sledgehammer
   by (metis (no_types, lifting) double_compl inf.absorb1 inf.orderI inf_idem sup_neg_inf
       swstable_conj_distrib implies_def)
 

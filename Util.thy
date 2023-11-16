@@ -133,6 +133,18 @@ lemma liftR_le_liftR[simp]:
   \<open>rel_liftR p \<le> rel_liftR q \<longleftrightarrow> p \<le> q\<close>
   by (simp add: rel_liftR_def)
 
+lemma implies_rel_then_rtranscl_implies_rel:
+  assumes assms_induct:
+    \<open>r\<^sup>*\<^sup>* x y\<close>
+    \<open>\<forall>x y. r x y \<longrightarrow> s x y\<close>
+  and assms_misc:
+    \<open>(\<And>a. s a a)\<close>
+    \<open>(\<And>a b c. s a b \<Longrightarrow> s b c \<Longrightarrow> s a c)\<close>
+  shows \<open>s x y\<close>
+  using assms_induct
+  by (induct rule: rtranclp_induct)
+    (blast intro: assms_misc)+
+
 subsection \<open> Function Properties \<close>
 
 lemmas bij_betw_disjoint_insert =

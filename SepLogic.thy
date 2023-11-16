@@ -140,7 +140,7 @@ class perm_alg = disjoint + plus + order +
   assumes partial_add_assoc: \<open>a ## b \<Longrightarrow> b ## c \<Longrightarrow> a ## c \<Longrightarrow> (a + b) + c = a + (b + c)\<close>
   assumes partial_add_commute: \<open>a ## b \<Longrightarrow> a + b = b + a\<close>
   (* separation laws *)
-  assumes disjoint_symm: \<open>a ## b \<Longrightarrow> b ## a\<close>
+  assumes disjoint_sym: \<open>a ## b \<Longrightarrow> b ## a\<close>
   assumes disjoint_add_rightL: \<open>b ## c \<Longrightarrow> a ## b + c \<Longrightarrow> a ## b\<close>
   assumes disjoint_add_right_commute: \<open>a ## c \<Longrightarrow> b ## a + c \<Longrightarrow> a ## (b + c)\<close>
   assumes positivity: \<open>a ## b \<Longrightarrow> a + b = c \<Longrightarrow> c ## c \<Longrightarrow> c + c = c \<Longrightarrow> a + a = a\<close>
@@ -150,14 +150,14 @@ begin
 lemma le_iff_sepadd_weak: \<open>a \<le> b \<longleftrightarrow> a = b \<or> (\<exists>c. a ## c \<and> b = a + c)\<close>
   using le_less less_iff_sepadd by auto
 
-lemma disjoint_symm_iff: \<open>a ## b \<longleftrightarrow> b ## a\<close>
-  using disjoint_symm by blast
+lemma disjoint_sym_iff: \<open>a ## b \<longleftrightarrow> b ## a\<close>
+  using disjoint_sym by blast
 
 lemma partial_le_plus[simp]: \<open>a ## b \<Longrightarrow> a \<le> a + b\<close>
   by (metis less_iff_sepadd nless_le order.refl)
 
 lemma partial_le_plus2[simp]: \<open>a ## b \<Longrightarrow> b \<le> a + b\<close>
-  by (metis partial_le_plus disjoint_symm partial_add_commute)
+  by (metis partial_le_plus disjoint_sym partial_add_commute)
 
 (* TODO: think about decreasing and increasing elements from
     'Bringing order to the separation logic Jungle'.
@@ -166,40 +166,40 @@ lemma partial_le_plus2[simp]: \<open>a ## b \<Longrightarrow> b \<le> a + b\<clo
 
 lemma common_subresource_selfsep:
   \<open>a ## b \<Longrightarrow> ab \<le> a \<Longrightarrow> ab \<le> b \<Longrightarrow> ab ## ab\<close>
-  by (metis disjoint_add_rightL disjoint_symm order.order_iff_strict less_iff_sepadd)
+  by (metis disjoint_add_rightL disjoint_sym order.order_iff_strict less_iff_sepadd)
 
 lemma disjoint_add_rightR: \<open>b ## c \<Longrightarrow> a ## b + c \<Longrightarrow> a ## c\<close>
-  by (metis disjoint_add_rightL disjoint_symm partial_add_commute)
+  by (metis disjoint_add_rightL disjoint_sym partial_add_commute)
 
 lemma disjoint_add_leftL: \<open>a ## b \<Longrightarrow> a + b ## c \<Longrightarrow> a ## c\<close>
-  using disjoint_add_rightL disjoint_symm by blast
+  using disjoint_add_rightL disjoint_sym by blast
 
 lemma disjoint_add_leftR: \<open>a ## b \<Longrightarrow> a + b ## c \<Longrightarrow> b ## c\<close>
-  by (metis disjoint_add_leftL disjoint_symm partial_add_commute)
+  by (metis disjoint_add_leftL disjoint_sym partial_add_commute)
 
 lemma disjoint_add_commuteL: \<open>c ## b \<Longrightarrow> c + b ## a \<Longrightarrow> a + b ## c\<close>
-  by (simp add: disjoint_add_right_commute disjoint_symm)
+  by (simp add: disjoint_add_right_commute disjoint_sym)
 
 lemma disjoint_add_swap:
   \<open>b ## c \<Longrightarrow> a ## b + c \<Longrightarrow> a + b ## c\<close>
-  using disjoint_add_commuteL disjoint_symm_iff partial_add_commute by auto
+  using disjoint_add_commuteL disjoint_sym_iff partial_add_commute by auto
 
 lemma disjoint_add_swap2:
   \<open>a ## b \<Longrightarrow> a + b ## c \<Longrightarrow> a ## b + c\<close>
-  by (metis disjoint_add_commuteL disjoint_add_leftR disjoint_symm partial_add_commute)
+  by (metis disjoint_add_commuteL disjoint_add_leftR disjoint_sym partial_add_commute)
 
 lemma weak_positivity: \<open>a ## b \<Longrightarrow> a + b = c \<Longrightarrow> c ## c \<Longrightarrow> a ## a\<close>
-  by (meson disjoint_add_rightL disjoint_symm)
+  by (meson disjoint_add_rightL disjoint_sym)
 
 lemma weak_positivityR: \<open>a ## b \<Longrightarrow> a + b = c \<Longrightarrow> c ## c \<Longrightarrow> b ## b\<close>
-  using disjoint_symm partial_add_commute weak_positivity by blast
+  using disjoint_sym partial_add_commute weak_positivity by blast
 
 lemma positivityR: \<open>a ## b \<Longrightarrow> a + b = c \<Longrightarrow> c ## c \<Longrightarrow> c + c = c \<Longrightarrow> b + b = b\<close>
-  using disjoint_symm partial_add_commute positivity by blast
+  using disjoint_sym partial_add_commute positivity by blast
 
 lemma partial_add_left_commute:
   \<open>a ## b \<Longrightarrow> b ## c \<Longrightarrow> a ## c \<Longrightarrow> b + (a + c) = a + (b + c)\<close>
-  by (metis disjoint_symm partial_add_assoc partial_add_commute)
+  by (metis disjoint_sym partial_add_assoc partial_add_commute)
 
 lemma disjoint_preservation:
   \<open>a' \<le> a \<Longrightarrow> a ## b \<Longrightarrow> a' ## b\<close>
@@ -207,7 +207,7 @@ lemma disjoint_preservation:
 
 lemma disjoint_preservation2:
   \<open>b' \<le> b \<Longrightarrow> a ## b \<Longrightarrow> a ## b'\<close>
-  using disjoint_preservation disjoint_symm by blast
+  using disjoint_preservation disjoint_sym by blast
 
 lemma partial_add_assoc2:
   \<open>a ## b \<Longrightarrow> a + b ## c \<Longrightarrow> (a + b) + c = a + (b + c)\<close>
@@ -228,7 +228,7 @@ lemma sepadd_left_mono:
       metis disjoint_add_rightR disjoint_add_swap partial_add_assoc)
 
 lemma sepadd_right_mono: \<open>a ## c \<Longrightarrow> b ## c \<Longrightarrow> a \<le> b \<Longrightarrow> a + c \<le> b + c\<close>
-  by (metis disjoint_symm_iff partial_add_commute sepadd_left_mono)
+  by (metis disjoint_sym_iff partial_add_commute sepadd_left_mono)
 
 subsection \<open> unit_sepadd \<close>
 
@@ -244,7 +244,7 @@ lemma units_least: \<open>unit_sepadd x \<Longrightarrow> x ## y \<Longrightarro
 
 lemma almost_units_are_nondisjoint_to_everything:
   \<open>(\<forall>b. a ## b \<longrightarrow> a + b = b) \<Longrightarrow> \<not> a ## a \<Longrightarrow> \<not> a ## b\<close>
-  by (metis disjoint_add_leftL disjoint_symm)
+  by (metis disjoint_add_leftL disjoint_sym)
 
 lemma units_separate_to_units: \<open>x ## y \<Longrightarrow> unit_sepadd (x + y) \<Longrightarrow> unit_sepadd x\<close>
   using below_unit_impl_unit partial_le_plus by blast
@@ -253,7 +253,7 @@ lemma unit_sepadd_left: \<open>unit_sepadd u \<Longrightarrow> u ## a \<Longrigh
   using unit_sepadd_def by auto
 
 lemma unit_sepadd_right: \<open>unit_sepadd u \<Longrightarrow> a ## u \<Longrightarrow> a + u = a\<close>
-  by (metis disjoint_symm partial_add_commute unit_sepadd_left)
+  by (metis disjoint_sym partial_add_commute unit_sepadd_left)
 
 lemma add_unit_sepadd_add_iff_parts_unit_sepadd[simp]:
   \<open>x ## y \<Longrightarrow> unit_sepadd (x + y) \<longleftrightarrow> unit_sepadd x \<and> unit_sepadd y\<close>
@@ -341,13 +341,13 @@ lemma septract_reverse: \<open>P \<midarrow>\<odot> Q = Q \<odot>\<midarrow> P\<
 lemma sepconj_assoc: \<open>(P \<^emph> Q) \<^emph> R = P \<^emph> (Q \<^emph> R)\<close>
   apply (clarsimp simp add: sepconj_def ex_simps[symmetric] partial_add_assoc simp del: ex_simps)
   apply (intro ext iffI)
-   apply (metis disjoint_add_leftR disjoint_add_right_commute disjoint_symm partial_add_assoc
+   apply (metis disjoint_add_leftR disjoint_add_right_commute disjoint_sym partial_add_assoc
       partial_add_commute)+
   done
 
 lemma sepconj_comm: \<open>P \<^emph> Q = Q \<^emph> P\<close>
   unfolding sepconj_def
-  by (metis disjoint_symm partial_add_commute)
+  by (metis disjoint_sym partial_add_commute)
 
 lemma sepconj_left_comm: \<open>Q \<^emph> (P \<^emph> R) = P \<^emph> (Q \<^emph> R)\<close>
   apply (clarsimp simp add: sepconj_def ex_simps[symmetric] partial_add_assoc simp del: ex_simps)
@@ -380,12 +380,12 @@ lemma sepconj_sepimp_galois: \<open>P \<^emph> Q \<le> R \<longleftrightarrow> P
 
 lemma sepcoimp_septract_galois: \<open>P \<odot>\<midarrow> Q \<le> R \<longleftrightarrow> P \<le> Q \<sim>\<^emph> R\<close>
   unfolding sepcoimp_def septract_rev_def le_fun_def
-  using disjoint_symm partial_add_commute by fastforce
+  using disjoint_sym partial_add_commute by fastforce
 
 lemma sepcoimp_curry: \<open>P \<sim>\<^emph> Q \<sim>\<^emph> R = P \<^emph> Q \<sim>\<^emph> R\<close>
   apply (clarsimp simp add: sepcoimp_def sepconj_def)
   apply (intro ext iffI; clarsimp)
-   apply (metis disjoint_add_leftR disjoint_add_right_commute disjoint_symm partial_add_assoc
+   apply (metis disjoint_add_leftR disjoint_add_right_commute disjoint_sym partial_add_assoc
       partial_add_commute)+
   done
 
@@ -409,7 +409,7 @@ lemma sepimp_sepconjL:
   \<open>P \<^emph> Q \<midarrow>\<^emph> R = P \<midarrow>\<^emph> Q \<midarrow>\<^emph> R\<close>
   apply (clarsimp simp add: sepconj_def sepimp_def fun_eq_iff)
   apply (rule iffI)
-   apply (metis disjoint_add_rightR disjoint_add_right_commute disjoint_symm partial_add_assoc
+   apply (metis disjoint_add_rightR disjoint_add_right_commute disjoint_sym partial_add_assoc
       partial_add_commute)+
   done
 
@@ -518,19 +518,19 @@ class multiunit_sep_alg = perm_alg +
 begin
 
 lemma unitof_disjoint2[simp,intro!]: \<open>a ## unitof a\<close>
-  by (simp add: disjoint_symm)
+  by (simp add: disjoint_sym)
 
 lemma unitof_inherits_disjointness: \<open>a ## b \<Longrightarrow> unitof a ## b\<close>
   by (metis disjoint_add_leftL unitof_disjoint unitof_is_unit)
 
 lemma unitof_is_unit2[simp]: \<open>b ## unitof a \<Longrightarrow> unitof a + b = b\<close>
-  by (simp add: disjoint_symm_iff)
+  by (simp add: disjoint_sym_iff)
 
 lemma unitof_is_unitR[simp]: \<open>unitof a ## b \<Longrightarrow> b + unitof a = b\<close>
   using partial_add_commute unitof_is_unit by presburger
 
 lemma unitof_is_unitR2[simp]: \<open>b ## unitof a \<Longrightarrow> b + unitof a = b\<close>
-  by (simp add: disjoint_symm_iff)
+  by (simp add: disjoint_sym_iff)
 
 lemma unitof_idem[simp]: \<open>unitof (unitof a) = unitof a\<close>
   by (metis unitof_disjoint unitof_is_unit unitof_is_unitR2)
@@ -580,11 +580,11 @@ lemma unitof_eq_sepadd_iff_both_eq_unitof[simp]:
 
 lemma disjoint_same_unit:
   \<open>a ## b \<Longrightarrow> unitof a = unitof b\<close>
-  by (metis disjoint_symm_iff unitof_inherits_disjointness unitof_is_unit2 unitof_is_unitR2)
+  by (metis disjoint_sym_iff unitof_inherits_disjointness unitof_is_unit2 unitof_is_unitR2)
 
 lemma common_disjoint_same_unit:
   \<open>a ## c \<Longrightarrow> b ## c \<Longrightarrow> unitof a = unitof b\<close>
-  by (metis disjoint_symm_iff unitof_inherits_disjointness unitof_is_unit2 unitof_is_unitR2)
+  by (metis disjoint_sym_iff unitof_inherits_disjointness unitof_is_unit2 unitof_is_unitR2)
 
 lemmas unitof_order = unitof_le le_unitof_eq not_less_unitof unitof_less_iff_neq_unitof not_gr_unitof
 
@@ -612,7 +612,7 @@ fun iterated_sepconj :: \<open>('a \<Rightarrow> bool) list \<Rightarrow> ('a \<
 
 lemma emp_sepconj_unit[simp]: \<open>emp \<^emph> P = P\<close>
   apply (simp add: emp_def sepconj_def unit_sepadd_def fun_eq_iff)
-  apply (metis disjoint_symm partial_add_commute unitof_disjoint unitof_is_unitR2)
+  apply (metis disjoint_sym partial_add_commute unitof_disjoint unitof_is_unitR2)
   done
 
 lemma emp_sepconj_unit_right[simp]: \<open>P \<^emph> emp = P\<close>
@@ -702,8 +702,28 @@ begin
 definition compatible :: \<open>'a \<Rightarrow> 'a \<Rightarrow> bool\<close> where
   \<open>compatible \<equiv> (##)\<^sup>*\<^sup>*\<close>
 
-lemma disjoint_is_compatible_refl:
+lemma compatible_refl[intro!]:
   \<open>compatible a a\<close>
+  by (simp add: compatible_def)
+
+lemma compatible_refl_iff[simp]:
+  \<open>compatible a a \<longleftrightarrow> True\<close>
+  by (simp add: compatible_def)
+
+lemma compatible_sym:
+  assumes \<open>compatible a b\<close>
+  shows \<open>compatible b a\<close>
+proof -
+  have \<open>(##)\<^sup>*\<^sup>* = ((##)\<inverse>\<inverse>)\<^sup>*\<^sup>*\<close>
+    by (metis disjoint_sym sympI symp_conv_conversep_eq)
+  also have \<open>... = (##)\<^sup>*\<^sup>*\<inverse>\<inverse>\<close>
+    by (simp add: rtranclp_conversep)
+  finally show ?thesis
+    by (metis assms compatible_def conversep_iff)
+qed
+
+lemma compatible_trans:
+  \<open>compatible a b \<Longrightarrow> compatible b c \<Longrightarrow> compatible a c\<close>
   by (simp add: compatible_def)
 
 lemma disjoint_is_compatible:
@@ -716,7 +736,7 @@ lemma trans_disjoint_is_compatible:
 
 lemma disjoint_units_identical:
   \<open>a ## b \<Longrightarrow> unit_sepadd a \<Longrightarrow> unit_sepadd b \<Longrightarrow> a = b\<close>
-  by (metis disjoint_symm partial_add_commute unit_sepadd_def)
+  by (metis disjoint_sym partial_add_commute unit_sepadd_def)
 
 lemma trans_disjoint_units_identical:
   \<open>a ## b \<Longrightarrow> b ## c \<Longrightarrow> unit_sepadd a \<Longrightarrow> unit_sepadd c \<Longrightarrow> a = c\<close>
@@ -734,9 +754,21 @@ lemma compatible_units_identical:
   \<open>compatible a z \<Longrightarrow> unit_sepadd a \<Longrightarrow> unit_sepadd z \<Longrightarrow> a = z\<close>
   by (metis compatible_def converse_rtranclpE trans_compatible_units_identical)
 
+lemma implies_compatible_then_rtranscl_implies_compatible:
+  \<open>\<forall>x y. r x y \<longrightarrow> compatible x y \<Longrightarrow> r\<^sup>*\<^sup>* x y \<Longrightarrow> compatible x y\<close>
+  using implies_rel_then_rtranscl_implies_rel[of r _ _ compatible]
+    compatible_trans
+  by blast
+
+lemma implies_compatible_then_rtranscl_implies_compatible2:
+  \<open>r \<le> compatible \<Longrightarrow> r\<^sup>*\<^sup>* \<le> compatible\<close>
+  using implies_rel_then_rtranscl_implies_rel[of r _ _ compatible]
+    compatible_trans
+  by blast
+
 end
 
-(* almost a sep_alg, in that if there was a unit, it would be a sepalgebra *)
+(* almost a sep_alg, in that if there was a unit, it would be a sep-algebra *)
 class allcompatible_perm_alg = perm_alg +
   assumes all_compatible: \<open>compatible a b\<close>
 begin
@@ -840,27 +872,27 @@ begin
 
 lemmas disjointness_left_plusI' =
   disjointness_left_plusI
-  disjointness_left_plusI[OF disjoint_symm]
-  disjointness_left_plusI[OF _ disjoint_symm]
-  disjointness_left_plusI[OF _ _ disjoint_symm]
-  disjointness_left_plusI[OF _ disjoint_symm disjoint_symm]
-  disjointness_left_plusI[OF disjoint_symm _ disjoint_symm]
-  disjointness_left_plusI[OF disjoint_symm disjoint_symm]
-  disjointness_left_plusI[OF disjoint_symm disjoint_symm disjoint_symm]
+  disjointness_left_plusI[OF disjoint_sym]
+  disjointness_left_plusI[OF _ disjoint_sym]
+  disjointness_left_plusI[OF _ _ disjoint_sym]
+  disjointness_left_plusI[OF _ disjoint_sym disjoint_sym]
+  disjointness_left_plusI[OF disjoint_sym _ disjoint_sym]
+  disjointness_left_plusI[OF disjoint_sym disjoint_sym]
+  disjointness_left_plusI[OF disjoint_sym disjoint_sym disjoint_sym]
 
 lemma disjointness_right_plusI:
   \<open>a ## b \<Longrightarrow> a ## c \<Longrightarrow> b ## c \<Longrightarrow> a ## b + c\<close>
-  using disjointness_left_plusI disjoint_symm by auto
+  using disjointness_left_plusI disjoint_sym by auto
 
 lemmas disjointness_right_plusI' =
   disjointness_right_plusI
-  disjointness_right_plusI[OF disjoint_symm]
-  disjointness_right_plusI[OF _ disjoint_symm]
-  disjointness_right_plusI[OF _ _ disjoint_symm]
-  disjointness_right_plusI[OF _ disjoint_symm disjoint_symm]
-  disjointness_right_plusI[OF disjoint_symm _ disjoint_symm]
-  disjointness_right_plusI[OF disjoint_symm disjoint_symm]
-  disjointness_right_plusI[OF disjoint_symm disjoint_symm disjoint_symm]
+  disjointness_right_plusI[OF disjoint_sym]
+  disjointness_right_plusI[OF _ disjoint_sym]
+  disjointness_right_plusI[OF _ _ disjoint_sym]
+  disjointness_right_plusI[OF _ disjoint_sym disjoint_sym]
+  disjointness_right_plusI[OF disjoint_sym _ disjoint_sym]
+  disjointness_right_plusI[OF disjoint_sym disjoint_sym]
+  disjointness_right_plusI[OF disjoint_sym disjoint_sym disjoint_sym]
 
 lemma disjointness_left_plus_eq:
   \<open>a ## b \<Longrightarrow> a + b ## c \<longleftrightarrow> a ## c \<and> b ## c\<close>
@@ -1014,19 +1046,62 @@ end
 
 subsection \<open> Separation Algebras with glb \<close>
 
-class glb_perm_alg = perm_alg + inf +
+class inf_perm_alg = perm_alg + inf +
   assumes sepinf_leqL[intro]: \<open>compatible a b \<Longrightarrow> a \<sqinter> b \<le> a\<close>
     and sepinf_leqR[intro]: \<open>compatible a b \<Longrightarrow> a \<sqinter> b \<le> b\<close>
     and sepinf_least[intro]: \<open>compatible a b \<Longrightarrow> c \<le> a \<Longrightarrow> c \<le> b \<Longrightarrow> c \<le> a \<sqinter> b\<close>
 begin
 
-lemma glb_disjointL: \<open>a ## b \<Longrightarrow> compatible a c \<Longrightarrow> a \<sqinter> c ## b\<close>
+lemma sepinf_disjointL: \<open>a ## b \<Longrightarrow> compatible a c \<Longrightarrow> a \<sqinter> c ## b\<close>
   using disjoint_preservation by blast
 
-lemma glb_disjointR: \<open>a ## b \<Longrightarrow> compatible b c \<Longrightarrow> a ## b \<sqinter> c\<close>
+lemma sepinf_disjointR: \<open>a ## b \<Longrightarrow> compatible b c \<Longrightarrow> a ## b \<sqinter> c\<close>
   using disjoint_preservation2 by blast
 
-lemma disjoint_glb_of_add_impl_disjoint_glb_part:
+lemma sepinf_preserves_compatibleL:
+  \<open>compatible a b \<Longrightarrow> compatible a c \<Longrightarrow> compatible (a \<sqinter> b) c\<close>
+  by (metis converse_rtranclpE compatible_def compatible_trans disjoint_sym_iff le_iff_sepadd_weak
+      sepinf_least trans_disjoint_is_compatible sepinf_disjointL)
+
+lemma sepinf_preserves_compatibleL2:
+  \<open>compatible a b \<Longrightarrow> compatible b c \<Longrightarrow> compatible (a \<sqinter> b) c\<close>
+  using compatible_trans sepinf_preserves_compatibleL by blast
+
+lemma sepinf_preserves_compatibleL3:
+  \<open>compatible a c \<Longrightarrow> compatible b c \<Longrightarrow> compatible (a \<sqinter> b) c\<close>
+  by (meson compatible_sym compatible_trans sepinf_preserves_compatibleL)
+
+lemma sepinf_preserves_compatibleR:
+  \<open>compatible b c \<Longrightarrow> compatible a b \<Longrightarrow> compatible a (b \<sqinter> c)\<close>
+  by (metis converse_rtranclpE compatible_def compatible_trans disjoint_sym_iff le_iff_sepadd_weak
+      sepinf_least trans_disjoint_is_compatible sepinf_disjointL)
+
+lemma sepinf_preserves_compatibleR2:
+  \<open>compatible b c \<Longrightarrow> compatible a c \<Longrightarrow> compatible a (b \<sqinter> c)\<close>
+  by (meson compatible_sym sepinf_preserves_compatibleL2)
+
+lemma sepinf_preserves_compatibleR3:
+  \<open>compatible a b \<Longrightarrow> compatible a c \<Longrightarrow> compatible a (b \<sqinter> c)\<close>
+  by (meson compatible_sym sepinf_preserves_compatibleL3)
+
+
+lemma sepinf_idem[simp]: \<open>a \<sqinter> a = a\<close>
+  by (simp add: order_antisym sepinf_least sepinf_leqR)
+
+lemma sepinf_assoc[simp]:
+  \<open>compatible a b \<Longrightarrow> compatible b c \<Longrightarrow> a \<sqinter> (b \<sqinter> c) = a \<sqinter> b \<sqinter> c\<close>
+  apply (subgoal_tac \<open>compatible (a \<sqinter> b) c\<close>)
+   prefer 2
+   apply (metis converse_rtranclpE compatible_def disjoint_preservation disjoint_sym sepinf_idem 
+      sepinf_leqL trans_disjoint_is_compatible rtranclp_trans)
+  apply (subgoal_tac \<open>compatible a (b \<sqinter> c)\<close>)
+   prefer 2
+   apply (metis converse_rtranclpE compatible_def disjoint_preservation disjoint_sym sepinf_idem 
+      sepinf_leqL trans_disjoint_is_compatible rtranclp_trans)
+  apply (meson order.antisym order.trans sepinf_least sepinf_leqL sepinf_leqR; fail)
+  done
+
+lemma disjoint_sepinf_of_add_impl_disjoint_sepinf_part:
   \<open>a ## b \<Longrightarrow>
     compatible a c \<Longrightarrow>
     compatible (a + b) c \<Longrightarrow>
@@ -1034,23 +1109,23 @@ lemma disjoint_glb_of_add_impl_disjoint_glb_part:
     a \<sqinter> c ## y\<close>
   by (meson disjoint_preservation order.trans partial_le_plus sepinf_least sepinf_leqL sepinf_leqR)
 
-lemma glb_of_unit_is_unit:
+lemma sepinf_of_unit_is_unit:
   \<open>compatible a b \<Longrightarrow> unit_sepadd a \<Longrightarrow> unit_sepadd (a \<sqinter> b)\<close>
   using below_unit_impl_unit by blast
 
-lemma glb_of_unit_eq_that_unit[simp]:
+lemma sepinf_of_unit_eq_that_unit[simp]:
   \<open>compatible a b \<Longrightarrow> unit_sepadd a \<Longrightarrow> a \<sqinter> b = a\<close>
-  by (meson glb_of_unit_is_unit disjoint_is_compatible_refl disjoint_preservation sepinf_leqL
+  by (meson sepinf_of_unit_is_unit compatible_refl disjoint_preservation sepinf_leqL
       trans_compatible_units_identical unit_sepadd_def)
 
-lemma glb_of_unit_eq_that_unit2[simp]:
+lemma sepinf_of_unit_eq_that_unit2[simp]:
   \<open>compatible a b \<Longrightarrow> unit_sepadd b \<Longrightarrow> a \<sqinter> b = b\<close>
   by (metis disjoint_preservation2 order.antisym partial_le_plus sepinf_leqR unit_sepadd_def)
 
 end
 
 
-class allcompatible_glb_perm_alg = glb_perm_alg + allcompatible_perm_alg
+class allcompatible_inf_perm_alg = inf_perm_alg + allcompatible_perm_alg
 begin
 
 subclass semilattice_inf
@@ -1059,12 +1134,12 @@ subclass semilattice_inf
 
 end
 
-class glb_multiunit_sep_alg = multiunit_sep_alg + glb_perm_alg
+class inf_multiunit_sep_alg = multiunit_sep_alg + inf_perm_alg
 
-class glb_sep_alg = sep_alg + glb_multiunit_sep_alg
+class inf_sep_alg = sep_alg + inf_multiunit_sep_alg
 begin
 
-subclass allcompatible_glb_perm_alg
+subclass allcompatible_inf_perm_alg
   by standard
 
 end
@@ -1072,14 +1147,14 @@ end
 subsubsection \<open> distributive glb/add \<close>
 
 (* TODO: generalise this to non-compatible algebras *)
-class distrib_perm_alg = allcompatible_glb_perm_alg +
+class distrib_perm_alg = allcompatible_inf_perm_alg +
   assumes inf_add_distrib1:
     \<open>\<And>x a b. a ## b \<Longrightarrow> x \<sqinter> (a + b) = (x \<sqinter> a) + (x \<sqinter> b)\<close>
 begin
 
-lemma left_glb_preserves_disjoint:
+lemma left_inf_preserves_disjoint:
   \<open>a ## b \<Longrightarrow> (x \<sqinter> a) ## (x \<sqinter> b)\<close>
-  by (meson disjoint_preservation disjoint_symm inf.cobounded2)
+  by (meson disjoint_preservation disjoint_sym inf.cobounded2)
 
 lemma inf_add_distrib2:
     \<open>\<And>x a b. a ## b \<Longrightarrow> (a + b) \<sqinter> x = (a \<sqinter> x) + (b \<sqinter> x)\<close>
@@ -1121,7 +1196,7 @@ begin
 
 lemma partial_right_cancel2[simp]:
   \<open>c ## a \<Longrightarrow> c ## b \<Longrightarrow> (a + c = b + c) = (a = b)\<close>
-  using partial_right_cancel disjoint_symm
+  using partial_right_cancel disjoint_sym
   by force
 
 lemma partial_left_cancel[simp]:
@@ -1130,7 +1205,7 @@ lemma partial_left_cancel[simp]:
 
 lemma partial_left_cancel2[simp]:
   \<open>c ## a \<Longrightarrow> c ## b \<Longrightarrow> (c + a = c + b) = (a = b)\<close>
-  using partial_left_cancel disjoint_symm
+  using partial_left_cancel disjoint_sym
   by force
 
 lemmas partial_right_cancelD = iffD1[OF partial_right_cancel, rotated 2]
@@ -1157,13 +1232,13 @@ proof (intro conjI allI impI)
   proof -
     have \<open>b ## a + a\<close>
       using assms
-      by (simp add: disjoint_add_swap disjoint_symm)
+      by (simp add: disjoint_add_swap disjoint_sym)
     moreover have \<open>b + a = b + (a + a)\<close>
       using assms
-      by (metis partial_add_assoc3 partial_add_commute disjoint_add_swap disjoint_symm)
+      by (metis partial_add_assoc3 partial_add_commute disjoint_add_swap disjoint_sym)
     ultimately show ?thesis
       using assms
-      by (simp add: disjoint_symm_iff)
+      by (simp add: disjoint_sym_iff)
   qed
 
   have D1: \<open>c + a ## a\<close>
@@ -1175,12 +1250,12 @@ proof (intro conjI allI impI)
     by (metis partial_add_assoc partial_add_commute)
   then show \<open>a + c = c\<close>
     using D0 D1
-    by (metis partial_left_cancelD disjoint_symm partial_add_commute)
+    by (metis partial_left_cancelD disjoint_sym partial_add_commute)
 qed
 
 lemma cancel_left_to_unit:
   \<open>a ## b \<Longrightarrow> a + b = a \<Longrightarrow> unit_sepadd b\<close>
-  by (metis cancel_right_to_unit disjoint_symm partial_add_commute)
+  by (metis cancel_right_to_unit disjoint_sym partial_add_commute)
 
 paragraph \<open> Seplogic \<close>
 
@@ -1200,16 +1275,16 @@ proof (rule iffI)
       \<open>P h2\<close>
 
     have \<open>(P \<^emph> ((=) h1')) (h2+h2')\<close>
-      using precise_assms partial_add_commute disjoint_symm sepconj_def
+      using precise_assms partial_add_commute disjoint_sym sepconj_def
       by (metis (mono_tags, lifting))
     moreover have \<open>(P \<^emph> ((=) h2')) (h2+h2')\<close>
-      using precise_assms partial_add_commute disjoint_symm sepconj_def
+      using precise_assms partial_add_commute disjoint_sym sepconj_def
       by (metis (mono_tags, lifting))
     ultimately have \<open>(P \<^emph> ((=) h1' \<sqinter> (=) h2')) (h2+h2')\<close>
       using distrib_assm precise_assms
       by simp
     then show \<open>h1 = h2\<close>
-      using precise_assms disjoint_symm
+      using precise_assms disjoint_sym
       by (force dest: partial_right_cancelD simp add: sepconj_def)
   qed
 next
@@ -1305,7 +1380,7 @@ lemma half_disjoint_preservation_left: \<open>a ## b \<Longrightarrow> half a ##
   by (metis disjoint_add_leftR half_additive_split half_self_disjoint)
 
 lemma half_disjoint_preservation_right: \<open>a ## b \<Longrightarrow> a ## half b\<close>
-  using half_disjoint_preservation_left disjoint_symm by blast
+  using half_disjoint_preservation_left disjoint_sym by blast
 
 lemma half_disjoint_preservation: \<open>a ## b \<Longrightarrow> half a ## half b\<close>
   by (simp add: half_disjoint_preservation_left half_disjoint_preservation_right)
@@ -1313,12 +1388,12 @@ lemma half_disjoint_preservation: \<open>a ## b \<Longrightarrow> half a ## half
 
 lemma half_disjoint_distribL:
   \<open>a ## c \<Longrightarrow> a + c ## b \<Longrightarrow> a + half c ## b + half c\<close>
-  by (metis disjoint_add_leftL disjoint_add_right_commute disjoint_symm half_additive_split
+  by (metis disjoint_add_leftL disjoint_add_right_commute disjoint_sym half_additive_split
       half_self_disjoint partial_add_assoc)
 
 lemma half_disjoint_distribR:
   \<open>b ## c \<Longrightarrow> a ## b + c \<Longrightarrow> a + half c ## b + half c\<close>
-  using half_disjoint_distribL disjoint_symm by blast
+  using half_disjoint_distribL disjoint_sym by blast
 
 lemma half_eq_full_imp_self_additive:
   \<open>half a = a \<Longrightarrow> a + a = a\<close>
@@ -1371,13 +1446,13 @@ instance
           apply (force simp add: partial_add_assoc)
          apply (force dest: partial_add_commute)
         apply (force simp add: partial_add_assoc)
-       apply (force simp add: disjoint_symm_iff partial_add_commute)
-      apply (force simp add: disjoint_symm)
+       apply (force simp add: disjoint_sym_iff partial_add_commute)
+      apply (force simp add: disjoint_sym)
      apply (force dest: disjoint_add_rightL)
     apply (force dest: disjoint_add_right_commute)
    apply (force dest: positivity)
   apply (clarsimp simp add: less_iff_sepadd)
-  apply (simp add: le_iff_sepadd_weak, metis disjoint_symm_iff unitof_disjoint unitof_is_unitR2)
+  apply (simp add: le_iff_sepadd_weak, metis disjoint_sym_iff unitof_disjoint unitof_is_unitR2)
   done
 
 end
