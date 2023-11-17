@@ -520,17 +520,17 @@ instance
         apply (force simp add: plus_hperm_def disjoint_pheap_def' pheap_eq_iff partial_add_commute
       split: option.splits)
     (* separation *)
-       apply (force simp add: disjoint_pheap_def' disjoint_symm)
+       apply (force simp add: disjoint_pheap_def' disjoint_sym)
   subgoal
     apply (clarsimp simp add: disjoint_pheap_def' plus_hperm_def split: option.splits)
     apply (drule_tac x=x in spec)+
     apply (meson disjoint_add_rightL)
     done
       (* subgoal *)
-    apply (clarsimp simp add: disjoint_pheap_def' plus_hperm_def split: option.splits)
+   apply (clarsimp simp add: disjoint_pheap_def' plus_hperm_def split: option.splits)
     apply (drule_tac x=x in spec)+
     apply (case_tac \<open>c \<bullet> x\<close>)
-     apply (clarsimp simp add: disjoint_symm; fail)
+     apply (clarsimp simp add: disjoint_sym; fail)
     apply (force dest: disjoint_add_right_commute)
     (* done *)
     (* subgoal *)
@@ -614,7 +614,7 @@ end
 
 subsection \<open> glb + distributive algebras \<close>
 
-instantiation pheap :: (allcompatible_glb_perm_alg, type, type) glb_sep_alg
+instantiation pheap :: (allcompatible_inf_perm_alg, type, type) inf_sep_alg
 begin
 
 lift_definition inf_pheap :: \<open>('a,'b,'c) pheap \<Rightarrow> ('a,'b,'c) pheap \<Rightarrow> ('a,'b,'c) pheap\<close> is
