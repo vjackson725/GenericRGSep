@@ -55,6 +55,10 @@ lemma framed_subresource_rel_frame:
   apply (auto; fail)
   done
 
+lemma framed_subresource_rel_sym:
+  \<open>framed_subresource_rel a b a' b' \<Longrightarrow> framed_subresource_rel b a b' a'\<close>
+  using framed_subresource_rel_def by auto
+
 end
 
 lemma (in multiunit_sep_alg) mu_sep_alg_compatible_framed_subresource_rel_iff:

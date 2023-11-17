@@ -372,19 +372,32 @@ lemma (in inf_perm_alg) wsstable_semidistrib_disjoint_pre_state_strong2:
       sepadd_unit_def rtranclp.rtrancl_refl)
   done
 
-
-lemma (in perm_alg) wsstable_semidistrib_disjoint_pre_state_strong2:
-  \<open>\<forall>h1 h2. (P \<^emph> Q) h1 \<longrightarrow> changedom r h2 \<longrightarrow> {c. c \<le> h1 \<and> c \<le> h2} \<subseteq> sepadd_units \<Longrightarrow>
+lemma (in perm_alg) wsstable_semidistrib_disjoint_pre_state_strong3:
+  \<open>\<forall>a. (P \<^emph> Q) a \<longrightarrow> changedom r a \<longrightarrow> sepadd_unit a \<Longrightarrow>
+    r \<le> compatible \<Longrightarrow>
     \<lceil> P \<^emph> Q \<rceil>\<^bsub>r\<^esub> \<le> \<lceil> P \<rceil>\<^bsub>r\<^esub> \<^emph> \<lceil> Q \<rceil>\<^bsub>r\<^esub>\<close>
   apply (simp only: changedom_rtranclp[symmetric, of r], clarsimp simp add: changedom_def)
+  apply (drule implies_compatible_then_rtranscl_implies_compatible2)
   apply (clarsimp simp add: wsstable_def sepconj_def pre_state_def le_fun_def
       fun_eq_iff imp_ex imp_conjL simp del: all_simps(5))
   apply (drule spec2, drule mp, assumption, drule mp, assumption, drule mp, assumption)
   apply (drule spec2, drule mp, assumption)
+  apply (drule spec, drule mp, assumption)
+  apply (case_tac \<open>x = h1 + h2\<close>, blast)
   apply clarsimp
-  nitpick
-  sorry
-
+  apply (frule(2) disjoint_units_identical)
+  apply (clarsimp simp add: sepadd_unit_left)
+  apply (metis compatible_to_unit_is_unit_right compatible_unit_disjoint rtranclp.rtrancl_refl)
+(*
+  apply (rule_tac x=x in exI)
+  apply (rule_tac x=h2 in exI)
+  apply (rule conjI)
+   apply (metis compatible_unit_disjoint)
+  apply (rule conjI)
+   apply (metis compatible_to_unit_is_unit_right)
+  apply force
+*)
+  done
 
 (* The situation that we want to prove is *)
 lemma (in perm_alg) wsstable_semidistrib_realistic:
