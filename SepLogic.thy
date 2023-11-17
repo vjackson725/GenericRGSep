@@ -230,34 +230,37 @@ lemma sepadd_left_mono:
 lemma sepadd_right_mono: \<open>a ## c \<Longrightarrow> b ## c \<Longrightarrow> a \<le> b \<Longrightarrow> a + c \<le> b + c\<close>
   by (metis disjoint_sym_iff partial_add_commute sepadd_left_mono)
 
-subsection \<open> unit_sepadd \<close>
+subsection \<open> sepadd_unit \<close>
 
-definition \<open>unit_sepadd a \<equiv> a ## a \<and> (\<forall>b. a ## b \<longrightarrow> a + b = b)\<close>
+definition \<open>sepadd_unit a \<equiv> a ## a \<and> (\<forall>b. a ## b \<longrightarrow> a + b = b)\<close>
 
 lemma below_unit_impl_unit:
-  \<open>a \<le> b \<Longrightarrow> unit_sepadd b \<Longrightarrow> unit_sepadd a\<close>
-  unfolding unit_sepadd_def
+  \<open>a \<le> b \<Longrightarrow> sepadd_unit b \<Longrightarrow> sepadd_unit a\<close>
+  unfolding sepadd_unit_def
   by (metis disjoint_add_rightL order.antisym le_iff_sepadd_weak)
 
-lemma units_least: \<open>unit_sepadd x \<Longrightarrow> x ## y \<Longrightarrow> x \<le> y\<close>
-  using le_iff_sepadd_weak unit_sepadd_def by auto
+lemma units_least: \<open>sepadd_unit x \<Longrightarrow> x ## y \<Longrightarrow> x \<le> y\<close>
+  using le_iff_sepadd_weak sepadd_unit_def by auto
 
 lemma almost_units_are_nondisjoint_to_everything:
   \<open>(\<forall>b. a ## b \<longrightarrow> a + b = b) \<Longrightarrow> \<not> a ## a \<Longrightarrow> \<not> a ## b\<close>
   by (metis disjoint_add_leftL disjoint_sym)
 
-lemma units_separate_to_units: \<open>x ## y \<Longrightarrow> unit_sepadd (x + y) \<Longrightarrow> unit_sepadd x\<close>
+lemma units_separate_to_units: \<open>x ## y \<Longrightarrow> sepadd_unit (x + y) \<Longrightarrow> sepadd_unit x\<close>
   using below_unit_impl_unit partial_le_plus by blast
 
-lemma unit_sepadd_left: \<open>unit_sepadd u \<Longrightarrow> u ## a \<Longrightarrow> u + a = a\<close>
-  using unit_sepadd_def by auto
+lemma sepadd_unit_left: \<open>sepadd_unit u \<Longrightarrow> u ## a \<Longrightarrow> u + a = a\<close>
+  using sepadd_unit_def by auto
 
-lemma unit_sepadd_right: \<open>unit_sepadd u \<Longrightarrow> a ## u \<Longrightarrow> a + u = a\<close>
-  by (metis disjoint_sym partial_add_commute unit_sepadd_left)
+lemma sepadd_unit_right: \<open>sepadd_unit u \<Longrightarrow> a ## u \<Longrightarrow> a + u = a\<close>
+  by (metis disjoint_sym partial_add_commute sepadd_unit_left)
 
-lemma add_unit_sepadd_add_iff_parts_unit_sepadd[simp]:
-  \<open>x ## y \<Longrightarrow> unit_sepadd (x + y) \<longleftrightarrow> unit_sepadd x \<and> unit_sepadd y\<close>
-  by (metis unit_sepadd_def units_separate_to_units)
+lemma add_sepadd_unit_add_iff_parts_sepadd_unit[simp]:
+  \<open>x ## y \<Longrightarrow> sepadd_unit (x + y) \<longleftrightarrow> sepadd_unit x \<and> sepadd_unit y\<close>
+  by (metis sepadd_unit_def units_separate_to_units)
+
+abbreviation \<open>sepadd_units \<equiv> Collect sepadd_unit\<close>
+
 
 subsection \<open> zero_sepadd \<close>
 
@@ -535,8 +538,8 @@ lemma unitof_is_unitR2[simp]: \<open>b ## unitof a \<Longrightarrow> b + unitof 
 lemma unitof_idem[simp]: \<open>unitof (unitof a) = unitof a\<close>
   by (metis unitof_disjoint unitof_is_unit unitof_is_unitR2)
 
-lemma unitof_is_unit_sepadd: \<open>unit_sepadd (unitof a)\<close>
-  by (simp add: unit_sepadd_def unitof_inherits_disjointness)
+lemma unitof_is_sepadd_unit: \<open>sepadd_unit (unitof a)\<close>
+  by (simp add: sepadd_unit_def unitof_inherits_disjointness)
 
 lemma le_iff_sepadd: \<open>a \<le> b \<longleftrightarrow> (\<exists>c. a ## c \<and> b = a + c)\<close>
   by (metis unitof_disjoint2 le_iff_sepadd_weak unitof_is_unitR2)
@@ -565,9 +568,9 @@ lemma gr_implies_not_unitof: "m < x \<Longrightarrow> x \<noteq> unitof x"
   by (metis disjoint_preservation dual_order.strict_iff_not partial_le_plus2 unitof_disjoint
       unitof_is_unitR2)
 
-lemma unitof_unit_sepadd:
-  \<open>unit_sepadd x \<Longrightarrow> unitof x = x\<close>
-  by (metis unit_sepadd_def unitof_disjoint2 unitof_is_unitR2)
+lemma unitof_sepadd_unit:
+  \<open>sepadd_unit x \<Longrightarrow> unitof x = x\<close>
+  by (metis sepadd_unit_def unitof_disjoint2 unitof_is_unitR2)
 
 lemma sepadd_eq_unitof_iff_both_eq_unitof[simp]:
   \<open>x ## y \<Longrightarrow> x + y = unitof (x + y) \<longleftrightarrow> x = unitof x \<and> y = unitof y\<close>
@@ -601,7 +604,7 @@ definition sepconj_mfault ::
 
 
 definition emp :: \<open>'a \<Rightarrow> bool\<close> where
-  \<open>emp \<equiv> unit_sepadd\<close>
+  \<open>emp \<equiv> sepadd_unit\<close>
 
 definition emp_mfault :: \<open>('a \<Rightarrow> bool) mfault\<close> ("emp\<^sub>f") where
   \<open>emp\<^sub>f \<equiv> Success emp\<close>
@@ -611,7 +614,7 @@ fun iterated_sepconj :: \<open>('a \<Rightarrow> bool) list \<Rightarrow> ('a \<
 | \<open>iterated_sepconj [] = emp\<close>
 
 lemma emp_sepconj_unit[simp]: \<open>emp \<^emph> P = P\<close>
-  apply (simp add: emp_def sepconj_def unit_sepadd_def fun_eq_iff)
+  apply (simp add: emp_def sepconj_def sepadd_unit_def fun_eq_iff)
   apply (metis disjoint_sym partial_add_commute unitof_disjoint unitof_is_unitR2)
   done
 
@@ -620,12 +623,12 @@ lemma emp_sepconj_unit_right[simp]: \<open>P \<^emph> emp = P\<close>
 
 lemma secoimp_imp_sepconj:
   \<open>P \<sqinter> (P \<sim>\<^emph> Q) \<le> P \<^emph> (Q \<sqinter> emp)\<close>
-  apply (simp add: sepcoimp_def sepconj_def le_fun_def emp_def unit_sepadd_def)
-  apply (metis unit_sepadd_def unitof_disjoint2 unitof_is_unitR2 unitof_is_unit_sepadd)
+  apply (simp add: sepcoimp_def sepconj_def le_fun_def emp_def sepadd_unit_def)
+  apply (metis sepadd_unit_def unitof_disjoint2 unitof_is_unitR2 unitof_is_sepadd_unit)
   done
 
 lemma not_coimp_emp:
-  \<open>\<not> unit_sepadd h \<Longrightarrow> (- (\<top> \<sim>\<^emph> emp)) h\<close>
+  \<open>\<not> sepadd_unit h \<Longrightarrow> (- (\<top> \<sim>\<^emph> emp)) h\<close>
   by (force simp add: sepcoimp_def emp_def)
 
 lemma supported_intuitionistic_to_precise:
@@ -648,8 +651,8 @@ lemma unitof_zero[simp]: \<open>unitof a = 0\<close>
   by (metis sepadd_0 unitof_is_unitR zero_disjointR)
 
 lemma zero_only_unit[simp]:
-  \<open>unit_sepadd x \<longleftrightarrow> x = 0\<close>
-  by (metis unitof_is_unit_sepadd unitof_unit_sepadd unitof_zero)
+  \<open>sepadd_unit x \<longleftrightarrow> x = 0\<close>
+  by (metis unitof_is_sepadd_unit unitof_sepadd_unit unitof_zero)
 
 subsection \<open>partial canonically_ordered_monoid_add lemmas\<close>
 
@@ -735,23 +738,23 @@ lemma trans_disjoint_is_compatible:
   by (simp add: compatible_def)
 
 lemma disjoint_units_identical:
-  \<open>a ## b \<Longrightarrow> unit_sepadd a \<Longrightarrow> unit_sepadd b \<Longrightarrow> a = b\<close>
-  by (metis disjoint_sym partial_add_commute unit_sepadd_def)
+  \<open>a ## b \<Longrightarrow> sepadd_unit a \<Longrightarrow> sepadd_unit b \<Longrightarrow> a = b\<close>
+  by (metis disjoint_sym partial_add_commute sepadd_unit_def)
 
 lemma trans_disjoint_units_identical:
-  \<open>a ## b \<Longrightarrow> b ## c \<Longrightarrow> unit_sepadd a \<Longrightarrow> unit_sepadd c \<Longrightarrow> a = c\<close>
-  by (metis disjoint_units_identical disjoint_add_leftL unit_sepadd_def)
+  \<open>a ## b \<Longrightarrow> b ## c \<Longrightarrow> sepadd_unit a \<Longrightarrow> sepadd_unit c \<Longrightarrow> a = c\<close>
+  by (metis disjoint_units_identical disjoint_add_leftL sepadd_unit_def)
 
 lemma trans_compatible_units_identical:
-  \<open>compatible b z \<Longrightarrow> a ## b \<Longrightarrow> unit_sepadd a \<Longrightarrow> unit_sepadd z \<Longrightarrow> a = z\<close>
+  \<open>compatible b z \<Longrightarrow> a ## b \<Longrightarrow> sepadd_unit a \<Longrightarrow> sepadd_unit z \<Longrightarrow> a = z\<close>
   unfolding compatible_def
   apply (induct rule: converse_rtranclp_induct)
   apply (force dest: disjoint_units_identical)
-  apply (metis disjoint_add_leftL unit_sepadd_def)
+  apply (metis disjoint_add_leftL sepadd_unit_def)
   done
 
 lemma compatible_units_identical:
-  \<open>compatible a z \<Longrightarrow> unit_sepadd a \<Longrightarrow> unit_sepadd z \<Longrightarrow> a = z\<close>
+  \<open>compatible a z \<Longrightarrow> sepadd_unit a \<Longrightarrow> sepadd_unit z \<Longrightarrow> a = z\<close>
   by (metis compatible_def converse_rtranclpE trans_compatible_units_identical)
 
 lemma implies_compatible_then_rtranscl_implies_compatible:
@@ -774,7 +777,7 @@ class allcompatible_perm_alg = perm_alg +
 begin
 
 lemma all_units_eq:
-  \<open>unit_sepadd a \<Longrightarrow> unit_sepadd b \<Longrightarrow> a = b\<close>
+  \<open>sepadd_unit a \<Longrightarrow> sepadd_unit b \<Longrightarrow> a = b\<close>
   by (simp add: all_compatible compatible_units_identical)
 
 end
@@ -789,7 +792,7 @@ lemma same_unit_compatible:
 lemma compatible_then_same_unit:
   \<open>compatible a b \<Longrightarrow> unitof a = unitof b\<close>
   by (metis compatible_def trans_compatible_units_identical unitof_disjoint unitof_disjoint2
-      unitof_is_unit_sepadd rtranclp.rtrancl_into_rtrancl)
+      unitof_is_sepadd_unit rtranclp.rtrancl_into_rtrancl)
 
 end
 
@@ -797,25 +800,25 @@ end
 class allcompatible_multiunit_sep_alg = allcompatible_perm_alg + multiunit_sep_alg
 begin
 
-lemma exactly_one_unit: \<open>\<exists>!u. unit_sepadd u\<close>
-  using all_compatible compatible_units_identical unitof_is_unit_sepadd by blast
+lemma exactly_one_unit: \<open>\<exists>!u. sepadd_unit u\<close>
+  using all_compatible compatible_units_identical unitof_is_sepadd_unit by blast
 
-definition \<open>the_unit \<equiv> The unit_sepadd\<close>
+definition \<open>the_unit \<equiv> The sepadd_unit\<close>
 
 lemma the_unit_is_a_unit:
-  \<open>unit_sepadd the_unit\<close>
+  \<open>sepadd_unit the_unit\<close>
   unfolding the_unit_def
   by (rule theI', simp add: exactly_one_unit)
 
 lemma is_sep_alg:
   \<open>class.sep_alg the_unit (\<le>) (<) the_unit (##) (+) (\<lambda>_. the_unit)\<close>
   apply standard
-      apply (metis exactly_one_unit unitof_is_unit_sepadd unitof_le the_unit_is_a_unit)
-     apply (metis exactly_one_unit unitof_disjoint unitof_is_unit_sepadd the_unit_is_a_unit)
-    apply (metis exactly_one_unit unitof_disjoint2 unitof_is_unit_sepadd the_unit_is_a_unit)
-   apply (metis exactly_one_unit unitof_disjoint2 unitof_is_unit2 unitof_is_unit_sepadd
+      apply (metis exactly_one_unit unitof_is_sepadd_unit unitof_le the_unit_is_a_unit)
+     apply (metis exactly_one_unit unitof_disjoint unitof_is_sepadd_unit the_unit_is_a_unit)
+    apply (metis exactly_one_unit unitof_disjoint2 unitof_is_sepadd_unit the_unit_is_a_unit)
+   apply (metis exactly_one_unit unitof_disjoint2 unitof_is_unit2 unitof_is_sepadd_unit
       the_unit_is_a_unit)
-  apply (metis exactly_one_unit unitof_disjoint2 unitof_is_unit2 unitof_is_unit_sepadd
+  apply (metis exactly_one_unit unitof_disjoint2 unitof_is_unit2 unitof_is_sepadd_unit
       the_unit_is_a_unit)
   done
 
@@ -833,12 +836,12 @@ end
 subsection \<open>Strongly Separated Separation Algebra\<close>
 
 class strong_sep_perm_alg = perm_alg +
-  assumes selfsep_implies_unit: \<open>a ## a \<Longrightarrow> unit_sepadd a\<close>
+  assumes selfsep_implies_unit: \<open>a ## a \<Longrightarrow> sepadd_unit a\<close>
 begin
 
 lemma selfsep_iff:
-  \<open>a ## a \<longleftrightarrow> unit_sepadd a\<close>
-  using selfsep_implies_unit unit_sepadd_def by blast
+  \<open>a ## a \<longleftrightarrow> sepadd_unit a\<close>
+  using selfsep_implies_unit sepadd_unit_def by blast
 
 end
 
@@ -846,7 +849,7 @@ class strong_sep_multiunit_sep_alg = multiunit_sep_alg + strong_sep_perm_alg
 begin
 
 lemma mu_selfsep_iff: \<open>a ## a \<longleftrightarrow> unitof a = a\<close>
-  by (metis selfsep_iff unitof_disjoint unitof_unit_sepadd)
+  by (metis selfsep_iff unitof_disjoint unitof_sepadd_unit)
 
 lemma mu_selfsep_implies_unit: \<open>a ## a \<Longrightarrow> unitof a = a\<close>
   by (metis mu_selfsep_iff)
@@ -1110,17 +1113,17 @@ lemma disjoint_sepinf_of_add_impl_disjoint_sepinf_part:
   by (meson disjoint_preservation order.trans partial_le_plus sepinf_least sepinf_leqL sepinf_leqR)
 
 lemma sepinf_of_unit_is_unit:
-  \<open>compatible a b \<Longrightarrow> unit_sepadd a \<Longrightarrow> unit_sepadd (a \<sqinter> b)\<close>
+  \<open>compatible a b \<Longrightarrow> sepadd_unit a \<Longrightarrow> sepadd_unit (a \<sqinter> b)\<close>
   using below_unit_impl_unit by blast
 
 lemma sepinf_of_unit_eq_that_unit[simp]:
-  \<open>compatible a b \<Longrightarrow> unit_sepadd a \<Longrightarrow> a \<sqinter> b = a\<close>
+  \<open>compatible a b \<Longrightarrow> sepadd_unit a \<Longrightarrow> a \<sqinter> b = a\<close>
   by (meson sepinf_of_unit_is_unit compatible_refl disjoint_preservation sepinf_leqL
-      trans_compatible_units_identical unit_sepadd_def)
+      trans_compatible_units_identical sepadd_unit_def)
 
 lemma sepinf_of_unit_eq_that_unit2[simp]:
-  \<open>compatible a b \<Longrightarrow> unit_sepadd b \<Longrightarrow> a \<sqinter> b = b\<close>
-  by (metis disjoint_preservation2 order.antisym partial_le_plus sepinf_leqR unit_sepadd_def)
+  \<open>compatible a b \<Longrightarrow> sepadd_unit b \<Longrightarrow> a \<sqinter> b = b\<close>
+  by (metis disjoint_preservation2 order.antisym partial_le_plus sepinf_leqR sepadd_unit_def)
 
 end
 
@@ -1217,8 +1220,8 @@ lemma cancel_right_to_unit:
   assumes
     \<open>a ## b\<close>
     \<open>a + b = b\<close>
-  shows \<open>unit_sepadd a\<close>
-  unfolding unit_sepadd_def
+  shows \<open>sepadd_unit a\<close>
+  unfolding sepadd_unit_def
 proof (intro conjI allI impI)
   show Daa: \<open>a ## a\<close>
     using assms
@@ -1254,7 +1257,7 @@ proof (intro conjI allI impI)
 qed
 
 lemma cancel_left_to_unit:
-  \<open>a ## b \<Longrightarrow> a + b = a \<Longrightarrow> unit_sepadd b\<close>
+  \<open>a ## b \<Longrightarrow> a + b = a \<Longrightarrow> sepadd_unit b\<close>
   by (metis cancel_right_to_unit disjoint_sym partial_add_commute)
 
 paragraph \<open> Seplogic \<close>
@@ -1316,13 +1319,13 @@ class cancel_multiunit_sep_alg = cancel_perm_alg + multiunit_sep_alg
 begin
 
 lemma selfsep_selfadd_iff_unit:
-  \<open>a ## a \<and> a + a = a \<longleftrightarrow> unit_sepadd a\<close>
+  \<open>a ## a \<and> a + a = a \<longleftrightarrow> sepadd_unit a\<close>
   by (metis partial_right_cancelD unitof_disjoint2 unitof_inherits_disjointness unitof_is_unit2
-      unitof_is_unit_sepadd unitof_unit_sepadd)
+      unitof_is_sepadd_unit unitof_sepadd_unit)
 
 lemma strong_positivity:
   \<open>a ## b \<Longrightarrow> c ## c \<Longrightarrow> a + b = c \<Longrightarrow> c + c = c \<Longrightarrow> a = b \<and> b = c\<close>
-  by (metis partial_right_cancelD positivity unit_sepadd_def weak_positivity
+  by (metis partial_right_cancelD positivity sepadd_unit_def weak_positivity
       selfsep_selfadd_iff_unit)
 
 lemma \<open>(a \<^emph> \<top>) \<sqinter> (b \<^emph> \<top>) \<le> ((a \<^emph> b) \<squnion> (a \<sqinter> b)) \<^emph> \<top>\<close>
@@ -1352,7 +1355,7 @@ text \<open>
   Such an algebra is necessary to prove permission heaps are cancellative.
 \<close>
 class no_unit_perm_alg = perm_alg +
-  assumes no_units: \<open>\<not> unit_sepadd a\<close>
+  assumes no_units: \<open>\<not> sepadd_unit a\<close>
 
 class cancel_no_unit_perm_alg = no_unit_perm_alg + cancel_perm_alg
 begin

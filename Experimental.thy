@@ -11,7 +11,7 @@ begin
 
 text \<open> addition irreducible; cf. join/meet irreducible \<close>
 definition sepadd_irr :: \<open>'a \<Rightarrow> bool\<close> where
-  \<open>sepadd_irr x \<equiv> (\<not> unit_sepadd x) \<and> (\<forall>a b. a < x \<longrightarrow> b < x \<longrightarrow> a ## b \<longrightarrow> a + b < x)\<close>
+  \<open>sepadd_irr x \<equiv> (\<not> sepadd_unit x) \<and> (\<forall>a b. a < x \<longrightarrow> b < x \<longrightarrow> a ## b \<longrightarrow> a + b < x)\<close>
 
 definition \<open>foundation a \<equiv> {j. j \<le> a \<and> sepadd_irr j}\<close>
 
@@ -198,30 +198,30 @@ lemma labels_eq_equivp: \<open>equivp (=\<^sub>l)\<close>
 lemma disjoint_units_have_same_labels:
   assumes
     \<open>a ## b\<close>
-    \<open>unit_sepadd a\<close>
-    \<open>unit_sepadd b\<close>
+    \<open>sepadd_unit a\<close>
+    \<open>sepadd_unit b\<close>
   shows
     \<open>a =\<^sub>l b\<close>
   using assms
-  by (metis labels_eq_def labels_leq_add disjoint_sym unit_sepadd_def)
+  by (metis labels_eq_def labels_leq_add disjoint_sym sepadd_unit_def)
 
 lemma same_labels_as_unit_is_unit:
   assumes
     \<open>a ## b\<close>
-    \<open>unit_sepadd a\<close>
+    \<open>sepadd_unit a\<close>
     \<open>a =\<^sub>l b\<close>
   shows
-    \<open>unit_sepadd b\<close>
+    \<open>sepadd_unit b\<close>
   using assms
   by (metis labels_eq_def order.order_iff_strict labels_leq_less_preorder labels_less_embeds
-      partial_le_plus unit_sepadd_def preordering.strict_iff_not)
+      partial_le_plus sepadd_unit_def preordering.strict_iff_not)
 
 subsection  \<open> Label overlap \<close>
 
-definition \<open>label_overlap a b \<equiv> \<exists>c. c \<le>\<^sub>l a \<and> c \<le>\<^sub>l b \<and> \<not> unit_sepadd c\<close>
+definition \<open>label_overlap a b \<equiv> \<exists>c. c \<le>\<^sub>l a \<and> c \<le>\<^sub>l b \<and> \<not> sepadd_unit c\<close>
 
 lemma label_overlap_refl:
-  \<open>\<not> unit_sepadd a \<Longrightarrow> label_overlap a a\<close>
+  \<open>\<not> sepadd_unit a \<Longrightarrow> label_overlap a a\<close>
   using label_overlap_def labels_leq_embeds by blast
 
 lemma label_overlap_sym:
@@ -229,7 +229,7 @@ lemma label_overlap_sym:
   using label_overlap_def by blast
 
 lemma same_labels_implies_label_overlap:
-  \<open>a =\<^sub>l b \<Longrightarrow> \<not> unit_sepadd a \<Longrightarrow> \<not> unit_sepadd b \<Longrightarrow> label_overlap a b\<close>
+  \<open>a =\<^sub>l b \<Longrightarrow> \<not> sepadd_unit a \<Longrightarrow> \<not> sepadd_unit b \<Longrightarrow> label_overlap a b\<close>
   using label_overlap_def labels_eq_def labels_leq_embeds by blast
 
 end
@@ -315,6 +315,9 @@ lemma wsstable_sepconj_semidistrib_backwards:
   nitpick
   oops
 
+end
+
+
 lemma (in perm_alg) wsstable_semidistrib_no_pre_state:
   \<open>\<forall>h1 h2. (P \<^emph> Q) h1 \<longrightarrow> \<not> pre_state r h1 \<Longrightarrow>
     \<lceil> P \<^emph> Q \<rceil>\<^bsub>r\<^esub> \<le> \<lceil> P \<rceil>\<^bsub>r\<^esub> \<^emph> \<lceil> Q \<rceil>\<^bsub>r\<^esub>\<close>
@@ -337,7 +340,7 @@ lemma (in inf_sep_alg) wsstable_semidistrib_disjoint_pre_state:
   done
 
 lemma (in allcompatible_inf_perm_alg) wsstable_semidistrib_disjoint_pre_state_strong:
-  \<open>\<forall>h1 h2. (P \<^emph> Q) h1 \<longrightarrow> changedom r h2 \<longrightarrow> unit_sepadd (h1 \<sqinter> h2) \<Longrightarrow>
+  \<open>\<forall>h1 h2. (P \<^emph> Q) h1 \<longrightarrow> changedom r h2 \<longrightarrow> sepadd_unit (h1 \<sqinter> h2) \<Longrightarrow>
     \<lceil> P \<^emph> Q \<rceil>\<^bsub>r\<^esub> \<le> \<lceil> P \<rceil>\<^bsub>r\<^esub> \<^emph> \<lceil> Q \<rceil>\<^bsub>r\<^esub>\<close>
   apply (simp only: changedom_rtranclp[symmetric, of r], clarsimp simp add: changedom_def)
   apply (clarsimp simp add: wsstable_def sepconj_def pre_state_def le_fun_def
@@ -346,12 +349,12 @@ lemma (in allcompatible_inf_perm_alg) wsstable_semidistrib_disjoint_pre_state_st
   apply (drule spec2, drule mp, assumption)
   apply clarsimp
   apply (metis all_compatible all_units_eq inf.cobounded2 le_iff_sepadd_weak sepinf_of_unit_is_unit
-      unit_sepadd_def rtranclp.rtrancl_refl[of r])
+      sepadd_unit_def rtranclp.rtrancl_refl[of r])
   done
 
 
 lemma (in inf_perm_alg) wsstable_semidistrib_disjoint_pre_state_strong2:
-  \<open>\<forall>h1 h2. (P \<^emph> Q) h1 \<longrightarrow> changedom r h2 \<longrightarrow> compatible h1 h2 \<longrightarrow> unit_sepadd (h1 \<sqinter> h2) \<Longrightarrow>
+  \<open>\<forall>h1 h2. (P \<^emph> Q) h1 \<longrightarrow> changedom r h2 \<longrightarrow> compatible h1 h2 \<longrightarrow> sepadd_unit (h1 \<sqinter> h2) \<Longrightarrow>
     r \<le> compatible \<Longrightarrow>
     \<lceil> P \<^emph> Q \<rceil>\<^bsub>r\<^esub> \<le> \<lceil> P \<rceil>\<^bsub>r\<^esub> \<^emph> \<lceil> Q \<rceil>\<^bsub>r\<^esub>\<close>
   apply (simp only: changedom_rtranclp[symmetric, of r], clarsimp simp add: changedom_def)
@@ -364,8 +367,27 @@ lemma (in inf_perm_alg) wsstable_semidistrib_disjoint_pre_state_strong2:
    prefer 2
    apply (blast dest: implies_compatible_then_rtranscl_implies_compatible)
   apply (metis disjoint_add_swap2 le_iff_sepadd_weak sepinf_leqR sepinf_of_unit_eq_that_unit
-      unit_sepadd_def rtranclp.rtrancl_refl)
+      sepadd_unit_def rtranclp.rtrancl_refl)
   done
+
+
+lemma (in perm_alg) wsstable_semidistrib_disjoint_pre_state_strong2:
+  \<open>\<forall>h1 h2. (P \<^emph> Q) h1 \<longrightarrow> changedom r h2 \<longrightarrow> compatible h1 h2 \<longrightarrow> sepadd_unit (h1 \<sqinter> h2) \<Longrightarrow>
+    r \<le> compatible \<Longrightarrow>
+    \<lceil> P \<^emph> Q \<rceil>\<^bsub>r\<^esub> \<le> \<lceil> P \<rceil>\<^bsub>r\<^esub> \<^emph> \<lceil> Q \<rceil>\<^bsub>r\<^esub>\<close>
+  apply (simp only: changedom_rtranclp[symmetric, of r], clarsimp simp add: changedom_def)
+  apply (clarsimp simp add: wsstable_def sepconj_def pre_state_def le_fun_def
+      fun_eq_iff imp_ex imp_conjL simp del: all_simps(5))
+  apply (drule spec2, drule mp, assumption, drule mp, assumption, drule mp, assumption)
+  apply (drule spec2, drule mp, assumption)
+  apply clarsimp
+  apply (subgoal_tac \<open>compatible (h1 + h2) x\<close>)
+   prefer 2
+   apply (blast dest: implies_compatible_then_rtranscl_implies_compatible)
+  apply (metis disjoint_add_swap2 le_iff_sepadd_weak sepinf_leqR sepinf_of_unit_eq_that_unit
+      sepadd_unit_def rtranclp.rtrancl_refl)
+  done
+
 
 (* The situation that we want to prove is *)
 lemma (in perm_alg) wsstable_semidistrib_realistic:
