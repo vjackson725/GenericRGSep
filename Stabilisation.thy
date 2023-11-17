@@ -411,7 +411,6 @@ lemma swstable_necessitation: \<open>\<top> \<le> P \<Longrightarrow> \<top> \<l
   by (metis order_eq_refl swstable_wsstable_absorb top.extremum_uniqueI wsstable_stronger)
 
 lemma swstable_impl_distrib: \<open>\<box>(P \<leadsto> Q) \<sqinter> \<box> P \<le> \<box> Q\<close>
-  sledgehammer
   by (metis (no_types, lifting) double_compl inf.absorb1 inf.orderI inf_idem sup_neg_inf
       swstable_conj_distrib implies_def)
 

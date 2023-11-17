@@ -150,6 +150,8 @@ lemma \<open>sp (r1 \<squnion> r2) p = sp r1 p \<squnion> sp r2 p\<close>
 lemma \<open>sp (r1 \<sqinter> r2) p \<le> sp r1 p \<sqinter> sp r2 p\<close>
   by (force simp add: sp_def)
 
+
+
 section \<open> Labelled Permission algebra \<close>
 
 text \<open>
@@ -372,8 +374,7 @@ lemma (in inf_perm_alg) wsstable_semidistrib_disjoint_pre_state_strong2:
 
 
 lemma (in perm_alg) wsstable_semidistrib_disjoint_pre_state_strong2:
-  \<open>\<forall>h1 h2. (P \<^emph> Q) h1 \<longrightarrow> changedom r h2 \<longrightarrow> compatible h1 h2 \<longrightarrow> sepadd_unit (h1 \<sqinter> h2) \<Longrightarrow>
-    r \<le> compatible \<Longrightarrow>
+  \<open>\<forall>h1 h2. (P \<^emph> Q) h1 \<longrightarrow> changedom r h2 \<longrightarrow> {c. c \<le> h1 \<and> c \<le> h2} \<subseteq> sepadd_units \<Longrightarrow>
     \<lceil> P \<^emph> Q \<rceil>\<^bsub>r\<^esub> \<le> \<lceil> P \<rceil>\<^bsub>r\<^esub> \<^emph> \<lceil> Q \<rceil>\<^bsub>r\<^esub>\<close>
   apply (simp only: changedom_rtranclp[symmetric, of r], clarsimp simp add: changedom_def)
   apply (clarsimp simp add: wsstable_def sepconj_def pre_state_def le_fun_def
@@ -381,12 +382,8 @@ lemma (in perm_alg) wsstable_semidistrib_disjoint_pre_state_strong2:
   apply (drule spec2, drule mp, assumption, drule mp, assumption, drule mp, assumption)
   apply (drule spec2, drule mp, assumption)
   apply clarsimp
-  apply (subgoal_tac \<open>compatible (h1 + h2) x\<close>)
-   prefer 2
-   apply (blast dest: implies_compatible_then_rtranscl_implies_compatible)
-  apply (metis disjoint_add_swap2 le_iff_sepadd_weak sepinf_leqR sepinf_of_unit_eq_that_unit
-      sepadd_unit_def rtranclp.rtrancl_refl)
-  done
+  nitpick
+  sorry
 
 
 (* The situation that we want to prove is *)

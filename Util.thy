@@ -318,6 +318,9 @@ lemma order_sandwich:
     \<open>k \<le> x \<and> P \<and> x \<le> k \<and> Q \<longleftrightarrow> x = k \<and> P \<and> Q\<close>
   by force+
 
+lemma (in preorder) le_disj_eq_absorb[simp]: \<open>a \<le> b \<or> a = b \<longleftrightarrow> a \<le> b\<close>
+  by force
+
 lemmas preordering_refl =
   preordering.axioms(1)[THEN partial_preordering.refl]
 

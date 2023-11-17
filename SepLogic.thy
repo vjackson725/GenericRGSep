@@ -234,8 +234,15 @@ subsection \<open> sepadd_unit \<close>
 
 definition \<open>sepadd_unit a \<equiv> a ## a \<and> (\<forall>b. a ## b \<longrightarrow> a + b = b)\<close>
 
+abbreviation \<open>sepadd_units \<equiv> Collect sepadd_unit\<close>
+
 lemma below_unit_impl_unit:
   \<open>a \<le> b \<Longrightarrow> sepadd_unit b \<Longrightarrow> sepadd_unit a\<close>
+  unfolding sepadd_unit_def
+  by (metis disjoint_add_rightL order.antisym le_iff_sepadd_weak)
+
+lemma le_unit_iff_eq:
+  \<open>sepadd_unit b \<Longrightarrow> a \<le> b \<longleftrightarrow> b = a\<close>
   unfolding sepadd_unit_def
   by (metis disjoint_add_rightL order.antisym le_iff_sepadd_weak)
 
@@ -259,7 +266,13 @@ lemma add_sepadd_unit_add_iff_parts_sepadd_unit[simp]:
   \<open>x ## y \<Longrightarrow> sepadd_unit (x + y) \<longleftrightarrow> sepadd_unit x \<and> sepadd_unit y\<close>
   by (metis sepadd_unit_def units_separate_to_units)
 
-abbreviation \<open>sepadd_units \<equiv> Collect sepadd_unit\<close>
+lemma disjoint_units_identical:
+  \<open>a ## b \<Longrightarrow> sepadd_unit a \<Longrightarrow> sepadd_unit b \<Longrightarrow> a = b\<close>
+  by (metis disjoint_sym partial_add_commute sepadd_unit_def)
+
+lemma trans_disjoint_units_identical:
+  \<open>a ## b \<Longrightarrow> b ## c \<Longrightarrow> sepadd_unit a \<Longrightarrow> sepadd_unit c \<Longrightarrow> a = c\<close>
+  by (metis disjoint_units_identical disjoint_add_leftL sepadd_unit_def)
 
 
 subsection \<open> zero_sepadd \<close>
@@ -695,67 +708,81 @@ lemma not_coimp_emp0:
 
 end
 
-section \<open> Permission/Separation Algebra Subclasses \<close>
-
-section \<open> compatibility \<close>
+section \<open> Compatibility \<close>
 
 context perm_alg
 begin
 
 definition compatible :: \<open>'a \<Rightarrow> 'a \<Rightarrow> bool\<close> where
-  \<open>compatible \<equiv> (##)\<^sup>*\<^sup>*\<close>
+  \<open>compatible \<equiv> ((\<le>) \<squnion> (\<ge>))\<^sup>*\<^sup>*\<close>
 
-lemma compatible_refl[intro!]:
+lemmas compatible_induct[consumes 1] =
+  rtranclp_induct[of \<open>(\<le>) \<squnion> (\<ge>)\<close>, simplified compatible_def[symmetric], simplified]
+
+lemmas converse_compatible_induct[consumes 1] =
+  converse_rtranclp_induct[of \<open>(\<le>) \<squnion> (\<ge>)\<close>, simplified compatible_def[symmetric], simplified]
+
+lemmas compatibleE =
+  rtranclE[of \<open>(\<le>) \<squnion> (\<ge>)\<close>, simplified compatible_def[symmetric], simplified]
+
+lemmas converse_compatibleE =
+  converse_rtranclpE[of \<open>(\<le>) \<squnion> (\<ge>)\<close>, simplified compatible_def[symmetric], simplified]
+
+lemmas compatible_trans =
+  rtranclp_trans[of \<open>(\<le>) \<squnion> (\<ge>)\<close>, simplified compatible_def[symmetric], simplified]
+
+lemma compatible_refl[intro!, simp]:
   \<open>compatible a a\<close>
-  by (simp add: compatible_def)
-
-lemma compatible_refl_iff[simp]:
-  \<open>compatible a a \<longleftrightarrow> True\<close>
   by (simp add: compatible_def)
 
 lemma compatible_sym:
   assumes \<open>compatible a b\<close>
   shows \<open>compatible b a\<close>
 proof -
-  have \<open>(##)\<^sup>*\<^sup>* = ((##)\<inverse>\<inverse>)\<^sup>*\<^sup>*\<close>
-    by (metis disjoint_sym sympI symp_conv_conversep_eq)
-  also have \<open>... = (##)\<^sup>*\<^sup>*\<inverse>\<inverse>\<close>
+  have \<open>((\<le>) \<squnion> (\<ge>))\<^sup>*\<^sup>* = (((\<le>) \<squnion> (\<ge>))\<inverse>\<inverse>)\<^sup>*\<^sup>*\<close>
+    by (force intro!: arg_cong[of _ _ rtranclp])
+  also have \<open>... = ((\<le>) \<squnion> (\<ge>))\<^sup>*\<^sup>*\<inverse>\<inverse>\<close>
     by (simp add: rtranclp_conversep)
   finally show ?thesis
     by (metis assms compatible_def conversep_iff)
 qed
 
-lemma compatible_trans:
-  \<open>compatible a b \<Longrightarrow> compatible b c \<Longrightarrow> compatible a c\<close>
-  by (simp add: compatible_def)
+lemma le_is_compatible[intro]:
+  \<open>a \<le> b \<Longrightarrow> compatible a b\<close>
+  by (simp add: compatible_def r_into_rtranclp)
 
-lemma disjoint_is_compatible:
-  \<open>a ## b \<Longrightarrow> compatible a b\<close>
-  by (simp add: compatible_def)
+lemma ge_is_compatible[intro]:
+  \<open>a \<ge> b \<Longrightarrow> compatible a b\<close>
+  by (simp add: compatible_def r_into_rtranclp)
 
-lemma trans_disjoint_is_compatible:
-  \<open>a ## b \<Longrightarrow> b ## c \<Longrightarrow> compatible a c\<close>
-  by (simp add: compatible_def)
+lemma trans_le_le_is_compatible[intro]:
+  \<open>a \<le> b \<Longrightarrow> b \<le> c \<Longrightarrow> compatible a c\<close>
+  using le_is_compatible by force
 
-lemma disjoint_units_identical:
-  \<open>a ## b \<Longrightarrow> sepadd_unit a \<Longrightarrow> sepadd_unit b \<Longrightarrow> a = b\<close>
-  by (metis disjoint_sym partial_add_commute sepadd_unit_def)
+lemma trans_ge_ge_is_compatible[intro]:
+  \<open>b \<le> a \<Longrightarrow> c \<le> b \<Longrightarrow> compatible a c\<close>
+  using ge_is_compatible by force
 
-lemma trans_disjoint_units_identical:
-  \<open>a ## b \<Longrightarrow> b ## c \<Longrightarrow> sepadd_unit a \<Longrightarrow> sepadd_unit c \<Longrightarrow> a = c\<close>
-  by (metis disjoint_units_identical disjoint_add_leftL sepadd_unit_def)
+lemma trans_ge_le_is_compatible[intro]:
+  \<open>b \<le> a \<Longrightarrow> b \<le> c \<Longrightarrow> compatible a c\<close>
+  using compatible_trans by blast
 
-lemma trans_compatible_units_identical:
-  \<open>compatible b z \<Longrightarrow> a ## b \<Longrightarrow> sepadd_unit a \<Longrightarrow> sepadd_unit z \<Longrightarrow> a = z\<close>
-  unfolding compatible_def
-  apply (induct rule: converse_rtranclp_induct)
-  apply (force dest: disjoint_units_identical)
-  apply (metis disjoint_add_leftL sepadd_unit_def)
+lemma trans_le_ge_is_compatible[intro]:
+  \<open>a \<le> b \<Longrightarrow> c \<le> b \<Longrightarrow> compatible a c\<close>
+  using compatible_trans by blast
+
+lemma step_compatible_units_identical:
+  \<open>compatible b z \<Longrightarrow> a \<le> b \<or> b \<le> a \<Longrightarrow> sepadd_unit a \<Longrightarrow> sepadd_unit z \<Longrightarrow> a = z\<close>
+  apply (induct rule: converse_compatible_induct)
+   apply (force simp add: le_unit_iff_eq)
+  apply (simp add: le_unit_iff_eq)
+  apply (metis disjoint_preservation2 order.trans le_iff_sepadd_weak le_unit_iff_eq
+      sepadd_unit_left)
   done
 
 lemma compatible_units_identical:
   \<open>compatible a z \<Longrightarrow> sepadd_unit a \<Longrightarrow> sepadd_unit z \<Longrightarrow> a = z\<close>
-  by (metis compatible_def converse_rtranclpE trans_compatible_units_identical)
+  by (metis converse_compatibleE step_compatible_units_identical)
 
 lemma implies_compatible_then_rtranscl_implies_compatible:
   \<open>\<forall>x y. r x y \<longrightarrow> compatible x y \<Longrightarrow> r\<^sup>*\<^sup>* x y \<Longrightarrow> compatible x y\<close>
@@ -765,11 +792,20 @@ lemma implies_compatible_then_rtranscl_implies_compatible:
 
 lemma implies_compatible_then_rtranscl_implies_compatible2:
   \<open>r \<le> compatible \<Longrightarrow> r\<^sup>*\<^sup>* \<le> compatible\<close>
-  using implies_rel_then_rtranscl_implies_rel[of r _ _ compatible]
-    compatible_trans
-  by blast
+  using implies_compatible_then_rtranscl_implies_compatible
+  by (simp add: le_fun_def)
+
+lemma disjoint_rtrancl_implies_compatible:
+  \<open>(##)\<^sup>*\<^sup>* x y \<Longrightarrow> compatible x y\<close>
+  apply (induct rule: rtranclp_induct)
+   apply force
+  apply (metis compatible_trans partial_le_plus partial_le_plus2 trans_le_ge_is_compatible)
+  done
 
 end
+
+
+section \<open> Permission/Separation Algebra Subclasses \<close>
 
 (* almost a sep_alg, in that if there was a unit, it would be a sep-algebra *)
 class allcompatible_perm_alg = perm_alg +
@@ -787,12 +823,12 @@ begin
 
 lemma same_unit_compatible:
   \<open>unitof a = unitof b \<Longrightarrow> compatible a b\<close>
-  by (metis trans_disjoint_is_compatible unitof_disjoint unitof_disjoint2)
+  by (metis trans_ge_le_is_compatible unitof_le)
 
 lemma compatible_then_same_unit:
   \<open>compatible a b \<Longrightarrow> unitof a = unitof b\<close>
-  by (metis compatible_def trans_compatible_units_identical unitof_disjoint unitof_disjoint2
-      unitof_is_sepadd_unit rtranclp.rtrancl_into_rtrancl)
+  by (meson compatible_trans ge_is_compatible step_compatible_units_identical
+      unitof_is_sepadd_unit unitof_le)
 
 end
 
@@ -1063,12 +1099,11 @@ lemma sepinf_disjointR: \<open>a ## b \<Longrightarrow> compatible b c \<Longrig
 
 lemma sepinf_preserves_compatibleL:
   \<open>compatible a b \<Longrightarrow> compatible a c \<Longrightarrow> compatible (a \<sqinter> b) c\<close>
-  by (metis converse_rtranclpE compatible_def compatible_trans disjoint_sym_iff le_iff_sepadd_weak
-      sepinf_least trans_disjoint_is_compatible sepinf_disjointL)
+  by (meson compatible_trans le_is_compatible sepinf_leqL)
 
 lemma sepinf_preserves_compatibleL2:
   \<open>compatible a b \<Longrightarrow> compatible b c \<Longrightarrow> compatible (a \<sqinter> b) c\<close>
-  using compatible_trans sepinf_preserves_compatibleL by blast
+  by (meson compatible_trans sepinf_preserves_compatibleL)
 
 lemma sepinf_preserves_compatibleL3:
   \<open>compatible a c \<Longrightarrow> compatible b c \<Longrightarrow> compatible (a \<sqinter> b) c\<close>
@@ -1076,8 +1111,7 @@ lemma sepinf_preserves_compatibleL3:
 
 lemma sepinf_preserves_compatibleR:
   \<open>compatible b c \<Longrightarrow> compatible a b \<Longrightarrow> compatible a (b \<sqinter> c)\<close>
-  by (metis converse_rtranclpE compatible_def compatible_trans disjoint_sym_iff le_iff_sepadd_weak
-      sepinf_least trans_disjoint_is_compatible sepinf_disjointL)
+  by (meson compatible_trans ge_is_compatible sepinf_leqL)
 
 lemma sepinf_preserves_compatibleR2:
   \<open>compatible b c \<Longrightarrow> compatible a c \<Longrightarrow> compatible a (b \<sqinter> c)\<close>
@@ -1095,12 +1129,10 @@ lemma sepinf_assoc[simp]:
   \<open>compatible a b \<Longrightarrow> compatible b c \<Longrightarrow> a \<sqinter> (b \<sqinter> c) = a \<sqinter> b \<sqinter> c\<close>
   apply (subgoal_tac \<open>compatible (a \<sqinter> b) c\<close>)
    prefer 2
-   apply (metis converse_rtranclpE compatible_def disjoint_preservation disjoint_sym sepinf_idem 
-      sepinf_leqL trans_disjoint_is_compatible rtranclp_trans)
+   apply (metis sepinf_preserves_compatibleL2)
   apply (subgoal_tac \<open>compatible a (b \<sqinter> c)\<close>)
    prefer 2
-   apply (metis converse_rtranclpE compatible_def disjoint_preservation disjoint_sym sepinf_idem 
-      sepinf_leqL trans_disjoint_is_compatible rtranclp_trans)
+   apply (metis sepinf_preserves_compatibleR)
   apply (meson order.antisym order.trans sepinf_least sepinf_leqL sepinf_leqR; fail)
   done
 
@@ -1118,12 +1150,11 @@ lemma sepinf_of_unit_is_unit:
 
 lemma sepinf_of_unit_eq_that_unit[simp]:
   \<open>compatible a b \<Longrightarrow> sepadd_unit a \<Longrightarrow> a \<sqinter> b = a\<close>
-  by (meson sepinf_of_unit_is_unit compatible_refl disjoint_preservation sepinf_leqL
-      trans_compatible_units_identical sepadd_unit_def)
+  by (metis le_unit_iff_eq sepinf_leqL)
 
 lemma sepinf_of_unit_eq_that_unit2[simp]:
   \<open>compatible a b \<Longrightarrow> sepadd_unit b \<Longrightarrow> a \<sqinter> b = b\<close>
-  by (metis disjoint_preservation2 order.antisym partial_le_plus sepinf_leqR sepadd_unit_def)
+  by (metis le_unit_iff_eq sepinf_leqR)
 
 end
 
