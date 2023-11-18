@@ -26,7 +26,14 @@ end
 
 definition \<open>deterministic r \<equiv> (\<forall>x y1 y2. r x y1 \<longrightarrow> r x y2 \<longrightarrow> y1 = y2)\<close>
 
-definition \<open>changedom r \<equiv> \<lambda>x. \<exists>y. r x y \<and> y \<noteq> x\<close>
+definition \<open>changes r \<equiv> \<lambda>x y. r x y \<and> y \<noteq> x\<close>
+abbreviation \<open>changedom r \<equiv> \<lambda>x. \<exists>y. changes r x y\<close>
+lemmas changedom_def = changes_def
+
+lemma pre_state_eq_changedom_and_refl:
+  \<open>pre_state r = (changedom r) \<squnion> (\<lambda>x. r x x)\<close>
+  by (force simp add: changedom_def pre_state_def)
+  
 
 lemma changedom_rtranclp[simp]:
   \<open>changedom (r\<^sup>*\<^sup>*) = changedom r\<close>
@@ -319,75 +326,21 @@ lemma wsstable_sepconj_semidistrib_backwards:
 
 end
 
-
-lemma (in perm_alg) wsstable_semidistrib_no_pre_state:
-  \<open>\<forall>h1 h2. (P \<^emph> Q) h1 \<longrightarrow> \<not> pre_state r h1 \<Longrightarrow>
+lemma (in perm_alg) wsstable_semidistrib_disjoint_pre_state_strong:
+  \<open>\<forall>a. (P \<^emph> Q) a \<longrightarrow> changedom r\<^sup>*\<^sup>* a \<longrightarrow> sepadd_unit a \<Longrightarrow>
+    changes r\<^sup>*\<^sup>* \<sqinter> rel_liftL (P \<^emph> Q) \<le> compatible \<Longrightarrow>
     \<lceil> P \<^emph> Q \<rceil>\<^bsub>r\<^esub> \<le> \<lceil> P \<rceil>\<^bsub>r\<^esub> \<^emph> \<lceil> Q \<rceil>\<^bsub>r\<^esub>\<close>
-  apply (clarsimp simp add: wsstable_def sepconj_def fun_eq_iff le_fun_def)
-  apply (clarsimp simp del: all_simps(5) simp add: imp_ex imp_conjL)
-  apply (simp add: pre_state_def)
-  apply (metis converse_rtranclpE rtranclp.rtrancl_refl)
-  done
-
-lemma (in inf_sep_alg) wsstable_semidistrib_disjoint_pre_state:
-  \<open>\<forall>h1 h2. (P \<^emph> Q) h1 \<longrightarrow> changedom r h2 \<longrightarrow> h1 \<sqinter> h2 = 0 \<Longrightarrow>
-    \<lceil> P \<^emph> Q \<rceil>\<^bsub>r\<^esub> \<le> \<lceil> P \<rceil>\<^bsub>r\<^esub> \<^emph> \<lceil> Q \<rceil>\<^bsub>r\<^esub>\<close>
-  apply (simp only: changedom_rtranclp[symmetric, of r], clarsimp simp add: changedom_def)
-  apply (clarsimp simp add: wsstable_def sepconj_def changedom_def le_fun_def fun_eq_iff
-      imp_ex imp_conjL simp del: all_simps(5))
-  apply (drule spec2, drule mp, assumption, drule mp, assumption, drule mp, assumption)
-  apply (drule spec2, drule mp, assumption)
-  apply clarsimp
-  apply fastforce
-  done
-
-lemma (in allcompatible_inf_perm_alg) wsstable_semidistrib_disjoint_pre_state_strong:
-  \<open>\<forall>h1 h2. (P \<^emph> Q) h1 \<longrightarrow> changedom r h2 \<longrightarrow> sepadd_unit (h1 \<sqinter> h2) \<Longrightarrow>
-    \<lceil> P \<^emph> Q \<rceil>\<^bsub>r\<^esub> \<le> \<lceil> P \<rceil>\<^bsub>r\<^esub> \<^emph> \<lceil> Q \<rceil>\<^bsub>r\<^esub>\<close>
-  apply (simp only: changedom_rtranclp[symmetric, of r], clarsimp simp add: changedom_def)
+  apply (clarsimp simp add: changedom_def rel_liftL_def)
   apply (clarsimp simp add: wsstable_def sepconj_def pre_state_def le_fun_def
       fun_eq_iff imp_ex imp_conjL simp del: all_simps(5))
   apply (drule spec2, drule mp, assumption, drule mp, assumption, drule mp, assumption)
-  apply (drule spec2, drule mp, assumption)
-  apply clarsimp
-  apply (metis all_compatible all_units_eq inf.cobounded2 le_iff_sepadd_weak sepinf_of_unit_is_unit
-      sepadd_unit_def rtranclp.rtrancl_refl[of r])
-  done
-
-
-lemma (in inf_perm_alg) wsstable_semidistrib_disjoint_pre_state_strong2:
-  \<open>\<forall>h1 h2. (P \<^emph> Q) h1 \<longrightarrow> changedom r h2 \<longrightarrow> compatible h1 h2 \<longrightarrow> sepadd_unit (h1 \<sqinter> h2) \<Longrightarrow>
-    r \<le> compatible \<Longrightarrow>
-    \<lceil> P \<^emph> Q \<rceil>\<^bsub>r\<^esub> \<le> \<lceil> P \<rceil>\<^bsub>r\<^esub> \<^emph> \<lceil> Q \<rceil>\<^bsub>r\<^esub>\<close>
-  apply (simp only: changedom_rtranclp[symmetric, of r], clarsimp simp add: changedom_def)
-  apply (clarsimp simp add: wsstable_def sepconj_def pre_state_def le_fun_def
-      fun_eq_iff imp_ex imp_conjL simp del: all_simps(5))
-  apply (drule spec2, drule mp, assumption, drule mp, assumption, drule mp, assumption)
-  apply (drule spec2, drule mp, assumption)
-  apply clarsimp
-  apply (subgoal_tac \<open>compatible (h1 + h2) x\<close>)
-   prefer 2
-   apply (blast dest: implies_compatible_then_rtranscl_implies_compatible)
-  apply (metis disjoint_add_swap2 le_iff_sepadd_weak sepinf_leqR sepinf_of_unit_eq_that_unit
-      sepadd_unit_def rtranclp.rtrancl_refl)
-  done
-
-lemma (in perm_alg) wsstable_semidistrib_disjoint_pre_state_strong3:
-  \<open>\<forall>a. (P \<^emph> Q) a \<longrightarrow> changedom r a \<longrightarrow> sepadd_unit a \<Longrightarrow>
-    r \<le> compatible \<Longrightarrow>
-    \<lceil> P \<^emph> Q \<rceil>\<^bsub>r\<^esub> \<le> \<lceil> P \<rceil>\<^bsub>r\<^esub> \<^emph> \<lceil> Q \<rceil>\<^bsub>r\<^esub>\<close>
-  apply (simp only: changedom_rtranclp[symmetric, of r], clarsimp simp add: changedom_def)
-  apply (drule implies_compatible_then_rtranscl_implies_compatible2)
-  apply (clarsimp simp add: wsstable_def sepconj_def pre_state_def le_fun_def
-      fun_eq_iff imp_ex imp_conjL simp del: all_simps(5))
-  apply (drule spec2, drule mp, assumption, drule mp, assumption, drule mp, assumption)
-  apply (drule spec2, drule mp, assumption)
   apply (drule spec, drule mp, assumption)
   apply (case_tac \<open>x = h1 + h2\<close>, blast)
   apply clarsimp
   apply (frule(2) disjoint_units_identical)
   apply (clarsimp simp add: sepadd_unit_left)
-  apply (metis compatible_to_unit_is_unit_right compatible_unit_disjoint rtranclp.rtrancl_refl)
+  apply (metis compatible_to_unit_is_unit_right compatible_unit_disjoint sepadd_unit_idem_add
+      sepadd_unit_selfsep rtranclp.rtrancl_refl)
 (*
   apply (rule_tac x=x in exI)
   apply (rule_tac x=h2 in exI)
@@ -398,6 +351,38 @@ lemma (in perm_alg) wsstable_semidistrib_disjoint_pre_state_strong3:
   apply force
 *)
   done
+
+lemma (in perm_alg) wsstable_semidistrib_no_pre_state:
+  \<open>\<forall>h1. (P \<^emph> Q) h1 \<longrightarrow> pre_state r h1 \<longrightarrow> False \<Longrightarrow>
+    \<lceil> P \<^emph> Q \<rceil>\<^bsub>r\<^esub> \<le> \<lceil> P \<rceil>\<^bsub>r\<^esub> \<^emph> \<lceil> Q \<rceil>\<^bsub>r\<^esub>\<close>
+  apply (insert wsstable_semidistrib_disjoint_pre_state_strong[of P Q r])
+  apply (drule meta_mp)
+   apply (metis changes_def converse_rtranclpE pre_state_def)
+  apply (drule meta_mp)
+   apply (clarsimp simp add: rel_liftL_def changes_def pre_state_def)
+   apply (metis converse_rtranclpE)
+  apply assumption
+  done
+
+lemma (in inf_sep_alg) wsstable_semidistrib_disjoint_pre_state:
+  \<open>\<forall>h1 h2. (P \<^emph> Q) h1 \<longrightarrow> changedom r h2 \<longrightarrow> h1 \<sqinter> h2 = 0 \<Longrightarrow>
+    \<lceil> P \<^emph> Q \<rceil>\<^bsub>r\<^esub> \<le> \<lceil> P \<rceil>\<^bsub>r\<^esub> \<^emph> \<lceil> Q \<rceil>\<^bsub>r\<^esub>\<close>
+  apply (insert wsstable_semidistrib_disjoint_pre_state_strong[of P Q r])
+  apply (drule meta_mp)
+   apply (metis changedom_rtranclp sepinf_idem zero_only_unit)
+  apply (drule meta_mp)
+   apply (force simp add: rel_liftL_def changes_def pre_state_def all_compatible)
+  apply assumption
+  done
+
+lemma (in inf_perm_alg) wsstable_semidistrib_disjoint_pre_state_strong2:
+  \<open>\<forall>h1 h2. (P \<^emph> Q) h1 \<longrightarrow> changedom r h2 \<longrightarrow> compatible h1 h2 \<longrightarrow> sepadd_unit (h1 \<sqinter> h2) \<Longrightarrow>
+    changes r\<^sup>*\<^sup>* \<sqinter> rel_liftL (P \<^emph> Q) \<le> compatible \<Longrightarrow>
+    \<lceil> P \<^emph> Q \<rceil>\<^bsub>r\<^esub> \<le> \<lceil> P \<rceil>\<^bsub>r\<^esub> \<^emph> \<lceil> Q \<rceil>\<^bsub>r\<^esub>\<close>
+  apply (insert wsstable_semidistrib_disjoint_pre_state_strong[of P Q r])
+  apply (metis changedom_rtranclp compatible_refl sepinf_idem)
+  done
+
 
 (* The situation that we want to prove is *)
 lemma (in perm_alg) wsstable_semidistrib_realistic:

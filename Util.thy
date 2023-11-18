@@ -113,6 +113,22 @@ definition \<open>pre_state r \<equiv> \<lambda>a. \<exists>b. r a b\<close>
 definition \<open>post_state r \<equiv> \<lambda>b. \<exists>a. r a b\<close>
 definition \<open>prepost_state \<equiv> pre_state \<squnion> post_state\<close>
 
+lemma pre_state_trancl_eq[simp]:
+  \<open>pre_state (r\<^sup>+\<^sup>+) = pre_state r\<close>
+  unfolding pre_state_def
+  apply (intro ext iffI)
+   apply (clarify, rule tranclp_induct[of r]; blast)
+  apply blast
+  done
+
+lemma post_state_trancl_eq[simp]:
+  \<open>post_state (r\<^sup>+\<^sup>+) = post_state r\<close>
+  unfolding post_state_def
+  apply (intro ext iffI)
+   apply (clarify, rule tranclp_induct[of r]; blast)
+  apply blast
+  done
+
 lemma rel_liftL_unfold[simp]:
   \<open>rel_liftL p a b = p a\<close>
   by (simp add: rel_liftL_def)
