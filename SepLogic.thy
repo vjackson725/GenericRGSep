@@ -1369,56 +1369,45 @@ lemma cancel_left_to_unit:
 
 paragraph \<open> Seplogic \<close>
 
-lemma precise_iff_conj_distrib:
+lemma precise_then_conj_distrib:
   fixes P :: \<open>'a \<Rightarrow> bool\<close>
-  shows \<open>precise P \<longleftrightarrow> (\<forall>Q Q'. P \<^emph> (Q \<sqinter> Q') = (P \<^emph> Q) \<sqinter> (P \<^emph> Q'))\<close>
-proof (rule iffI)
-  assume distrib_assm: \<open>\<forall>Q Q'. P \<^emph> (Q \<sqinter> Q') = (P \<^emph> Q) \<sqinter> (P \<^emph> Q')\<close>
-  show \<open>precise P\<close>
-  proof (clarsimp simp add: precise_def)
-    fix h1 h1' h2 h2'
-    assume precise_assms:
-      \<open>h1 + h1' = h2 + h2'\<close>
-      \<open>h1 ## h1'\<close>
-      \<open>h2 ## h2'\<close>
-      \<open>P h1\<close>
-      \<open>P h2\<close>
+  shows \<open>precise P \<Longrightarrow> (\<forall>Q Q'. P \<^emph> (Q \<sqinter> Q') = (P \<^emph> Q) \<sqinter> (P \<^emph> Q'))\<close>
+  apply (clarsimp simp add: precise_def sepconj_def inf_fun_def)
+  apply (intro ext iffI)
+   apply blast
+  apply (metis partial_le_plus partial_left_cancel2D)
+  done
 
-    have \<open>(P \<^emph> ((=) h1')) (h2+h2')\<close>
-      using precise_assms partial_add_commute disjoint_sym sepconj_def
-      by (metis (mono_tags, lifting))
-    moreover have \<open>(P \<^emph> ((=) h2')) (h2+h2')\<close>
-      using precise_assms partial_add_commute disjoint_sym sepconj_def
-      by (metis (mono_tags, lifting))
-    ultimately have \<open>(P \<^emph> ((=) h1' \<sqinter> (=) h2')) (h2+h2')\<close>
-      using distrib_assm precise_assms
-      by simp
-    then show \<open>h1 = h2\<close>
-      using precise_assms disjoint_sym
-      by (force dest: partial_right_cancelD simp add: sepconj_def)
-  qed
-next
-  assume precise_assm: \<open>precise P\<close>
-  then show \<open>\<forall>Q Q'. P \<^emph> (Q \<sqinter> Q') = (P \<^emph> Q) \<sqinter> (P \<^emph> Q')\<close>
-    by (simp add: sepconj_def precise_def fun_eq_iff, blast dest: partial_left_cancel2)
-qed
+lemma precise_iff_conj_distrib:
+  assumes \<open>\<forall>h u. P h \<longrightarrow> h ## u \<longrightarrow> P (h + u) \<longrightarrow> sepadd_unit u\<close>
+  shows \<open>precise P \<longleftrightarrow> (\<forall>Q Q'. P \<^emph> (Q \<sqinter> Q') = (P \<^emph> Q) \<sqinter> (P \<^emph> Q'))\<close>
+  using assms
+  apply (intro allI iffI)
+  apply (metis precise_then_conj_distrib)
+  apply (clarsimp simp add: precise_def le_iff_sepadd_weak imp_ex imp_conjL
+      simp del: all_simps(5))
+  apply (intro conjI impI allI)
+    apply (metis sepadd_unit_right)
+   apply (metis sepadd_unit_right)
+  apply clarsimp
+  apply (rename_tac h1 h1' h2 h2')
+  apply (drule_tac x=\<open>(=) h1'\<close> and y=\<open>(=) h2'\<close> in spec2)
+  apply (simp add: sepconj_def fun_eq_iff)
+  apply (metis disjoint_sym_iff partial_right_cancel2D)
+  done
 
 lemma precise_iff_all_sepconj_imp_sepcoimp:
+  assumes \<open>\<forall>h u. P h \<longrightarrow> h ## u \<longrightarrow> P (h + u) \<longrightarrow> sepadd_unit u\<close>
   shows \<open>precise P \<longleftrightarrow> (\<forall>Q. P \<^emph> Q \<le> P \<sim>\<^emph> Q)\<close>
-  apply (clarsimp simp add: sepconj_def sepcoimp_def precise_def le_fun_def)
-  apply (rule iffI)
-   apply (metis partial_left_cancel2)
-  apply (metis le_less order.irrefl partial_right_cancel)
-  done
+  using assms precise_iff_conj_distrib sepconj_conj_distrib_iff_sepconj_imp_sepcoimp
+  by presburger
 
 lemma precise_sepconj_eq_strong_sepcoimp:
-  shows \<open>precise P \<Longrightarrow> P \<^emph> Q = (P \<^emph> \<top>) \<sqinter> (P \<sim>\<^emph> Q)\<close>
-  apply (clarsimp simp add: sepconj_def sepcoimp_def precise_def le_fun_def)
-  apply (rule ext)
-  apply (rule iffI)
-  apply (blast dest: partial_left_cancel2)
-  apply blast
-  done
+  assumes \<open>\<forall>h u. P h \<longrightarrow> h ## u \<longrightarrow> P (h + u) \<longrightarrow> sepadd_unit u\<close>
+  shows \<open>precise P \<longleftrightarrow> (\<forall>Q. P \<^emph> Q = (P \<^emph> \<top>) \<sqinter> (P \<sim>\<^emph> Q))\<close>
+  using assms precise_iff_conj_distrib
+    sepconj_conj_distrib_iff_sepconj_eq_strong_sepcoimp
+  by presburger
 
 end
 
@@ -1450,6 +1439,10 @@ proof -
   ultimately show ?thesis
     by simp
 qed
+
+lemma precise_implies_unitlikes_are_units:
+  \<open>precise P \<Longrightarrow> (\<forall>h u. P h \<longrightarrow> h ## u \<longrightarrow> P (h + u) \<longrightarrow> sepadd_unit u)\<close>
+  by (meson cancel_left_to_unit eq_refl partial_le_plus precise_def)
 
 end
 
