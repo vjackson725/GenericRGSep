@@ -384,6 +384,47 @@ lemma sepconj_left_comm: \<open>Q \<^emph> (P \<^emph> R) = P \<^emph> (Q \<^emp
 
 lemmas sepconj_ac = sepconj_assoc sepconj_comm sepconj_left_comm
 
+
+lemma sepconj_mono[intro]:
+  \<open>P \<le> P' \<Longrightarrow> Q \<le> Q' \<Longrightarrow> P \<^emph> Q \<le> P' \<^emph> Q'\<close>
+  using sepconj_def by auto
+
+lemma sepconj_monoL[intro]:
+  \<open>P \<le> Q \<Longrightarrow> P \<^emph> R \<le> Q \<^emph> R\<close>
+  using sepconj_def by auto
+
+lemma sepconj_monoR[intro]:
+  \<open>Q \<le> R \<Longrightarrow> P \<^emph> Q \<le> P \<^emph> R\<close>
+  using sepconj_def by auto
+
+lemma sepconj_comm_imp:
+  \<open>P \<^emph> Q \<le> Q \<^emph> P\<close>
+  by (simp add: sepconj_comm)
+
+lemma sepconj_middle_monotone_lhsR: \<open>A1 \<^emph> A2 \<le> B \<Longrightarrow> C \<le> D \<Longrightarrow> A1 \<^emph> C \<^emph> A2 \<le> B \<^emph> D\<close>
+  by (metis sepconj_assoc sepconj_comm sepconj_mono)
+
+lemma sepconj_middle_monotone_lhsL: \<open>A1 \<^emph> A2 \<le> B \<Longrightarrow> C \<le> D \<Longrightarrow> A1 \<^emph> C \<^emph> A2 \<le> D \<^emph> B\<close>
+  by (metis sepconj_assoc sepconj_comm sepconj_mono)
+
+lemma sepconj_middle_monotone_rhsR: \<open>A \<le> B1 \<^emph> B2 \<Longrightarrow> C \<le> D \<Longrightarrow> A \<^emph> C \<le> B1 \<^emph> D \<^emph> B2\<close>
+  by (metis sepconj_assoc sepconj_comm sepconj_mono)
+
+lemma sepconj_middle_monotone_rhsL: \<open>A \<le> B1 \<^emph> B2 \<Longrightarrow> C \<le> D \<Longrightarrow> C \<^emph> A \<le> B1 \<^emph> D \<^emph> B2\<close>
+  using sepconj_comm sepconj_middle_monotone_rhsR by presburger
+
+lemma sepconj_middle_monotone_lhsR2: \<open>A1 \<^emph> A2 \<le> B \<Longrightarrow> A1 \<^emph> C \<^emph> A2 \<le> B \<^emph> C\<close>
+  by (simp add: sepconj_middle_monotone_lhsR)
+
+lemma sepconj_middle_monotone_lhsL2: \<open>A1 \<^emph> A2 \<le> B \<Longrightarrow> A1 \<^emph> C \<^emph> A2 \<le> C \<^emph> B\<close>
+  by (simp add: sepconj_middle_monotone_lhsL)
+
+lemma sepconj_middle_monotone_rhsR2: \<open>A \<le> B1 \<^emph> B2 \<Longrightarrow> A \<^emph> C \<le> B1 \<^emph> C \<^emph> B2\<close>
+  by (simp add: sepconj_middle_monotone_rhsR)
+
+lemma sepconj_middle_monotone_rhsL2: \<open>A \<le> B1 \<^emph> B2 \<Longrightarrow> C \<^emph> A \<le> B1 \<^emph> C \<^emph> B2\<close>
+  by (simp add: sepconj_middle_monotone_rhsL)
+
 (*
 
 \<^emph>   < ~ >  \<midarrow>\<^emph>
@@ -415,22 +456,6 @@ lemma sepcoimp_curry: \<open>P \<sim>\<^emph> Q \<sim>\<^emph> R = P \<^emph> Q 
       partial_add_commute)+
   done
 
-lemma sepconj_mono[intro]:
-  \<open>P \<le> P' \<Longrightarrow> Q \<le> Q' \<Longrightarrow> P \<^emph> Q \<le> P' \<^emph> Q'\<close>
-  using sepconj_def by auto
-
-lemma sepconj_monoL[intro]:
-  \<open>P \<le> Q \<Longrightarrow> P \<^emph> R \<le> Q \<^emph> R\<close>
-  using sepconj_def by auto
-
-lemma sepconj_monoR[intro]:
-  \<open>Q \<le> R \<Longrightarrow> P \<^emph> Q \<le> P \<^emph> R\<close>
-  using sepconj_def by auto
-
-lemma sepconj_comm_imp:
-  \<open>P \<^emph> Q \<le> Q \<^emph> P\<close>
-  by (simp add: sepconj_comm)
-
 lemma sepimp_sepconjL:
   \<open>P \<^emph> Q \<midarrow>\<^emph> R = P \<midarrow>\<^emph> Q \<midarrow>\<^emph> R\<close>
   apply (clarsimp simp add: sepconj_def sepimp_def fun_eq_iff)
@@ -446,9 +471,61 @@ lemma sepimp_conjR:
 section \<open> Precision \<close>
 
 definition precise :: \<open>('a \<Rightarrow> bool) \<Rightarrow> bool\<close> where
-  \<open>precise P \<equiv> \<forall>h1 h1' h2 h2'.
-                  P h1 \<longrightarrow> P h2 \<longrightarrow> h1 ## h1' \<longrightarrow> h2 ## h2' \<longrightarrow> h1 + h1' = h2 + h2' \<longrightarrow>
-                  h1 = h2\<close>
+  \<open>precise P \<equiv> \<forall>h1 h2. P h1 \<longrightarrow> P h2 \<longrightarrow>
+                  (\<forall>h1' h2'. h1 ## h1' \<longrightarrow> h2 ## h2' \<longrightarrow> h1 + h1' = h2 + h2' \<longrightarrow>
+                    h1 = h2)\<close>
+
+text \<open>
+  The following predicates are equivalent to precision in a cancellative algebra,
+  but incomparable in a more generic setting.
+\<close>
+
+definition precise2 :: \<open>('a \<Rightarrow> bool) \<Rightarrow> bool\<close> where
+  \<open>precise2 P \<equiv> (\<forall>Q. P \<^emph> Q \<le> P \<sim>\<^emph> Q)\<close>
+
+lemma sepconj_imp_sepcoimp_then_sepconj_conj_distrib:
+  \<open>(\<forall>Q. P \<^emph> Q \<le> P \<sim>\<^emph> Q) \<Longrightarrow> (\<forall>Q Q'. P \<^emph> (Q \<sqinter> Q') = (P \<^emph> Q) \<sqinter> (P \<^emph> Q'))\<close>
+  by (simp add: precise_def sepconj_def sepcoimp_def fun_eq_iff le_fun_def, blast)
+
+lemma sepconj_conj_distrib_then_sepconj_imp_sepcoimp:
+  \<open>(\<forall>Q Q'. P \<^emph> (Q \<sqinter> Q') = (P \<^emph> Q) \<sqinter> (P \<^emph> Q')) \<Longrightarrow> (\<forall>Q. P \<^emph> Q \<le> P \<sim>\<^emph> Q)\<close>
+  apply (clarsimp simp add: precise_def sepconj_def sepcoimp_def fun_eq_iff le_fun_def)
+  apply (rename_tac h1 h1' h2 h2')
+  apply (drule_tac x=\<open>(=) h1'\<close> in spec, drule_tac x=\<open>(=) h2'\<close> in spec)
+  apply blast
+  done
+
+lemma sepconj_conj_distrib_iff_sepconj_imp_sepcoimp:
+  \<open>(\<forall>Q Q'. P \<^emph> (Q \<sqinter> Q') = (P \<^emph> Q) \<sqinter> (P \<^emph> Q')) \<longleftrightarrow> (\<forall>Q. P \<^emph> Q \<le> P \<sim>\<^emph> Q)\<close>
+  using sepconj_conj_distrib_then_sepconj_imp_sepcoimp
+    sepconj_imp_sepcoimp_then_sepconj_conj_distrib
+  by blast
+
+lemma sepconj_imp_sepcoimp_iff_sepconj_eq_strong_sepcoimp:
+  \<open>(\<forall>Q. P \<^emph> Q \<le> P \<sim>\<^emph> Q) \<longleftrightarrow> (\<forall>Q. P \<^emph> Q = (P \<^emph> \<top>) \<sqinter> (P \<sim>\<^emph> Q))\<close>
+  apply (clarsimp simp add: sepconj_def sepcoimp_def precise_def le_fun_def fun_eq_iff)
+  apply (intro iffI allI conjI impI; (elim exE conjE)?)
+     apply blast
+    apply blast
+   apply blast
+  apply clarsimp
+  apply (rename_tac h2 h2' h1 h1')
+  apply (drule_tac x=\<open>(=) h2'\<close> in spec)
+  apply blast
+  done
+
+lemma sepconj_conj_distrib_iff_sepconj_eq_strong_sepcoimp:
+  \<open>(\<forall>Q Q'. P \<^emph> (Q \<sqinter> Q') = (P \<^emph> Q) \<sqinter> (P \<^emph> Q')) \<longleftrightarrow> (\<forall>Q. P \<^emph> Q = (P \<^emph> \<top>) \<sqinter> (P \<sim>\<^emph> Q))\<close>
+  by (meson sepconj_conj_distrib_iff_sepconj_imp_sepcoimp
+      sepconj_imp_sepcoimp_iff_sepconj_eq_strong_sepcoimp)
+
+lemmas sepconj_conj_distrib_then_sepconj_eq_strong_sepcoimp =
+  iffD1[OF sepconj_conj_distrib_iff_sepconj_eq_strong_sepcoimp]
+
+lemmas sepconj_eq_strong_sepcoimp_then_sepconj_conj_distrib =
+  iffD2[OF sepconj_conj_distrib_iff_sepconj_eq_strong_sepcoimp]
+
+section \<open> Intuitionistic \<close>
 
 (* TODO: rename intuitionistic to bring it in line with the seplogic jungle paper *)
 definition intuitionistic :: \<open>('a \<Rightarrow> bool) \<Rightarrow> bool\<close> where
@@ -471,60 +548,7 @@ lemma sepcoimp_pconj_distrib_left:
   \<open>P \<sim>\<^emph> (Q \<sqinter> Q') = (P \<sim>\<^emph> Q) \<sqinter> (P \<sim>\<^emph> Q')\<close>
   by (force simp add: sepcoimp_def)
 
-lemma sepconj_distrib_conj_iff_sepconj_eq_strong_sepcoimp:
-  shows \<open>(\<forall>Q Q'. P \<^emph> (Q \<sqinter> Q') = (P \<^emph> Q) \<sqinter> (P \<^emph> Q')) \<longleftrightarrow> (\<forall>Q. P \<^emph> Q = (P \<^emph> \<top>) \<sqinter> (P \<sim>\<^emph> Q))\<close>
-  apply (clarsimp simp add: sepconj_def sepcoimp_def precise_def le_fun_def)
-  apply (intro iffI)
-  subgoal
-    apply (rule allI)
-    apply (rule ext)
-    apply (rule iffI)
-     apply simp
-     apply (rule conjI)
-      apply blast
-     apply clarsimp
-     apply (drule_tac x=\<open>Q\<close> in spec)
-     apply (drule_tac x=\<open>(=) h2a\<close> in spec)
-     apply (drule_tac x=\<open>h1a + h2a\<close> in cong[OF _ refl])
-     apply fastforce
-    apply fastforce
-    done
-  apply (simp add: fun_eq_iff, blast)
-  done
-
-
-lemma sepconj_distrib_conj_imp_sepconj_eq_strong_sepcoimp:
-  assumes \<open>\<forall>Q Q'. P \<^emph> (Q \<sqinter> Q') = (P \<^emph> Q) \<sqinter> (P \<^emph> Q')\<close>
-  shows \<open>P \<^emph> Q = (P \<^emph> \<top>) \<sqinter> (P \<sim>\<^emph> Q)\<close>
-  using assms sepconj_distrib_conj_iff_sepconj_eq_strong_sepcoimp
-  by blast
-
-
-lemma sepconj_middle_monotone_lhsR: \<open>A1 \<^emph> A2 \<le> B \<Longrightarrow> C \<le> D \<Longrightarrow> A1 \<^emph> C \<^emph> A2 \<le> B \<^emph> D\<close>
-  by (metis sepconj_assoc sepconj_comm sepconj_mono)
-
-lemma sepconj_middle_monotone_lhsL: \<open>A1 \<^emph> A2 \<le> B \<Longrightarrow> C \<le> D \<Longrightarrow> A1 \<^emph> C \<^emph> A2 \<le> D \<^emph> B\<close>
-  by (metis sepconj_assoc sepconj_comm sepconj_mono)
-
-lemma sepconj_middle_monotone_rhsR: \<open>A \<le> B1 \<^emph> B2 \<Longrightarrow> C \<le> D \<Longrightarrow> A \<^emph> C \<le> B1 \<^emph> D \<^emph> B2\<close>
-  by (metis sepconj_assoc sepconj_comm sepconj_mono)
-
-lemma sepconj_middle_monotone_rhsL: \<open>A \<le> B1 \<^emph> B2 \<Longrightarrow> C \<le> D \<Longrightarrow> C \<^emph> A \<le> B1 \<^emph> D \<^emph> B2\<close>
-  using sepconj_comm sepconj_middle_monotone_rhsR by presburger
-
-
-lemma sepconj_middle_monotone_lhsR2: \<open>A1 \<^emph> A2 \<le> B \<Longrightarrow> A1 \<^emph> C \<^emph> A2 \<le> B \<^emph> C\<close>
-  by (simp add: sepconj_middle_monotone_lhsR)
-
-lemma sepconj_middle_monotone_lhsL2: \<open>A1 \<^emph> A2 \<le> B \<Longrightarrow> A1 \<^emph> C \<^emph> A2 \<le> C \<^emph> B\<close>
-  by (simp add: sepconj_middle_monotone_lhsL)
-
-lemma sepconj_middle_monotone_rhsR2: \<open>A \<le> B1 \<^emph> B2 \<Longrightarrow> A \<^emph> C \<le> B1 \<^emph> C \<^emph> B2\<close>
-  by (simp add: sepconj_middle_monotone_rhsR)
-
-lemma sepconj_middle_monotone_rhsL2: \<open>A \<le> B1 \<^emph> B2 \<Longrightarrow> C \<^emph> A \<le> B1 \<^emph> C \<^emph> B2\<close>
-  by (simp add: sepconj_middle_monotone_rhsL)
-
+section \<open> Supported \<close>
 
 definition supported :: \<open>('a \<Rightarrow> bool) \<Rightarrow> bool\<close> where
   \<open>supported P \<equiv> \<forall>s. P s \<longrightarrow> (\<exists>hp. P hp \<and> hp \<le> s \<and> (\<forall>s'. hp \<le> s' \<longrightarrow> s' \<le> s \<longrightarrow> P s'))\<close>
