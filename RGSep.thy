@@ -51,8 +51,9 @@ lemma framed_subresource_rel_frame:
     framed_subresource_rel ha ha' (h + hf) (h' + hf)\<close>
   using disjoint_add_swap2 partial_add_assoc2
   apply (simp add: framed_subresource_rel_def)
-  apply (rule disjI2)
-  apply (auto; fail)
+  apply (erule disjE)
+   apply blast
+  apply metis
   done
 
 lemma framed_subresource_rel_sym:
