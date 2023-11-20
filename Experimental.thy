@@ -26,6 +26,16 @@ end
 
 definition \<open>deterministic r \<equiv> (\<forall>x y1 y2. r x y1 \<longrightarrow> r x y2 \<longrightarrow> y1 = y2)\<close>
 
+definition \<open>tentatively_deterministic r \<equiv> (\<forall>x y1 y2. r x y1 \<longrightarrow> r x y2 \<longrightarrow> y1 = x \<or> y2 = x \<or> y1 = y2)\<close>
+
+lemma reflcl_deterministic_impl_tentatively_deterministic:
+  \<open>deterministic r \<Longrightarrow> tentatively_deterministic ((=) \<squnion> r)\<close>
+  by (simp add: deterministic_def tentatively_deterministic_def)
+
+lemma non_refl_then_deterministic_iff_reflcl_tentatively_deterministic:
+  \<open>\<forall>x. \<not> r x x \<Longrightarrow> deterministic r \<longleftrightarrow> tentatively_deterministic ((=) \<squnion> r)\<close>
+  by (fastforce simp add: deterministic_def tentatively_deterministic_def)
+
 definition \<open>changes r \<equiv> \<lambda>x y. r x y \<and> y \<noteq> x\<close>
 abbreviation \<open>changedom r \<equiv> \<lambda>x. \<exists>y. changes r x y\<close>
 lemmas changedom_def = changes_def
@@ -106,6 +116,9 @@ lemma \<open>wlp (r1 \<squnion> r2) p = wlp r1 p \<sqinter> wlp r2 p\<close>
 lemma \<open>wlp r1 p \<squnion> wlp r2 p \<le> wlp (r1 \<sqinter> r2) p\<close>
   by (force simp add: wlp_def fun_eq_iff)
 
+lemma \<open>wlp (r1 OO r2) p = wlp r1 (wlp r2 p)\<close>
+  by (force simp add: wlp_def)
+
 
 lemma \<open>p \<le> q \<Longrightarrow> sp r p \<le> sp r q\<close>
   by (force simp add: sp_def)
@@ -118,7 +131,6 @@ lemma \<open>sp r (p \<squnion> q) = sp r p \<squnion> sp r q\<close>
 
 lemma \<open>\<Squnion>{sp r p| p. p \<in> P} = sp r (\<Squnion>P)\<close>
   by (fastforce simp add: sp_def)
-
 
 lemma \<open>sp r \<top> = post_state r\<close>
   by (clarsimp simp add: sp_def post_state_def fun_eq_iff)
@@ -157,6 +169,27 @@ lemma \<open>sp (r1 \<squnion> r2) p = sp r1 p \<squnion> sp r2 p\<close>
 lemma \<open>sp (r1 \<sqinter> r2) p \<le> sp r1 p \<sqinter> sp r2 p\<close>
   by (force simp add: sp_def)
 
+lemma \<open>sp (r1 OO r2) p = sp r2 (sp r1 p)\<close>
+  by (force simp add: sp_def relcompp_apply)
+
+
+lemma \<open>reflp r1 \<Longrightarrow> transp r2 \<Longrightarrow> r1 \<le> r2 \<Longrightarrow> sp r1 (sp r2 p) = sp r2 p\<close>
+  by (simp add: reflp_def transp_def sp_def, fast)
+
+lemma \<open>reflp r1 \<Longrightarrow> transp r2 \<Longrightarrow> r1 \<le> r2 \<Longrightarrow> sp r2 (sp r1 p) = sp r2 p\<close>
+  by (simp add: reflp_def transp_def sp_def, fast)
+
+lemma \<open>reflp r1 \<Longrightarrow> transp r2 \<Longrightarrow> r1 \<le> r2 \<Longrightarrow> wlp r1 (wlp r2 p) = wlp r2 p\<close>
+  by (simp add: reflp_def transp_def wlp_def, fast)
+
+lemma \<open>reflp r1 \<Longrightarrow> transp r2 \<Longrightarrow> r1 \<le> r2 \<Longrightarrow> wlp r2 (wlp r1 p) = wlp r2 p\<close>
+  by (simp add: reflp_def transp_def wlp_def, fast)
+
+lemma \<open>reflp r1 \<Longrightarrow> transp r2 \<Longrightarrow> r1 \<le> r2 \<Longrightarrow> wlp r1 (sp r2 p) = sp r2 p\<close>
+  by (simp add: reflp_def transp_def wlp_def sp_def, fast)
+
+lemma \<open>reflp r1 \<Longrightarrow> transp r2 \<Longrightarrow> r1 \<le> r2 \<Longrightarrow> sp r1 (wlp r2 p) = wlp r2 p\<close>
+  by (simp add: reflp_def transp_def wlp_def sp_def, blast)
 
 
 section \<open> Labelled Permission algebra \<close>
@@ -392,14 +425,10 @@ lemma (in perm_alg) wsstable_semidistrib_realistic:
     pab = pa \<^emph> pb \<Longrightarrow>
     wpa' = \<lceil> pa \<rceil>\<^bsub>c\<^esub> \<Longrightarrow>
     wpb' = \<lceil> pb \<rceil>\<^bsub>c\<^esub> \<Longrightarrow>
-    \<lceil> sp a pa' \<rceil>\<^bsub>b \<squnion> c\<^esub> \<^emph> \<lceil> sp b pb' \<rceil>\<^bsub>a \<squnion> c\<^esub> \<^emph> \<lceil> sp c pc \<rceil>\<^bsub>a \<squnion> b\<^esub>
+    \<lceil> pa' \<rceil>\<^bsub>b \<squnion> c\<^esub> \<^emph> \<lceil> pb' \<rceil>\<^bsub>a \<squnion> c\<^esub> \<^emph> \<lceil> pc \<rceil>\<^bsub>a \<squnion> b\<^esub>
     \<le>
-    \<lceil> sp a wpa' \<rceil>\<^bsub>b \<squnion> c\<^esub> \<^emph> \<lceil> sp b wpb' \<rceil>\<^bsub>a \<squnion> c\<^esub> \<^emph> \<lceil> sp c pc \<rceil>\<^bsub>a \<squnion> b\<^esub>\<close>
-  nitpick
+    \<lceil> wpa' \<rceil>\<^bsub>b \<squnion> c\<^esub> \<^emph> \<lceil> wpb' \<rceil>\<^bsub>a \<squnion> c\<^esub> \<^emph> \<lceil> pc \<rceil>\<^bsub>a \<squnion> b\<^esub>\<close>
   oops
-
-
-
 
 
 class finite_sep_alg = distrib_sep_alg +
