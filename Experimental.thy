@@ -26,16 +26,6 @@ end
 
 definition \<open>deterministic r \<equiv> (\<forall>x y1 y2. r x y1 \<longrightarrow> r x y2 \<longrightarrow> y1 = y2)\<close>
 
-definition \<open>tentatively_deterministic r \<equiv> (\<forall>x y1 y2. r x y1 \<longrightarrow> r x y2 \<longrightarrow> y1 = x \<or> y2 = x \<or> y1 = y2)\<close>
-
-lemma reflcl_deterministic_impl_tentatively_deterministic:
-  \<open>deterministic r \<Longrightarrow> tentatively_deterministic ((=) \<squnion> r)\<close>
-  by (simp add: deterministic_def tentatively_deterministic_def)
-
-lemma non_refl_then_deterministic_iff_reflcl_tentatively_deterministic:
-  \<open>\<forall>x. \<not> r x x \<Longrightarrow> deterministic r \<longleftrightarrow> tentatively_deterministic ((=) \<squnion> r)\<close>
-  by (fastforce simp add: deterministic_def tentatively_deterministic_def)
-
 definition \<open>changes r \<equiv> \<lambda>x y. r x y \<and> y \<noteq> x\<close>
 abbreviation \<open>changedom r \<equiv> \<lambda>x. \<exists>y. changes r x y\<close>
 lemmas changedom_def = changes_def
@@ -191,6 +181,11 @@ lemma \<open>reflp r1 \<Longrightarrow> transp r2 \<Longrightarrow> r1 \<le> r2 
 lemma \<open>reflp r1 \<Longrightarrow> transp r2 \<Longrightarrow> r1 \<le> r2 \<Longrightarrow> sp r1 (wlp r2 p) = wlp r2 p\<close>
   by (simp add: reflp_def transp_def wlp_def sp_def, blast)
 
+lemma \<open>reflp r \<Longrightarrow> wlp r p \<le> p\<close>
+  by (metis predicate1I[of \<open>wlp r p\<close> p for r p] reflpD wlp_def)
+
+lemma \<open>reflp r \<Longrightarrow> p \<le> sp r p\<close>
+  by (metis predicate1I[of p \<open>sp r p\<close> for r p] reflpD sp_def)
 
 section \<open> Labelled Permission algebra \<close>
 
@@ -350,6 +345,8 @@ definition
 lemma wsstable_sepconj_semidistrib_backwards:
   \<open>r = rgsep_rely S \<Longrightarrow>
     S = {a} \<Longrightarrow>
+    deterministic (r - (=)) \<Longrightarrow>
+    Ex1 P \<Longrightarrow> Ex1 Q \<Longrightarrow>
     X = \<lceil> P \<^emph> Q \<rceil>\<^bsub>r\<^esub> \<Longrightarrow>
     Y = \<lceil> P \<rceil>\<^bsub>r\<^esub> \<Longrightarrow>
     Z = \<lceil> Q \<rceil>\<^bsub>r\<^esub> \<Longrightarrow>
@@ -417,17 +414,36 @@ lemma (in inf_perm_alg) wsstable_semidistrib_disjoint_pre_state_strong2:
   done
 
 
-(* The situation that we want to prove is *)
+(* The situation that we want to prove is
+   { pa \<^emph> pb \<^emph> pc              }
+   { pa \<^emph> pb  }         \<parallel> { pc }
+    skip                \<parallel>
+    { sp c\<^sup>\<star> (pa \<^emph> pb) } \<parallel>
+     a       \<parallel>  b       \<parallel>  c
+    { qa   } \<parallel> { qb   } \<parallel> { qc }
+    { qa \<^emph> qb \<^emph> qc             }
+*)
 lemma (in perm_alg) wsstable_semidistrib_realistic:
-  \<open>p = pab \<^emph> pc \<Longrightarrow>
-    r = c\<^sup>*\<^sup>* \<Longrightarrow>
-    \<lceil> pab \<rceil>\<^bsub>c\<^esub> = pa' \<^emph> pb' \<Longrightarrow>
-    pab = pa \<^emph> pb \<Longrightarrow>
-    wpa' = \<lceil> pa \<rceil>\<^bsub>c\<^esub> \<Longrightarrow>
-    wpb' = \<lceil> pb \<rceil>\<^bsub>c\<^esub> \<Longrightarrow>
-    \<lceil> pa' \<rceil>\<^bsub>b \<squnion> c\<^esub> \<^emph> \<lceil> pb' \<rceil>\<^bsub>a \<squnion> c\<^esub> \<^emph> \<lceil> pc \<rceil>\<^bsub>a \<squnion> b\<^esub>
-    \<le>
-    \<lceil> wpa' \<rceil>\<^bsub>b \<squnion> c\<^esub> \<^emph> \<lceil> wpb' \<rceil>\<^bsub>a \<squnion> c\<^esub> \<^emph> \<lceil> pc \<rceil>\<^bsub>a \<squnion> b\<^esub>\<close>
+  \<open>r = c\<^sup>*\<^sup>* \<Longrightarrow>
+    \<forall>r\<in>{a,b,c}.
+      (\<forall>x. \<not> r x x) \<and>
+      (\<forall>x y z. r x y \<longrightarrow> r y z \<longrightarrow> \<not> r x z) \<and>
+      frame_closed r \<and>
+      Ex (pre_state r) \<and>
+      deterministic r \<Longrightarrow>
+    Ex1 pa \<Longrightarrow>
+    Ex1 pb \<Longrightarrow>
+    Ex1 pc \<Longrightarrow>
+    \<comment> \<open> stability \<close>
+    sp ((a \<squnion> b)\<^sup>*\<^sup>*) pc = pc \<Longrightarrow>
+    sp ((a \<squnion> c)\<^sup>*\<^sup>*) pb' = pb' \<Longrightarrow>
+    sp ((b \<squnion> c)\<^sup>*\<^sup>*) pa' = pa' \<Longrightarrow>
+    sp ((a \<squnion> c)\<^sup>*\<^sup>*) pb = pb \<Longrightarrow>
+    sp ((b \<squnion> c)\<^sup>*\<^sup>*) pa = pa \<Longrightarrow>
+    sp (c\<^sup>*\<^sup>*) (pa \<^emph> pb) = pa' \<^emph> pb' \<Longrightarrow>
+    \<comment> \<open> the goal \<close>
+    pa' \<^emph> pb' \<^emph> pc \<le> sp (c\<^sup>*\<^sup>*) pa \<^emph> sp (c\<^sup>*\<^sup>*) pb \<^emph> pc\<close>
+  nitpick
   oops
 
 
