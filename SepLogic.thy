@@ -471,9 +471,7 @@ lemma sepimp_conjR:
 section \<open> Precision \<close>
 
 definition precise :: \<open>('a \<Rightarrow> bool) \<Rightarrow> bool\<close> where
-  \<open>precise P \<equiv> \<forall>h1 h2. P h1 \<longrightarrow> P h2 \<longrightarrow>
-                  (\<forall>h1' h2'. h1 ## h1' \<longrightarrow> h2 ## h2' \<longrightarrow> h1 + h1' = h2 + h2' \<longrightarrow>
-                    h1 = h2)\<close>
+  \<open>precise P \<equiv> \<forall>h. \<forall>h1\<le>h. \<forall>h2\<le>h. P h1 \<longrightarrow> P h2 \<longrightarrow> h1 = h2\<close>
 
 text \<open>
   The following predicates are equivalent to precision in a cancellative algebra,
