@@ -361,7 +361,7 @@ inductive safe
     (\<forall>hf. all_atom_comm (frame_pred_safe ((=) hf)) c \<longrightarrow> h ## hf \<longrightarrow> h' ## hf \<longrightarrow> (h + hf, c) \<midarrow>a\<rightarrow> (h' + hf, c')) \<Longrightarrow>
     \<comment> \<open> local steps respect the guarantee \<close>
     (a = Local \<longrightarrow> g h h') \<Longrightarrow>
-    \<comment> \<open> if the result is Skip, the postcondition is established \<close>
+    \<comment> \<open> if the result is Skip, the postcondition is established + stable \<close>
     (c' = Skip \<longrightarrow> q h') \<Longrightarrow>
     \<comment> \<open> the subsequent execution is safe \<close>
     safe n c' h' r g q \<Longrightarrow>
@@ -370,10 +370,12 @@ inductive safe
   \<open>\<comment> \<open> env steps respect the rely \<close>
     r h h' \<Longrightarrow>
     \<comment> \<open> if the command is Skip, the postcondition is established \<close>
-    (c = Skip \<longrightarrow> q h') \<Longrightarrow>
+    c = Skip \<longrightarrow> q h \<Longrightarrow>
     \<comment> \<open> the subsequent execution is safe \<close>
     safe n c h' r g q \<Longrightarrow>
     safe (Suc n) c h r g q\<close>
+| safe_no_env[intro]:
+  \<open>\<nexists>h'. r h h' \<Longrightarrow> q h \<Longrightarrow> safe (Suc n) c h r g q\<close>
 
 inductive_cases safe_zeroE[elim!]: \<open>safe 0 c s r g q\<close>
 inductive_cases safe_sucE[elim]: \<open>safe (Suc n) c s r g q\<close>
@@ -396,11 +398,16 @@ lemma safe_suc_iff:
       safe n c' h' r g q) \<or>
     (\<exists>h'.
       r h h' \<and>
-      (c = Skip \<longrightarrow> q h') \<and>
-      safe n c h' r g q)\<close>
+      (c = Skip \<longrightarrow> q h) \<and>
+      safe n c h' r g q) \<or>
+    ((\<nexists>h'. r h h') \<and> q h)\<close>
   apply (rule iffI)
+   apply clarsimp
    apply (erule safe_sucE; blast)
-  apply fast
+  apply (elim disjE exE conjE)
+    apply (rule safe_step; blast)
+   apply (rule safe_env; blast)
+  apply (rule safe_no_env; blast)
   done
 
 lemma opstep_tau_guarantee:
@@ -434,6 +441,8 @@ lemma safe_frame:
     all_atom_comm (frame_pred_extends f) c \<Longrightarrow>
     frame_pred_extends f r \<Longrightarrow>
     frame_pred_safe f g \<Longrightarrow>
+    \<comment> \<open> needed for the no-env step \<close>
+    frame_step_subframe f r \<Longrightarrow>
     h ## hf \<Longrightarrow>
     f hf \<Longrightarrow>
     safe n c (h + hf) r g (q \<^emph> f)\<close>
@@ -442,7 +451,6 @@ proof (induct arbitrary: hf rule: safe.induct)
   then show ?case by fast
 next
   case (safe_step h c a h' c' g q n r)
-
   obtain hf' where
     \<open>f hf'\<close>
     \<open>h' ## hf'\<close>
@@ -451,7 +459,7 @@ next
     by (metis fst_conv snd_conv)
   moreover then have \<open>safe n c' (h' + hf') r g (q \<^emph> f)\<close>
     using safe_step
-    by (blast dest: opstep_preserves_all_atom_comm)
+    by (metis opstep_preserves_all_atom_comm)
   ultimately show ?case
     using safe_step.prems safe_step.hyps(1-5)
     apply -
@@ -460,7 +468,7 @@ next
        apply (blast intro: opstep_frameI)
       apply (simp add: frame_pred_safe_def; fail)
      apply (metis sepconj_def)
-    apply force
+    apply blast
     done
 next
   case (safe_env r h h' c q n g)
@@ -470,6 +478,14 @@ next
     apply (drule spec2, drule mp, assumption, drule spec, drule mp, assumption)
     apply (metis safe.safe_env sepconj_def)
     done
+next
+  case (safe_no_env r h q n c g)
+  then show ?case
+    apply -
+    apply (rule safe.safe_no_env)
+     apply (force simp add: frame_step_subframe_def)
+    apply (fastforce simp add: sepconj_def)
+    done
 qed
 
 lemma safe_frame2:
@@ -477,6 +493,8 @@ lemma safe_frame2:
     all_atom_comm (frame_pred_maintains f) c \<Longrightarrow>
     frame_pred_extends f r \<Longrightarrow>
     frame_pred_closed f g \<Longrightarrow>
+    \<comment> \<open> needed for the no-env step \<close>
+    frame_step_subframe f r \<Longrightarrow>
     h ## hf \<Longrightarrow>
     f hf \<Longrightarrow>
     safe n c (h + hf) r g (q \<^emph> f)\<close>
@@ -512,41 +530,40 @@ next
     apply (drule spec2, drule mp, assumption, drule spec, drule mp, assumption)
     apply (metis safe.safe_env sepconj_def)
     done
+next
+  case (safe_no_env r h q n c g)
+  then show ?case
+    apply -
+    apply (rule safe.safe_no_env)
+     apply (force simp add: frame_step_subframe_def)
+    apply (fastforce simp add: sepconj_def)
+    done
 qed
 
+lemma safe_postpred_monoD:
+  \<open>safe n c h r g q \<Longrightarrow> q \<le> q' \<Longrightarrow> safe n c h r g q'\<close>
+  by (induct rule: safe.induct) fast+
+
+lemmas safe_postpred_mono = safe_postpred_monoD[rotated]
+
+
+lemma safe_skip_basic:
+  \<open>(\<lceil> q \<rceil>\<^bsub>r\<^esub>) h \<Longrightarrow> safe n Skip h r g (\<lceil> q \<rceil>\<^bsub>r\<^esub>)\<close>
+proof (induct n arbitrary: h q)
+  case (Suc n)
+  then show ?case
+    apply (clarsimp simp add: safe_suc_iff opstep_iff)
+    apply (frule spec, drule mp, blast)
+    apply (rename_tac h')
+    apply (drule_tac x=\<open>\<lceil> q \<rceil>\<^bsub>r\<^esub>\<close> and y=h' in meta_spec2, drule meta_mp)
+     apply blast
+    apply force
+    done
+qed fast
 
 lemma safe_skip:
-  \<open>(\<forall>h. q h \<longrightarrow> (\<exists>h'. r h h' \<and> q h')) \<Longrightarrow>
-    q h \<Longrightarrow>
-    safe n Skip h r g q\<close>
-proof (induct n arbitrary: h)
-  case (Suc n)
-  then show ?case
-    apply (simp add: safe_suc_iff opstep_iff stable_iff pre_state_def post_state_def)
-    apply blast
-    done
-qed fast
-
-lemma safe_skip2:
-  \<open>(\<forall>h. q h \<longrightarrow> pre_state r h \<longrightarrow> (\<exists>h'. r h h' \<and> q h')) \<Longrightarrow>
-    pre_state r h \<Longrightarrow>
-    post_state r \<le> pre_state r \<Longrightarrow>
-    q h \<Longrightarrow>
-    safe n Skip h r g q\<close>
-proof (induct n arbitrary: h)
-  case (Suc n)
-  then show ?case
-    apply (simp add: safe_suc_iff opstep_iff stable_iff pre_state_def post_state_def)
-    apply blast
-    done
-qed fast
-
-lemma safe_weaken:
-  \<open>safe as c h r g q' \<Longrightarrow>
-    q' \<le> q \<Longrightarrow>
-    safe as c h r g q\<close>
-  oops
-(* by (induct arbitrary: q rule: safe.induct) blast+ *)
+  \<open>p h \<Longrightarrow> \<lceil> p \<rceil>\<^bsub>r\<^esub> \<le> q \<Longrightarrow> safe n Skip h r g q\<close>
+  by (blast intro!: safe_postpred_monoD[OF safe_skip_basic[where q=p]])
 
 lemma opstep_tau_extendD:
   \<open>opstep a s s' \<Longrightarrow>
@@ -566,7 +583,7 @@ lemma can_compute_frame:
   using opstep_tau_extendD
   oops
 
-lemma safe_subtrace:
+lemma safe_step_monoD:
   assumes inductive_assms:
     \<open>safe n c h r g q\<close>
     \<open>m \<le> n\<close>
@@ -575,12 +592,15 @@ lemma safe_subtrace:
   using inductive_assms
 proof (induct arbitrary: m rule: safe.inducts)
   case (safe_nil c h r g q)
-  then show ?case by blast
+  then show ?case sorry
 next
   case (safe_step h c a h' c' g q n r)
   then show ?case sorry
 next
   case (safe_env r h h' c q n g)
+  then show ?case sorry
+next
+  case (safe_no_env r h q n c g)
   then show ?case sorry
 qed
 
@@ -589,13 +609,12 @@ lemma soundness:
   assumes \<open>rgsat c r g p q\<close>
     and \<open>p h\<close>
     and \<open>frame_closed g\<close>
-    and \<open>c = Skip \<longrightarrow> (\<forall>h. q h \<longrightarrow> (\<exists>h'. r h h' \<and> q h'))\<close>
   shows \<open>safe as c h r g q\<close>
   using assms
 proof (induct c r g p q arbitrary: as h rule: rgsat.inducts)
   case (rgsat_skip p r q g as h)
   then show ?case
-    by (force intro: safe_skip)
+    by (force intro!: safe_skip[where p=p])
 next
   case (rgsat_iter c r g p' q' p i q)
   then show ?case
@@ -624,11 +643,9 @@ next
     using rgsat_frame.prems
     apply -
     apply (rule rgsat_frame.hyps(2))
-      apply blast
      apply blast
-    apply (clarsimp simp add: sepconj_def)
-    
-    sorry
+    apply blast
+    done
   ultimately show ?case
     using rgsat_frame
     by (force intro!: safe_frame2 simp add: frame_pred_closed_def)

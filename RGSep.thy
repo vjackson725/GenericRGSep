@@ -18,6 +18,10 @@ lemma frame_pred_maintains_implies_extends:
   unfolding frame_pred_maintains_def frame_pred_extends_def
   by auto
 
+definition
+  \<open>frame_step_subframe f r \<equiv>
+    \<forall>hf. f hf \<longrightarrow> (\<forall>x yf. x ## hf \<longrightarrow> r (x + hf) yf \<longrightarrow> (\<exists>y. r x y))\<close>
+
 subsection \<open> Framed step relation \<close>
 
 context perm_alg
@@ -204,6 +208,7 @@ inductive rgsat
   \<open>rgsat c r g p q \<Longrightarrow>
     all_atom_comm (frame_pred_maintains f) c \<Longrightarrow>
     frame_pred_extends f r \<Longrightarrow>
+    frame_step_subframe f r \<Longrightarrow>
     rgsat c r g (p \<^emph> f) (q \<^emph> f)\<close>
 | rgsat_weaken:
   \<open>rgsat c r' g' p' q' \<Longrightarrow>
