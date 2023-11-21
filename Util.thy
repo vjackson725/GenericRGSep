@@ -161,6 +161,30 @@ lemma implies_rel_then_rtranscl_implies_rel:
   by (induct rule: rtranclp_induct)
     (blast intro: assms_misc)+
 
+lemma transp_subrel_compp_smaller:
+  \<open>transp S \<Longrightarrow> R \<le> S \<Longrightarrow> S OO R \<le> S\<close>
+  \<open>transp S \<Longrightarrow> R \<le> S \<Longrightarrow> R OO S \<le> S\<close>
+  by (meson order.refl order.trans relcompp_mono transp_relcompp_less_eq)+
+
+lemma rel_le_rtranscp_relcompp_absorb:
+  \<open>R \<le> S \<Longrightarrow> S\<^sup>*\<^sup>* OO R\<^sup>*\<^sup>* = S\<^sup>*\<^sup>*\<close>
+  \<open>R \<le> S \<Longrightarrow> R\<^sup>*\<^sup>* OO S\<^sup>*\<^sup>* = S\<^sup>*\<^sup>*\<close>
+   apply -
+   apply (rule antisym)
+    apply (metis rtranclp_mono transp_rtranclp transp_subrel_compp_smaller(1))
+   apply force
+  apply (rule antisym)
+   apply (simp add: rtranclp_mono transp_subrel_compp_smaller(2))
+  apply force
+  done
+
+lemma rtransp_rel_is_rtransclp:
+  \<open>reflp R \<Longrightarrow> transp R \<Longrightarrow> R\<^sup>*\<^sup>* = R\<close>
+  apply (intro ext iffI)
+   apply ((rule rtranclp_induct, assumption); force dest: reflpD transpD)
+  apply force
+  done
+
 subsection \<open> Function Properties \<close>
 
 lemmas bij_betw_disjoint_insert =
@@ -253,32 +277,6 @@ lemma Times_singleton[simp]:
   \<open>{x} \<times> B = Pair x ` B\<close>
   \<open>A \<times> {y} = flip Pair y ` A\<close>
   by force+
-
-subsection \<open> Relations \<close>
-
-lemma transp_subrel_compp_smaller:
-  \<open>transp S \<Longrightarrow> R \<le> S \<Longrightarrow> S OO R \<le> S\<close>
-  \<open>transp S \<Longrightarrow> R \<le> S \<Longrightarrow> R OO S \<le> S\<close>
-  by (meson order.refl order.trans relcompp_mono transp_relcompp_less_eq)+
-
-lemma rel_le_rtranscp_relcompp_absorb:
-  \<open>R \<le> S \<Longrightarrow> S\<^sup>*\<^sup>* OO R\<^sup>*\<^sup>* = S\<^sup>*\<^sup>*\<close>
-  \<open>R \<le> S \<Longrightarrow> R\<^sup>*\<^sup>* OO S\<^sup>*\<^sup>* = S\<^sup>*\<^sup>*\<close>
-   apply -
-   apply (rule antisym)
-    apply (metis rtranclp_mono transp_rtranclp transp_subrel_compp_smaller(1))
-   apply force
-  apply (rule antisym)
-   apply (simp add: rtranclp_mono transp_subrel_compp_smaller(2))
-  apply force
-  done
-
-lemma rtransp_rel_is_rtransclp:
-  \<open>reflp R \<Longrightarrow> transp R \<Longrightarrow> R\<^sup>*\<^sup>* = R\<close>
-  apply (intro ext iffI)
-   apply ((rule rtranclp_induct, assumption); force dest: reflpD transpD)
-  apply force
-  done
 
 section \<open> Options \<close>
 
@@ -465,6 +463,9 @@ lemma ordered_comm_monoid_add_add_min_assoc:
   using assms
   by (clarsimp simp add: min_def add.commute add.left_commute add_increasing add_increasing2 eq_iff,
       metis add.assoc add_increasing2)
+
+lemma le_Suc_iff0: \<open>m \<le> Suc n \<longleftrightarrow> m = 0 \<or> (\<exists>m'. m = Suc m' \<and> m' \<le> n)\<close>
+  by presburger
 
 section \<open> Sequencing Algebra \<close>
 

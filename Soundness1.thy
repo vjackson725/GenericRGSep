@@ -583,6 +583,9 @@ lemma can_compute_frame:
   using opstep_tau_extendD
   oops
 
+lemma le_Suc_iff0: \<open>m \<le> Suc n \<longleftrightarrow> m = 0 \<or> (\<exists>m'. m = Suc m' \<and> m' \<le> n)\<close>
+  by presburger
+
 lemma safe_step_monoD:
   assumes inductive_assms:
     \<open>safe n c h r g q\<close>
@@ -590,19 +593,9 @@ lemma safe_step_monoD:
   shows
     \<open>safe m c h r g q\<close>
   using inductive_assms
-proof (induct arbitrary: m rule: safe.inducts)
-  case (safe_nil c h r g q)
-  then show ?case sorry
-next
-  case (safe_step h c a h' c' g q n r)
-  then show ?case sorry
-next
-  case (safe_env r h h' c q n g)
-  then show ?case sorry
-next
-  case (safe_no_env r h q n c g)
-  then show ?case sorry
-qed
+  by (induct arbitrary: m rule: safe.inducts)
+    (auto simp add: le_Suc_iff0 safe_suc_iff)+
+    (* a little slow *)
 
 lemma soundness:
   fixes p q :: \<open>'a::perm_alg \<Rightarrow> bool\<close>
@@ -619,6 +612,8 @@ next
   case (rgsat_iter c r g p' q' p i q)
   then show ?case
     apply clarsimp
+    sledgehammer
+
     sorry
 next
   case (rgsat_ndet s1 r g1 p q1 s2 g2 q2 g q)
