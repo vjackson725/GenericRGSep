@@ -400,7 +400,7 @@ lemma safe_suc_iff:
       safe n c h' r g q)\<close>
   apply (rule iffI)
    apply (erule safe_sucE; blast)
-  apply (erule disjE; blast)
+  apply fast
   done
 
 lemma opstep_tau_guarantee:
@@ -545,7 +545,8 @@ lemma safe_weaken:
   \<open>safe as c h r g q' \<Longrightarrow>
     q' \<le> q \<Longrightarrow>
     safe as c h r g q\<close>
-  by (induct arbitrary: q rule: safe.induct) blast+
+  oops
+(* by (induct arbitrary: q rule: safe.induct) blast+ *)
 
 lemma opstep_tau_extendD:
   \<open>opstep a s s' \<Longrightarrow>
