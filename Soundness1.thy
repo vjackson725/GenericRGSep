@@ -583,9 +583,6 @@ lemma can_compute_frame:
   using opstep_tau_extendD
   oops
 
-lemma le_Suc_iff0: \<open>m \<le> Suc n \<longleftrightarrow> m = 0 \<or> (\<exists>m'. m = Suc m' \<and> m' \<le> n)\<close>
-  by presburger
-
 lemma safe_step_monoD:
   assumes inductive_assms:
     \<open>safe n c h r g q\<close>
@@ -612,8 +609,6 @@ next
   case (rgsat_iter c r g p' q' p i q)
   then show ?case
     apply clarsimp
-    sledgehammer
-
     sorry
 next
   case (rgsat_ndet s1 r g1 p q1 s2 g2 q2 g q)
@@ -622,8 +617,32 @@ next
   case (rgsat_parallel s1 r g2 g1 p1 q1 s2 p2 q2 g p q)
   then show ?case sorry
 next
-  case (rgsat_atom p b q g p' f q' r)
-  then show ?case sorry
+  case (rgsat_atom p b q f g p' r q')
+  moreover obtain h1 h2 where A1:
+    \<open>h1 ## h2\<close> \<open>h = h1 + h2\<close> \<open>p h1\<close> \<open>f h2\<close>
+    using rgsat_atom
+    by (simp add: sepconj_def le_fun_def, blast)
+  moreover obtain h1' where A2:
+    \<open>b h1 h1'\<close> \<open>q h1'\<close>
+    using rgsat_atom A1
+    by (force simp add: pre_state_def le_fun_def)
+  moreover obtain h2' where A3:
+    \<open>h1' ## h2'\<close> \<open>b (h1 + h2) (h1' + h2')\<close> \<open>f h2'\<close>
+    using rgsat_atom A1 A2
+     by (metis frame_pred_extends_def)
+  ultimately show ?case
+    apply (cases as)
+     apply blast
+    apply clarsimp
+    apply (rule safe.safe_step[where a=Local and c'=Skip])
+        apply (simp add: opstep_iff; fail)
+       apply (simp add: opstep_iff frame_pred_safe_def; fail)
+      apply force
+     apply (metis rev_predicate1D sepconj_iff wsstable_stronger)
+    apply (rule safe_skip[of \<open>\<lceil> q \<^emph> f \<rceil>\<^bsub>r\<^esub>\<close>])
+     apply (metis predicate1D sepconj_def wsstable_stronger)
+    apply (metis le_disj_eq_absorb wsstable_absorb1)
+    done
 next
   case (rgsat_frame c r g p q f as)
   obtain h1 h2

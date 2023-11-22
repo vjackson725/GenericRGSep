@@ -200,9 +200,11 @@ inductive rgsat
     rgsat (s1 \<parallel> s2) r g p q\<close>
 | rgsat_atom:
   \<open>rel_liftL p \<sqinter> b \<le> rel_liftR q \<Longrightarrow>
+    p \<le> pre_state b \<Longrightarrow>
+    frame_pred_extends f b \<Longrightarrow>
     b \<le> g \<Longrightarrow>
     p' \<le> p \<^emph> f \<Longrightarrow>
-    q \<^emph> f \<le> q' \<Longrightarrow>
+    \<lceil> q \<^emph> f \<rceil>\<^bsub>r\<^esub> \<le> q' \<Longrightarrow>
     rgsat (Atomic b) r g p' q'\<close>
 | rgsat_frame:
   \<open>rgsat c r g p q \<Longrightarrow>

@@ -15,7 +15,7 @@ declare flip_def[simp]
 lemma le_fun_eta[simp]: \<open>(\<lambda>x. a) \<le> (\<lambda>x. b) \<longleftrightarrow> a \<le> b\<close>
   by (simp add: le_fun_def)
 
-subsection \<open>Logic\<close>
+subsection \<open> Logic \<close>
 
 lemmas conj_left_mp[simp] =
   SMT.verit_bool_simplify(7)
@@ -64,6 +64,11 @@ lemma exsome_conj_some_imp:
 lemma ex_eq_pair_iff[simp]:
   \<open>(\<exists>x y. a = (x, y) \<and> P x y) \<longleftrightarrow> P (fst a) (snd a)\<close>
   by force
+
+lemmas disjCI2 = disjCI[THEN Meson.disj_comm]
+
+
+subsection \<open> datatypes \<close>
 
 lemma prod_eq_decompose:
   \<open>a = (b,c) \<longleftrightarrow> fst a = b \<and> snd a = c\<close>
