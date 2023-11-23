@@ -442,6 +442,10 @@ lemma sepimp_sepcoimp_dual: \<open>P \<sim>\<^emph> Q = -(P \<^emph> (-Q))\<clos
   unfolding sepconj_def sepcoimp_def
   by force
 
+lemma sepcoimp_sepimp_dual: \<open>P \<^emph> Q = -(P \<sim>\<^emph> -Q)\<close>
+  unfolding sepconj_def sepcoimp_def
+  by force
+
 lemma sepconj_sepimp_galois: \<open>P \<^emph> Q \<le> R \<longleftrightarrow> P \<le> Q \<midarrow>\<^emph> R\<close>
   using sepconj_def sepimp_def by fastforce
 
@@ -1632,5 +1636,10 @@ instance
   by standard simp+
 
 end
+
+lemma (in sep_alg)
+  \<open>\<forall>a. \<exists>b. a + b = 0\<close>
+  nitpick
+  oops
 
 end

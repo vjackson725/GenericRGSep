@@ -26,11 +26,11 @@ lemma rel_frame_cl_is_least_frame_closure:
   subgoal
     apply clarsimp
     apply (rule conjI)
-     apply (force intro: disjoint_symm)
+     apply (force intro: disjoint_sym)
     apply (clarsimp, metis disjoint_add_rightL disjoint_add_rightR disjoint_add_right_commute
         partial_add_commute partial_add_left_commute)
     done
-  apply (clarsimp, metis disjoint_symm predicate2D)
+  apply (clarsimp, metis disjoint_sym predicate2D)
   done
 
 lemma frame_closed_frame_cl_of_minimal_pairs_eq:

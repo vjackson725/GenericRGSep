@@ -2,12 +2,20 @@ theory RGSep
   imports Stabilisation
 begin
 
-section \<open> frame consistent predicate \<close>
+section \<open> frame consistency predicates \<close>
 
 definition \<open>frame_pred_extends f b \<equiv>
   \<forall>h1 h2 hf1.
     b h1 h2 \<longrightarrow> h1 ## hf1 \<longrightarrow> f hf1 \<longrightarrow>
       (\<exists>hf2. h2 ## hf2 \<and> f hf2 \<and> b (h1 + hf1) (h2 + hf2))\<close>
+
+lemma frame_pred_extendsD:
+  \<open>frame_pred_extends f b \<Longrightarrow>
+    b h1 h2 \<Longrightarrow>
+    f hf1 \<Longrightarrow>
+    h1 ## hf1 \<Longrightarrow>
+    \<exists>hf2. h2 ## hf2 \<and> f hf2 \<and> b (h1 + hf1) (h2 + hf2)\<close>
+  by (simp add: frame_pred_extends_def)
 
 definition
   \<open>frame_pred_maintains f r \<equiv>
@@ -21,6 +29,20 @@ lemma frame_pred_maintains_implies_extends:
 definition
   \<open>frame_step_subframe f r \<equiv>
     \<forall>hf. f hf \<longrightarrow> (\<forall>x yf. x ## hf \<longrightarrow> r (x + hf) yf \<longrightarrow> (\<exists>y. r x y))\<close>
+
+definition
+  \<open>frame_pred_closed p r \<equiv>
+    \<forall>h h'. r h h' \<longrightarrow> (\<forall>hf. p hf \<longrightarrow> h ## hf \<longrightarrow> h' ## hf \<longrightarrow> r (h + hf) (h' + hf))\<close>
+
+abbreviation \<open>frame_closed \<equiv> frame_pred_closed (\<lambda>_. True)\<close>
+
+lemma frame_pred_closed_antimono:
+  \<open>q \<le> p \<Longrightarrow> frame_pred_closed p r \<Longrightarrow> frame_pred_closed q r\<close>
+  by (force simp add: frame_pred_closed_def)
+
+definition
+  \<open>frame_pred_safe f \<equiv>
+    \<lambda>r. \<forall>x x' z z'. r x x' \<longrightarrow> f z \<longrightarrow> f z' \<longrightarrow> x ## z \<longrightarrow> x' ## z' \<longrightarrow> r (x+z) (x'+z')\<close>
 
 subsection \<open> Framed step relation \<close>
 
@@ -186,11 +208,13 @@ inductive rgsat
       p \<le> i \<Longrightarrow> i \<le> p' \<Longrightarrow> q' \<le> i \<Longrightarrow> \<lceil> i \<rceil>\<^bsub>r\<^esub> \<le> q \<Longrightarrow>
       rgsat (c\<^sup>\<star>) r g p q\<close>
 | rgsat_ndet:
-  \<open>rgsat s1 r g1 p q1 \<Longrightarrow>
-    rgsat s2 r g2 p q2 \<Longrightarrow>
+  \<open>rgsat c1 r g1 p q1 \<Longrightarrow>
+    rgsat c2 r g2 p q2 \<Longrightarrow>
+    frame_closed g1 \<Longrightarrow>
+    frame_closed g2 \<Longrightarrow>
     g1 \<le> g \<Longrightarrow> g2 \<le> g \<Longrightarrow>
     q1 \<le> q \<Longrightarrow> q2 \<le> q \<Longrightarrow>
-    rgsat (s1 \<^bold>+ s2) r g p q\<close>
+    rgsat (c1 \<^bold>+ c2) r g p q\<close>
 | rgsat_parallel:
   \<open>rgsat s1 (r \<squnion> g2) g1 p1 q1 \<Longrightarrow>
     rgsat s2 (r \<squnion> g1) g2 p2 q2 \<Longrightarrow>
