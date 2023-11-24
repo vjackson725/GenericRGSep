@@ -586,52 +586,37 @@ lemma safe_parallel_right:
     frame_pred_extends ((=) h1) g \<Longrightarrow>
     frame_pred_extends ((=) h1) r \<Longrightarrow>
     \<forall>x. (\<nexists>y. r x y) \<longrightarrow> x ## h1 \<longrightarrow> (\<nexists>y. r (x + h1) y) \<Longrightarrow>
-    q h2 \<longrightarrow> q (h1 + h2) \<Longrightarrow>
+    \<forall>h. h ## h1 \<longrightarrow> q h \<longrightarrow> q (h + h1) \<Longrightarrow>
     all_atom_comm (frame_pred_extends ((=) h1)) c2 \<Longrightarrow>
     safe n (c1 \<parallel> c2) (h1 + h2) r g q\<close>
   apply (induct arbitrary: c1 h1 rule: safe.inducts)
      apply force
     (* subgoal *)
-    apply (case_tac a)
-  subgoal sorry
-    apply (frule frame_pred_extendsD, blast, blast, metis disjoint_sym)
     apply clarsimp
-    apply (rule_tac n=n and a=Local and h'=\<open>h1 + h'\<close> and c'=\<open>c1 \<parallel> c'\<close> in safe_step)
-        apply (rule par_right)
-        apply (subst partial_add_commute, blast)
-        apply (drule_tac hf=\<open>h1\<close> in opstep_frame_pred_extendsD)
-           apply force
-          apply (metis disjoint_sym_iff fst_conv)
-         apply force
-        apply (simp, metis partial_add_commute)
-
-       apply clarsimp
-       apply (drule_tac hf=\<open>h1\<close> in opstep_frame_pred_extendsD)
-          apply force
-         apply (metis disjoint_sym_iff fst_conv)
-        apply force
-       apply (simp, metis opstep_frame par_right partial_add_commute)
-
-      apply (force dest: opstep_frame_pred_extendsD simp add: partial_add_commute disjoint_sym_iff)
-     apply blast
-
-    apply (frule frame_pred_extendsD, assumption, rule refl, metis disjoint_sym)
-  subgoal sorry
-(*    apply (metis opstep_preserves_all_atom_comm disjoint_sym) *)
+    apply (frule opstep_frame_pred_extendsD, force, force dest: disjoint_sym, force)
+    apply clarsimp
+    apply (rule safe_step)
+        apply (subst partial_add_commute, assumption, fast)
+       apply (metis opstep_frame par_right partial_add_commute)
+      apply clarsimp
+      apply (frule frame_pred_extendsD, blast, blast, metis disjoint_sym, metis partial_add_commute)
+     apply force
+    apply (force simp add: disjoint_sym_iff partial_add_commute
+      dest: opstep_preserves_all_atom_comm)
     (* done *)
 
-  subgoal sorry
-(*
+   apply (frule frame_pred_extendsD, assumption, rule refl, metis disjoint_sym)
    apply clarsimp
-    apply (rule safe_env)
-   apply (metis disjoint_sym partial_add_commute)
-*)
+   apply (rule safe_env)
+     apply (simp add: disjoint_sym_iff partial_add_commute; fail)
+    apply force
+   apply (simp add: disjoint_sym_iff partial_add_commute; fail)
 
   apply clarsimp
   apply (rule safe_no_env)
    apply (subst partial_add_commute, blast)
    apply (metis disjoint_sym)
-  apply blast
+  apply (force simp add: disjoint_sym_iff partial_add_commute)
   done
 
 lemma safe_parallel:

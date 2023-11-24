@@ -42,7 +42,12 @@ lemma frame_pred_closed_antimono:
 
 definition
   \<open>frame_pred_safe f \<equiv>
-    \<lambda>r. \<forall>x x' z z'. r x x' \<longrightarrow> f z \<longrightarrow> f z' \<longrightarrow> x ## z \<longrightarrow> x' ## z' \<longrightarrow> r (x+z) (x'+z')\<close>
+    \<lambda>r. \<forall>x x' z z'. r x x' \<longrightarrow> f z \<longrightarrow> x ## z \<longrightarrow> f z' \<longrightarrow> x' ## z' \<longrightarrow> r (x+z) (x'+z')\<close>
+
+lemma frame_pred_extends_eq_heap_implies_safe:
+  \<open>frame_pred_extends ((=) hf) \<le> frame_pred_safe ((=) hf)\<close>
+  unfolding frame_pred_extends_def frame_pred_safe_def le_fun_def
+  by force
 
 subsection \<open> Framed step relation \<close>
 
