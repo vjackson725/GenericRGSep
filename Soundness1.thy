@@ -79,6 +79,10 @@ lemma opstep_iff:
   apply (rule iffI, (erule opstep_atomicE; force), force)
   done
 
+lemma opstep_act_cases:
+  \<open>s \<midarrow>a\<rightarrow> s' \<Longrightarrow> (a = Tau \<Longrightarrow> s \<midarrow>Tau\<rightarrow> s' \<Longrightarrow> P) \<Longrightarrow> (a = Local \<Longrightarrow> s \<midarrow>Local\<rightarrow> s' \<Longrightarrow> P) \<Longrightarrow> P\<close>
+  by (metis (full_types) act.exhaust)
+
 lemma opstep_tau_preserves_heap:
   assumes \<open>s \<midarrow>Tau\<rightarrow> s'\<close>
   shows \<open>fst s' = fst s\<close>
@@ -91,21 +95,59 @@ proof -
     using assms by force
 qed
 
-lemma opstep_to_ndet_no_subexprL:
-  \<open>opstep a s s' \<Longrightarrow> snd s' = c1 \<^bold>+ c2 \<Longrightarrow> comm_subexpr (snd s) c1 \<Longrightarrow> False\<close>
-  apply (induct arbitrary: c1 c2 rule: opstep.inducts)
-                apply (force dest: no_comm_subexpr_constructorsD comm_subexpr_subexprsD)
-               apply (force dest: no_comm_subexpr_constructorsD comm_subexpr_subexprsD)
-              apply clarsimp
-  oops
+lemma opstep_to_ndet_originally_ndet_subexpr:
+  \<open>opstep a s s' \<Longrightarrow> snd s' = c1' \<^bold>+ c2' \<Longrightarrow>
+    (\<exists>c1. c1 \<^bold>+ c2' \<le> snd s) \<or> (\<exists>c2. c1' \<^bold>+ c2 \<le> snd s)\<close>
+  by (induct arbitrary: c1' c2' rule: opstep.inducts) force+
 
-lemma opstep_to_ndet_no_subexprR:
-  \<open>opstep a s s' \<Longrightarrow> snd s' = c1 \<^bold>+ c2 \<Longrightarrow> comm_subexpr (snd s) c2 \<Longrightarrow> False\<close>
-  apply (induct arbitrary: c1 c2 rule: opstep.inducts)
-                apply (force dest: no_comm_subexpr_constructorsD comm_subexpr_subexprsD)
-               apply (force dest: no_comm_subexpr_constructorsD comm_subexpr_subexprsD)
-              apply clarsimp
-  oops
+lemma opstep_step_to_under_left_ndet_impossible:
+  \<open>opstep a s s' \<Longrightarrow> c1' \<^bold>+ c2' \<le> snd s' \<Longrightarrow> snd s \<le> c1' \<Longrightarrow> False\<close>
+  apply (induct arbitrary: c1' c2' rule: opstep.inducts; clarsimp)
+              apply (metis less_eq_comm_no_constructorsD(3) less_eq_comm_subexprsD(1,2))
+             apply (metis less_eq_comm_no_constructorsD(3) less_eq_comm_subexprsD(2))
+            apply (metis order.refl less_eq_comm_no_constructorsD(3) less_eq_comm_subexprsD(3,4))
+           apply (metis order.refl less_eq_comm_no_constructorsD(3) less_eq_comm_subexprsD(3,4))
+          apply (metis less_eq_comm_no_constructorsD(3) less_eq_comm_subexprsD(4))
+         apply (metis less_eq_comm_no_constructorsD(3) less_eq_comm_subexprsD(3))
+        apply (metis less_eq_comm_subexprsD(3))
+       apply (metis less_eq_comm_subexprsD(4))
+      apply (metis less_eq_comm_no_constructorsD(3) less_eq_comm_subexprsD(5,6))
+     apply (metis less_eq_comm_no_constructorsD(3) less_eq_comm_subexprsD(5,6))
+    apply (metis less_eq_comm_no_constructorsD(3) less_eq_comm_subexprsD(6))
+   apply (metis less_eq_comm_no_constructorsD(3) less_eq_comm_subexprsD(5))
+  apply (metis less_eq_comm_no_constructorsD(3) less_eq_comm_subexprsD(7))
+  done
+
+lemma opstep_step_to_left_ndet_impossible:
+  \<open>opstep a (h, c1) (h', c1 \<^bold>+ c2) \<Longrightarrow> False\<close>
+  by (metis order.refl opstep_step_to_under_left_ndet_impossible snd_conv)
+
+lemma opstep_step_to_under_right_ndet_impossible:
+  \<open>opstep a s s' \<Longrightarrow> c1' \<^bold>+ c2' \<le> snd s' \<Longrightarrow> snd s \<le> c2' \<Longrightarrow> False\<close>
+  apply (induct arbitrary: c1' c2' rule: opstep.inducts; clarsimp)
+              apply (metis less_eq_comm_no_constructorsD(4) less_eq_comm_subexprsD(1,2))
+             apply (metis less_eq_comm_no_constructorsD(4) less_eq_comm_subexprsD(2))
+            apply (metis order.refl less_eq_comm_no_constructorsD(4) less_eq_comm_subexprsD(3,4))
+           apply (metis order.refl less_eq_comm_no_constructorsD(4) less_eq_comm_subexprsD(3,4))
+          apply (metis less_eq_comm_no_constructorsD(4) less_eq_comm_subexprsD(4))
+         apply (metis less_eq_comm_no_constructorsD(4) less_eq_comm_subexprsD(3))
+        apply (metis less_eq_comm_subexprsD(3))
+       apply (metis less_eq_comm_subexprsD(4))
+      apply (metis less_eq_comm_no_constructorsD(4) less_eq_comm_subexprsD(5,6))
+     apply (metis less_eq_comm_no_constructorsD(4) less_eq_comm_subexprsD(5,6))
+    apply (metis less_eq_comm_no_constructorsD(4) less_eq_comm_subexprsD(6))
+   apply (metis less_eq_comm_no_constructorsD(4) less_eq_comm_subexprsD(5))
+  apply (metis less_eq_comm_no_constructorsD(4) less_eq_comm_subexprsD(7))
+  done
+
+lemma opstep_step_to_right_ndet_impossible:
+  \<open>opstep a (h, c2) (h', c1 \<^bold>+ c2) \<Longrightarrow> False\<close>
+  by (metis order.refl opstep_step_to_under_right_ndet_impossible snd_conv)
+
+lemma opstep_always_changes_comm:
+  \<open>opstep a s s' \<Longrightarrow> snd s' \<noteq> snd s\<close>
+  by (induct rule: opstep.inducts)
+    (force dest: opstep_step_to_left_ndet_impossible opstep_step_to_right_ndet_impossible)+
 
 lemma all_atom_comm_opstep:
   assumes
@@ -127,6 +169,52 @@ qed
 
 lemmas all_atom_comm_opstepD =
   all_atom_comm_opstep[rotated]
+
+
+lemma opstep_sameheap_frameD:
+  assumes
+    \<open>s \<midarrow>a\<rightarrow> s'\<close>
+    \<open>fst s' = fst s\<close>
+    \<open>fst s ## hf\<close>
+    \<open>all_atom_comm (frame_pred_closed ((=) hf)) (snd s)\<close>
+  shows
+    \<open>(fst s + hf, snd s) \<midarrow>a\<rightarrow> (fst s' + hf, snd s')\<close>
+  using assms
+  by (induct rule: opstep.induct)
+    (force simp add: frame_pred_safe_def atomic frame_pred_closed_def)+
+
+lemma opstep_sameheap_frame:
+  assumes
+    \<open>(h, c) \<midarrow>a\<rightarrow> (h, c')\<close>
+    \<open>h ## hf\<close>
+    \<open>all_atom_comm (frame_pred_closed ((=) hf)) c\<close>
+  shows
+    \<open>(h + hf, c) \<midarrow>a\<rightarrow> (h + hf, c')\<close>
+  using assms opstep_sameheap_frameD
+  by fastforce
+
+lemma opstep_frame_closedD:
+  assumes
+    \<open>s \<midarrow>a\<rightarrow> s'\<close>
+    \<open>all_atom_comm (frame_pred_closed ((=) hf)) (snd s)\<close>
+    \<open>fst s ## hf\<close>
+    \<open>fst s' ## hf\<close>
+  shows
+    \<open>(fst s + hf, snd s) \<midarrow>a\<rightarrow> (fst s' + hf, snd s')\<close>
+  using assms
+  by (induct rule: opstep.induct)
+    (force simp add: frame_pred_closed_def)+
+
+lemma opstep_frame_closed:
+  assumes
+    \<open>(h, c) \<midarrow>a\<rightarrow> (h', c')\<close>
+    \<open>all_atom_comm (frame_pred_closed ((=) hf)) c\<close>
+    \<open>h ## hf\<close>
+    \<open>h' ## hf\<close>
+  shows
+    \<open>(h + hf, c) \<midarrow>a\<rightarrow> (h' + hf, c')\<close>
+  using assms opstep_frame_closedD
+  by fastforce
 
 lemma opstep_frameD:
   assumes
@@ -163,6 +251,18 @@ lemma opstep_frame_pred_extendsD:
   by (induct arbitrary: hf rule: opstep.inducts)
     (force simp add: frame_pred_extends_def)+
 
+lemma opstep_frame_pred_extends:
+  assumes
+    \<open>(h, c) \<midarrow>a\<rightarrow> (h', c')\<close>
+    \<open>all_atom_comm (frame_pred_extends f) c\<close>
+    \<open>h ## hf\<close>
+    \<open>f hf\<close>
+  shows
+    \<open>\<exists>hf'. f hf' \<and> h' ## hf' \<and> (h + hf, c) \<midarrow>a\<rightarrow> (h' + hf', c')\<close>
+  using assms
+  by (force dest: opstep_frame_pred_extendsD)
+
+
 lemma opstep_frame_pred_maintainsD:
   assumes
     \<open>s1 \<midarrow>a\<rightarrow> s2\<close>
@@ -182,9 +282,30 @@ lemma opstep_frame_pred_maintains:
     \<open>h ## hf\<close>
     \<open>f hf\<close>
   shows
-    \<open>h' ## hf \<and> (h + hf, c) \<midarrow>a\<rightarrow> (h' + hf, c')\<close>
-  using assms
-  by (force dest: opstep_frame_pred_maintainsD)
+    \<open>(h + hf, c) \<midarrow>a\<rightarrow> (h' + hf, c')\<close>
+  using assms opstep_frame_pred_maintainsD
+  by fastforce
+
+lemma opstep_frame_pred_maintains2:
+  assumes
+    \<open>(h, c) \<midarrow>a\<rightarrow> (h', c')\<close>
+    \<open>all_atom_comm (frame_pred_maintains f) c\<close>
+    \<open>h ## hf\<close>
+    \<open>f hf\<close>
+  shows
+    \<open>h' ## hf\<close>
+  using assms opstep_frame_pred_maintainsD
+  by fastforce
+
+subsubsection \<open> adding parallel \<close>
+
+lemma opstep_parallel_leftD:
+  \<open>s \<midarrow>a\<rightarrow> s' \<Longrightarrow> (fst s, snd s \<parallel> cy) \<midarrow>a\<rightarrow> (fst s', snd s' \<parallel> cy)\<close>
+  by (simp add: par_left)
+
+lemma opstep_parallel_rightD:
+  \<open>s \<midarrow>a\<rightarrow> s' \<Longrightarrow> (fst s, cx \<parallel> snd s) \<midarrow>a\<rightarrow> (fst s', cx \<parallel> snd s')\<close>
+  by (simp add: par_right)
 
 subsubsection \<open>sugared atomic programs\<close>
 
@@ -491,8 +612,8 @@ next
   have
     \<open>h' ## hf\<close>
     \<open>opstep a (h + hf, c) (h' + hf, c')\<close>
-    using safe_step opstep_frame_pred_maintains
-    by metis+
+    using safe_step opstep_frame_pred_maintains opstep_frame_pred_maintains2
+    by meson+
   moreover then have \<open>safe n c' (h' + hf) r g (q \<^emph> f)\<close>
     using safe_step
     by (blast dest: opstep_preserves_all_atom_comm)
@@ -536,8 +657,9 @@ lemma safe_guarantee_monoD:
 
 lemmas safe_guarantee_mono = safe_guarantee_monoD[rotated]
 
+(* n.b. prestate condition under \<open>r \<le> r'\<close> is the same as \<open>pre_state r' = pre_state r\<close> *)
 lemma safe_rely_monoD:
-  \<open>safe n c h r g q \<Longrightarrow> r \<le> r' \<Longrightarrow> pre_state r = pre_state r' \<Longrightarrow> safe n c h r' g q\<close>
+  \<open>safe n c h r g q \<Longrightarrow> r \<le> r' \<Longrightarrow> pre_state r' \<le> pre_state r \<Longrightarrow> safe n c h r' g q\<close>
   by (induct rule: safe.induct)
     (simp add: le_fun_def safe_suc_iff pre_state_def fun_eq_iff, blast)+
 
@@ -581,51 +703,105 @@ lemma safe_ndet_right:
   done
 
 lemma safe_parallel_right:
-  \<open>safe n c2 h2 r g q \<Longrightarrow>
-    h1 ## h2 \<Longrightarrow>
-    frame_pred_extends ((=) h1) g \<Longrightarrow>
-    frame_pred_extends ((=) h1) r \<Longrightarrow>
-    \<forall>x. (\<nexists>y. r x y) \<longrightarrow> x ## h1 \<longrightarrow> (\<nexists>y. r (x + h1) y) \<Longrightarrow>
-    \<forall>h. h ## h1 \<longrightarrow> q h \<longrightarrow> q (h + h1) \<Longrightarrow>
-    all_atom_comm (frame_pred_extends ((=) h1)) c2 \<Longrightarrow>
-    safe n (c1 \<parallel> c2) (h1 + h2) r g q\<close>
-  apply (induct arbitrary: c1 h1 rule: safe.inducts)
-     apply force
-    (* subgoal *)
+  assumes
+    \<open>safe n c2 h2 r2 g2 q\<close>
+    \<open>r2 = r \<squnion> g1\<close>
+    \<open>tight_reflp r\<close>
+    \<open>tight_reflp g1\<close>
+    \<open>transp g2\<close>
+    \<open>pre_state (r \<squnion> g1) h1\<close>
+    \<open>h1 ## h2\<close>
+    \<open>all_atom_comm (frame_pred_maintains ((=) h1)) c2\<close>
+    \<open>frame_pred_maintains ((r \<squnion> g1) h1) g2\<close>
+    \<open>frame_pred_maintains (g2 h2) g2\<close>
+    \<open>frame_pred_maintains ((=) h1) r\<close>
+    \<open>\<forall>x. (\<nexists>y. r x y) \<longrightarrow> x ## h1 \<longrightarrow> (\<nexists>y. r (x + h1) y) \<and> (q x \<longrightarrow> q (x + h1))\<close>
+  shows
+    \<open>safe n (c1 \<parallel> c2) (h1 + h2) r (g1 \<squnion> g2) q\<close>
+proof -
+  have \<open>safe n (c1 \<parallel> c2) (h2 + h1) r (g1 \<squnion> g2) q\<close>
+    using assms assms(7)[THEN disjoint_sym]
+    apply (induct arbitrary: c1 h1 g1 r rule: safe.inducts)
+       apply force
+    subgoal
+      apply clarsimp
+      apply (frule opstep_frame_pred_maintainsD, force, force, force)
+      apply clarsimp
+      apply (rule safe_step)
+          apply blast
+         apply (metis opstep_frame opstep_iff(4))
+        apply (simp, metis frame_pred_maintainsD tight_reflpD1' sup1CI)
+       apply force
+      subgoal sorry
+(*    apply (blast dest: opstep_preserves_all_atom_comm) *)
+      done
     apply clarsimp
-    apply (frule opstep_frame_pred_extendsD, force, force dest: disjoint_sym, force)
+    apply (erule disjE)
+      (*subgoal*)
+      apply (rule safe_env)
+    subgoal sorry
+       apply force
+      apply (drule meta_spec2, drule meta_spec2)
+      apply (drule meta_mp, rule refl)
+      apply (drule meta_mp, blast)
+      apply (drule meta_mp, blast)
+      apply (drule meta_mp, blast)
+      apply (drule meta_mp)
+    sorry
+
+
+    subgoal sorry
+
+    subgoal sorry
+    subgoal sorry
+    apply blast
+  done
+  then show ?thesis
+    using assms(6)
+    by (metis partial_add_commute)
+qed
+
+lemma safe_parallel_left:
+  \<open>safe n c1 h1 (r \<squnion> g2) g1 q \<Longrightarrow>
+    all_atom_comm (frame_pred_maintains ((=) h2)) c1 \<Longrightarrow>
+    frame_pred_maintains ((=) h2) g \<Longrightarrow>
+    frame_pred_extends ((=) h2) r \<Longrightarrow>
+    \<forall>x. (\<nexists>y. r x y) \<longrightarrow> x ## h2 \<longrightarrow> (\<nexists>y. r (x + h2) y) \<and> (q x \<longrightarrow> q (x + h2)) \<Longrightarrow>
+    h1 ## h2 \<Longrightarrow>
+    safe n (c1 \<parallel> c2) (h1 + h2) r (g1 \<squnion> g2) q\<close>
+  apply (induct arbitrary: c2 h2 rule: safe.inducts)
+     apply force
+  subgoal
+    apply clarsimp
+    apply (frule opstep_frame_pred_maintainsD, force, force, fast)
     apply clarsimp
     apply (rule safe_step)
-        apply (subst partial_add_commute, assumption, fast)
-       apply (metis opstep_frame par_right partial_add_commute)
-      apply clarsimp
-      apply (frule frame_pred_extendsD, blast, blast, metis disjoint_sym, metis partial_add_commute)
-     apply force
-    apply (force simp add: disjoint_sym_iff partial_add_commute
-      dest: opstep_preserves_all_atom_comm)
-    (* done *)
-
-   apply (frule frame_pred_extendsD, assumption, rule refl, metis disjoint_sym)
-   apply clarsimp
-   apply (rule safe_env)
-     apply (simp add: disjoint_sym_iff partial_add_commute; fail)
-    apply force
-   apply (simp add: disjoint_sym_iff partial_add_commute; fail)
-
-  apply clarsimp
-  apply (rule safe_no_env)
-   apply (subst partial_add_commute, blast)
-   apply (metis disjoint_sym)
-  apply (force simp add: disjoint_sym_iff partial_add_commute)
+        apply fast
+       apply (metis opstep_frame par_left)
+      apply (blast dest: frame_pred_maintainsD)
+     apply blast
+    apply (metis opstep_preserves_all_atom_comm)
+    done
+   apply (blast dest: frame_pred_extendsD)
+  apply blast
   done
 
 lemma safe_parallel:
   \<open>safe n2 c2 h2 (r \<squnion> g1) g2 q \<Longrightarrow>
     safe n1 c1 h1 (r \<squnion> g2) g1 q \<Longrightarrow>
     h1 ## h2 \<Longrightarrow>
+    all_atom_comm (frame_pred_maintains ((=) h2)) c1 \<Longrightarrow>
+    all_atom_comm (frame_pred_maintains ((=) h1)) c2 \<Longrightarrow>
+    frame_pred_maintains ((=) h1) g2 \<Longrightarrow>
+    frame_pred_maintains ((=) h2) g1 \<Longrightarrow>
+    frame_pred_extends ((=) h1) (r \<squnion> g2) \<Longrightarrow>
+    frame_pred_extends ((=) h2) (r \<squnion> g1) \<Longrightarrow>
+    \<forall>x. (\<nexists>y. r x y) \<longrightarrow> x ## h2 \<longrightarrow> (\<nexists>y. r (x + h2) y) \<and> (q x \<longrightarrow> q (x + h2)) \<Longrightarrow>
     safe (n1 + n2) (c1 \<parallel> c2) (h1 + h2) r (g1 \<squnion> g2) q\<close>
   apply (induct arbitrary: n1 c1 h1 g1 r rule: safe.inducts)
-  apply simp
+     apply simp
+     apply (rule safe_guarantee_mono)
+  sledgehammer
   sorry
 
 lemma opstep_tau_extendD:

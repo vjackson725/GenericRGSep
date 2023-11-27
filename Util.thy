@@ -118,6 +118,24 @@ definition \<open>pre_state r \<equiv> \<lambda>a. \<exists>b. r a b\<close>
 definition \<open>post_state r \<equiv> \<lambda>b. \<exists>a. r a b\<close>
 definition \<open>prepost_state \<equiv> pre_state \<squnion> post_state\<close>
 
+abbreviation \<open>tight_reflp r \<equiv> reflp_on (Collect (prepost_state r)) r\<close>
+
+lemma tight_reflpD1[dest]:
+  \<open>tight_reflp r \<Longrightarrow> r x y \<Longrightarrow> r x x\<close>
+  by (metis mem_Collect_eq pre_state_def prepost_state_def reflp_onD sup2CI)
+
+lemma tight_reflpD2[dest]:
+  \<open>tight_reflp r \<Longrightarrow> r x y \<Longrightarrow> r y y\<close>
+  by (metis mem_Collect_eq post_state_def prepost_state_def reflp_onD sup2CI)
+
+lemma tight_reflpD1'[dest]:
+  \<open>tight_reflp r \<Longrightarrow> pre_state r x \<Longrightarrow> r x x\<close>
+  by (metis mem_Collect_eq prepost_state_def reflp_onD sup2CI)
+
+lemma tight_reflpD2'[dest]:
+  \<open>tight_reflp r \<Longrightarrow> post_state r y \<Longrightarrow> r y y\<close>
+  by (metis mem_Collect_eq prepost_state_def reflp_onD sup2CI)
+
 lemma pre_state_trancl_eq[simp]:
   \<open>pre_state (r\<^sup>+\<^sup>+) = pre_state r\<close>
   unfolding pre_state_def
@@ -133,6 +151,22 @@ lemma post_state_trancl_eq[simp]:
    apply (clarify, rule tranclp_induct[of r]; blast)
   apply blast
   done
+
+lemma pre_state_relconj_le:
+  \<open>pre_state (r1 \<sqinter> r2) \<le> pre_state r1 \<sqinter> pre_state r2\<close>
+  by (force simp add: pre_state_def)
+
+lemma pre_state_reldisj[simp]:
+  \<open>pre_state (r1 \<squnion> r2) = pre_state r1 \<squnion> pre_state r2\<close>
+  by (force simp add: pre_state_def)
+
+lemma post_state_relconj_le:
+  \<open>post_state (r1 \<sqinter> r2) \<le> post_state r1 \<sqinter> post_state r2\<close>
+  by (force simp add: post_state_def)
+
+lemma post_state_reldisj[simp]:
+  \<open>post_state (r1 \<squnion> r2) = post_state r1 \<squnion> post_state r2\<close>
+  by (force simp add: post_state_def)
 
 lemma rel_liftL_unfold[simp]:
   \<open>rel_liftL p a b = p a\<close>

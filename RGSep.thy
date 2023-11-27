@@ -2,52 +2,6 @@ theory RGSep
   imports Stabilisation
 begin
 
-section \<open> frame consistency predicates \<close>
-
-definition \<open>frame_pred_extends f b \<equiv>
-  \<forall>h1 h2 hf1.
-    b h1 h2 \<longrightarrow> h1 ## hf1 \<longrightarrow> f hf1 \<longrightarrow>
-      (\<exists>hf2. h2 ## hf2 \<and> f hf2 \<and> b (h1 + hf1) (h2 + hf2))\<close>
-
-lemma frame_pred_extendsD:
-  \<open>frame_pred_extends f b \<Longrightarrow>
-    b h1 h2 \<Longrightarrow>
-    f hf1 \<Longrightarrow>
-    h1 ## hf1 \<Longrightarrow>
-    \<exists>hf2. h2 ## hf2 \<and> f hf2 \<and> b (h1 + hf1) (h2 + hf2)\<close>
-  by (simp add: frame_pred_extends_def)
-
-definition
-  \<open>frame_pred_maintains f r \<equiv>
-    \<forall>x y z. r x y \<longrightarrow> f z \<longrightarrow> x ## z \<longrightarrow> (y ## z \<and> r (x+z) (y+z))\<close>
-
-lemma frame_pred_maintains_implies_extends:
-  \<open>frame_pred_maintains f \<le> frame_pred_extends f\<close>
-  unfolding frame_pred_maintains_def frame_pred_extends_def
-  by auto
-
-definition
-  \<open>frame_step_subframe f r \<equiv>
-    \<forall>hf. f hf \<longrightarrow> (\<forall>x yf. x ## hf \<longrightarrow> r (x + hf) yf \<longrightarrow> (\<exists>y. r x y))\<close>
-
-definition
-  \<open>frame_pred_closed p r \<equiv>
-    \<forall>h h'. r h h' \<longrightarrow> (\<forall>hf. p hf \<longrightarrow> h ## hf \<longrightarrow> h' ## hf \<longrightarrow> r (h + hf) (h' + hf))\<close>
-
-abbreviation \<open>frame_closed \<equiv> frame_pred_closed (\<lambda>_. True)\<close>
-
-lemma frame_pred_closed_antimono:
-  \<open>q \<le> p \<Longrightarrow> frame_pred_closed p r \<Longrightarrow> frame_pred_closed q r\<close>
-  by (force simp add: frame_pred_closed_def)
-
-definition
-  \<open>frame_pred_safe f \<equiv>
-    \<lambda>r. \<forall>x x' z z'. r x x' \<longrightarrow> f z \<longrightarrow> x ## z \<longrightarrow> f z' \<longrightarrow> x' ## z' \<longrightarrow> r (x+z) (x'+z')\<close>
-
-lemma frame_pred_extends_eq_heap_implies_safe:
-  \<open>frame_pred_extends ((=) hf) \<le> frame_pred_safe ((=) hf)\<close>
-  unfolding frame_pred_extends_def frame_pred_safe_def le_fun_def
-  by force
 
 subsection \<open> Framed step relation \<close>
 
@@ -108,6 +62,154 @@ lemma (in sep_alg) sep_alg_framed_subresource_rel_iff:
   by (metis framed_subresource_rel_def sepadd_0_right zero_disjointR)
 
 
+section \<open> frame consistency predicates \<close>
+
+subsection \<open> \<close>
+
+definition
+  \<open>frame_pred_maintains f r \<equiv>
+    \<forall>x y z. r x y \<longrightarrow> f z \<longrightarrow> x ## z \<longrightarrow> (y ## z \<and> r (x+z) (y+z))\<close>
+
+lemma frame_pred_maintainsD:
+  \<open>frame_pred_maintains f b \<Longrightarrow>
+    b h1 h2 \<Longrightarrow>
+    f hf \<Longrightarrow>
+    h1 ## hf \<Longrightarrow>
+    h2 ## hf \<and> b (h1 + hf) (h2 + hf)\<close>
+  by (simp add: frame_pred_maintains_def)
+
+lemma frame_pred_maintains:
+  \<open>frame_pred_maintains f b \<Longrightarrow>
+    b h1 h2 \<Longrightarrow>
+    f hf \<Longrightarrow>
+    h1 ## hf \<Longrightarrow>
+    b (h1 + hf) (h2 + hf)\<close>
+  by (simp add: frame_pred_maintains_def)
+
+lemma frame_pred_maintains2:
+  \<open>frame_pred_maintains f b \<Longrightarrow> b h1 h2 \<Longrightarrow> f hf \<Longrightarrow> h1 ## hf \<Longrightarrow> h2 ## hf\<close>
+  by (simp add: frame_pred_maintains_def)
+
+lemma frame_pred_maintains_antimono':
+  \<open>q \<le> p \<Longrightarrow> frame_pred_maintains p \<le> frame_pred_maintains q\<close>
+  by (fastforce simp add: frame_pred_maintains_def)
+
+lemma frame_pred_maintains_antimono:
+  \<open>q \<le> p \<Longrightarrow> frame_pred_maintains p r \<Longrightarrow> frame_pred_maintains q r\<close>
+  using frame_pred_maintains_antimono' by auto
+
+lemmas frame_pred_maintains_antimonoD = frame_pred_maintains_antimono[rotated]
+
+lemma frame_pred_maintains_relconjI:
+  \<open>frame_pred_maintains p r1 \<Longrightarrow> frame_pred_maintains p r2 \<Longrightarrow> frame_pred_maintains p (r1 \<sqinter> r2)\<close>
+  by (force simp add: frame_pred_maintains_def)
+
+lemma frame_pred_maintains_reldisjI:
+  \<open>frame_pred_maintains p r1 \<Longrightarrow> frame_pred_maintains p r2 \<Longrightarrow> frame_pred_maintains p (r1 \<squnion> r2)\<close>
+  by (simp add: frame_pred_maintains_def)
+
+subsection \<open> Frame extends \<close>
+
+text \<open> more powerful maintains \<close>
+
+definition \<open>frame_pred_extends f b \<equiv>
+  \<forall>h1 h2 hf1.
+    b h1 h2 \<longrightarrow> h1 ## hf1 \<longrightarrow> f hf1 \<longrightarrow>
+      (\<exists>hf2. h2 ## hf2 \<and> f hf2 \<and> b (h1 + hf1) (h2 + hf2))\<close>
+
+lemma frame_pred_extendsD:
+  \<open>frame_pred_extends f b \<Longrightarrow>
+    b h1 h2 \<Longrightarrow>
+    f hf1 \<Longrightarrow>
+    h1 ## hf1 \<Longrightarrow>
+    \<exists>hf2. h2 ## hf2 \<and> f hf2 \<and> b (h1 + hf1) (h2 + hf2)\<close>
+  by (simp add: frame_pred_extends_def)
+
+lemma frame_pred_maintains_implies_extends:
+  \<open>frame_pred_maintains f \<le> frame_pred_extends f\<close>
+  unfolding frame_pred_maintains_def frame_pred_extends_def
+  by auto
+
+lemma frame_equals_maintain_eq_extends:
+  \<open>frame_pred_maintains ((=) h) = frame_pred_extends ((=) h)\<close>
+  unfolding frame_pred_maintains_def frame_pred_extends_def
+  by presburger
+
+
+subsection \<open> Frame closure \<close>
+
+definition \<open>framecl r \<equiv> (\<lambda>a b. (\<exists>x y. r x y \<and> framed_subresource_rel x y a b))\<close>
+
+
+subsection \<open> Frame closed \<close>
+
+definition
+  \<open>frame_pred_closed p r \<equiv>
+    \<forall>h h'. r h h' \<longrightarrow> (\<forall>hf. p hf \<longrightarrow> h ## hf \<longrightarrow> h' ## hf \<longrightarrow> r (h + hf) (h' + hf))\<close>
+
+abbreviation \<open>frame_closed \<equiv> frame_pred_closed (\<lambda>_. True)\<close>
+
+lemma frame_pred_closedD:
+  \<open>frame_pred_closed f b \<Longrightarrow>
+    b h1 h2 \<Longrightarrow>
+    f hf \<Longrightarrow>
+    h1 ## hf \<Longrightarrow>
+    h2 ## hf \<Longrightarrow>
+    b (h1 + hf) (h2 + hf)\<close>
+  by (simp add: frame_pred_closed_def)
+
+lemma frame_pred_closed_antimono':
+  \<open>q \<le> p \<Longrightarrow> frame_pred_closed p \<le> frame_pred_closed q\<close>
+  by (force simp add: frame_pred_closed_def)
+
+lemma frame_pred_closed_antimono:
+  \<open>q \<le> p \<Longrightarrow> frame_pred_closed p r \<Longrightarrow> frame_pred_closed q r\<close>
+  using frame_pred_closed_antimono' by auto
+
+lemmas frame_pred_closed_antimonoD = frame_pred_closed_antimono[rotated]
+
+lemma frame_pred_closed_disjI:
+  \<open>frame_pred_closed p r1 \<Longrightarrow> frame_pred_closed p r2 \<Longrightarrow>
+    frame_pred_closed p (r1 \<squnion> r2)\<close>
+  by (simp add: frame_pred_closed_def all_conj_distrib)
+
+lemma frame_pred_maintains_implies_closed:
+  \<open>frame_pred_maintains p \<le> frame_pred_closed p\<close>
+  unfolding frame_pred_maintains_def frame_pred_closed_def le_fun_def
+  by force
+
+
+subsection \<open> Frame pred safe \<close>
+
+text \<open> more powerful frame_closed \<close>
+
+definition
+  \<open>frame_pred_safe f \<equiv>
+    \<lambda>r. \<forall>x x' z z'. r x x' \<longrightarrow> f z \<longrightarrow> x ## z \<longrightarrow> f z' \<longrightarrow> x' ## z' \<longrightarrow> r (x+z) (x'+z')\<close>
+
+lemma frame_pred_extends_eq_heap_implies_safe:
+  \<open>frame_pred_extends ((=) hf) \<le> frame_pred_safe ((=) hf)\<close>
+  unfolding frame_pred_extends_def frame_pred_safe_def le_fun_def
+  by force
+
+lemma frame_pred_safe_implies_closed:
+  \<open>frame_pred_safe p f \<le> frame_pred_closed p f\<close>
+  unfolding frame_pred_safe_def frame_pred_closed_def
+  by auto
+
+lemma frame_equals_safe_eq_closed:
+  \<open>frame_pred_safe ((=) h) = frame_pred_closed ((=) h)\<close>
+  unfolding frame_pred_safe_def frame_pred_closed_def
+  by presburger
+
+
+subsection \<open> Frame Step \<close>
+
+definition
+  \<open>frame_step_subframe f r \<equiv>
+    \<forall>hf. f hf \<longrightarrow> (\<forall>x yf. x ## hf \<longrightarrow> r (x + hf) yf \<longrightarrow> (\<exists>y. r x y))\<close>
+
+
 section \<open> Language Definition \<close>
 
 subsection \<open> Commands \<close>
@@ -120,48 +222,68 @@ datatype 'h comm =
   | Iter \<open>'h comm\<close> (\<open>_\<^sup>\<star>\<close> [80] 80)
   | Atomic \<open>'h \<Rightarrow> 'h \<Rightarrow> bool\<close>
 
-paragraph \<open> Predicate to determine if a command is a subexpression of another \<close>
 
-primrec comm_subexpr :: \<open>'a comm \<Rightarrow> 'a comm \<Rightarrow> bool\<close> where
-  \<open>comm_subexpr c Skip = (c = Skip)\<close>
-| \<open>comm_subexpr c (c1' ;; c2') = (c = c1' ;; c2' \<or> comm_subexpr c c1' \<or> comm_subexpr c c2')\<close>
-| \<open>comm_subexpr c (c1' \<parallel> c2') = (c = c1' \<parallel> c2' \<or> comm_subexpr c c1' \<or> comm_subexpr c c2')\<close>
-| \<open>comm_subexpr c (c1' \<^bold>+ c2') = (c = c1' \<^bold>+ c2' \<or> comm_subexpr c c1' \<or> comm_subexpr c c2')\<close>
-| \<open>comm_subexpr c (c'\<^sup>\<star>) = (c = c'\<^sup>\<star> \<or> comm_subexpr c c')\<close>
-| \<open>comm_subexpr c (Atomic b) = (c = Atomic b)\<close>
+paragraph \<open> Commands have a subexpression order \<close>
+instantiation comm :: (type) order
+begin
 
-lemma comm_subexpr_refl[simp]:
-  \<open>comm_subexpr c c\<close>
-  by (induct c) simp+
+primrec less_eq_comm :: \<open>'a comm \<Rightarrow> 'a comm \<Rightarrow> bool\<close> where
+  \<open>less_eq_comm c Skip = (c = Skip)\<close>
+| \<open>less_eq_comm c (c1' ;; c2') = (c = c1' ;; c2' \<or> less_eq_comm c c1' \<or> less_eq_comm c c2')\<close>
+| \<open>less_eq_comm c (c1' \<parallel> c2') = (c = c1' \<parallel> c2' \<or> less_eq_comm c c1' \<or> less_eq_comm c c2')\<close>
+| \<open>less_eq_comm c (c1' \<^bold>+ c2') = (c = c1' \<^bold>+ c2' \<or> less_eq_comm c c1' \<or> less_eq_comm c c2')\<close>
+| \<open>less_eq_comm c (c'\<^sup>\<star>) = (c = c'\<^sup>\<star> \<or> less_eq_comm c c')\<close>
+| \<open>less_eq_comm c (Atomic b) = (c = Atomic b)\<close>
 
-lemma comm_subexpr_trans:
-  \<open>comm_subexpr c1 c2 \<Longrightarrow> comm_subexpr c2 c3 \<Longrightarrow> comm_subexpr c1 c3\<close>
-  by (induct c3 arbitrary: c1 c2) force+
+definition less_comm :: \<open>'a comm \<Rightarrow> 'a comm \<Rightarrow> bool\<close> where
+  \<open>less_comm x y \<equiv> x \<noteq> y \<and> x \<le> y\<close>
 
-lemma comm_subexpr_antisym:
-  \<open>comm_subexpr c1 c2 \<Longrightarrow> comm_subexpr c2 c1 \<Longrightarrow> c1 = c2\<close>
-  by (induct c2 arbitrary: c1)
-    (metis comm_subexpr.simps comm_subexpr_refl comm_subexpr_trans)+
+lemma less_comm_simps[simp]:
+  \<open>c < Skip \<longleftrightarrow> False\<close>
+  \<open>c < c1' ;; c2' \<longleftrightarrow> c \<noteq> c1' ;; c2' \<and> (c \<le> c1' \<or> c \<le> c2')\<close>
+  \<open>c < c1' \<parallel> c2' \<longleftrightarrow> c \<noteq> c1' \<parallel> c2' \<and> (c \<le> c1' \<or> c \<le> c2')\<close>
+  \<open>c < c1' \<^bold>+ c2' \<longleftrightarrow> c \<noteq> c1' \<^bold>+ c2' \<and> (c \<le> c1' \<or> c \<le> c2')\<close>
+  \<open>c < c'\<^sup>\<star> \<longleftrightarrow> c \<noteq> c'\<^sup>\<star> \<and> c \<le> c'\<close>
+  \<open>c < Atomic b \<longleftrightarrow> False\<close>
+  by (force simp add: less_comm_def)+
 
-lemma no_comm_subexpr_constructorsD:
-  \<open>comm_subexpr (c1 ;; c2) c \<Longrightarrow> comm_subexpr c c1 \<Longrightarrow> False\<close>
-  \<open>comm_subexpr (c1 ;; c2) c \<Longrightarrow> comm_subexpr c c2 \<Longrightarrow> False\<close>
-  \<open>comm_subexpr (c1 \<^bold>+ c2) c \<Longrightarrow> comm_subexpr c c1 \<Longrightarrow> False\<close>
-  \<open>comm_subexpr (c1 \<^bold>+ c2) c \<Longrightarrow> comm_subexpr c c2 \<Longrightarrow> False\<close>
-  \<open>comm_subexpr (c1 \<parallel> c2) c \<Longrightarrow> comm_subexpr c c1 \<Longrightarrow> False\<close>
-  \<open>comm_subexpr (c1 \<parallel> c2) c \<Longrightarrow> comm_subexpr c c2 \<Longrightarrow> False\<close>
-  \<open>comm_subexpr (cb\<^sup>\<star>) c \<Longrightarrow> comm_subexpr c cb \<Longrightarrow> False\<close>
-  by (fastforce dest: comm_subexpr_antisym)+
+lemma less_eq_comm_refl: \<open>(x::'a comm) \<le> x\<close>
+  by (induct x) force+
 
-lemma comm_subexpr_subexprsD:
-  \<open>comm_subexpr (c1 ;; c2) c \<Longrightarrow> comm_subexpr c1 c\<close>
-  \<open>comm_subexpr (c1 ;; c2) c \<Longrightarrow> comm_subexpr c2 c\<close>
-  \<open>comm_subexpr (c1 \<^bold>+ c2) c \<Longrightarrow> comm_subexpr c1 c\<close>
-  \<open>comm_subexpr (c1 \<^bold>+ c2) c \<Longrightarrow> comm_subexpr c2 c\<close>
-  \<open>comm_subexpr (c1 \<parallel> c2) c \<Longrightarrow> comm_subexpr c1 c\<close>
-  \<open>comm_subexpr (c1 \<parallel> c2) c \<Longrightarrow> comm_subexpr c2 c\<close>
-  \<open>comm_subexpr (cb\<^sup>\<star>) c \<Longrightarrow> comm_subexpr cb c\<close>
-  by (meson comm_subexpr.simps comm_subexpr_refl comm_subexpr_trans)+
+lemma less_eq_comm_trans: \<open>(x::'a comm) \<le> y \<Longrightarrow> y \<le> z \<Longrightarrow> x \<le> z\<close>
+  by (induct z arbitrary: x y) force+
+
+lemma less_eq_comm_subexprsD:
+  \<open>(c1 ;; c2) \<le> c \<Longrightarrow> c1 \<le> c\<close>
+  \<open>(c1 ;; c2) \<le> c \<Longrightarrow> c2 \<le> c\<close>
+  \<open>(c1 \<^bold>+ c2) \<le> c \<Longrightarrow> c1 \<le> c\<close>
+  \<open>(c1 \<^bold>+ c2) \<le> c \<Longrightarrow> c2 \<le> c\<close>
+  \<open>(c1 \<parallel> c2) \<le> c \<Longrightarrow> c1 \<le> c\<close>
+  \<open>(c1 \<parallel> c2) \<le> c \<Longrightarrow> c2 \<le> c\<close>
+  \<open>(cb\<^sup>\<star>) \<le> c \<Longrightarrow> cb \<le> c\<close>
+  by (meson less_eq_comm.simps less_eq_comm_refl less_eq_comm_trans; fail)+
+
+lemma less_eq_comm_antisym: \<open>(x::'a comm) \<le> y \<Longrightarrow> y \<le> x \<Longrightarrow> x = y\<close>
+  by (induct y arbitrary: x)
+    (metis less_eq_comm.simps less_eq_comm_subexprsD)+
+
+instance
+  by standard
+    (force intro: less_eq_comm_refl less_eq_comm_trans less_eq_comm_antisym
+      simp add: less_comm_def)+
+
+end
+
+lemma less_eq_comm_no_constructorsD:
+  \<open>(c1 ;; c2) \<le> c \<Longrightarrow> c \<le> c1 \<Longrightarrow> False\<close>
+  \<open>(c1 ;; c2) \<le> c \<Longrightarrow> c \<le> c2 \<Longrightarrow> False\<close>
+  \<open>(c1 \<^bold>+ c2) \<le> c \<Longrightarrow> c \<le> c1 \<Longrightarrow> False\<close>
+  \<open>(c1 \<^bold>+ c2) \<le> c \<Longrightarrow> c \<le> c2 \<Longrightarrow> False\<close>
+  \<open>(c1 \<parallel> c2) \<le> c \<Longrightarrow> c \<le> c1 \<Longrightarrow> False\<close>
+  \<open>(c1 \<parallel> c2) \<le> c \<Longrightarrow> c \<le> c2 \<Longrightarrow> False\<close>
+  \<open>(cb\<^sup>\<star>) \<le> c \<Longrightarrow> c \<le> cb \<Longrightarrow> False\<close>
+  by (fastforce dest: order.antisym)+
+
 
 paragraph \<open> Predicate to ensure atomic actions have a given property \<close>
 
@@ -193,12 +315,22 @@ lemma all_atom_comm_pred_mono:
   \<open>p \<le> q \<Longrightarrow> all_atom_comm p c \<Longrightarrow> all_atom_comm q c\<close>
   by (induct c) force+
 
-lemmas all_atom_comm_pred_monoD =
-  all_atom_comm_pred_mono[rotated]
+lemma all_atom_comm_pred_mono':
+  \<open>p \<le> q \<Longrightarrow> all_atom_comm p \<le> all_atom_comm q\<close>
+  using all_atom_comm_pred_mono by auto
 
+lemmas all_atom_comm_pred_monoD = all_atom_comm_pred_mono[rotated]
 
-abbreviation \<open>atoms_guarantee g \<equiv>
-  all_atom_comm (\<lambda>b. b \<le> g \<and> (\<forall>s. Ex (g s) \<longrightarrow> Ex (b s)))\<close>
+lemma all_atom_comm_conj_eq:
+  \<open>all_atom_comm (p \<sqinter> q) c \<longleftrightarrow> all_atom_comm p c \<and> all_atom_comm q c\<close>
+  by (induct c) force+
+
+abbreviation \<open>atoms_subrel_guarantee g \<equiv> all_atom_comm (\<lambda>b. b \<le> g)\<close>
+abbreviation \<open>atoms_preserve_guarantee g \<equiv> all_atom_comm (\<lambda>b. \<forall>s. Ex (g s) \<longrightarrow> Ex (b s))\<close>
+abbreviation \<open>atoms_guarantee g c \<equiv> atoms_subrel_guarantee g c \<and> atoms_preserve_guarantee g c\<close>
+
+abbreviation \<open>atoms_frame_closed \<equiv> all_atom_comm frame_closed\<close>
+
 
 
 section \<open> Rely-Guarantee Separation Logic \<close>
@@ -254,7 +386,6 @@ lemma rgsat_iter':
   \<open>rgsat c r g i i \<Longrightarrow> rgsat (c\<^sup>\<star>) r g i (\<lceil> i \<rceil>\<^bsub>r\<^esub>)\<close>
   using rgsat_iter[OF _ order.refl order.refl order.refl]
   by blast
-  
 
 lemma frame_conj_helper:
   fixes p1 :: \<open>'a::cancel_perm_alg \<Rightarrow> bool\<close>
