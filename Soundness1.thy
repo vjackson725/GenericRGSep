@@ -47,9 +47,11 @@ paragraph \<open> Pretty operational semantics \<close>
 abbreviation(input) pretty_opstep :: \<open>_ \<Rightarrow> _ \<Rightarrow> _ \<Rightarrow> _\<close> (\<open>_ \<midarrow>(_)\<rightarrow> _\<close> [60,0,60] 60) where
   \<open>hs \<midarrow>a\<rightarrow> ht \<equiv> opstep a hs ht\<close>
 
-subsection \<open> operational semantics lemmas \<close>
+subsection \<open> Lemmas about opstep \<close>
 
-lemma opstep_iff:
+named_theorems opstep_iff
+
+lemma opstep_iff_standard[opstep_iff]:
   \<open>opstep a (h, Skip) s' \<longleftrightarrow> False\<close>
   \<open>opstep a (h, c1 ;; c2) s' \<longleftrightarrow>
     a = Tau \<and> c1 = Skip \<and> s' = (h, c2) \<or>
@@ -170,6 +172,7 @@ qed
 lemmas all_atom_comm_opstepD =
   all_atom_comm_opstep[rotated]
 
+subsubsection \<open> Frame properties \<close>
 
 lemma opstep_sameheap_frameD:
   assumes
@@ -307,26 +310,29 @@ lemma opstep_parallel_rightD:
   \<open>s \<midarrow>a\<rightarrow> s' \<Longrightarrow> (fst s, cx \<parallel> snd s) \<midarrow>a\<rightarrow> (fst s', cx \<parallel> snd s')\<close>
   by (simp add: par_right)
 
-subsubsection \<open>sugared atomic programs\<close>
+subsubsection \<open> iteraction with all_atom_comm \<close>
 
-definition \<open>passert p \<equiv> \<lambda>a b. p a \<and> a = b\<close>
+lemma opstep_preserves_all_atom_comm:
+  assumes
+    \<open>opstep a (h, c) (h', c')\<close>
+    \<open>all_atom_comm p c\<close>
+  shows \<open>all_atom_comm p c'\<close>
+proof -
+  { fix s s'
+    have \<open>opstep a s s' \<Longrightarrow> all_atom_comm p (snd s) \<Longrightarrow> all_atom_comm p (snd s')\<close>
+      by (induct arbitrary: h' rule: opstep.inducts) force+
+  }
+  then show ?thesis
+    using assms
+    by force
+qed
 
-abbreviation \<open>Assert p \<equiv> Atomic (passert p)\<close>
-abbreviation \<open>Assume p \<equiv> Atomic (\<lambda>a. p)\<close>
+lemmas rev_opstep_preserves_all_atom_comm = opstep_preserves_all_atom_comm[rotated]
 
-lemmas Assert_def = arg_cong[where f=Atomic, OF meta_eq_to_obj_eq[OF passert_def]]
 
-lemma passert_simps[simp]:
-  \<open>passert p a b \<longleftrightarrow> p a \<and> b = a\<close>
-  by (force simp add: passert_def)
+section \<open> Termination and Abort \<close>
 
-lemma opstep_assert[intro!]: \<open>p h \<Longrightarrow> opstep Local (h, Assert p) (h, Skip)\<close>
-  by (force simp add: opstep.atomic passert_def)
-
-lemma opstep_assume[intro!]: \<open>q h' \<Longrightarrow> opstep Local (h, Assume q) (h', Skip)\<close>
-  by (force simp add: opstep.atomic rel_liftR_def)
-
-subsubsection \<open> Skipped and Aborted Programs \<close>
+text \<open> TODO: distinguish safe termination from abort \<close>
 
 definition \<open>can_compute s \<equiv> \<exists>a s'. s \<midarrow>a\<rightarrow> s'\<close>
 
@@ -380,11 +386,57 @@ lemma not_skip_can_compute:
     (fastforce simp add: can_compute_iff)+
 
 
-subsubsection \<open> Sugared programs \<close>
+section \<open> Sugared atomic programs \<close>
 
-abbreviation \<open>IfThenElse p ct cf \<equiv> Assert p ;; ct \<^bold>+ Assert (-p) ;; cf\<close>
-abbreviation \<open>WhileLoop p c \<equiv> (Assert p ;; c)\<^sup>\<star> ;; Assert (-p)\<close>
+definition \<open>passert p \<equiv> \<lambda>a b. p a \<and> a = b\<close>
 
+abbreviation \<open>Assert p \<equiv> Atomic (passert p)\<close>
+abbreviation \<open>Assume p \<equiv> Atomic (\<lambda>a. p)\<close>
+
+lemmas Assert_def = arg_cong[where f=Atomic, OF meta_eq_to_obj_eq[OF passert_def]]
+
+lemma passert_simps[simp]:
+  \<open>passert p a b \<longleftrightarrow> p a \<and> b = a\<close>
+  by (force simp add: passert_def)
+
+lemma opstep_assert[intro!]: \<open>p h \<Longrightarrow> opstep Local (h, Assert p) (h, Skip)\<close>
+  by (force simp add: opstep.atomic passert_def)
+
+lemma opstep_assume[intro!]: \<open>q h' \<Longrightarrow> opstep Local (h, Assume q) (h', Skip)\<close>
+  by (force simp add: opstep.atomic rel_liftR_def)
+
+subsection \<open> If-then-else and While Loops \<close>
+
+definition \<open>IfThenElse p ct cf \<equiv> Assert p ;; ct \<^bold>+ Assert (-p) ;; cf\<close>
+definition \<open>WhileLoop p c \<equiv> (Assert p ;; c)\<^sup>\<star> ;; Assert (-p)\<close>
+
+lemma opstep_IfThenElse_iff[opstep_iff]:
+  \<open>opstep a (h, IfThenElse p ct cf) s' \<longleftrightarrow>
+    a = Local \<and> p h \<and> s' = (h, Skip ;; ct) \<or> a = Local \<and> \<not> p h \<and> s' = (h, Skip ;; cf)\<close>
+  by (simp add: IfThenElse_def opstep_iff)
+
+lemma opstep_IfThenElse_true[intro]:
+  \<open>p h \<Longrightarrow> opstep Local (h, IfThenElse p a b) (h, Skip ;; a)\<close>
+  by (simp add: opstep_iff)
+
+lemma opstep_IfThenElse_false[intro]:
+  \<open>\<not> p h \<Longrightarrow> opstep Local (h, IfThenElse p a b) (h, Skip ;; b)\<close>
+  by (simp add: opstep_iff)
+
+
+lemma opstep_WhileLoop_iff[opstep_iff]:
+  \<open>opstep a (h, WhileLoop p c) s' \<longleftrightarrow>
+    (a = Tau \<and> s' = (h, Skip ;; Assert (- p)) \<or>
+      a = Tau \<and> s' = (h, ((Assert p ;; c) ;; (Assert p ;; c)\<^sup>\<star>) ;; Assert (- p)))\<close>
+  by (force simp add: WhileLoop_def opstep_iff)
+
+lemma opstep_WhileLoop_true[intro]:
+  \<open>p h \<Longrightarrow> opstep Tau (h, WhileLoop p c) (h, (((Assert p ;; c) ;; (Assert p ;; c)\<^sup>\<star>) ;; Assert (-p)))\<close>
+  by (simp add: opstep_iff)
+
+lemma opstep_WhileLoop_false[intro]:
+  \<open>\<not> p h \<Longrightarrow> opstep Tau (h, WhileLoop p c) (h, (((Assert p ;; c) ;; (Assert p ;; c)\<^sup>\<star>) ;; Assert (-p)))\<close>
+  by (simp add: opstep_iff)
 
 
 subsection \<open> Operational Semantics \<close>
@@ -486,6 +538,8 @@ inductive safe
 inductive_cases safe_zeroE[elim!]: \<open>safe 0 c s r g q\<close>
 inductive_cases safe_sucE[elim]: \<open>safe (Suc n) c s r g q\<close>
 
+subsection \<open> Proofs about safe \<close>
+
 lemma safe_nil_iff[simp]:
   \<open>safe 0 c h r g q \<longleftrightarrow> True\<close>
   by force
@@ -516,31 +570,200 @@ lemma safe_suc_iff:
   apply (rule safe_no_env; blast)
   done
 
-lemma opstep_tau_guarantee:
-  \<open>opstep a s s' \<Longrightarrow>
-    a = Tau \<Longrightarrow>
-    reflp g \<Longrightarrow>
-    all_atom_comm ((\<ge>) g) (snd s) \<Longrightarrow>
-    g (fst s) (fst s')\<close>
-  by (induct rule: opstep.inducts)
-    (force simp add: reflpD)+
+subsubsection \<open> Monotonicity \<close>
 
-lemma opstep_preserves_all_atom_comm:
-  assumes
-    \<open>opstep a (h, c) (h', c')\<close>
-    \<open>all_atom_comm p c\<close>
-  shows \<open>all_atom_comm p c'\<close>
-proof -
-  { fix s s'
-    have \<open>opstep a s s' \<Longrightarrow> all_atom_comm p (snd s) \<Longrightarrow> all_atom_comm p (snd s')\<close>
-      by (induct arbitrary: h' rule: opstep.inducts) force+
+lemma safe_postpred_monoD:
+  \<open>safe n c h r g q \<Longrightarrow> q \<le> q' \<Longrightarrow> safe n c h r g q'\<close>
+  by (induct rule: safe.induct) fast+
+
+lemmas safe_postpred_mono = safe_postpred_monoD[rotated]
+
+lemma safe_guarantee_monoD:
+  \<open>safe n c h r g q \<Longrightarrow> g \<le> g' \<Longrightarrow> safe n c h r g' q\<close>
+  by (induct rule: safe.induct) fast+
+
+lemmas safe_guarantee_mono = safe_guarantee_monoD[rotated]
+
+(* n.b. prestate condition under \<open>r \<le> r'\<close> is the same as \<open>pre_state r' = pre_state r\<close> *)
+lemma safe_rely_monoD:
+  \<open>safe n c h r g q \<Longrightarrow> r \<le> r' \<Longrightarrow> pre_state r' \<le> pre_state r \<Longrightarrow> safe n c h r' g q\<close>
+  by (induct rule: safe.induct)
+    (simp add: le_fun_def safe_suc_iff pre_state_def fun_eq_iff, blast)+
+
+lemmas safe_rely_mono = safe_rely_monoD[rotated]
+
+lemma safe_step_monoD:
+  assumes inductive_assms:
+    \<open>safe n c h r g q\<close>
+    \<open>m \<le> n\<close>
+  shows
+    \<open>safe m c h r g q\<close>
+  using inductive_assms
+  by (induct arbitrary: m rule: safe.inducts)
+    (auto simp add: le_Suc_iff0 safe_suc_iff)+
+    (* a little slow *)
+
+subsubsection \<open> Skip \<close>
+
+lemma safe_skip_basic:
+  \<open>(\<lceil> q \<rceil>\<^bsub>r\<^esub>) h \<Longrightarrow> safe n Skip h r g (\<lceil> q \<rceil>\<^bsub>r\<^esub>)\<close>
+proof (induct n arbitrary: h q)
+  case (Suc n)
+  then show ?case
+    apply (clarsimp simp add: safe_suc_iff opstep_iff)
+    apply (frule spec, drule mp, blast)
+    apply (rename_tac h')
+    apply (drule_tac x=\<open>\<lceil> q \<rceil>\<^bsub>r\<^esub>\<close> and y=h' in meta_spec2, drule meta_mp)
+     apply blast
+    apply force
+    done
+qed fast
+
+lemma safe_skip:
+  \<open>p h \<Longrightarrow> \<lceil> p \<rceil>\<^bsub>r\<^esub> \<le> q \<Longrightarrow> safe n Skip h r g q\<close>
+  by (blast intro!: safe_postpred_monoD[OF safe_skip_basic[where q=p]])
+
+subsubsection \<open> Sequencing \<close>
+
+lemma safe_seq_right:
+  \<open>safe n c1 h r g q \<Longrightarrow> safe n (c1 ;; c2) h r g q\<close>
+  apply (induct rule: safe.inducts)
+     apply force
+    apply (rule safe_step, blast, blast, blast, blast, blast, blast)
+  apply blast
+  done
+
+lemma opstep_seq_assoc_left:
+  \<open>opstep a s s' \<Longrightarrow> snd s = cx ;; cy ;; cz \<Longrightarrow>
+    if cx = Skip
+    then snd s' = cy ;; cz \<and> opstep a (fst s, (cx ;; cy) ;; cz) (fst s', cy ;; cz)
+    else \<exists>cx'. snd s' = cx' ;; cy ;; cz \<and> opstep a (fst s, (cx ;; cy) ;; cz) (fst s', (cx' ;; cy) ;; cz)\<close>
+  by (induct arbitrary: cx cy cz rule: opstep.inducts) fastforce+
+
+lemma safe_seq_assoc_left:
+  \<open>safe n c h r g q \<Longrightarrow>
+    c = (c1 ;; c2 ;; c3) \<Longrightarrow>
+    safe n ((c1 ;; c2) ;; c3) h r g q\<close>
+  apply (induct arbitrary: c1 c2 c3 rule: safe.inducts)
+     apply force
+    apply clarsimp
+    apply (frule opstep_seq_assoc_left, force)
+    apply (clarsimp split: if_splits; blast)
+   apply blast
+   apply blast
+  done
+
+lemma safe_seq:
+  \<open>safe n1 c1 h1 r g1 q1 \<Longrightarrow>
+    (\<And>h. q1 h \<Longrightarrow> safe n2 c2 h r g2 q2) \<Longrightarrow>
+    safe (n1 + n2) (c1 ;; c2) h r (g1 OO g2\<^sup>=\<^sup>=) q2\<close>
+  apply (induct arbitrary: n2 c2 g2 q2 rule: safe.inducts)
+     apply clarsimp
+  oops
+
+lemma safe_seq:
+  \<open>(\<And>h n. p1 h \<Longrightarrow> safe n c1 h r g p2) \<Longrightarrow>
+    (\<And>h n. p2 h \<Longrightarrow> safe n c2 h r g p3) \<Longrightarrow>
+    p1 h \<Longrightarrow>
+    safe n (c1 ;; c2) h r g p3\<close>
+proof (induct n)
+  case 0
+  then show ?case by force
+next
+  case (Suc n)
+  { fix c
+    assume
+      \<open>safe n c h r g p3\<close>
+      \<open>c = c1 ;; c2\<close>
+      \<open>\<And>h n. p1 h \<Longrightarrow> safe n c1 h r g p2\<close>
+      \<open>\<And>h n. p2 h \<Longrightarrow> safe n c2 h r g p3\<close>
+      \<open>p1 h\<close>
+    then have \<open>safe (Suc n) (c1 ;; c2) h r g p3\<close>
+      apply (induct rule: safe.inducts)
+      apply clarsimp
+      sorry
   }
-  then show ?thesis
-    using assms
+  then show ?case
+    using Suc
     by force
 qed
 
-lemmas rev_opstep_preserves_all_atom_comm = opstep_preserves_all_atom_comm[rotated]
+subsubsection \<open> Nondeterminism \<close>
+
+lemma safe_ndet_left:
+  \<open>safe n c1 h r g q \<Longrightarrow> safe n (c1 \<^bold>+ c2) h r g q\<close>
+  apply (induct arbitrary: rule: safe.inducts)
+     apply blast
+    apply (case_tac a; (simp add: opstep_iff, blast))
+   apply blast
+  apply blast
+  done
+
+lemma safe_ndet_right:
+  \<open>safe n c2 h r g q \<Longrightarrow> safe n (c1 \<^bold>+ c2) h r g q\<close>
+  apply (induct rule: safe.inducts)
+     apply blast
+    apply (case_tac a; (simp add: opstep_iff, blast))
+   apply blast
+  apply blast
+  done
+
+subsubsection \<open> Disjoint \<close>
+
+definition \<open>disjoint_closed_rel r \<equiv>
+  \<forall>x y x' y'. r x y \<longrightarrow> r x' y' \<longrightarrow> x ## x' \<longrightarrow> y ## y' \<longrightarrow> r (x + x') (y + y')\<close>
+
+lemma safe_parallel_right:
+  assumes
+    \<open>safe n1 c1 h1 r1 g1 q1\<close>
+    \<open>r1 = r \<squnion> g2\<close>
+    \<open>h1 ## h2\<close>
+    \<open>atoms_guarantee g2 c2\<close>
+    \<open>tight_reflp g2\<close>
+    \<open>pre_state g1 h1\<close>
+    \<open>pre_state g2 h2\<close>
+    \<open>frame_pred_maintains (g2 h2) g1\<close>
+    \<open>frame_pred_maintains (g1 h1) g2\<close>
+    \<open>frame_pred_maintains (g2 h2) r\<close>
+    \<open>frame_pred_maintains ((g1 \<squnion> g2) (h1 + h2)) r\<close>
+  shows
+    \<open>safe n1 (c1 \<parallel> c2) (h1 + h2) r (g1 \<squnion> g2) (q1 \<^emph> q2)\<close>
+  using assms
+  apply (induct arbitrary: c2 h2 r g2 q2 rule: safe.inducts)
+     apply force
+    (* subgoal (* L1 *) *)
+    apply clarsimp
+    apply (rule safe_step)
+  subgoal sorry
+  subgoal sorry
+  subgoal sorry
+  subgoal sorry
+  subgoal sorry
+      (* done (* L1 *) *)
+      (* subgoal (* L1 *) *)
+   apply clarsimp
+   apply (rename_tac r)
+   apply (rename_tac h1 h1' c1 q1 n1 g1 c2 h2 r g2 q2)
+   apply (erule disjE)
+    
+    apply (frule frame_pred_maintainsD[of \<open>_ h2\<close>], assumption)
+      apply (rule_tac r=g2 in tight_reflpD1, blast)
+      apply fast
+
+  sorry
+
+lemma safe_parallel:
+  \<open>safe n2 s2 h2 r2 g2 q2 \<Longrightarrow>
+    r2 = r \<squnion> g1 \<Longrightarrow>
+    safe n1 c1 h1 r1 (r \<squnion> g2) q1 \<Longrightarrow>
+    h1 ## h2 \<Longrightarrow>
+    g = g1 \<squnion> g2 \<Longrightarrow>
+    safe (n1 + n2) (c1 \<parallel> c2) (h1 + h2) r g (q1 \<^emph> q2)\<close>
+  apply (induct arbitrary: r g1 g rule: safe.inducts)
+     apply clarsimp
+     apply (rename_tac h2 g2 q2 r g1)
+  sorry
+
 
 lemma safe_frame:
   \<open>safe n c h r g q \<Longrightarrow>
@@ -646,153 +869,8 @@ next
     done
 qed
 
-lemma safe_postpred_monoD:
-  \<open>safe n c h r g q \<Longrightarrow> q \<le> q' \<Longrightarrow> safe n c h r g q'\<close>
-  by (induct rule: safe.induct) fast+
 
-lemmas safe_postpred_mono = safe_postpred_monoD[rotated]
-
-lemma safe_guarantee_monoD:
-  \<open>safe n c h r g q \<Longrightarrow> g \<le> g' \<Longrightarrow> safe n c h r g' q\<close>
-  by (induct rule: safe.induct) fast+
-
-lemmas safe_guarantee_mono = safe_guarantee_monoD[rotated]
-
-lemma safe_guarantee_compose_right:
-  \<open>safe n c h r g q \<Longrightarrow> safe n c h r (g OO g') q\<close>
-  apply (induct rule: safe.induct)
-     apply force
-    apply (rule safe_step)
-        apply blast
-       apply blast
-      defer
-      apply blast
-     apply blast
-    apply blast
-   apply blast
-  oops
-
-lemmas safe_guarantee_mono = safe_guarantee_monoD[rotated]
-
-(* n.b. prestate condition under \<open>r \<le> r'\<close> is the same as \<open>pre_state r' = pre_state r\<close> *)
-lemma safe_rely_monoD:
-  \<open>safe n c h r g q \<Longrightarrow> r \<le> r' \<Longrightarrow> pre_state r' \<le> pre_state r \<Longrightarrow> safe n c h r' g q\<close>
-  by (induct rule: safe.induct)
-    (simp add: le_fun_def safe_suc_iff pre_state_def fun_eq_iff, blast)+
-
-lemmas safe_rely_mono = safe_rely_monoD[rotated]
-
-
-lemma safe_skip_basic:
-  \<open>(\<lceil> q \<rceil>\<^bsub>r\<^esub>) h \<Longrightarrow> safe n Skip h r g (\<lceil> q \<rceil>\<^bsub>r\<^esub>)\<close>
-proof (induct n arbitrary: h q)
-  case (Suc n)
-  then show ?case
-    apply (clarsimp simp add: safe_suc_iff opstep_iff)
-    apply (frule spec, drule mp, blast)
-    apply (rename_tac h')
-    apply (drule_tac x=\<open>\<lceil> q \<rceil>\<^bsub>r\<^esub>\<close> and y=h' in meta_spec2, drule meta_mp)
-     apply blast
-    apply force
-    done
-qed fast
-
-lemma safe_skip:
-  \<open>p h \<Longrightarrow> \<lceil> p \<rceil>\<^bsub>r\<^esub> \<le> q \<Longrightarrow> safe n Skip h r g q\<close>
-  by (blast intro!: safe_postpred_monoD[OF safe_skip_basic[where q=p]])
-
-lemma safe_seq_left:
-  \<open>safe n c1 h r g q \<Longrightarrow> safe n (c1 ;; c2) h r g q\<close>
-  apply (induct rule: safe.inducts)
-     apply force
-    apply (rule safe_step, blast, blast, blast, blast, blast, blast)
-  apply blast
-  done
-
-lemma safe_seq_right:
-  \<open>safe n2 c2 h' r g2 q2 \<Longrightarrow>
-    safe n1 c1 h r g1 q1 \<Longrightarrow>
-    \<lceil> q1 \<rceil>\<^bsub>r\<^esub> \<le> q2 \<Longrightarrow>
-    (\<lceil> q1 \<rceil>\<^bsub>r\<^esub>) h' \<Longrightarrow>
-    safe (n1 + n2) (c1 ;; c2) h r (g1 OO g2) q2\<close>
-  apply (induct rule: safe.inducts)
-     apply simp
-     apply (rule safe_seq_left)
-  apply (rule safe_postpred_mono[OF wsstable_stronger])
-     apply (meson safe_postpred_mono ; fail)
-  sorry
-
-lemma safe_ndet_left:
-  \<open>safe n c1 h r g q \<Longrightarrow> safe n (c1 \<^bold>+ c2) h r g q\<close>
-  apply (induct arbitrary: rule: safe.inducts)
-     apply blast
-    apply (case_tac a; (simp add: opstep_iff, blast))
-   apply blast
-  apply blast
-  done
-
-lemma safe_ndet_right:
-  \<open>safe n c2 h r g q \<Longrightarrow> safe n (c1 \<^bold>+ c2) h r g q\<close>
-  apply (induct rule: safe.inducts)
-     apply blast
-    apply (case_tac a; (simp add: opstep_iff, blast))
-   apply blast
-  apply blast
-  done
-
-definition \<open>disjoint_closed_rel r \<equiv>
-  \<forall>x y x' y'. r x y \<longrightarrow> r x' y' \<longrightarrow> x ## x' \<longrightarrow> y ## y' \<longrightarrow> r (x + x') (y + y')\<close>
-
-lemma safe_parallel_right:
-  assumes
-    \<open>safe n1 c1 h1 r1 g1 q1\<close>
-    \<open>r1 = r \<squnion> g2\<close>
-    \<open>h1 ## h2\<close>
-    \<open>atoms_guarantee g2 c2\<close>
-    \<open>tight_reflp g2\<close>
-    \<open>pre_state g1 h1\<close>
-    \<open>pre_state g2 h2\<close>
-    \<open>frame_pred_maintains (g2 h2) g1\<close>
-    \<open>frame_pred_maintains (g1 h1) g2\<close>
-    \<open>frame_pred_maintains (g2 h2) r\<close>
-    \<open>frame_pred_maintains ((g1 \<squnion> g2) (h1 + h2)) r\<close>
-  shows
-    \<open>safe n1 (c1 \<parallel> c2) (h1 + h2) r (g1 \<squnion> g2) (q1 \<^emph> q2)\<close>
-  using assms
-  apply (induct arbitrary: c2 h2 r g2 q2 rule: safe.inducts)
-     apply force
-    (* subgoal (* L1 *) *)
-    apply clarsimp
-    apply (rule safe_step)
-  subgoal sorry
-  subgoal sorry
-  subgoal sorry
-  subgoal sorry
-  subgoal sorry
-      (* done (* L1 *) *)
-      (* subgoal (* L1 *) *)
-   apply clarsimp
-   apply (rename_tac r)
-   apply (rename_tac h1 h1' c1 q1 n1 g1 c2 h2 r g2 q2)
-   apply (erule disjE)
-    
-    apply (frule frame_pred_maintainsD[of \<open>_ h2\<close>], assumption)
-      apply (rule_tac r=g2 in tight_reflpD1, blast)
-      apply fast
-
-  sorry
-
-lemma safe_parallel:
-  \<open>safe n2 s2 h2 r2 g2 q2 \<Longrightarrow>
-    r2 = r \<squnion> g1 \<Longrightarrow>
-    safe n1 c1 h1 r1 (r \<squnion> g2) q1 \<Longrightarrow>
-    h1 ## h2 \<Longrightarrow>
-    g = g1 \<squnion> g2 \<Longrightarrow>
-    safe (n1 + n2) (c1 \<parallel> c2) (h1 + h2) r g (q1 \<^emph> q2)\<close>
-  apply (induct arbitrary: r g1 g rule: safe.inducts)
-     apply clarsimp
-     apply (rename_tac h2 g2 q2 r g1)
-  sorry
+section \<open> Soundness \<close>
 
 lemma opstep_tau_extendD:
   \<open>opstep a s s' \<Longrightarrow>
@@ -811,17 +889,6 @@ lemma can_compute_frame:
   unfolding can_compute_def
   using opstep_tau_extendD
   oops
-
-lemma safe_step_monoD:
-  assumes inductive_assms:
-    \<open>safe n c h r g q\<close>
-    \<open>m \<le> n\<close>
-  shows
-    \<open>safe m c h r g q\<close>
-  using inductive_assms
-  by (induct arbitrary: m rule: safe.inducts)
-    (auto simp add: le_Suc_iff0 safe_suc_iff)+
-    (* a little slow *)
 
 lemma soundness:
   fixes p q :: \<open>'a::perm_alg \<Rightarrow> bool\<close>
@@ -842,17 +909,8 @@ next
 next
   case (rgsat_seq c1 r g p1 p2 c2 p3)
   then show ?case
-    apply clarsimp
-    apply (induct n)
-     apply force
-    apply clarsimp
-    apply (case_tac \<open>can_compute (h, c1)\<close>)
-     apply (clarsimp simp add: can_compute_def)
-     apply (rule safe_step)
-         apply blast
-        apply (meson opstep_frame seq_left)
-    
-    sorry
+    using safe_seq
+    by (clarsimp, blast)
 next
   case (rgsat_ndet c1 r g1 p q1 c2 g2 q2 g q)
   then show ?case
