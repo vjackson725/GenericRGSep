@@ -81,10 +81,6 @@ lemma opstep_iff_standard[opstep_iff]:
   apply (rule iffI, (erule opstep_atomicE; force), force)
   done
 
-lemma opstep_act_cases:
-  \<open>s \<midarrow>a\<rightarrow> s' \<Longrightarrow> (a = Tau \<Longrightarrow> s \<midarrow>Tau\<rightarrow> s' \<Longrightarrow> P) \<Longrightarrow> (a = Local \<Longrightarrow> s \<midarrow>Local\<rightarrow> s' \<Longrightarrow> P) \<Longrightarrow> P\<close>
-  by (metis (full_types) act.exhaust)
-
 lemma opstep_tau_preserves_heap:
   assumes \<open>s \<midarrow>Tau\<rightarrow> s'\<close>
   shows \<open>fst s' = fst s\<close>
@@ -96,6 +92,13 @@ proof -
   then show ?thesis
     using assms by force
 qed
+
+lemma opstep_act_cases:
+  \<open>s \<midarrow>a\<rightarrow> s' \<Longrightarrow>
+    (a = Tau \<Longrightarrow> s \<midarrow>Tau\<rightarrow> s' \<Longrightarrow> fst s' = fst s \<Longrightarrow> P) \<Longrightarrow>
+    (a = Local \<Longrightarrow> s \<midarrow>Local\<rightarrow> s' \<Longrightarrow> P) \<Longrightarrow>
+    P\<close>
+  by (metis (full_types) act.exhaust opstep_tau_preserves_heap)
 
 lemma opstep_to_ndet_originally_ndet_subexpr:
   \<open>opstep a s s' \<Longrightarrow> snd s' = c1' \<^bold>+ c2' \<Longrightarrow>
@@ -532,8 +535,6 @@ inductive safe
     \<comment> \<open> the subsequent execution is safe \<close>
     safe n c h' r g q \<Longrightarrow>
     safe (Suc n) c h r g q\<close>
-| safe_no_env[intro]:
-  \<open>\<nexists>h'. r h h' \<Longrightarrow> q h \<Longrightarrow> safe (Suc n) c h r g q\<close>
 
 inductive_cases safe_zeroE[elim!]: \<open>safe 0 c s r g q\<close>
 inductive_cases safe_sucE[elim]: \<open>safe (Suc n) c s r g q\<close>
@@ -559,15 +560,13 @@ lemma safe_suc_iff:
     (\<exists>h'.
       r h h' \<and>
       (c = Skip \<longrightarrow> q h) \<and>
-      safe n c h' r g q) \<or>
-    ((\<nexists>h'. r h h') \<and> q h)\<close>
+      safe n c h' r g q)\<close>
   apply (rule iffI)
    apply clarsimp
    apply (erule safe_sucE; blast)
   apply (elim disjE exE conjE)
     apply (rule safe_step; blast)
    apply (rule safe_env; blast)
-  apply (rule safe_no_env; blast)
   done
 
 subsubsection \<open> Monotonicity \<close>
@@ -605,22 +604,19 @@ lemma safe_step_monoD:
 
 subsubsection \<open> Skip \<close>
 
+text \<open> todo: ideally we'd like to not have reflp here, but there's abort issues \<close>
 lemma safe_skip_basic:
-  \<open>(\<lceil> q \<rceil>\<^bsub>r\<^esub>) h \<Longrightarrow> safe n Skip h r g (\<lceil> q \<rceil>\<^bsub>r\<^esub>)\<close>
+  \<open>(\<lceil> q \<rceil>\<^bsub>r\<^esub>) h \<Longrightarrow> reflp r \<Longrightarrow> safe n Skip h r g (\<lceil> q \<rceil>\<^bsub>r\<^esub>)\<close>
 proof (induct n arbitrary: h q)
   case (Suc n)
   then show ?case
     apply (clarsimp simp add: safe_suc_iff opstep_iff)
-    apply (frule spec, drule mp, blast)
-    apply (rename_tac h')
-    apply (drule_tac x=\<open>\<lceil> q \<rceil>\<^bsub>r\<^esub>\<close> and y=h' in meta_spec2, drule meta_mp)
-     apply blast
-    apply force
+    apply (meson reflpE)
     done
 qed fast
 
 lemma safe_skip:
-  \<open>p h \<Longrightarrow> \<lceil> p \<rceil>\<^bsub>r\<^esub> \<le> q \<Longrightarrow> safe n Skip h r g q\<close>
+  \<open>p h \<Longrightarrow> \<lceil> p \<rceil>\<^bsub>r\<^esub> \<le> q \<Longrightarrow> reflp r \<Longrightarrow> safe n Skip h r g q\<close>
   by (blast intro!: safe_postpred_monoD[OF safe_skip_basic[where q=p]])
 
 subsubsection \<open> Sequencing \<close>
@@ -628,9 +624,9 @@ subsubsection \<open> Sequencing \<close>
 lemma safe_seq_right:
   \<open>safe n c1 h r g q \<Longrightarrow> safe n (c1 ;; c2) h r g q\<close>
   apply (induct rule: safe.inducts)
-     apply force
-    apply (rule safe_step, blast, blast, blast, blast, blast, blast)
-  apply blast
+    apply blast
+   apply (rule safe_step)
+       apply blast+
   done
 
 lemma opstep_seq_assoc_left:
@@ -645,12 +641,11 @@ lemma safe_seq_assoc_left:
     c = (c1 ;; c2 ;; c3) \<Longrightarrow>
     safe n ((c1 ;; c2) ;; c3) h r g q\<close>
   apply (induct arbitrary: c1 c2 c3 rule: safe.inducts)
-     apply force
-    apply clarsimp
-    apply (frule opstep_seq_assoc_left, force)
-    apply (clarsimp split: if_splits; blast)
-   apply blast
-   apply blast
+    apply force
+   apply clarsimp
+   apply (frule opstep_seq_assoc_left, force)
+   apply (clarsimp split: if_splits; blast)
+  apply blast
   done
 
 lemma safe_seq:
@@ -660,6 +655,23 @@ lemma safe_seq:
   apply (induct arbitrary: n2 c2 g2 q2 rule: safe.inducts)
      apply clarsimp
   oops
+
+lemma safe_seq':
+  \<open>safe n c h r g q \<Longrightarrow>
+    (\<forall>m h'. m \<le> n \<longrightarrow> q h' \<longrightarrow> safe m c2 h' r g q') \<Longrightarrow>
+    safe n (c ;; c2) h r g q'\<close>
+  apply (induct arbitrary: q' rule: safe.inducts)
+     apply force
+  subgoal
+    apply (rule safe_step)
+        apply blast
+       apply blast
+      apply blast
+     apply blast
+    apply force
+    done
+  apply (force simp add: le_Suc_eq)
+  done
 
 lemma safe_seq:
   \<open>(\<And>h n. p1 h \<Longrightarrow> safe n c1 h r g p2) \<Longrightarrow>
@@ -693,18 +705,16 @@ subsubsection \<open> Nondeterminism \<close>
 lemma safe_ndet_left:
   \<open>safe n c1 h r g q \<Longrightarrow> safe n (c1 \<^bold>+ c2) h r g q\<close>
   apply (induct arbitrary: rule: safe.inducts)
-     apply blast
-    apply (case_tac a; (simp add: opstep_iff, blast))
-   apply blast
+    apply blast
+   apply (case_tac a; (simp add: opstep_iff, blast))
   apply blast
   done
 
 lemma safe_ndet_right:
   \<open>safe n c2 h r g q \<Longrightarrow> safe n (c1 \<^bold>+ c2) h r g q\<close>
   apply (induct rule: safe.inducts)
-     apply blast
-    apply (case_tac a; (simp add: opstep_iff, blast))
-   apply blast
+    apply blast
+   apply (case_tac a; (simp add: opstep_iff, blast))
   apply blast
   done
 
@@ -749,7 +759,6 @@ lemma safe_parallel_right:
     apply (frule frame_pred_maintainsD[of \<open>_ h2\<close>], assumption)
       apply (rule_tac r=g2 in tight_reflpD1, blast)
       apply fast
-
   sorry
 
 lemma safe_parallel:
@@ -807,14 +816,6 @@ next
     apply (drule spec2, drule mp, assumption, drule spec, drule mp, assumption)
     apply (metis safe.safe_env sepconj_def)
     done
-next
-  case (safe_no_env r h q n c g)
-  then show ?case
-    apply -
-    apply (rule safe.safe_no_env)
-     apply (force simp add: frame_step_subframe_def)
-    apply (fastforce simp add: sepconj_def)
-    done
 qed
 
 lemma safe_frame2:
@@ -859,18 +860,12 @@ next
     apply (drule spec2, drule mp, assumption, drule spec, drule mp, assumption)
     apply (metis safe.safe_env sepconj_def)
     done
-next
-  case (safe_no_env r h q n c g)
-  then show ?case
-    apply -
-    apply (rule safe.safe_no_env)
-     apply (force simp add: frame_step_subframe_def)
-    apply (fastforce simp add: sepconj_def)
-    done
 qed
 
 
 section \<open> Soundness \<close>
+
+text \<open> TODO: move these lemmas \<close>
 
 lemma opstep_tau_extendD:
   \<open>opstep a s s' \<Longrightarrow>
@@ -894,6 +889,7 @@ lemma soundness:
   fixes p q :: \<open>'a::perm_alg \<Rightarrow> bool\<close>
   assumes \<open>rgsat c r g p q\<close>
     and \<open>p h\<close>
+    and \<open>reflp r\<close>
     and \<open>frame_closed g\<close>
   shows \<open>safe n c h r g q\<close>
   using assms
@@ -961,7 +957,8 @@ next
      apply (metis rev_predicate1D sepconj_iff wsstable_stronger)
     apply (rule safe_skip[of \<open>\<lceil> q \<^emph> f \<rceil>\<^bsub>r\<^esub>\<close>])
      apply (metis predicate1D sepconj_def wsstable_stronger)
-    apply (metis le_disj_eq_absorb wsstable_absorb1)
+     apply (metis le_disj_eq_absorb wsstable_absorb1)
+    apply blast
     done
 next
   case (rgsat_frame c r g p q f as)
@@ -977,6 +974,7 @@ next
     using rgsat_frame.prems
     apply -
     apply (rule rgsat_frame.hyps(2))
+      apply blast
      apply blast
     apply blast
     done
