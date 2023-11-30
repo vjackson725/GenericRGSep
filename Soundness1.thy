@@ -379,6 +379,7 @@ lemma not_skip_can_compute:
   by (induct c arbitrary: h)
     (fastforce simp add: can_compute_iff)+
 
+
 subsubsection \<open> Sugared programs \<close>
 
 abbreviation \<open>IfThenElse p ct cf \<equiv> Assert p ;; ct \<^bold>+ Assert (-p) ;; cf\<close>
@@ -657,6 +658,22 @@ lemma safe_guarantee_monoD:
 
 lemmas safe_guarantee_mono = safe_guarantee_monoD[rotated]
 
+lemma safe_guarantee_compose_right:
+  \<open>safe n c h r g q \<Longrightarrow> safe n c h r (g OO g') q\<close>
+  apply (induct rule: safe.induct)
+     apply force
+    apply (rule safe_step)
+        apply blast
+       apply blast
+      defer
+      apply blast
+     apply blast
+    apply blast
+   apply blast
+  oops
+
+lemmas safe_guarantee_mono = safe_guarantee_monoD[rotated]
+
 (* n.b. prestate condition under \<open>r \<le> r'\<close> is the same as \<open>pre_state r' = pre_state r\<close> *)
 lemma safe_rely_monoD:
   \<open>safe n c h r g q \<Longrightarrow> r \<le> r' \<Longrightarrow> pre_state r' \<le> pre_state r \<Longrightarrow> safe n c h r' g q\<close>
@@ -684,6 +701,27 @@ lemma safe_skip:
   \<open>p h \<Longrightarrow> \<lceil> p \<rceil>\<^bsub>r\<^esub> \<le> q \<Longrightarrow> safe n Skip h r g q\<close>
   by (blast intro!: safe_postpred_monoD[OF safe_skip_basic[where q=p]])
 
+lemma safe_seq_left:
+  \<open>safe n c1 h r g q \<Longrightarrow> safe n (c1 ;; c2) h r g q\<close>
+  apply (induct rule: safe.inducts)
+     apply force
+    apply (rule safe_step, blast, blast, blast, blast, blast, blast)
+  apply blast
+  done
+
+lemma safe_seq_right:
+  \<open>safe n2 c2 h' r g2 q2 \<Longrightarrow>
+    safe n1 c1 h r g1 q1 \<Longrightarrow>
+    \<lceil> q1 \<rceil>\<^bsub>r\<^esub> \<le> q2 \<Longrightarrow>
+    (\<lceil> q1 \<rceil>\<^bsub>r\<^esub>) h' \<Longrightarrow>
+    safe (n1 + n2) (c1 ;; c2) h r (g1 OO g2) q2\<close>
+  apply (induct rule: safe.inducts)
+     apply simp
+     apply (rule safe_seq_left)
+  apply (rule safe_postpred_mono[OF wsstable_stronger])
+     apply (meson safe_postpred_mono ; fail)
+  sorry
+
 lemma safe_ndet_left:
   \<open>safe n c1 h r g q \<Longrightarrow> safe n (c1 \<^bold>+ c2) h r g q\<close>
   apply (induct arbitrary: rule: safe.inducts)
@@ -702,106 +740,58 @@ lemma safe_ndet_right:
   apply blast
   done
 
+definition \<open>disjoint_closed_rel r \<equiv>
+  \<forall>x y x' y'. r x y \<longrightarrow> r x' y' \<longrightarrow> x ## x' \<longrightarrow> y ## y' \<longrightarrow> r (x + x') (y + y')\<close>
+
 lemma safe_parallel_right:
   assumes
-    \<open>safe n c2 h2 r2 g2 q\<close>
-    \<open>r2 = r \<squnion> g1\<close>
-    \<open>tight_reflp r\<close>
-    \<open>tight_reflp g1\<close>
-    \<open>transp g2\<close>
-    \<open>pre_state (r \<squnion> g1) h1\<close>
+    \<open>safe n1 c1 h1 r1 g1 q1\<close>
+    \<open>r1 = r \<squnion> g2\<close>
     \<open>h1 ## h2\<close>
-    \<open>all_atom_comm (frame_pred_maintains ((=) h1)) c2\<close>
-    \<open>frame_pred_maintains ((r \<squnion> g1) h1) g2\<close>
-    \<open>frame_pred_maintains (g2 h2) g2\<close>
-    \<open>frame_pred_maintains ((=) h1) r\<close>
-    \<open>\<forall>x. (\<nexists>y. r x y) \<longrightarrow> x ## h1 \<longrightarrow> (\<nexists>y. r (x + h1) y) \<and> (q x \<longrightarrow> q (x + h1))\<close>
+    \<open>atoms_guarantee g2 c2\<close>
+    \<open>tight_reflp g2\<close>
+    \<open>pre_state g1 h1\<close>
+    \<open>pre_state g2 h2\<close>
+    \<open>frame_pred_maintains (g2 h2) g1\<close>
+    \<open>frame_pred_maintains (g1 h1) g2\<close>
+    \<open>frame_pred_maintains (g2 h2) r\<close>
+    \<open>frame_pred_maintains ((g1 \<squnion> g2) (h1 + h2)) r\<close>
   shows
-    \<open>safe n (c1 \<parallel> c2) (h1 + h2) r (g1 \<squnion> g2) q\<close>
-proof -
-  have \<open>safe n (c1 \<parallel> c2) (h2 + h1) r (g1 \<squnion> g2) q\<close>
-    using assms assms(7)[THEN disjoint_sym]
-    apply (induct arbitrary: c1 h1 g1 r rule: safe.inducts)
-       apply force
-    subgoal
-      apply clarsimp
-      apply (frule opstep_frame_pred_maintainsD, force, force, force)
-      apply clarsimp
-      apply (rule safe_step)
-          apply blast
-         apply (metis opstep_frame opstep_iff(4))
-        apply (simp, metis frame_pred_maintainsD tight_reflpD1' sup1CI)
-       apply force
-      subgoal sorry
-(*    apply (blast dest: opstep_preserves_all_atom_comm) *)
-      done
-    apply clarsimp
-    apply (erule disjE)
-      (*subgoal*)
-      apply (rule safe_env)
-    subgoal sorry
-       apply force
-      apply (drule meta_spec2, drule meta_spec2)
-      apply (drule meta_mp, rule refl)
-      apply (drule meta_mp, blast)
-      apply (drule meta_mp, blast)
-      apply (drule meta_mp, blast)
-      apply (drule meta_mp)
-    sorry
-
-
-    subgoal sorry
-
-    subgoal sorry
-    subgoal sorry
-    apply blast
-  done
-  then show ?thesis
-    using assms(6)
-    by (metis partial_add_commute)
-qed
-
-lemma safe_parallel_left:
-  \<open>safe n c1 h1 (r \<squnion> g2) g1 q \<Longrightarrow>
-    all_atom_comm (frame_pred_maintains ((=) h2)) c1 \<Longrightarrow>
-    frame_pred_maintains ((=) h2) g \<Longrightarrow>
-    frame_pred_extends ((=) h2) r \<Longrightarrow>
-    \<forall>x. (\<nexists>y. r x y) \<longrightarrow> x ## h2 \<longrightarrow> (\<nexists>y. r (x + h2) y) \<and> (q x \<longrightarrow> q (x + h2)) \<Longrightarrow>
-    h1 ## h2 \<Longrightarrow>
-    safe n (c1 \<parallel> c2) (h1 + h2) r (g1 \<squnion> g2) q\<close>
-  apply (induct arbitrary: c2 h2 rule: safe.inducts)
+    \<open>safe n1 (c1 \<parallel> c2) (h1 + h2) r (g1 \<squnion> g2) (q1 \<^emph> q2)\<close>
+  using assms
+  apply (induct arbitrary: c2 h2 r g2 q2 rule: safe.inducts)
      apply force
-  subgoal
-    apply clarsimp
-    apply (frule opstep_frame_pred_maintainsD, force, force, fast)
+    (* subgoal (* L1 *) *)
     apply clarsimp
     apply (rule safe_step)
-        apply fast
-       apply (metis opstep_frame par_left)
-      apply (blast dest: frame_pred_maintainsD)
-     apply blast
-    apply (metis opstep_preserves_all_atom_comm)
-    done
-   apply (blast dest: frame_pred_extendsD)
-  apply blast
-  done
+  subgoal sorry
+  subgoal sorry
+  subgoal sorry
+  subgoal sorry
+  subgoal sorry
+      (* done (* L1 *) *)
+      (* subgoal (* L1 *) *)
+   apply clarsimp
+   apply (rename_tac r)
+   apply (rename_tac h1 h1' c1 q1 n1 g1 c2 h2 r g2 q2)
+   apply (erule disjE)
+    
+    apply (frule frame_pred_maintainsD[of \<open>_ h2\<close>], assumption)
+      apply (rule_tac r=g2 in tight_reflpD1, blast)
+      apply fast
+
+  sorry
 
 lemma safe_parallel:
-  \<open>safe n2 c2 h2 (r \<squnion> g1) g2 q \<Longrightarrow>
-    safe n1 c1 h1 (r \<squnion> g2) g1 q \<Longrightarrow>
+  \<open>safe n2 s2 h2 r2 g2 q2 \<Longrightarrow>
+    r2 = r \<squnion> g1 \<Longrightarrow>
+    safe n1 c1 h1 r1 (r \<squnion> g2) q1 \<Longrightarrow>
     h1 ## h2 \<Longrightarrow>
-    all_atom_comm (frame_pred_maintains ((=) h2)) c1 \<Longrightarrow>
-    all_atom_comm (frame_pred_maintains ((=) h1)) c2 \<Longrightarrow>
-    frame_pred_maintains ((=) h1) g2 \<Longrightarrow>
-    frame_pred_maintains ((=) h2) g1 \<Longrightarrow>
-    frame_pred_extends ((=) h1) (r \<squnion> g2) \<Longrightarrow>
-    frame_pred_extends ((=) h2) (r \<squnion> g1) \<Longrightarrow>
-    \<forall>x. (\<nexists>y. r x y) \<longrightarrow> x ## h2 \<longrightarrow> (\<nexists>y. r (x + h2) y) \<and> (q x \<longrightarrow> q (x + h2)) \<Longrightarrow>
-    safe (n1 + n2) (c1 \<parallel> c2) (h1 + h2) r (g1 \<squnion> g2) q\<close>
-  apply (induct arbitrary: n1 c1 h1 g1 r rule: safe.inducts)
-     apply simp
-     apply (rule safe_guarantee_mono)
-  sledgehammer
+    g = g1 \<squnion> g2 \<Longrightarrow>
+    safe (n1 + n2) (c1 \<parallel> c2) (h1 + h2) r g (q1 \<^emph> q2)\<close>
+  apply (induct arbitrary: r g1 g rule: safe.inducts)
+     apply clarsimp
+     apply (rename_tac h2 g2 q2 r g1)
   sorry
 
 lemma opstep_tau_extendD:
@@ -850,12 +840,44 @@ next
     apply clarsimp
     sorry
 next
+  case (rgsat_seq c1 r g p1 p2 c2 p3)
+  then show ?case
+    apply clarsimp
+    apply (induct n)
+     apply force
+    apply clarsimp
+    apply (case_tac \<open>can_compute (h, c1)\<close>)
+     apply (clarsimp simp add: can_compute_def)
+     apply (rule safe_step)
+         apply blast
+        apply (meson opstep_frame seq_left)
+    
+    sorry
+next
   case (rgsat_ndet c1 r g1 p q1 c2 g2 q2 g q)
   then show ?case
     by (metis safe_guarantee_mono safe_ndet_left safe_postpred_mono)
 next
   case (rgsat_parallel s1 r g2 g1 p1 q1 s2 p2 q2 g p q)
-  then show ?case
+  moreover obtain h1 h2
+    where
+      \<open>p1 h1\<close>
+      \<open>p2 h2\<close>
+      \<open>h = h1 + h2\<close>
+      \<open>h1 ## h2\<close>
+    using rgsat_parallel
+    by (metis predicate1D sepconj_def)
+  moreover obtain n1 n2
+    where
+      \<open>n = n1 + n2\<close>
+      \<open>g = g1 \<squnion> g2\<close>
+      \<open>safe n1 s1 h1 (r \<squnion> g2) g1 q1\<close>
+      \<open>safe n2 s2 h2 (r \<squnion> g1) g2 q2\<close>
+    sorry
+  ultimately show ?case
+    apply clarsimp
+    apply (rule safe_postpred_mono, blast)
+    apply (rule safe_parallel)
     sorry
 next
   case (rgsat_atom p b q f g p' r q')
@@ -872,8 +894,7 @@ next
     using rgsat_atom A1 A2
      by (metis frame_pred_extends_def)
   ultimately show ?case
-    apply (cases as)
-     apply blast
+    apply (cases n, blast)
     apply clarsimp
     apply (rule safe.safe_step[where a=Local and c'=Skip])
         apply (simp add: opstep_iff; fail)

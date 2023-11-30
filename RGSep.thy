@@ -344,6 +344,10 @@ inductive rgsat
   \<open>rgsat c r g p' q' \<Longrightarrow>
       p \<le> i \<Longrightarrow> i \<le> p' \<Longrightarrow> q' \<le> i \<Longrightarrow> \<lceil> i \<rceil>\<^bsub>r\<^esub> \<le> q \<Longrightarrow>
       rgsat (c\<^sup>\<star>) r g p q\<close>
+| rgsat_seq:
+  \<open>rgsat c1 r g p1 p2 \<Longrightarrow>
+    rgsat c2 r g p2 p3 \<Longrightarrow>
+    rgsat (c1 ;; c2) r g p1 p3\<close>
 | rgsat_ndet:
   \<open>rgsat c1 r g1 p q1 \<Longrightarrow>
     rgsat c2 r g2 p q2 \<Longrightarrow>
