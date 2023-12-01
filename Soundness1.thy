@@ -657,9 +657,9 @@ lemma safe_seq:
   oops
 
 lemma safe_seq':
-  \<open>safe n c h r g q \<Longrightarrow>
+  \<open>safe n c1 h r g q \<Longrightarrow>
     (\<forall>m h'. m \<le> n \<longrightarrow> q h' \<longrightarrow> safe m c2 h' r g q') \<Longrightarrow>
-    safe n (c ;; c2) h r g q'\<close>
+    safe n (c1 ;; c2) h r g q'\<close>
   apply (induct arbitrary: q' rule: safe.inducts)
      apply force
   subgoal
@@ -674,31 +674,10 @@ lemma safe_seq':
   done
 
 lemma safe_seq:
-  \<open>(\<And>h n. p1 h \<Longrightarrow> safe n c1 h r g p2) \<Longrightarrow>
-    (\<And>h n. p2 h \<Longrightarrow> safe n c2 h r g p3) \<Longrightarrow>
-    p1 h \<Longrightarrow>
-    safe n (c1 ;; c2) h r g p3\<close>
-proof (induct n)
-  case 0
-  then show ?case by force
-next
-  case (Suc n)
-  { fix c
-    assume
-      \<open>safe n c h r g p3\<close>
-      \<open>c = c1 ;; c2\<close>
-      \<open>\<And>h n. p1 h \<Longrightarrow> safe n c1 h r g p2\<close>
-      \<open>\<And>h n. p2 h \<Longrightarrow> safe n c2 h r g p3\<close>
-      \<open>p1 h\<close>
-    then have \<open>safe (Suc n) (c1 ;; c2) h r g p3\<close>
-      apply (induct rule: safe.inducts)
-      apply clarsimp
-      sorry
-  }
-  then show ?case
-    using Suc
-    by force
-qed
+  \<open>safe n c1 h r g q \<Longrightarrow>
+    (\<forall>h'. q h' \<longrightarrow> safe n c2 h' r g q') \<Longrightarrow>
+    safe n (c1 ;; c2) h r g q'\<close>
+  by (rule safe_seq', blast, metis safe_step_monoD)
 
 subsubsection \<open> Nondeterminism \<close>
 
@@ -906,7 +885,7 @@ next
   case (rgsat_seq c1 r g p1 p2 c2 p3)
   then show ?case
     using safe_seq
-    by (clarsimp, blast)
+    by metis
 next
   case (rgsat_ndet c1 r g1 p q1 c2 g2 q2 g q)
   then show ?case
