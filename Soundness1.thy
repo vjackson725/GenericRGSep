@@ -697,47 +697,68 @@ lemma safe_ndet_right:
   apply blast
   done
 
-subsubsection \<open> Disjoint \<close>
+subsubsection \<open> Parallel \<close>
 
-definition \<open>disjoint_closed_rel r \<equiv>
-  \<forall>x y x' y'. r x y \<longrightarrow> r x' y' \<longrightarrow> x ## x' \<longrightarrow> y ## y' \<longrightarrow> r (x + x') (y + y')\<close>
+find_theorems \<open>opstep _ (_, _ \<parallel> _) _\<close>
+
+lemma opstep_parallel_frame_right:
+  \<open>opstep a (h, c) (h', c') \<Longrightarrow>
+    h ## h2 \<Longrightarrow>
+    opstep a (h + h2, c \<parallel> c2) (h' + h2, c' \<parallel> c2)\<close>
+  sorry
+
+(*
+  safe n C1 h1 (Rely \<squnion> Guar2) Guar1 Q1 \<Longrightarrow>
+  safe n C2 h2 (Rely \<squnion> Guar1) Guar2 Q2 \<Longrightarrow>
+  h1 ## h2 \<Longrightarrow>
+  fvC C1 \<sqinter> wrC C2 = \<bottom> \<Longrightarrow>
+  fvAA Q1 \<sqinter> wrC C2 = \<bottom> \<Longrightarrow>
+  fvC C2 \<sqinter> wrC C1 = \<bottom> \<Longrightarrow>
+  fvAA Q2 \<sqinter> wrC C1 = \<bottom> \<Longrightarrow>
+  safe n (C1 \<parallel> C2) (h1 + h2) Rely (Guar1 \<squnion> Guar2) (Q1 \<^emph> Q2)
+*)
+
+definition \<open>rel_changes r x \<equiv> (\<exists>y. y \<noteq> x \<and> r x y) \<or> (\<exists>y. y \<noteq> x \<and> r y x)\<close>
 
 lemma safe_parallel_right:
   assumes
     \<open>safe n1 c1 h1 r1 g1 q1\<close>
     \<open>r1 = r \<squnion> g2\<close>
     \<open>h1 ## h2\<close>
-    \<open>atoms_guarantee g2 c2\<close>
-    \<open>tight_reflp g2\<close>
-    \<open>pre_state g1 h1\<close>
-    \<open>pre_state g2 h2\<close>
-    \<open>frame_pred_maintains (g2 h2) g1\<close>
-    \<open>frame_pred_maintains (g1 h1) g2\<close>
-    \<open>frame_pred_maintains (g2 h2) r\<close>
-    \<open>frame_pred_maintains ((g1 \<squnion> g2) (h1 + h2)) r\<close>
+    and
+    \<open>all_atom_comm (\<lambda>b. rel_changes b \<sqinter> rel_changes g2 = \<bottom>) c1\<close>
+    \<open>all_atom_comm (\<lambda>b. rel_changes b \<sqinter> rel_changes g1 = \<bottom>) c2\<close>
   shows
     \<open>safe n1 (c1 \<parallel> c2) (h1 + h2) r (g1 \<squnion> g2) (q1 \<^emph> q2)\<close>
   using assms
   apply (induct arbitrary: c2 h2 r g2 q2 rule: safe.inducts)
-     apply force
-    (* subgoal (* L1 *) *)
+    apply force
+  subgoal
     apply clarsimp
     apply (rule safe_step)
-  subgoal sorry
-  subgoal sorry
-  subgoal sorry
-  subgoal sorry
-  subgoal sorry
-      (* done (* L1 *) *)
-      (* subgoal (* L1 *) *)
-   apply clarsimp
-   apply (rename_tac r)
-   apply (rename_tac h1 h1' c1 q1 n1 g1 c2 h2 r g2 q2)
-   apply (erule disjE)
+        apply (rule opstep_parallel_frame_right)
+         apply blast
+        apply blast
+       apply (simp add: opstep_frame opstep_parallel_frame_right; fail)
+      apply clarsimp
+    subgoal sorry
+     apply blast
+    apply (erule opstep_act_cases)
+     apply (simp add: opstep_preserves_all_atom_comm; fail)
+    sledgehammer
+apply (simp add: opstep_preserves_all_atom_comm; fail)
+    sorry
     
-    apply (frule frame_pred_maintainsD[of \<open>_ h2\<close>], assumption)
-      apply (rule_tac r=g2 in tight_reflpD1, blast)
-      apply fast
+    done
+  apply clarsimp
+  apply (erule disjE)
+  subgoal
+    apply (frule frame_pred_maintainsD, assumption, blast, blast)
+    apply (rule safe_env)
+      apply blast
+     apply blast
+    apply blast
+    done
   sorry
 
 lemma safe_parallel:
@@ -752,14 +773,13 @@ lemma safe_parallel:
      apply (rename_tac h2 g2 q2 r g1)
   sorry
 
+subsubsection \<open> Frame rule \<close>
 
 lemma safe_frame:
   \<open>safe n c h r g q \<Longrightarrow>
     all_atom_comm (frame_pred_extends f) c \<Longrightarrow>
     frame_pred_extends f r \<Longrightarrow>
     frame_pred_safe f g \<Longrightarrow>
-    \<comment> \<open> needed for the no-env step \<close>
-    frame_step_subframe f r \<Longrightarrow>
     h ## hf \<Longrightarrow>
     f hf \<Longrightarrow>
     safe n c (h + hf) r g (q \<^emph> f)\<close>
@@ -802,8 +822,6 @@ lemma safe_frame2:
     all_atom_comm (frame_pred_maintains f) c \<Longrightarrow>
     frame_pred_extends f r \<Longrightarrow>
     frame_pred_closed f g \<Longrightarrow>
-    \<comment> \<open> needed for the no-env step \<close>
-    frame_step_subframe f r \<Longrightarrow>
     h ## hf \<Longrightarrow>
     f hf \<Longrightarrow>
     safe n c (h + hf) r g (q \<^emph> f)\<close>

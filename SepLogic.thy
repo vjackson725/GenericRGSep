@@ -1637,9 +1637,12 @@ instance
 
 end
 
-lemma (in sep_alg)
-  \<open>\<forall>a. \<exists>b. a + b = 0\<close>
-  nitpick
-  oops
+context sep_alg
+begin
+
+lemma \<open>precise2 P \<Longrightarrow> (P \<midarrow>\<odot> P \<^emph> Q) \<le> Q\<close>
+  by (simp add: precise2_def sepcoimp_septract_galois septract_reverse)
+
+end
 
 end

@@ -2,6 +2,11 @@ theory Experimental
   imports RGSep PermHeap
 begin
 
+lemma (in sep_alg)
+  \<open>\<forall>a. \<exists>b. a + b = 0\<close>
+  nitpick
+  oops
+
 context perm_alg
 begin
 
