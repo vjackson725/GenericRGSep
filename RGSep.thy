@@ -64,7 +64,14 @@ lemma (in sep_alg) sep_alg_framed_subresource_rel_iff:
 
 section \<open> frame consistency predicates \<close>
 
-subsection \<open> \<close>
+subsection \<open> Frame rearranging \<close>
+
+definition \<open>frame_rearranging b \<equiv>
+  \<forall>h1 h2 hf.
+    b h1 h2 \<longrightarrow> h1 ## hf \<longrightarrow>
+      (\<exists>h2'. b h1 h2' \<and> h2' ## hf \<and> b (h1 + hf) (h2' + hf))\<close>
+
+subsection \<open> Frame maintains \<close>
 
 definition
   \<open>frame_pred_maintains f r \<equiv>
@@ -342,7 +349,7 @@ inductive rgsat
   \<open>\<lceil> p \<rceil>\<^bsub>r\<^esub> \<le> q \<Longrightarrow> rgsat Skip r g p q\<close>
 | rgsat_iter:
   \<open>rgsat c r g p' q' \<Longrightarrow>
-      p \<le> i \<Longrightarrow> i \<le> p' \<Longrightarrow> q' \<le> i \<Longrightarrow> \<lceil> i \<rceil>\<^bsub>r\<^esub> \<le> q \<Longrightarrow>
+      p \<le> i \<Longrightarrow> \<lceil> i \<rceil>\<^bsub>r\<^esub> \<le> p' \<Longrightarrow> q' \<le> i \<Longrightarrow> \<lceil> i \<rceil>\<^bsub>r\<^esub> \<le> q \<Longrightarrow>
       rgsat (c\<^sup>\<star>) r g p q\<close>
 | rgsat_seq:
   \<open>rgsat c1 r g p1 p2 \<Longrightarrow>
@@ -366,7 +373,8 @@ inductive rgsat
 | rgsat_atom:
   \<open>rel_liftL p \<sqinter> b \<le> rel_liftR q \<Longrightarrow>
     p \<le> pre_state b \<Longrightarrow>
-    frame_pred_extends f b \<Longrightarrow>
+    (\<forall>h h'. b h h' \<longrightarrow> (\<forall>hf. h ## hf \<longrightarrow> (\<exists>hx'. b (h + hf) hx'))) \<Longrightarrow>
+    Something \<Longrightarrow>
     b \<le> g \<Longrightarrow>
     p' \<le> p \<^emph> f \<Longrightarrow>
     \<lceil> q \<^emph> f \<rceil>\<^bsub>r\<^esub> \<le> q' \<Longrightarrow>
@@ -387,8 +395,8 @@ inductive_cases rgsep_parE[elim]: \<open>rgsat (s1 \<parallel> s2) r g p q\<clos
 inductive_cases rgsep_atomE[elim]: \<open>rgsat (Atomic c) r g p q\<close>
 
 lemma rgsat_iter':
-  \<open>rgsat c r g i i \<Longrightarrow> rgsat (c\<^sup>\<star>) r g i (\<lceil> i \<rceil>\<^bsub>r\<^esub>)\<close>
-  using rgsat_iter[OF _ order.refl order.refl order.refl]
+  \<open>rgsat c r g (\<lceil> i \<rceil>\<^bsub>r\<^esub>) i \<Longrightarrow> rgsat (c\<^sup>\<star>) r g i (\<lceil> i \<rceil>\<^bsub>r\<^esub>)\<close>
+  using rgsat_iter[OF _ order.refl order.refl order.refl order.refl]
   by blast
 
 lemma frame_conj_helper:
