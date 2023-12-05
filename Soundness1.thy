@@ -639,47 +639,41 @@ lemma safe_skip:
 subsubsection \<open> Atomic \<close>
 
 lemma safe_atom':
-  \<open>rel_liftL p \<sqinter> b \<le> rel_liftR q \<Longrightarrow>
-    p \<le> pre_state b \<Longrightarrow>
+  \<open>rel_liftL (\<lfloor> p \<rfloor>\<^bsub>r\<^esub>) \<sqinter> b \<le> rel_liftR q \<Longrightarrow>
+    (\<lfloor> p \<rfloor>\<^bsub>r\<^esub>) \<le> pre_state b \<Longrightarrow>
     \<forall>h h'. b h h' \<longrightarrow> (\<forall>hf. h ## hf \<longrightarrow> (\<exists>hx'. b (h + hf) hx')) \<Longrightarrow>
-    b \<le> g \<Longrightarrow>
-    (p \<^emph> f) h \<Longrightarrow>
-    safe n (Atomic b) h r g (\<lceil> q \<^emph> f \<rceil>\<^bsub>r\<^esub>)\<close>
-  apply (induct n arbitrary: h rule: less_induct)
-  apply (rename_tac n h)
-  apply (case_tac n)
-   apply blast
+    rel_liftL (\<lfloor> p \<rfloor>\<^bsub>r\<^esub>) \<sqinter> b \<le> g \<Longrightarrow>
+    (\<lfloor> p \<rfloor>\<^bsub>r\<^esub>) h \<Longrightarrow>
+    safe n (Atomic b) h r g (\<lceil> q \<rceil>\<^bsub>r\<^esub>)\<close>
+  apply (induct n arbitrary: h)
+   apply force
   apply (clarsimp simp add: less_Suc_eq_le sepconj_def[of p])
-  apply (rename_tac n h1 hf)
   apply (rule safe.safe_suc)
      apply (clarsimp simp add: can_compute_iff)
     apply blast
-   apply (simp add: opstep_iff)
-   apply (rule conjI, blast)
+   apply (simp add: opstep_iff le_fun_def imp_conjL)
    apply (rule safe_skip')
-
-  oops
+   apply fastforce
+  apply (drule_tac x=h' in meta_spec)
+  apply (clarsimp simp add: le_fun_def imp_conjL all_simps(5)[symmetric] simp del: all_simps(5))
+  apply (clarsimp simp add: converse_rtranclp_into_rtranclp swstable_def; fail)
+  done
 
 lemma safe_atom:
   \<open>rel_liftL p \<sqinter> b \<le> rel_liftR q \<Longrightarrow>
     p \<le> pre_state b \<Longrightarrow>
     \<forall>h h'. b h h' \<longrightarrow> (\<forall>hf. h ## hf \<longrightarrow> (\<exists>hx'. b (h + hf) hx')) \<Longrightarrow>
     b \<le> g \<Longrightarrow>
-    p' \<le> p \<^emph> f \<Longrightarrow>
+    p' \<le> \<lfloor> p \<^emph> f \<rfloor>\<^bsub>r\<^esub> \<Longrightarrow>
     \<lceil> q \<^emph> f \<rceil>\<^bsub>r\<^esub> \<le> q' \<Longrightarrow>
     p' h \<Longrightarrow>
     safe n (Atomic b) h r g q'\<close>
-  apply (induct n arbitrary: h rule: less_induct)
-  apply (rename_tac n h)
-  apply (case_tac n)
-   apply blast
-  apply (clarsimp simp add: less_Suc_eq_le)
-  apply (rename_tac n)
-  apply (rule safe.safe_suc)
-     apply (simp add: can_compute_iff)
+  apply (rule safe_postpred_mono, assumption, rule safe_atom')
+  subgoal sorry
+  subgoal sorry
     apply blast
-   apply (simp add: opstep_iff)
-   apply (rule conjI, blast)
+   apply blast
+  apply blast
   oops
 
 subsubsection \<open> Sequencing \<close>
