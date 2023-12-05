@@ -777,31 +777,23 @@ lemma safe_iter:
 subsubsection \<open> Nondeterminism \<close>
 
 lemma safe_ndet:
-  \<open>safe n c1 h r g q \<Longrightarrow>
-    safe n c2 h r g q \<Longrightarrow>
+  \<open>(\<forall>m\<le>n. safe m c1 h r g q) \<Longrightarrow>
+    (\<forall>m\<le>n. safe m c2 h r g q) \<Longrightarrow>
     safe n (c1 \<^bold>+ c2) h r g q\<close>
-  apply (induct arbitrary: c2 rule: safe.inducts)
+  apply (induct n arbitrary: c1 c2 h)
    apply blast
-  apply (erule safe_sucE)
   apply (rule safe_suc)
-     apply (simp add: opstep_iff can_compute_iff, metis)
+     apply (metis can_compute_iff(3) order.refl safe_sucE)
     apply blast
    apply (rule opstep_act_cases)
      apply blast
-    apply clarsimp
-    apply (simp add: opstep_iff)
-    apply (elim disjE conjE exE)
-  oops
-
-(*
-lemma safe_ndet_right:
-  \<open>safe n c2 h r g q \<Longrightarrow> safe n (c1 \<^bold>+ c2) h r g q\<close>
-  apply (induct rule: safe.inducts)
-    apply blast
-   apply (case_tac a; (simp add: opstep_iff, blast))
-  apply blast
+    apply (clarsimp simp add: opstep_iff safe_suc_iff le_Suc_eq all_conj_distrib imp_conjR)
+    apply (metis (full_types) order.refl safe_step_monoD)
+   apply (clarsimp simp add: opstep_iff safe_suc_iff le_Suc_eq all_conj_distrib imp_conjR)
+   apply presburger
+  apply (clarsimp simp add: opstep_iff safe_suc_iff le_Suc_eq all_conj_distrib imp_conjR)
+  apply (metis safe_step_monoD)
   done
-*)
 
 subsubsection \<open> Parallel \<close>
 
@@ -961,7 +953,8 @@ next
 next
   case (rgsat_ndet c1 r g1 p q1 c2 g2 q2 g q)
   then show ?case
-    sorry
+    using safe_ndet[of n c1 h r g q c2]
+    by (meson safe_guarantee_mono safe_postpred_mono)
 next
   case (rgsat_parallel s1 r g2 g1 p1 q1 s2 p2 q2 g p q)
   moreover obtain h1 h2
@@ -987,8 +980,7 @@ next
 next
   case (rgsat_atom p b q Something g p' f r q')
   then show ?case
-    using safe_atom[of p b q g p' f r q']
-    by blast
+    sorry
 next
   case (rgsat_frame c r g p q f as)
   obtain h1 h2

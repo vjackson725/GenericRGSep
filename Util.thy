@@ -759,6 +759,7 @@ proof -
     by (fastforce simp add: changedom_def dest: r_into_rtranclp[of r])
 qed
 
+
 text \<open> strongest postcondition, by way of relations \<close>
 definition \<open>sp r p \<equiv> \<lambda>y. (\<exists>x. r x y \<and> p x)\<close>
 
@@ -900,5 +901,8 @@ lemma \<open>reflp r \<Longrightarrow> wlp r p \<le> p\<close>
 lemma \<open>reflp r \<Longrightarrow> p \<le> sp r p\<close>
   by (metis predicate1I[of p \<open>sp r p\<close> for r p] reflpD sp_def)
 
+
+definition seq_fun :: \<open>('a \<Rightarrow> 'b) \<Rightarrow> ('b \<Rightarrow> 'c) \<Rightarrow> ('a \<Rightarrow> 'c)\<close> (infixr \<open>\<^bold>;\<close> 55) where
+  \<open>seq_fun f g \<equiv> \<lambda>x. g (f x)\<close>
 
 end
