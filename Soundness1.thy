@@ -388,6 +388,25 @@ lemma not_skip_can_compute:
   by (induct c arbitrary: h)
     (fastforce simp add: can_compute_iff)+
 
+lemma opstep_frame_rearranging:
+  \<open>opstep a s s' \<Longrightarrow>
+    all_atom_comm frame_rearranging (snd s) \<Longrightarrow>
+    fst s ## hf \<Longrightarrow>
+    \<exists>s'. opstep a (fst s + hf, snd s) s'\<close>
+  apply (induct arbitrary: hf rule: opstep.inducts)
+                apply force+
+  apply clarsimp
+  apply (metis atomic frame_rearranging_def fst_conv snd_conv)
+  done
+
+lemma can_compute_frame:
+  \<open>all_atom_comm frame_rearranging c \<Longrightarrow>
+    can_compute (h, c) \<Longrightarrow>
+    h ## hf \<Longrightarrow>
+    can_compute (h + hf, c)\<close>
+  using opstep_frame_rearranging
+  by (clarsimp simp add: can_compute_def, fast)
+
 
 section \<open> Sugared atomic programs \<close>
 
@@ -545,12 +564,116 @@ lemma skipped_opsem_only_env:
 
 section \<open> Safe \<close>
 
-inductive safe
-  :: \<open>nat \<Rightarrow> ('s::perm_alg) comm \<Rightarrow> 's \<Rightarrow>
-        ('s \<Rightarrow> 's \<Rightarrow> bool) \<Rightarrow> ('s \<Rightarrow> 's \<Rightarrow> bool) \<Rightarrow> ('s \<Rightarrow> bool) \<Rightarrow> bool\<close>
+datatype eval_result =
+  ERTerm
+  | ERRunning
+  | ERAbort
+
+instantiation eval_result :: complete_lattice
+begin
+
+definition less_eval_result :: \<open>eval_result \<Rightarrow> eval_result \<Rightarrow> bool\<close> where
+  \<open>less_eval_result a b \<equiv>
+    (a = ERAbort \<and> (b = ERRunning \<or> b = ERTerm) \<or> a = ERRunning \<and> b = ERTerm)\<close>
+definition less_eq_eval_result :: \<open>eval_result \<Rightarrow> eval_result \<Rightarrow> bool\<close> where
+  \<open>less_eq_eval_result a b \<equiv>
+    a = ERAbort \<and> (b = ERAbort \<or> b = ERRunning \<or> b = ERTerm) \<or>
+    a = ERRunning \<and> (b = ERRunning \<or> b = ERTerm) \<or>
+    a = ERTerm \<and> b = ERTerm\<close>
+definition \<open>bot_eval_result \<equiv> ERAbort\<close>
+definition \<open>top_eval_result \<equiv> ERTerm\<close>
+
+definition
+  \<open>inf_eval_result a b \<equiv>
+    case a of
+      ERAbort \<Rightarrow> ERAbort
+    | ERTerm \<Rightarrow> b
+    | ERRunning \<Rightarrow>
+      (case b of
+        ERTerm \<Rightarrow> ERRunning
+      | _ \<Rightarrow> b)\<close>
+definition
+  \<open>sup_eval_result a b \<equiv>
+    case a of
+      ERTerm \<Rightarrow> ERTerm
+    | ERAbort \<Rightarrow> b
+    | ERRunning \<Rightarrow>
+      (case b of
+        ERAbort \<Rightarrow> ERRunning
+      | _ \<Rightarrow> b)\<close>
+
+definition
+  \<open>Sup_eval_result (A :: eval_result set) \<equiv>
+    if ERTerm \<in> A then ERTerm
+    else if ERRunning \<in> A then ERRunning
+    else if ERAbort \<in> A then ERAbort
+    else ERAbort\<close>
+definition
+  \<open>Inf_eval_result (A :: eval_result set) \<equiv>
+    if ERAbort \<in> A then ERAbort
+    else if ERRunning \<in> A then ERRunning
+    else if ERTerm \<in> A then ERTerm
+    else ERTerm\<close>
+
+instance
+  apply standard
+             apply (force simp add: less_eval_result_def less_eq_eval_result_def
+      bot_eval_result_def top_eval_result_def inf_eval_result_def sup_eval_result_def
+      Sup_eval_result_def Inf_eval_result_def
+      split: eval_result.splits)+
+                apply (metis eval_result.exhaust less_eq_eval_result_def)
+               apply (force simp add: less_eval_result_def less_eq_eval_result_def
+      bot_eval_result_def top_eval_result_def inf_eval_result_def sup_eval_result_def
+      split: eval_result.splits)+
+       apply (simp add: Inf_eval_result_def less_eq_eval_result_def, (case_tac x; blast))
+      apply (simp add: Inf_eval_result_def less_eq_eval_result_def, (case_tac z; blast))
+     apply (simp add: Sup_eval_result_def less_eq_eval_result_def, (case_tac x; blast))
+    apply (simp add: Sup_eval_result_def less_eq_eval_result_def, (case_tac z; blast))
+   apply (simp add: Inf_eval_result_def top_eval_result_def)
+  apply (simp add: Sup_eval_result_def bot_eval_result_def)
+  done
+
+lemma inf_term[simp]:
+  \<open>a \<sqinter> b = ERTerm \<longleftrightarrow> a = ERTerm \<and> b = ERTerm\<close>
+  by (metis inf.absorb1 inf_le1 inf_top_left less_eq_eval_result_def)
+
+lemma Inf_term[simp]:
+  \<open>\<Sqinter>A = ERTerm \<longleftrightarrow> (\<forall>a\<in>A. a = ERTerm)\<close>
+  by (metis Inf_top_conv(2) top_eval_result_def)
+
+lemma inf_not_abort[simp]:
+  \<open>a \<sqinter> b \<noteq> ERAbort \<longleftrightarrow> a \<noteq> ERAbort \<and> b \<noteq> ERAbort\<close>
+  by (metis inf.absorb1 inf_bot_right inf_le1 inf_top_left less_eq_eval_result_def)
+
+lemma Inf_not_abort[simp]:
+  \<open>\<Sqinter>A \<noteq> ERAbort \<longleftrightarrow> (\<forall>a\<in>A. a \<noteq> ERAbort)\<close>
+  using Inf_eval_result_def by force
+
+end
+
+primrec eval
+  :: \<open>nat \<Rightarrow> ('s::perm_alg) comm \<Rightarrow> 's \<Rightarrow> ('s \<Rightarrow> 's \<Rightarrow> bool) \<Rightarrow> ('s \<Rightarrow> 's \<Rightarrow> bool) \<Rightarrow> ('s \<Rightarrow> bool) \<Rightarrow>
+        eval_result\<close>
   where
-  safe_nil[intro!]: \<open>safe 0 c h r g q\<close>
-| safe_suc[intro]:
+  \<open>eval 0 c h r g q = ERRunning\<close>
+| \<open>eval (Suc n) c h r g q = (
+    if \<comment> \<open> the state is frame safe \<close>
+      (\<forall>hf. h ## hf \<longrightarrow> can_compute (h, c) \<longrightarrow> can_compute (h + hf, c)) \<and>
+      \<comment> \<open> if the command is Skip, the postcondition is established \<close>
+      (c = Skip \<longrightarrow> q h) \<and>
+      \<comment> \<open> opsteps are safe + respect the guarantee \<close>
+      (\<forall>a c' h'. (h, c) \<midarrow>a\<rightarrow> (h', c') \<longrightarrow> (a = Tau \<longrightarrow> h = h') \<and> (a = Local \<longrightarrow> g h h'))
+    then
+      \<Sqinter>{eval n c' h' r g q|a c' h'. (h, c) \<midarrow>a\<rightarrow> (h', c')} \<sqinter> \<Sqinter>{eval n c h' r g q|h'. r h h'}
+    else
+      ERAbort)\<close>
+
+definition \<open>safe n c h r g q \<equiv> eval n c h r g q \<noteq> ERAbort\<close>
+
+lemma safe_nil[intro!]: \<open>safe 0 c h r g q\<close>
+  by (simp add: safe_def)
+
+lemma safe_suc[intro]:
   \<open>\<comment> \<open> the state is frame safe \<close>
     (\<And>hf.
         h ## hf \<Longrightarrow>
@@ -566,9 +689,12 @@ inductive safe
     (\<And>h'. r h h' \<Longrightarrow> safe n c h' r g q) \<Longrightarrow>
     \<comment> \<open> conclude a step can be made \<close>
     safe (Suc n) c h r g q\<close>
+  by (simp add: safe_def, metis)
 
+(*
 inductive_cases safe_zeroE[elim!]: \<open>safe 0 c s r g q\<close>
 inductive_cases safe_sucE[elim]: \<open>safe (Suc n) c s r g q\<close>
+*)
 
 subsection \<open> Proofs about safe \<close>
 
@@ -584,7 +710,7 @@ lemma safe_suc_iff:
       (a = Tau \<longrightarrow> h = h') \<and> (a = Local \<longrightarrow> g h h') \<and> safe n c' h' r g q) \<and>
     (\<forall>h'. r h h' \<longrightarrow> safe n c h' r g q)\<close>
   apply (rule iffI)
-   apply (erule safe_sucE; presburger)
+   apply (simp add: safe_def split: if_splits, blast)
   apply (rule safe_suc; presburger)
   done
 
@@ -592,16 +718,16 @@ subsubsection \<open> Monotonicity \<close>
 
 lemma safe_postpred_monoD:
   \<open>safe n c h r g q \<Longrightarrow> q \<le> q' \<Longrightarrow> safe n c h r g q'\<close>
-  apply (induct rule: safe.induct)
+  apply (induct n arbitrary: c h)
    apply blast
-  apply (simp add: safe_suc_iff, blast)
+  apply (clarsimp simp add: safe_suc_iff, blast)
   done
 
 lemmas safe_postpred_mono = safe_postpred_monoD[rotated]
 
 lemma safe_guarantee_monoD:
   \<open>safe n c h r g q \<Longrightarrow> g \<le> g' \<Longrightarrow> safe n c h r g' q\<close>
-  apply (induct rule: safe.induct)
+  apply (induct n arbitrary: c h)
    apply blast
   apply (simp add: safe_suc_iff, metis predicate2D)
   done
@@ -610,7 +736,7 @@ lemmas safe_guarantee_mono = safe_guarantee_monoD[rotated]
 
 lemma safe_rely_antimonoD:
   \<open>safe n c h r g q \<Longrightarrow> r' \<le> r \<Longrightarrow> safe n c h r' g q\<close>
-  apply (induct rule: safe.induct)
+  apply (induct n arbitrary: c h)
    apply force
   apply (simp add: safe_suc_iff, metis predicate2D)
   done
@@ -619,8 +745,16 @@ lemmas safe_rely_antimono = safe_rely_antimonoD[rotated]
 
 lemma safe_step_monoD:
   \<open>safe n c h r g q \<Longrightarrow> m \<le> n \<Longrightarrow> safe m c h r g q\<close>
-  by (induct arbitrary: m rule: safe.inducts)
+  by (induct n arbitrary: m c h)
     (force simp add: le_Suc_iff0 safe_suc_iff)+
+
+lemma safe_implies_atoms_guarantee:
+  \<open>eval n c h r g q = ERTerm \<Longrightarrow> atoms_subrel_guarantee g c\<close>
+  apply (induct n arbitrary: c h)
+   apply simp
+  apply (clarsimp split: if_splits simp add: all_simps(5)[symmetric] simp del: all_simps(5))
+  sledgehammer
+  oops
 
 subsubsection \<open> Skip \<close>
 
@@ -648,7 +782,7 @@ lemma safe_atom':
   apply (induct n arbitrary: h)
    apply force
   apply (clarsimp simp add: less_Suc_eq_le sepconj_def[of p])
-  apply (rule safe.safe_suc)
+  apply (rule safe_suc)
      apply (clarsimp simp add: can_compute_iff)
     apply blast
    apply (simp add: opstep_iff le_fun_def imp_conjL)
@@ -682,16 +816,17 @@ lemma safe_seq_assoc_left:
   \<open>safe n c h r g q \<Longrightarrow>
     c = (c1 ;; c2 ;; c3) \<Longrightarrow>
     safe n ((c1 ;; c2) ;; c3) h r g q\<close>
-  apply (induct arbitrary: c1 c2 c3 rule: safe.inducts)
+  apply (induct n arbitrary: c1 c2 c3 c h)
    apply force
-  apply (clarsimp simp add: safe_suc_iff can_compute_iff opstep_iff, metis)
+  apply (clarsimp simp add: safe_suc_iff can_compute_iff opstep_iff)
+  apply (metis act.distinct(1))
   done
 
 lemma safe_seq_assoc_right:
   \<open>safe n c h r g q \<Longrightarrow>
     c = ((c1 ;; c2) ;; c3) \<Longrightarrow>
     safe n (c1 ;; c2 ;; c3) h r g q\<close>
-  apply (induct arbitrary: c1 c2 c3 rule: safe.inducts)
+  apply (induct n arbitrary: c1 c2 c3 h c)
    apply force
   apply (clarsimp simp add: safe_suc_iff can_compute_iff opstep_iff, metis)
   done
@@ -700,13 +835,13 @@ lemma safe_seq':
   \<open>safe n c1 h r g q \<Longrightarrow>
     (\<forall>m h'. m \<le> n \<longrightarrow> q h' \<longrightarrow> safe m c2 h' r g q') \<Longrightarrow>
     safe n (c1 ;; c2) h r g q'\<close>
-  apply (induct arbitrary: c2 q' rule: safe.inducts)
+  apply (induct n arbitrary: h c1 c2 q')
    apply force
   apply (rule safe_suc)
-     apply (force simp add: can_compute_iff)
+     apply (force simp add: safe_suc_iff can_compute_iff)
     apply blast
-   apply (simp add: opstep_iff, erule disjE, force, force)
-  apply force
+   apply (simp add: safe_suc_iff opstep_iff, erule disjE, force, force)
+  apply (force simp add: safe_suc_iff)
   done
 
 lemma safe_seq:
@@ -783,7 +918,7 @@ lemma safe_ndet:
   apply (induct n arbitrary: c1 c2 h)
    apply blast
   apply (rule safe_suc)
-     apply (metis can_compute_iff(3) order.refl safe_sucE)
+     apply (metis can_compute_iff(3) order.refl safe_suc_iff)
     apply blast
    apply (rule opstep_act_cases)
      apply blast
@@ -797,46 +932,25 @@ lemma safe_ndet:
 
 subsubsection \<open> Parallel \<close>
 
-find_theorems \<open>opstep _ (_, _ \<parallel> _) _\<close>
-
-lemma opstep_parallel_frame_right:
-  \<open>opstep a (h, c) (h', c') \<Longrightarrow>
-    h ## h2 \<Longrightarrow>
-    opstep a (h + h2, c \<parallel> c2) (h' + h2, c' \<parallel> c2)\<close>
-  sorry
-
-
-definition \<open>rel_changes r x \<equiv> (\<exists>y. y \<noteq> x \<and> r x y) \<or> (\<exists>y. y \<noteq> x \<and> r y x)\<close>
-
-lemma safe_parallel_right:
-  assumes
-    \<open>safe n1 c1 h1 r1 g1 q1\<close>
-    \<open>r1 = r \<squnion> g2\<close>
-    \<open>h1 ## h2\<close>
-    and
-    \<open>all_atom_comm (\<lambda>b. rel_changes b \<sqinter> rel_changes g2 = \<bottom>) c1\<close>
-    \<open>all_atom_comm (\<lambda>b. rel_changes b \<sqinter> rel_changes g1 = \<bottom>) c2\<close>
-  shows
-    \<open>safe n1 (c1 \<parallel> c2) (h1 + h2) r (g1 \<squnion> g2) (q1 \<^emph> q2)\<close>
-  using assms
-  apply (induct arbitrary: c2 h2 r g2 q2 rule: safe.inducts)
-   apply force
-
-  apply clarsimp
-  apply (rule safe_suc)
-     apply clarsimp
-  sorry
-
 lemma safe_parallel:
-  \<open>safe n2 s2 h2 r2 g2 q2 \<Longrightarrow>
-    r2 = r \<squnion> g1 \<Longrightarrow>
-    safe n1 c1 h1 r1 (r \<squnion> g2) q1 \<Longrightarrow>
+  \<open>\<forall>m\<le>n. safe m c1 h1 (r \<squnion> g2) g1 q1 \<Longrightarrow>
+    \<forall>m\<le>n. safe m s2 h2 (r \<squnion> g1) g2 q2 \<Longrightarrow>
+    all_atom_comm frame_rearranging c1 \<Longrightarrow>
+    all_atom_comm frame_rearranging c2 \<Longrightarrow>
     h1 ## h2 \<Longrightarrow>
-    g = g1 \<squnion> g2 \<Longrightarrow>
-    safe (n1 + n2) (c1 \<parallel> c2) (h1 + h2) r g (q1 \<^emph> q2)\<close>
-  apply (induct arbitrary: r g1 g rule: safe.inducts)
-     apply clarsimp
-     apply (rename_tac h2 g2 q2 r g1)
+    safe n (c1 \<parallel> c2) (h1 + h2) r (g1 \<squnion> g2) (q1 \<^emph> q2)\<close>
+  apply (induct n arbitrary: h1 h2 g1 g2)
+   apply blast
+  apply (clarsimp simp add: le_Suc_eq all_conj_distrib)
+  apply (rule safe_suc)
+     apply (clarsimp simp add: safe_suc_iff imp_conjR all_conj_distrib)
+     apply (simp add: can_compute_iff, metis can_compute_frame)
+    apply blast
+   apply (intro conjI impI)
+     apply (metis fst_conv opstep_tau_preserves_heap)
+    apply simp
+    apply (clarsimp simp add: safe_suc_iff)
+
   sorry
 
 subsubsection \<open> Frame rule \<close>
@@ -849,11 +963,11 @@ lemma safe_frame:
     h ## hf \<Longrightarrow>
     f hf \<Longrightarrow>
     safe n c (h + hf) r g (q \<^emph> f)\<close>
-proof (induct arbitrary: hf rule: safe.induct)
-  case (safe_nil c h r g q)
+proof (induct n arbitrary: c h hf)
+  case (0 c h hf)
   then show ?case by fast
 next
-  case (safe_suc h c q g n r)
+  case (Suc c h hf)
 (*
   obtain hf' where
     \<open>f hf'\<close>
@@ -867,7 +981,7 @@ next
   ultimately *)
   then show ?case
     apply -
-    apply (rule safe.safe_suc)
+    apply (rule safe_suc)
     sorry
 qed
 
