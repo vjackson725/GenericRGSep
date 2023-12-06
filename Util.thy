@@ -42,6 +42,11 @@ lemma all2_push[simp]:
   \<open>(\<forall>x y. P y \<longrightarrow> Q x y) = (\<forall>y. P y \<longrightarrow> (\<forall>x. Q x y))\<close>
   by force
 
+lemma all_ex_conjL:
+  \<open>(\<forall>x. (\<exists>y. P x y \<and> Q x y) \<longrightarrow> R x)
+    \<longleftrightarrow> (\<forall>x y. P x y \<longrightarrow> Q x y \<longrightarrow> R x)\<close>
+  by blast
+
 lemma imp_conj_common:
   \<open>(A1 \<longrightarrow> B \<longrightarrow> C1) \<and> (A2 \<longrightarrow> B \<longrightarrow> C2) \<longleftrightarrow> (B \<longrightarrow> (A1 \<longrightarrow> C1) \<and> (A2 \<longrightarrow> C2))\<close>
   \<open>(A1 \<longrightarrow> B \<longrightarrow> C1) \<and> (A2 \<longrightarrow> B \<longrightarrow> C2) \<and> D \<longleftrightarrow> (B \<longrightarrow> (A1 \<longrightarrow> C1) \<and> (A2 \<longrightarrow> C2)) \<and> D\<close>

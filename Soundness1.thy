@@ -303,6 +303,16 @@ lemma opstep_frame_pred_maintains2:
   using assms opstep_frame_pred_maintainsD
   by fastforce
 
+lemma opstep_frame_rearranging:
+  \<open>opstep a s s' \<Longrightarrow>
+    all_atom_comm frame_rearranging (snd s) \<Longrightarrow>
+    fst s ## hf \<Longrightarrow>
+    \<exists>h''. opstep a (fst s + hf, snd s) (h'' + hf, snd s') \<and> h'' ## hf\<close>
+  apply (induct rule: opstep.induct)
+                apply force+
+  apply (simp, metis atomic frame_rearranging_def fst_conv snd_conv)
+  done
+
 subsubsection \<open> adding parallel \<close>
 
 lemma opstep_parallel_leftD:
@@ -825,18 +835,34 @@ lemma safe_parallel_right:
   apply clarsimp
   apply (rule safe_suc)
      apply clarsimp
-  sorry
+  oops
 
 lemma safe_parallel:
-  \<open>safe n2 s2 h2 r2 g2 q2 \<Longrightarrow>
-    r2 = r \<squnion> g1 \<Longrightarrow>
-    safe n1 c1 h1 r1 (r \<squnion> g2) q1 \<Longrightarrow>
+  \<open>\<forall>m\<le>n. safe m c1 h1 (r \<squnion> g2) g1 q1 \<Longrightarrow>
+    \<forall>m\<le>n. safe m c2 h2 (r \<squnion> g1) g2 q2 \<Longrightarrow>
+    all_atom_comm frame_rearranging c1 \<Longrightarrow>
+    all_atom_comm frame_rearranging c2 \<Longrightarrow>
     h1 ## h2 \<Longrightarrow>
-    g = g1 \<squnion> g2 \<Longrightarrow>
-    safe (n1 + n2) (c1 \<parallel> c2) (h1 + h2) r g (q1 \<^emph> q2)\<close>
-  apply (induct arbitrary: r g1 g rule: safe.inducts)
-     apply clarsimp
-     apply (rename_tac h2 g2 q2 r g1)
+    safe n (c1 \<parallel> c2) (h1 + h2) r (g1 \<squnion> g2) (q1 \<^emph> q2)\<close>
+  apply (induct n arbitrary: c1 c2 h1 h2)
+   apply force
+  apply (clarsimp simp add: le_Suc_eq all_conj_distrib all_ex_conjL safe_suc_iff[where r=\<open>_ \<squnion> _\<close>]
+      imp_conjR)
+  apply (rule safe_suc)
+     apply (clarsimp simp add: can_compute_def opstep_iff)
+     apply (metis fst_conv opstep_frame_rearranging snd_conv)
+    apply blast
+   apply (clarsimp simp add: can_compute_def opstep_iff)
+   apply (intro conjI)
+     apply (metis fst_conv opstep_tau_preserves_heap)
+    apply clarsimp
+    apply (erule disjE)
+     apply (clarsimp simp add: can_compute_def opstep_iff)
+  sledgehammer
+
+  
+  find_theorems \<open>opstep Tau _ _\<close>
+  
   sorry
 
 subsubsection \<open> Frame rule \<close>
