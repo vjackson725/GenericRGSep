@@ -125,6 +125,9 @@ definition \<open>prepost_state \<equiv> pre_state \<squnion> post_state\<close>
 
 abbreviation \<open>tight_reflp r \<equiv> reflp_on (Collect (prepost_state r)) r\<close>
 
+definition \<open>pre_change_state r \<equiv> \<lambda>a. \<exists>b. r a b \<and> a \<noteq> b\<close>
+definition \<open>post_change_state r \<equiv> \<lambda>b. \<exists>a. r a b \<and> a \<noteq> b\<close>
+
 lemma tight_reflpD1[dest]:
   \<open>tight_reflp r \<Longrightarrow> r x y \<Longrightarrow> r x x\<close>
   by (metis mem_Collect_eq pre_state_def prepost_state_def reflp_onD sup2CI)

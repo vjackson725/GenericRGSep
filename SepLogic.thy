@@ -142,7 +142,7 @@ class perm_alg = disjoint + plus + order +
   (* separation laws *)
   assumes disjoint_sym: \<open>a ## b \<Longrightarrow> b ## a\<close>
   assumes disjoint_add_rightL: \<open>b ## c \<Longrightarrow> a ## b + c \<Longrightarrow> a ## b\<close>
-  assumes disjoint_add_right_commute: \<open>a ## c \<Longrightarrow> b ## a + c \<Longrightarrow> a ## (b + c)\<close>
+  assumes disjoint_add_right_commute: \<open>b ## c \<Longrightarrow> a ## b + c \<Longrightarrow> b ## a + c\<close>
   assumes positivity: \<open>a ## b \<Longrightarrow> a + b = c \<Longrightarrow> c ## c \<Longrightarrow> c + c = c \<Longrightarrow> a + a = a\<close>
   assumes less_iff_sepadd: \<open>a < b \<longleftrightarrow> a \<noteq> b \<and> (\<exists>c. a ## c \<and> b = a + c)\<close>
 begin
@@ -168,6 +168,10 @@ lemma common_subresource_selfsep:
   \<open>a ## b \<Longrightarrow> ab \<le> a \<Longrightarrow> ab \<le> b \<Longrightarrow> ab ## ab\<close>
   by (metis disjoint_add_rightL disjoint_sym order.order_iff_strict less_iff_sepadd)
 
+lemma selfdisjoint_over_selfdisjoint:
+  \<open>a ## a \<Longrightarrow> \<forall>x\<le>a. x ## x\<close>
+  using common_subresource_selfsep by blast
+
 lemma disjoint_add_rightR: \<open>b ## c \<Longrightarrow> a ## b + c \<Longrightarrow> a ## c\<close>
   by (metis disjoint_add_rightL disjoint_sym partial_add_commute)
 
@@ -177,16 +181,25 @@ lemma disjoint_add_leftL: \<open>a ## b \<Longrightarrow> a + b ## c \<Longright
 lemma disjoint_add_leftR: \<open>a ## b \<Longrightarrow> a + b ## c \<Longrightarrow> b ## c\<close>
   by (metis disjoint_add_leftL disjoint_sym partial_add_commute)
 
-lemma disjoint_add_commuteL: \<open>c ## b \<Longrightarrow> c + b ## a \<Longrightarrow> a + b ## c\<close>
-  by (simp add: disjoint_add_right_commute disjoint_sym)
+lemma disjoint_add_right_commute2:
+  \<open>b ## c \<Longrightarrow> a ## b + c \<Longrightarrow> c ## b + a\<close>
+  by (metis disjoint_add_rightR disjoint_add_right_commute disjoint_sym partial_add_commute)
+
+lemma disjoint_add_left_commute:
+  \<open>a ## b \<Longrightarrow> a + b ## c \<Longrightarrow> c + b ## a\<close>
+  by (simp add: disjoint_sym_iff disjoint_add_right_commute)
+
+lemma disjoint_add_left_commute2:
+  \<open>a ## b \<Longrightarrow> a + b ## c \<Longrightarrow> a + c ## b\<close>
+  by (metis disjoint_add_leftR disjoint_add_left_commute partial_add_commute)
 
 lemma disjoint_add_swap:
   \<open>b ## c \<Longrightarrow> a ## b + c \<Longrightarrow> a + b ## c\<close>
-  using disjoint_add_commuteL disjoint_sym_iff partial_add_commute by auto
+  by (simp add: disjoint_sym_iff disjoint_add_right_commute partial_add_commute)
 
 lemma disjoint_add_swap2:
   \<open>a ## b \<Longrightarrow> a + b ## c \<Longrightarrow> a ## b + c\<close>
-  by (metis disjoint_add_commuteL disjoint_add_leftR disjoint_sym partial_add_commute)
+  by (simp add: disjoint_add_right_commute2 disjoint_sym_iff partial_add_commute)
 
 lemma weak_positivity: \<open>a ## b \<Longrightarrow> a + b = c \<Longrightarrow> c ## c \<Longrightarrow> a ## a\<close>
   by (meson disjoint_add_rightL disjoint_sym)
@@ -236,6 +249,7 @@ definition \<open>sepadd_unit a \<equiv> a ## a \<and> (\<forall>b. a ## b \<lon
 
 abbreviation \<open>sepadd_units \<equiv> Collect sepadd_unit\<close>
 
+text \<open> sepadd_unit antimono \<close>
 lemma below_unit_impl_unit:
   \<open>a \<le> b \<Longrightarrow> sepadd_unit b \<Longrightarrow> sepadd_unit a\<close>
   unfolding sepadd_unit_def
@@ -287,16 +301,113 @@ lemma sepadd_unit_disjoint_trans[dest]:
 
 subsection \<open> zero_sepadd \<close>
 
-definition \<open>zero_sepadd a \<equiv> a ## a \<and> (\<forall>b. a ## b \<longrightarrow> a + b = a)\<close>
+definition \<open>sepadd_zero a \<equiv> a ## a \<and> (\<forall>b. a ## b \<longrightarrow> a + b = a)\<close>
 
+text \<open> sepadd_zero antimono \<close>
 lemma above_zero_impl_zero:
-  \<open>a \<le> b \<Longrightarrow> zero_sepadd a \<Longrightarrow> zero_sepadd b\<close>
-  unfolding zero_sepadd_def
+  \<open>a \<le> b \<Longrightarrow> sepadd_zero a \<Longrightarrow> sepadd_zero b\<close>
+  unfolding sepadd_zero_def
   using le_iff_sepadd_weak by force
 
 (* obvious, but a nice dual to the unit case *)
-lemma zeros_add_to_zero: \<open>x ## y \<Longrightarrow> zero_sepadd x \<Longrightarrow> zero_sepadd (x + y)\<close>
-  by (simp add: zero_sepadd_def)
+lemma zeros_add_to_zero: \<open>x ## y \<Longrightarrow> sepadd_zero x \<Longrightarrow> sepadd_zero (x + y)\<close>
+  by (simp add: sepadd_zero_def)
+
+
+subsection \<open> duplicable \<close>
+
+text \<open>
+  Duplicable elements. These are related to the logical content of a separation algebra (as
+  contrasted with the resource content.)
+\<close>
+
+definition \<open>sepadd_dup a \<equiv> a ## a \<and> a + a = a\<close>
+
+lemma units_are_dup: \<open>sepadd_unit a \<Longrightarrow> sepadd_dup a\<close>
+  by (simp add: sepadd_dup_def)
+
+lemma zeros_are_dup: \<open>sepadd_zero a \<Longrightarrow> sepadd_dup a\<close>
+  by (simp add: sepadd_dup_def sepadd_zero_def)
+
+lemma sepadd_dup_antimono:
+  \<open>a \<le> b \<Longrightarrow> sepadd_dup b \<Longrightarrow> sepadd_dup a\<close>
+  apply (clarsimp simp add: sepadd_dup_def)
+  apply (rule conjI)
+   apply (force dest: common_subresource_selfsep)
+  apply (metis le_iff_sepadd_weak positivity)
+  done
+
+
+subsection \<open> core \<close>
+
+text \<open>
+  Here we introduce the notion of a core, the greatest duplicable element below an element.
+
+  Iris uses this notion to algebraise shared invariant predicates. Note that our version is weaker
+  than Iris'; we do not have that \<open>has_core\<close> is monotone (or even antimonotone). This is because
+  there can be several non-comparible duplicable elements sitting below a or b.
+  When all non-empty subsets of duplicable elements have a lub which is itself duplicable,
+  \<open>has_core\<close> is monotone. (See glb/lub section.)
+\<close>
+
+definition \<open>core_rel a ca \<equiv> ca \<le> a \<and> sepadd_dup ca \<and> (\<forall>y\<le>a. sepadd_dup y \<longrightarrow> y \<le> ca)\<close>
+
+abbreviation \<open>has_core a \<equiv> Ex (core_rel a)\<close>
+abbreviation \<open>the_core a \<equiv> The (core_rel a)\<close>
+
+(* simp doesn't like rewriting core_rel under an Ex in goal position. *)
+lemma has_core_def:
+  \<open>has_core a \<longleftrightarrow> (\<exists>ca. ca \<le> a \<and> sepadd_dup ca \<and> (\<forall>y\<le>a. sepadd_dup y \<longrightarrow> y \<le> ca))\<close>
+  using core_rel_def by presburger
+
+lemma the_core_core_rel_eq[simp]:
+  \<open>core_rel a ca \<Longrightarrow> the_core a = ca\<close>
+  using core_rel_def order.antisym
+  using leD by auto
+
+lemma has_core_the_core_eq:
+  \<open>has_core a \<Longrightarrow> P (the_core a) \<longleftrightarrow> (\<forall>ca. core_rel a ca \<longrightarrow> P ca)\<close>
+  using the_core_core_rel_eq by blast
+
+lemma core_dup_self[simp]:
+  \<open>sepadd_dup a \<Longrightarrow> the_core a = a\<close>
+  by (simp add: core_rel_def)
+
+lemma core_idem:
+  \<open>has_core a \<Longrightarrow> the_core (the_core a) = the_core a\<close>
+  by (clarsimp simp add: core_rel_def)
+
+lemma core_disjoint:
+  \<open>has_core a \<Longrightarrow> the_core a ## a\<close>
+  apply (clarsimp simp add: core_rel_def)
+  apply (metis disjoint_add_swap2 le_iff_sepadd_weak sepadd_dup_def)
+  done
+
+lemma core_plus_same[simp]:
+  \<open>has_core a \<Longrightarrow> the_core a + a = a\<close>
+  apply (clarsimp simp add: core_rel_def)
+  apply (metis le_iff_sepadd_weak partial_add_assoc2 sepadd_dup_def)
+  done
+
+lemma core_plus_sameR[simp]:
+  \<open>has_core a \<Longrightarrow> a + the_core a = a\<close>
+  using core_disjoint core_plus_same partial_add_commute
+  by auto
+
+lemma the_core_le_impl:
+  \<open>has_core a \<Longrightarrow> has_core b \<Longrightarrow> a \<le> b \<Longrightarrow> the_core a \<le> the_core b\<close>
+  by (clarsimp simp add: core_rel_def)
+
+text \<open>
+  As every duplicable element is its own core, the monotonicity criterion is equivalent to
+  the property that every element above a duplicable element (e.g. 0) has a unique greatest
+  duplicable element below it.
+\<close>
+lemma has_core_mono_iff:
+  \<open>(\<forall>a b. a \<le> b \<longrightarrow> has_core a \<longrightarrow> has_core b) \<longleftrightarrow>
+    (\<forall>x. sepadd_dup x \<longrightarrow> (\<forall>a\<ge>x. has_core a))\<close>
+  by (metis core_rel_def order.trans eq_refl)
+
 
 subsection \<open>sepdomeq\<close>
 
@@ -335,6 +446,7 @@ lemma sepdomsubseteq_transp:
 lemma sepdomsubseteq_disjointD:
   \<open>sepdomsubseteq a b \<Longrightarrow> a ## c \<Longrightarrow> b ## c\<close>
   by (simp add: sepdomsubseteq_def)
+
 
 subsection \<open> Seplogic connectives \<close>
 
@@ -1036,16 +1148,74 @@ subsection \<open> weak glb / lub \<close>
 context perm_alg
 begin
 
-definition
-  \<open>glb_exists a b \<equiv> \<exists>ab. ab \<le> a \<and> ab \<le> b \<and> (\<forall>ab'. ab' \<le> a \<longrightarrow> ab' \<le> b \<longrightarrow> ab' \<le> ab)\<close>
+definition \<open>glb_rel a b ab \<equiv> ab \<le> a \<and> ab \<le> b \<and> (\<forall>ab'. ab' \<le> a \<longrightarrow> ab' \<le> b \<longrightarrow> ab' \<le> ab)\<close>
 
-definition \<open>glb a b \<equiv> (GREATEST ab. ab \<le> a \<and> ab \<le> b)\<close>
+abbreviation \<open>glb_exists a b \<equiv> Ex (glb_rel a b)\<close>
+abbreviation \<open>glb a b \<equiv> The (glb_rel a b)\<close>
 
-definition
-  \<open>lub_exists a b \<equiv> \<exists>ab. a \<le> ab \<and> b \<le> ab \<and> (\<forall>ab'. a \<le> ab' \<longrightarrow> b \<le> ab' \<longrightarrow> ab \<le> ab')\<close>
+definition \<open>lub_rel a b ab \<equiv> a \<le> ab \<and> b \<le> ab \<and> (\<forall>ab'. a \<le> ab' \<longrightarrow> b \<le> ab' \<longrightarrow> ab \<le> ab')\<close>
 
-definition \<open>lub a b \<equiv> (LEAST ab. a \<le> ab \<and> b \<le> ab)\<close>
+abbreviation \<open>lub_exists a b \<equiv> Ex (lub_rel a b)\<close>
+abbreviation \<open>lub a b \<equiv> The (lub_rel a b)\<close>
 
+lemma glb_glb_rel_eq[simp]:
+  \<open>glb_rel a b ab \<Longrightarrow> glb a b = ab\<close>
+  using glb_rel_def order.antisym by auto
+
+lemma lub_lub_rel_eq[simp]:
+  \<open>lub_rel a b ab \<Longrightarrow> lub a b = ab\<close>
+  using lub_rel_def order.antisym by auto
+
+lemma glb_exists_glb_eq:
+  \<open>glb_exists a b \<Longrightarrow> P (glb a b) \<longleftrightarrow> (\<forall>ab. glb_rel a b ab \<longrightarrow> P ab)\<close>
+  using glb_glb_rel_eq by blast
+
+lemma lub_exists_lub_eq:
+  \<open>lub_exists a b \<Longrightarrow> P (lub a b) \<longleftrightarrow> (\<forall>ab. lub_rel a b ab \<longrightarrow> P ab)\<close>
+  using lub_lub_rel_eq by blast
+
+subsection \<open> Complete Glb \<close>
+
+definition \<open>Glb_rel A x \<equiv> (\<forall>a\<in>A. x \<le> a) \<and> (\<forall>x'. (\<forall>a\<in>A. x' \<le> a) \<longrightarrow> x' \<le> x)\<close>
+
+abbreviation \<open>Glb_exists A \<equiv> Ex (Glb_rel A)\<close>
+abbreviation \<open>Glb A \<equiv> The (Glb_rel A)\<close>
+
+definition \<open>Lub_rel A x \<equiv> (\<forall>a\<in>A. a \<le> x) \<and> (\<forall>x'. (\<forall>a\<in>A. a \<le> x') \<longrightarrow> x \<le> x')\<close>
+
+abbreviation \<open>Lub_exists A \<equiv> Ex (Lub_rel A)\<close>
+abbreviation \<open>Lub A \<equiv> The (Lub_rel A)\<close>
+
+lemma Glb_Glb_rel_eq[simp]:
+  \<open>Glb_rel A x \<Longrightarrow> Glb A = x\<close>
+  using Glb_rel_def order.antisym by auto
+
+lemma Lub_Lub_rel_eq[simp]:
+  \<open>Lub_rel A x \<Longrightarrow> Lub A = x\<close>
+  using Lub_rel_def order.antisym by auto
+
+lemma Glb_exists_Glb_eq:
+  \<open>Glb_exists A \<Longrightarrow> P (Glb A) \<longleftrightarrow> (\<forall>x. Glb_rel A x \<longrightarrow> P x)\<close>
+  using Glb_Glb_rel_eq by blast
+
+lemma Lub_exists_Lub_eq:
+  \<open>Lub_exists A \<Longrightarrow> P (Lub A) \<longleftrightarrow> (\<forall>x. Lub_rel A x \<longrightarrow> P x)\<close>
+  using Lub_Lub_rel_eq by blast
+
+
+lemma Glb_rel_in_Least_equality:
+  \<open>Glb_rel (Collect P) x \<Longrightarrow> P x \<Longrightarrow> Least P = x\<close>
+  apply (clarsimp simp add: Glb_rel_def)
+  apply (subst Least_equality; force)
+  done
+
+lemma Lub_rel_in_Greatest_equality:
+  \<open>Lub_rel (Collect P) x \<Longrightarrow> P x \<Longrightarrow> Greatest P = x\<close>
+  apply (clarsimp simp add: Lub_rel_def)
+  apply (subst Greatest_equality; force)
+  done
+
+subsection \<open> lub glb interchange properties \<close>
 
 lemma lub_glb_distrib_weak:
   assumes
@@ -1057,8 +1227,7 @@ lemma lub_glb_distrib_weak:
   shows
     \<open>lub a (glb b c) \<le> glb (lub a b) (lub a c)\<close>
   using assms
-  unfolding glb_exists_def lub_exists_def lub_def glb_def
-  by (clarsimp simp add: Greatest_equality Least_equality)
+  by (clarsimp simp add: lub_rel_def glb_rel_def)
 
 lemma lub_glb_distrib_strong:
   assumes
@@ -1083,8 +1252,7 @@ lemma glb_lub_distrib_weak:
   shows
   \<open>lub (glb a b) (glb a c) \<le> glb a (lub b c)\<close>
   using assms
-  unfolding glb_exists_def lub_exists_def lub_def glb_def
-  by (force simp add: Greatest_equality Least_equality)
+  by (clarsimp simp add: lub_rel_def glb_rel_def)
 
 lemma glb_lub_distrib_strong:
   assumes
@@ -1101,8 +1269,7 @@ lemma glb_lub_distrib_strong:
 paragraph \<open> with addition \<close>
 
 lemma \<open>a ## b \<Longrightarrow> lub_exists a b \<Longrightarrow> lub a b \<le> a + b\<close>
-  unfolding lub_exists_def lub_def
-  by (auto simp add: Least_equality)
+  by (clarsimp simp add: lub_rel_def)
 
 lemma \<open>a ## b \<Longrightarrow> lub_exists a b \<Longrightarrow> lub a b \<ge> a + b\<close>
   text \<open> not true! \<close>
@@ -1119,8 +1286,7 @@ lemma add_glb_distrib_weak:
   shows
     \<open>a + (glb b c) \<le> glb (a + b) (a + c)\<close>
   using assms
-  unfolding glb_exists_def glb_def
-  by (clarsimp simp add: Greatest_equality, metis sepadd_left_mono)
+  by (clarsimp simp add: glb_rel_def sepadd_left_mono)
 
 lemma add_glb_distrib_strong:
   assumes
@@ -1160,6 +1326,88 @@ lemma glb_add_distrib_strong:
   text \<open> not true \<close>
   nitpick
   oops
+
+subsection \<open> glb properties \<close>
+
+lemma glb_leqL[intro]: \<open>glb_exists a b \<Longrightarrow> glb a b \<le> a\<close>
+  by (clarsimp simp add: glb_rel_def)
+
+lemma glb_leqR[intro]: \<open>glb_exists a b \<Longrightarrow> glb a b \<le> b\<close>
+  by (clarsimp simp add: glb_rel_def)
+
+lemma glb_least[intro]: \<open>glb_exists a b \<Longrightarrow> c \<le> a \<Longrightarrow> c \<le> b \<Longrightarrow> c \<le> glb a b\<close>
+  by (clarsimp simp add: glb_rel_def)
+
+lemma glb_disjointL: \<open>a ## b \<Longrightarrow> glb_exists a c \<Longrightarrow> glb a c ## b\<close>
+  using disjoint_preservation by blast
+
+lemma glb_disjointR: \<open>a ## b \<Longrightarrow> glb_exists b c \<Longrightarrow> a ## glb b c\<close>
+  using disjoint_preservation2 by blast
+
+lemma glb_idem[simp]: \<open>glb a a = a\<close>
+  by (simp add: glb_rel_def)
+
+lemma sepinf_assoc[simp]:
+  \<open>glb_exists b c \<Longrightarrow>
+    glb_exists a b \<Longrightarrow>
+    glb_exists a (glb b c) \<Longrightarrow>
+    glb_exists (glb a b) c \<Longrightarrow>
+    glb a (glb b c) = glb (glb a b) c\<close>
+  by (clarsimp, meson glb_rel_def order.antisym order.trans)
+
+
+subsection \<open> weak glb + core \<close>
+
+lemma glb_dup[dest]:
+  \<open>glb_exists a b \<Longrightarrow> sepadd_dup a \<Longrightarrow> sepadd_dup (glb a b)\<close>
+  using sepadd_dup_antimono
+  by blast
+
+lemma glb_dup2[dest]:
+  \<open>glb_exists a b \<Longrightarrow> sepadd_dup b \<Longrightarrow> sepadd_dup (glb a b)\<close>
+  using sepadd_dup_antimono
+  by blast
+
+lemma glb_has_core_antimono:
+  \<open>\<forall>x. sepadd_dup x \<longrightarrow> glb_exists a x \<Longrightarrow>
+    a \<le> b \<Longrightarrow>
+    has_core b \<Longrightarrow>
+    has_core a\<close>
+  unfolding core_rel_def
+  apply clarsimp
+  apply (rename_tac cb)
+  apply (rule_tac x=\<open>glb a cb\<close> in exI)
+  apply (simp add: glb_exists_glb_eq glb_exists_glb_eq[of _ _ \<open>\<lambda>x. x \<le> _\<close>] glb_rel_def)
+  apply (metis sepadd_dup_antimono)
+  done
+
+lemma has_core_iff_Lub:
+  \<open>has_core a \<longleftrightarrow> (\<exists>x. Lub_rel {x. sepadd_dup x \<and> x \<le> a} x \<and> sepadd_dup x)\<close>
+  apply (rule iffI)
+   apply (clarsimp simp add: Lub_rel_def has_core_def, blast)
+  apply (clarsimp simp add: Lub_rel_def has_core_def, blast)
+  done
+
+lemma Lub_has_core_mono:
+  \<open>(\<And>A. A \<noteq> {} \<Longrightarrow> Ball A sepadd_dup \<Longrightarrow> (\<exists>x. Lub_rel A x \<and> sepadd_dup x)) \<Longrightarrow>
+    a \<le> b \<Longrightarrow> has_core a \<Longrightarrow> has_core b\<close>
+  apply (clarsimp simp add: has_core_iff_Lub)
+  apply (drule meta_spec[of _ \<open>{x. sepadd_dup x \<and> x \<le> b}\<close>])
+  apply (fastforce simp add: Lub_rel_def)
+  done
+
+lemma has_core_mono_iff_Lub:
+  \<open>(\<forall>a b. a \<le> b \<longrightarrow> has_core a \<longrightarrow> has_core b) \<Longrightarrow>
+    \<forall>A. A \<noteq> {} \<longrightarrow>
+      Ball A sepadd_dup \<longrightarrow>
+      (\<forall>x y. x \<le> y \<longrightarrow> y \<in> A \<longrightarrow> x \<in> A) \<longrightarrow>
+      (\<exists>z. \<forall>x\<in>A. x \<le> z) \<longrightarrow>
+      (\<exists>y. Lub_rel A y \<and> sepadd_dup y)\<close>
+  apply -
+  apply (subst (asm) has_core_mono_iff)
+  apply (clarsimp simp add: Lub_rel_def)
+  oops
+
 
 end
 
@@ -1236,6 +1484,16 @@ lemma sepinf_of_unit_eq_that_unit2[simp]:
   \<open>compatible a b \<Longrightarrow> sepadd_unit b \<Longrightarrow> a \<sqinter> b = b\<close>
   by (metis le_unit_iff_eq sepinf_leqR)
 
+subsection \<open> inf + core \<close>
+
+lemma sepinf_dup[dest]:
+  \<open>compatible a b \<Longrightarrow> sepadd_dup a \<Longrightarrow> sepadd_dup (a \<sqinter> b)\<close>
+  using sepadd_dup_antimono by blast
+
+lemma sepinf_dup2[dest]:
+  \<open>compatible a b \<Longrightarrow> sepadd_dup b \<Longrightarrow> sepadd_dup (a \<sqinter> b)\<close>
+  using sepadd_dup_antimono by blast
+
 end
 
 
@@ -1283,7 +1541,16 @@ class distrib_sep_alg = sep_alg + distrib_perm_alg
 subsection \<open>Trivial Self-disjointness Separation Algebra\<close>
 
 class trivial_selfdisjoint_perm_alg = perm_alg +
-  assumes disjointness: \<open>a ## a \<Longrightarrow> a + a = b \<Longrightarrow> a = b\<close>
+  assumes selfdisjoint_same: \<open>a ## a \<Longrightarrow> a + a = b \<Longrightarrow> a = b\<close>
+begin
+
+text \<open> All selfdisjoint elements are duplicable \<close>
+
+lemma all_selfdisjoint_dup:
+  \<open>a ## a \<Longrightarrow> sepadd_dup a\<close>
+  using selfdisjoint_same sepadd_dup_def by presburger
+
+end
 
 class trivial_selfdisjoint_multiunit_sep_alg = multiunit_sep_alg + trivial_selfdisjoint_perm_alg
 
@@ -1357,7 +1624,7 @@ proof (intro conjI allI impI)
 
   have D1: \<open>c + a ## a\<close>
     using assms D0 E1 Daa
-    by (metis disjoint_add_commuteL)
+    by (metis disjoint_add_left_commute)
 
   have \<open>a + c = a + (c + a)\<close>
     using assms D0 E1 Daa
@@ -1519,7 +1786,7 @@ class trivial_halving_perm_alg = trivial_selfdisjoint_perm_alg + halving_perm_al
 begin
 
 lemma trivial_half[simp]: \<open>half a = a\<close>
-  by (simp add: disjointness half_additive_split half_self_disjoint)
+  by (simp add: selfdisjoint_same half_additive_split half_self_disjoint)
 
 end
 

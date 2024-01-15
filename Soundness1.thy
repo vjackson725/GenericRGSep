@@ -568,12 +568,15 @@ inductive safe
         can_compute (h + hf, c)) \<Longrightarrow>
     \<comment> \<open> if the command is Skip, the postcondition is established \<close>
     (c = Skip \<longrightarrow> q h) \<Longrightarrow>
-    \<comment> \<open> opsteps are safe + respects the guarantee \<close>
+    \<comment> \<open> opsteps respect the guarantee \<close>
     (\<And>a c' h'.
       (h, c) \<midarrow>a\<rightarrow> (h', c') \<Longrightarrow>
-      (a = Tau \<longrightarrow> h = h') \<and> (a = Local \<longrightarrow> g h h') \<and> safe n c' h' r g q) \<Longrightarrow>
+      (a = Tau \<longrightarrow> h = h') \<and>
+        (a = Local \<longrightarrow> (\<exists>hs hs'. framed_subresource_rel h h' hs hs' \<and> g hs hs'))) \<Longrightarrow>
+    \<comment> \<open> opsteps are safe \<close>
+    (\<And>a c' h'. (h, c) \<midarrow>a\<rightarrow> (h', c') \<Longrightarrow> safe n c' h' r g q) \<Longrightarrow>
     \<comment> \<open> rely steps are safe \<close>
-    (\<And>h'. r h h' \<Longrightarrow> safe n c h' r g q) \<Longrightarrow>
+    (\<And>h' hs hs'. framed_subresource_rel h h' hs hs' \<Longrightarrow>  r hs hs' \<Longrightarrow> safe n c h' r g q) \<Longrightarrow>
     \<comment> \<open> conclude a step can be made \<close>
     safe (Suc n) c h r g q\<close>
 
@@ -590,9 +593,13 @@ lemma safe_suc_iff:
   \<open>safe (Suc n) c h r g q \<longleftrightarrow>
     (\<forall>hf. h ## hf \<longrightarrow> can_compute (h, c) \<longrightarrow> can_compute (h + hf, c)) \<and>
     (c = Skip \<longrightarrow> q h) \<and>
+    (\<forall>a c' h'.
+      (h, c) \<midarrow>a\<rightarrow> (h', c') \<longrightarrow>
+      (a = Tau \<longrightarrow> h = h') \<and>
+        (a = Local \<longrightarrow> (\<exists>hs hs'. framed_subresource_rel h h' hs hs' \<and> g hs hs'))) \<and>
     (\<forall>a c' h'. (h, c) \<midarrow>a\<rightarrow> (h', c') \<longrightarrow>
-      (a = Tau \<longrightarrow> h = h') \<and> (a = Local \<longrightarrow> g h h') \<and> safe n c' h' r g q) \<and>
-    (\<forall>h'. r h h' \<longrightarrow> safe n c h' r g q)\<close>
+      safe n c' h' r g q) \<and>
+    (\<forall>h' hs hs'. framed_subresource_rel h h' hs hs' \<longrightarrow> r hs hs' \<longrightarrow> safe n c h' r g q)\<close>
   apply (rule iffI)
    apply (erule safe_sucE; presburger)
   apply (rule safe_suc; presburger)
@@ -604,7 +611,7 @@ lemma safe_postpred_monoD:
   \<open>safe n c h r g q \<Longrightarrow> q \<le> q' \<Longrightarrow> safe n c h r g q'\<close>
   apply (induct rule: safe.induct)
    apply blast
-  apply (simp add: safe_suc_iff, blast)
+  apply (simp add: safe_suc_iff, meson predicate1D)
   done
 
 lemmas safe_postpred_mono = safe_postpred_monoD[rotated]
@@ -634,11 +641,31 @@ lemma safe_step_monoD:
 
 subsubsection \<open> Skip \<close>
 
+lemma framed_rely_step:
+  \<open>framed_subresource_rel h h' hs hs' \<Longrightarrow>
+    r hs hs' \<Longrightarrow>
+    (\<lceil> q \<rceil>\<^bsub>frame r with \<top>\<^esub>) h \<Longrightarrow>
+    (\<lceil> q \<rceil>\<^bsub>frame r with \<top>\<^esub>) h'\<close>
+  apply (clarsimp simp add: frame_with_def wsstable_def)
+  apply (rule_tac x=s in exI)
+  apply clarsimp
+  apply (rule rtranclp.rtrancl_into_rtrancl, assumption)
+  apply (rule_tac x=hs in exI, rule_tac x=hs' in exI)
+  apply clarsimp
+  apply (erule disjE)
+   apply clarsimp
+  
+  sledgehammer
+  find_theorems "_\<^sup>*\<^sup>* ?x ?y \<Longrightarrow> _ \<Longrightarrow> _\<^sup>*\<^sup>* ?x ?z"
+  oops
+
 lemma safe_skip':
-  \<open>(\<lceil> q \<rceil>\<^bsub>r\<^esub>) h \<Longrightarrow> safe n Skip h r g (\<lceil> q \<rceil>\<^bsub>r\<^esub>)\<close>
+  \<open>(\<lceil> q \<rceil>\<^bsub>frame r with \<top>\<^esub>) h \<Longrightarrow> safe n Skip h r g (\<lceil> q \<rceil>\<^bsub>frame r with \<top>\<^esub>)\<close>
   apply (induct n arbitrary: h q)
    apply force
   apply (clarsimp simp add: safe_suc_iff opstep_iff can_compute_iff)
+  
+  oops
   apply (metis order.refl r_into_rtranclp wsstable_absorb1 wsstable_impliesD)
   done
 
@@ -659,9 +686,10 @@ lemma safe_atom':
    apply force
   apply (clarsimp simp add: less_Suc_eq_le sepconj_def[of p])
   apply (rule safe.safe_suc)
-     apply (clarsimp simp add: can_compute_iff)
-    apply blast
-   apply (simp add: opstep_iff le_fun_def imp_conjL)
+     apply (force simp add: can_compute_iff)
+     apply blast
+    apply (simp add: opstep_iff le_fun_def imp_conjL; fail)
+   apply (simp add: opstep_iff)
    apply (rule safe_skip')
    apply fastforce
   apply (drule_tac x=h' in meta_spec)
@@ -694,7 +722,8 @@ lemma safe_seq_assoc_left:
     safe n ((c1 ;; c2) ;; c3) h r g q\<close>
   apply (induct arbitrary: c1 c2 c3 rule: safe.inducts)
    apply force
-  apply (clarsimp simp add: safe_suc_iff can_compute_iff opstep_iff, metis)
+  apply (clarsimp simp add: safe_suc_iff can_compute_iff opstep_iff)
+  apply (intro conjI allI impI; metis)
   done
 
 lemma safe_seq_assoc_right:
@@ -713,8 +742,9 @@ lemma safe_seq':
   apply (induct arbitrary: c2 q' rule: safe.inducts)
    apply force
   apply (rule safe_suc)
-     apply (force simp add: can_compute_iff)
-    apply blast
+      apply (force simp add: can_compute_iff)
+     apply blast
+    apply (force simp add: opstep_iff)
    apply (simp add: opstep_iff, erule disjE, force, force)
   apply force
   done
@@ -727,34 +757,6 @@ lemma safe_seq:
 
 subsection \<open> Iteration \<close>
 
-lemma RGsafe_while:
-  \<open>rgsat C Rely Guar (P \<sqinter> B) P \<Longrightarrow>
-    P h \<Longrightarrow>
-    \<lceil> P \<sqinter> - B \<rceil>\<^bsub>Rely\<^esub> \<le> P \<sqinter> - B \<Longrightarrow>
-    Guar h h \<Longrightarrow>
-    (\<forall>h'\<ge>h. \<not> B h \<longrightarrow> \<not> B h') \<Longrightarrow>
-    (\<forall>h'. Rely h h' \<longrightarrow> P h' \<and> Guar h' h' \<and> (\<forall>h''\<ge>h'. \<not> B h' \<longrightarrow> \<not> B h'')) \<Longrightarrow>
-    transp Rely \<Longrightarrow>
-    m \<le> n \<Longrightarrow>
-    safe m (WhileLoop B C) h Rely Guar (P \<sqinter> -B)\<close>
-  apply (induct n arbitrary: h m)
-   apply force
-  apply (clarsimp simp add: le_Suc_eq)
-  apply (erule disjE)
-   apply blast
-  apply (clarsimp simp add: safe_suc_iff opstep_iff imp_conjL all_conj_distrib)
-  apply (intro conjI allI impI)
-     apply (metis WhileLoop_def can_compute_iff(2,5))
-    defer
-    defer
-    apply (drule_tac x=h' in meta_spec2)
-    apply (drule meta_mp, blast)
-    apply (drule meta_mp, blast)
-    apply (drule meta_mp, blast)
-    apply (drule meta_mp, metis transpD)
-    apply blast
-  oops
-
 lemma safe_iter':
   \<open>(\<forall>m h'. m \<le> n \<longrightarrow> (\<lceil> i \<rceil>\<^bsub>r\<^esub>) h' \<longrightarrow> safe m c h' r g (\<lceil> i \<rceil>\<^bsub>r\<^esub>)) \<Longrightarrow>
     (\<lceil> i \<rceil>\<^bsub>r\<^esub>) h \<Longrightarrow>
@@ -762,19 +764,21 @@ lemma safe_iter':
   apply (induct n arbitrary: i h)
    apply force
   apply (clarsimp simp add: le_Suc_eq)
-
   apply (rule safe_suc)
-     apply (simp add: can_compute_iff; fail)
-    apply blast
+      apply (simp add: can_compute_iff; fail)
+     apply blast
+    apply (force simp add: opstep_iff)
    apply (simp add: opstep_iff)
    apply (elim disjE)
     apply clarsimp
     apply (rule_tac p=\<open>\<lceil> i \<rceil>\<^bsub>r\<^esub>\<close> in safe_skip; force)
    apply (clarsimp simp add: all_conj_distrib)
    apply (rule_tac q=\<open>\<lceil> i \<rceil>\<^bsub>r\<^esub>\<close> in safe_seq, blast)
-   apply clarsimp
-  apply (drule_tac x=i and y=h' in meta_spec2)
-  apply (metis order.refl r_into_rtranclp wsstable_absorb1 wsstable_strongerI)
+   apply force
+  apply (clarsimp simp add: all_conj_distrib)
+  apply (subgoal_tac \<open>(\<lceil> i \<rceil>\<^bsub>r\<^esub>) h'\<close>)
+   apply blast
+  apply (metis rtranclp.rtrancl_into_rtrancl wsstable_def)
   done
 
 lemma safe_iter:
@@ -796,61 +800,154 @@ lemma safe_ndet:
      apply (metis can_compute_iff(3) order.refl safe_sucE)
     apply blast
    apply (rule opstep_act_cases)
-     apply blast
-    apply (clarsimp simp add: opstep_iff safe_suc_iff le_Suc_eq all_conj_distrib imp_conjR)
-    apply (metis (full_types) order.refl safe_step_monoD)
+      apply blast
+     apply (force simp add: opstep_iff)
+    apply (clarsimp simp add: opstep_iff safe_suc_iff le_Suc_eq, metis)
    apply (clarsimp simp add: opstep_iff safe_suc_iff le_Suc_eq all_conj_distrib imp_conjR)
-   apply presburger
+   apply (metis (no_types, lifting) order.refl fst_conv opstep_tau_preserves_heap safe_step_monoD)
   apply (clarsimp simp add: opstep_iff safe_suc_iff le_Suc_eq all_conj_distrib imp_conjR)
   apply (metis safe_step_monoD)
   done
 
 subsubsection \<open> Parallel \<close>
 
-find_theorems \<open>opstep _ (_, _ \<parallel> _) _\<close>
+definition
+  \<open>rel_sepadd2 r1 r2 \<equiv>
+    \<lambda>x y.
+      (\<exists>x1 y1 h2.
+        x1 ## h2 \<and> y1 ## h2 \<and>
+        x = x1 + h2 \<and> y = y1 + h2 \<and>
+        Ex (r2 h2) \<and>
+        r1 x1 y1) \<or>
+      (\<exists>h1 x2 y2.
+        h1 ## x2 \<and> h1 ## y2 \<and>
+        x = h1 + x2 \<and> y = h1 + y2 \<and>
+        Ex (r1 h1) \<and>
+        r2 x2 y2)
+\<comment> \<open> \<or>
+      (\<exists>hf hf' x1 x2.
+        hf ## x1 \<and>
+        hf ## x2 \<and>
+        x1 ## x2 \<and>
+        hf' ## x1 \<and>
+        hf' ## x2 \<and>
+        x = hf + x1 + x2 \<and>
+        (\<exists>y1.
+          hf' ## y1 \<and>
+          y1 ## x2 \<and>
+          y = hf' + y1 + x2 \<and>
+          r1 (hf + x1) (hf' + y1) \<and> Ex (r2 (hf + x2))) \<or>
+        (\<exists>y2.
+          hf' ## y2 \<and>
+          x1 ## y2 \<and>
+          y = hf' + x1 + y2 \<and>
+          r2 (hf + x2) (hf' + y2) \<and> Ex (r1 (hf + x1))))
+\<close>\<close>
 
-lemma opstep_parallel_frame_right:
-  \<open>opstep a (h, c) (h', c') \<Longrightarrow>
-    h ## h2 \<Longrightarrow>
-    opstep a (h + h2, c \<parallel> c2) (h' + h2, c' \<parallel> c2)\<close>
-  sorry
+definition
+  \<open>rel_sepdisjoint2 r1 r2 \<equiv>
+    \<forall>h1 h2. Ex (r1 h1) \<longrightarrow> Ex (r2 h2) \<longrightarrow> h1 ## h2 \<longrightarrow>
+      (\<forall>h1x h2x. Ex (r1 h1x) \<longrightarrow> Ex (r2 h2x) \<longrightarrow> h1x ## h2x \<longrightarrow>
+        h1x + h2x = h1 + h2 \<longrightarrow> h1x = h1 \<and> h2x = h2)\<close>
+
+lemma
+  \<open>rel_sepadd2 r1 r2 (h1 + h2) h' \<Longrightarrow>
+    rel_sepdisjoint2 r1 r2 \<Longrightarrow>
+    \<forall>h1a h2a h1b h2b.
+      pre_state r1 h1a \<longrightarrow> pre_state r2 h2a \<longrightarrow>
+      h1a ## h2a \<longrightarrow>
+      pre_state r1 h1b \<longrightarrow> pre_state r1 h2b \<longrightarrow> 
+      h1b ## h2b \<longrightarrow>
+      h1a + h2a = h1b + h2b \<longrightarrow>
+      h1a = h1b \<and> h2a = h2b \<Longrightarrow>
+    r1 h1 h1' \<Longrightarrow>
+    r2 h2 h2' \<Longrightarrow>
+    h1 ## h2 \<Longrightarrow>
+    h1 ## h2' \<Longrightarrow>
+    h1' ## h2 \<Longrightarrow>
+    (\<exists>h1''. r h1 h1'' \<and> h1'' ## h2 \<and> h' = h1'' + h2) \<or>
+    (\<exists>h2''. r h2 h2'' \<and> h1 ## h2'' \<and> h' = h1 + h2'')\<close>
+  apply (simp add: rel_sepadd2_def)
+  apply (elim disjE exE conjE)
+   apply (rule disjI1)
+  oops
 
 
 definition \<open>rel_changes r x \<equiv> (\<exists>y. y \<noteq> x \<and> r x y) \<or> (\<exists>y. y \<noteq> x \<and> r y x)\<close>
 
-lemma safe_parallel_right:
-  assumes
-    \<open>safe n1 c1 h1 r1 g1 q1\<close>
-    \<open>r1 = r \<squnion> g2\<close>
-    \<open>h1 ## h2\<close>
-    and
-    \<open>all_atom_comm (\<lambda>b. rel_changes b \<sqinter> rel_changes g2 = \<bottom>) c1\<close>
-    \<open>all_atom_comm (\<lambda>b. rel_changes b \<sqinter> rel_changes g1 = \<bottom>) c2\<close>
-  shows
-    \<open>safe n1 (c1 \<parallel> c2) (h1 + h2) r (g1 \<squnion> g2) (q1 \<^emph> q2)\<close>
-  using assms
-  apply (induct arbitrary: c2 h2 r g2 q2 rule: safe.inducts)
-   apply force
+definition
+  \<open>rel_sepdisjoint r1 r2 \<equiv>
+    (\<forall>s2 x1 y1. x1 ## s2 \<longrightarrow> r1 x1 y1 \<longrightarrow> Ex (r2 s2) \<longrightarrow> y1 ## s2) \<and>
+    (\<forall>s1 x2 y2. s1 ## x2 \<longrightarrow> Ex (r1 s1) \<longrightarrow> r2 x2 y2 \<longrightarrow> s1 ## y2)\<close>
 
-  apply clarsimp
-  apply (rule safe_suc)
-     apply clarsimp
-  oops
+definition rel_sepadd :: \<open>('a::perm_alg \<Rightarrow> 'a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> 'a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> 'a \<Rightarrow> bool)\<close> (infixr \<open>\<^emph>\<^emph>\<close> 70) where
+  \<open>rel_sepadd r1 r2 \<equiv> \<lambda>a b.
+    (\<exists>s2. Ex (r2 s2) \<and> (\<exists>x1. x1 ## s2 \<and> a = x1 + s2 \<and> (\<exists>y1. y1 ## s2 \<and> b = y1 + s2 \<and> r1 x1 y1))) \<or>
+    (\<exists>s1. Ex (r1 s1) \<and> (\<exists>x2. s1 ## x2 \<and> a = s1 + x2 \<and> (\<exists>y2. s1 ## y2 \<and> b = s1 + y2 \<and> r2 x2 y2)))\<close>
 
-lemma safe_parallel:
-  \<open>\<forall>m\<le>n. safe m c1 h1 (r \<squnion> g2) g1 q1 \<Longrightarrow>
-    \<forall>m\<le>n. safe m c2 h2 (r \<squnion> g1) g2 q2 \<Longrightarrow>
+lemma rel_sepaddI1:
+  \<open>Ex (r2 s2) \<Longrightarrow>
+    x1 ## s2 \<Longrightarrow>
+    a = x1 + s2 \<Longrightarrow>
+    y1 ## s2 \<Longrightarrow> b = y1 + s2 \<Longrightarrow>
+    r1 x1 y1 \<Longrightarrow>
+    (r1 \<^emph>\<^emph> r2) a b\<close>
+  by (metis rel_sepadd_def)
+
+lemma rel_sepaddI2:
+  \<open>Ex (r1 s1) \<Longrightarrow>
+    s1 ## x2 \<Longrightarrow>
+    a = s1 + x2 \<Longrightarrow>
+    s1 ## y2 \<Longrightarrow>
+    b = s1 + y2 \<Longrightarrow>
+    r2 x2 y2 \<Longrightarrow>
+    (r1 \<^emph>\<^emph> r2) a b\<close>
+  by (metis rel_sepadd_def)
+
+
+lemma opstep_local_skip_left_par':
+  \<open>opstep a s s' \<Longrightarrow> a = Local \<Longrightarrow> snd s = Skip \<parallel> c2 \<Longrightarrow> \<exists>c2'. snd s' = Skip \<parallel> c2'\<close>
+  by (induct rule: opstep.inducts) force+
+
+lemma opstep_local_skip_left_parD:
+  \<open>opstep Local (h, Skip \<parallel> c2) s' \<Longrightarrow> \<exists>h' c2'. s' = (h', Skip \<parallel> c2')\<close>
+  by blast
+
+
+definition shared ::
+  \<open>('a::perm_alg \<Rightarrow> 'a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> 'a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> 'a \<Rightarrow> bool) \<Rightarrow>
+    ('a \<Rightarrow> bool)\<close> where
+  \<open>shared r r1 r2 \<equiv> \<lambda>x.
+    \<forall>h1 h1' h2 h2' y.
+      h2 ## x \<longrightarrow>
+      h1 ## x \<longrightarrow>
+      h1 ## h2 \<longrightarrow>
+      h1' ## x \<longrightarrow>
+      h2' ## x \<longrightarrow>
+      h1' ## h2' \<longrightarrow>
+      r (h1 + h2 + x) (h1' + h2' + y) \<longrightarrow>
+      (r1 (h1 + x) (h1' + y) \<and> r2 h2 h2' \<longleftrightarrow> r1 h1 h1' \<and> r2 (h2 + x) (h2' + y))\<close>
+
+
+lemma safe_parallel_splitting:
+  \<open>safe n c1 h1 (r1 \<squnion> g2) g1 q1 \<Longrightarrow>
+    safe n c2 h2 (r2 \<squnion> g1) g2 q2 \<Longrightarrow>
     all_atom_comm frame_rearranging c1 \<Longrightarrow>
     all_atom_comm frame_rearranging c2 \<Longrightarrow>
+    all_atom_comm (\<lambda>b2. all_atom_comm (\<lambda>b1. \<forall>x. pre_change_state b1 \<sqinter> pre_change_state b2 = \<bottom>) c1) c2 \<Longrightarrow>
     h1 ## h2 \<Longrightarrow>
-    safe n (c1 \<parallel> c2) (h1 + h2) r (g1 \<squnion> g2) (q1 \<^emph> q2)\<close>
+    pre_state g1 h1 \<Longrightarrow>
+    pre_state g2 h2 \<Longrightarrow>
+    rel_sepdisjoint r1 r2 \<Longrightarrow>
+    rel_sepdisjoint g1 g2 \<Longrightarrow>
+    safe n (c1 \<parallel> c2) (h1 + h2) (r1 \<^emph>\<^emph> r2) (g1 \<^emph>\<^emph> g2) (q1 \<^emph> q2)\<close>
   apply (induct n arbitrary: c1 c2 h1 h2)
    apply force
-  apply (clarsimp simp add: le_Suc_eq all_conj_distrib all_ex_conjL safe_suc_iff[where r=\<open>_ \<squnion> _\<close>]
-      imp_conjR)
+  apply (clarsimp simp add: le_Suc_eq safe_suc_iff[where r=\<open>_ \<squnion> _\<close>]
+      all_conj_distrib all_ex_conjL imp_conjR)
   apply (rule safe_suc)
-     apply (clarsimp simp add: can_compute_def opstep_iff)
-     apply (metis fst_conv opstep_frame_rearranging snd_conv)
+     apply (clarsimp simp add: can_compute_def opstep_iff,
+      metis fst_conv opstep_frame_rearranging snd_conv)
     apply blast
    apply (clarsimp simp add: can_compute_def opstep_iff)
    apply (intro conjI)
@@ -858,12 +955,41 @@ lemma safe_parallel:
     apply clarsimp
     apply (erule disjE)
      apply (clarsimp simp add: can_compute_def opstep_iff)
-  sledgehammer
 
-  
-  find_theorems \<open>opstep Tau _ _\<close>
-  
-  sorry
+     apply (rule rel_sepaddI1)
+           apply (force simp add: pre_state_def)
+  oops
+
+
+lemma safe_parallel_sharing:
+  \<open>safe n c1 h1 (r \<squnion> g2) g1 q1 \<Longrightarrow>
+    safe n c2 h2 (r \<squnion> g1) g2 q2 \<Longrightarrow>
+    all_atom_comm frame_rearranging c1 \<Longrightarrow>
+    all_atom_comm frame_rearranging c2 \<Longrightarrow>
+    all_atom_comm (\<lambda>b2. all_atom_comm (\<lambda>b1. \<forall>x. pre_change_state b1 \<sqinter> pre_change_state b2 = \<bottom>) c1) c2 \<Longrightarrow>
+    h1 ## h2 \<Longrightarrow>
+    pre_state g1 h1 \<Longrightarrow>
+    pre_state g2 h2 \<Longrightarrow>
+    rel_sepdisjoint r1 r2 \<Longrightarrow>
+    rel_sepdisjoint g1 g2 \<Longrightarrow>
+    safe n (c1 \<parallel> c2) (h1 + h2) r (g1 \<squnion> g2) (q1 \<^emph> q2)\<close>
+  apply (induct n arbitrary: c1 c2 h1 h2)
+   apply force
+  apply (clarsimp simp add: le_Suc_eq safe_suc_iff[where r=\<open>_ \<squnion> _\<close>]
+      all_conj_distrib all_ex_conjL imp_conjR)
+  apply (rule safe_suc)
+     apply (clarsimp simp add: can_compute_def opstep_iff,
+      metis fst_conv opstep_frame_rearranging snd_conv)
+    apply blast
+   apply (clarsimp simp add: can_compute_def opstep_iff)
+   apply (intro conjI)
+     apply (metis fst_conv opstep_tau_preserves_heap)
+    apply clarsimp
+    apply (erule disjE)
+     apply (clarsimp simp add: can_compute_def opstep_iff)
+
+  oops
+
 
 subsubsection \<open> Frame rule \<close>
 

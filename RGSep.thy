@@ -2,7 +2,6 @@ theory RGSep
   imports Stabilisation
 begin
 
-
 subsection \<open> Framed step relation \<close>
 
 context perm_alg
@@ -12,37 +11,34 @@ text \<open>
   This predicate ensures that an update between two subresources preserve the rest of the heap.
   We need this in the perm_alg case, when we don't necessarily have a unit.
 \<close>
+
 definition
-  \<open>framed_subresource_rel (ha::'a) ha' h h' \<equiv>
-    ha = h \<and> ha' = h' \<or> (\<exists>hf. ha ## hf \<and> ha' ## hf \<and> h = ha + hf \<and> h' = ha' + hf)\<close>
+  \<open>framed_subresource_rel p ha ha' h h' \<equiv>
+    (\<exists>hf. p hf \<and> ha ## hf \<and> ha' ## hf \<and> h = ha + hf \<and> h' = ha' + hf)\<close>
 
-lemma framed_subresource_relI1:
-  \<open>ha = h \<Longrightarrow> ha' = h' \<Longrightarrow> framed_subresource_rel ha ha' h h'\<close>
-  by (simp add: framed_subresource_rel_def)
+abbreviation
+  \<open>weak_framed_subresource_rel p ha ha' h h' \<equiv>
+    ha = h \<and> ha' = h' \<or> framed_subresource_rel p ha ha' h h'\<close>
 
-lemma framed_subresource_relI2:
-  \<open>ha ## hf \<Longrightarrow> ha' ## hf \<Longrightarrow> h = ha + hf \<Longrightarrow> h' = ha' + hf \<Longrightarrow>
-    framed_subresource_rel ha ha' h h'\<close>
+lemma framed_subresource_relI:
+  \<open>p hf \<Longrightarrow> ha ## hf \<Longrightarrow> ha' ## hf \<Longrightarrow> h = ha + hf \<Longrightarrow> h' = ha' + hf \<Longrightarrow>
+    framed_subresource_rel p ha ha' h h'\<close>
   by (force simp add: framed_subresource_rel_def)
 
 lemma framed_subresource_rel_refl[intro!]:
-  \<open>framed_subresource_rel h h' h h'\<close>
+  \<open>weak_framed_subresource_rel p h h' h h'\<close>
   by (simp add: framed_subresource_rel_def)
 
 lemma framed_subresource_rel_frame:
-  \<open>framed_subresource_rel ha ha' h h' \<Longrightarrow>
+  \<open>framed_subresource_rel \<top> ha ha' h h' \<Longrightarrow>
     h ## hf \<Longrightarrow>
     h' ## hf \<Longrightarrow>
-    framed_subresource_rel ha ha' (h + hf) (h' + hf)\<close>
+    framed_subresource_rel \<top> ha ha' (h + hf) (h' + hf)\<close>
   using disjoint_add_swap2 partial_add_assoc2
-  apply (simp add: framed_subresource_rel_def)
-  apply (erule disjE)
-   apply blast
-  apply metis
-  done
+  by (simp add: framed_subresource_rel_def, meson)
 
 lemma framed_subresource_rel_sym:
-  \<open>framed_subresource_rel a b a' b' \<Longrightarrow> framed_subresource_rel b a b' a'\<close>
+  \<open>framed_subresource_rel p a b a' b' \<Longrightarrow> framed_subresource_rel p b a b' a'\<close>
   using framed_subresource_rel_def by auto
 
 end
@@ -50,16 +46,81 @@ end
 lemma (in multiunit_sep_alg) mu_sep_alg_compatible_framed_subresource_rel_iff:
   assumes
     \<open>compatible h h'\<close>
+    \<open>p (unitof h)\<close>
   shows
-  \<open>framed_subresource_rel ha ha' h h' \<longleftrightarrow>
-    (\<exists>hf. ha ## hf \<and> ha' ## hf \<and> h = ha + hf \<and> h' = ha' + hf)\<close>
-  by (metis assms compatible_then_same_unit framed_subresource_rel_def unitof_disjoint2
-      unitof_is_unitR2)
+  \<open>weak_framed_subresource_rel p ha ha' h h' \<longleftrightarrow> framed_subresource_rel p ha ha' h h'\<close>
+  using assms
+  apply (simp add: framed_subresource_rel_def)
+  apply (metis compatible_then_same_unit unitof_disjoint2 unitof_is_unitR2)
+  done
 
 lemma (in sep_alg) sep_alg_framed_subresource_rel_iff:
-  \<open>framed_subresource_rel ha ha' h h' \<longleftrightarrow>
-    (\<exists>hf. ha ## hf \<and> ha' ## hf \<and> h = ha + hf \<and> h' = ha' + hf)\<close>
-  by (metis framed_subresource_rel_def sepadd_0_right zero_disjointR)
+  \<open>p 0 \<Longrightarrow>
+    weak_framed_subresource_rel p ha ha' h h' \<longleftrightarrow> framed_subresource_rel p ha ha' h h'\<close>
+  apply (simp add: framed_subresource_rel_def)
+  apply (metis sepadd_0_right zero_disjointR)
+  done
+
+subsection \<open> Relation framing \<close>
+
+text \<open> embellish a relation with frames \<close>
+
+context perm_alg
+begin
+
+definition frame_with :: \<open>('a \<Rightarrow> 'a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> 'a \<Rightarrow> bool)\<close>
+  (\<open>(frame _ with _)\<close> [0,50] 50)
+  where
+  \<open>frame_with r p \<equiv> \<lambda>h h'. (\<exists>hs hs'. r hs hs' \<and> framed_subresource_rel p hs hs' h h')\<close>
+
+lemma frame_with_frame_rightI:
+  \<open>p h2 \<Longrightarrow> r h1 h1' \<Longrightarrow> h' = h1' + h2 \<Longrightarrow> h1 ## h2 \<Longrightarrow> h1' ## h2 \<Longrightarrow>
+    (frame r with p) (h1 + h2) h'\<close>
+  apply (simp add: frame_with_def framed_subresource_rel_def)
+  apply blast
+  done
+
+lemma frame_with_frame_leftI:
+  \<open>p h1 \<Longrightarrow> r h2 h2' \<Longrightarrow> h' = h1 + h2' \<Longrightarrow> h1 ## h2 \<Longrightarrow> h1 ## h2' \<Longrightarrow>
+    (frame r with p) (h1 + h2) h'\<close>
+  apply (simp add: frame_with_def framed_subresource_rel_def)
+  apply (meson disjoint_sym_iff partial_add_commute)
+  done
+
+definition
+  \<open>framing_coherent f r \<equiv>
+    \<forall>hx1 hf1.
+      f hf1 \<longrightarrow>
+      Ex (r hx1) \<longrightarrow>
+      hx1 ## hf1 \<longrightarrow> \<comment> \<open> for all compatible start state-1 and frame-1 \<close>
+      (\<forall>hx2 hy2 hf2.
+        f hf2 \<longrightarrow>
+        r hx2 hy2 \<longrightarrow>
+        hx2 ## hf2 \<longrightarrow> \<comment> \<open> for all compatible start state-2 and frame-2 \<close>
+        hx1 + hf1 = hx2 + hf2 \<longrightarrow> \<comment> \<open> if they add to the same thing \<close>
+        (\<exists>hy1. r hx1 hy1 \<and> hy1 ## hf1 \<and> hy2 + hf2 = hy1 + hf1))
+           \<comment> \<open> then there exists an hy1 that adds with frame-1 to hy2 + hf2 \<close>
+  \<close>
+
+lemma frame_coherent_rel_with_frame_right_iff:
+  \<open>framing_coherent f r \<Longrightarrow>
+    f hf1 \<Longrightarrow>
+    r hx1 y \<Longrightarrow>
+    hx1 ## hf1 \<Longrightarrow>
+    (frame r with f) (hx1 + hf1) h' \<longleftrightarrow> (\<exists>hy1'. r hx1 hy1' \<and> hy1' ## hf1 \<and> h' = hy1' + hf1)\<close>
+  by (simp add: framing_coherent_def frame_with_def framed_subresource_rel_def, blast)
+
+lemma frame_coherent_rel_with_frame_left_iff:
+  \<open>framing_coherent f r \<Longrightarrow>
+    f hf1 \<Longrightarrow>
+    r hx1 y \<Longrightarrow>
+    hx1 ## hf1 \<Longrightarrow>
+    (frame r with f) (hf1 + hx1) h' \<longleftrightarrow> (\<exists>hy1'. r hx1 hy1' \<and> hy1' ## hf1 \<and> h' = hf1 + hy1')\<close>
+  apply (simp add: framing_coherent_def frame_with_def framed_subresource_rel_def)
+  apply (metis partial_add_commute) (* slow *)
+  done
+
+end
 
 
 section \<open> frame consistency predicates \<close>
@@ -145,7 +206,7 @@ lemma frame_equals_maintain_eq_extends:
 
 subsection \<open> Frame closure \<close>
 
-definition \<open>framecl r \<equiv> (\<lambda>a b. (\<exists>x y. r x y \<and> framed_subresource_rel x y a b))\<close>
+definition \<open>framecl r \<equiv> (\<lambda>a b. (\<exists>x y. r x y \<and> framed_subresource_rel \<top> x y a b))\<close>
 
 
 subsection \<open> Frame closed \<close>

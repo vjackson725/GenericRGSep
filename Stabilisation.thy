@@ -311,12 +311,16 @@ proof -
     \<open>stableres a2 ## half c\<close>
     \<open>stableres a1 ## stableres a2 + c\<close>
     \<open>stableres a1 + half c ## stableres a2 + half c\<close>
-    using  assms(1) c_props(2)
+    using assms(1) c_props(2)
     apply -
-    apply (metis disjoint_add_leftL half_disjoint_preservation_right stableres_disjoint_preservation)
-    apply (metis disjoint_add_leftR half_disjoint_preservation_right stableres_disjoint_preservation)
-    apply (metis disjoint_add_rightR disjoint_add_right_commute disjoint_sym_iff partial_add_commute stableres_disjoint_preservation)
-    apply (metis disjoint_add_leftL disjoint_add_commuteL disjoint_add_leftR half_disjoint_distribL partial_add_commute stableres_disjoint_preservation)
+       apply (metis disjoint_add_leftL half_disjoint_preservation_right
+        stableres_disjoint_preservation)
+      apply (metis disjoint_add_leftR half_disjoint_preservation_right
+        stableres_disjoint_preservation)
+     apply (metis disjoint_add_rightR disjoint_add_right_commute disjoint_sym_iff
+        partial_add_commute stableres_disjoint_preservation)
+    apply (meson disjoint_add_leftR disjoint_add_swap2 half_disjoint_distribR
+        stableres_disjoint_preservation)
     done
 
   have \<open>b = stableres a1 + half c + (stableres a2 + half c)\<close>
