@@ -127,6 +127,7 @@ abbreviation \<open>tight_reflp r \<equiv> reflp_on (Collect (prepost_state r)) 
 
 definition \<open>pre_change_state r \<equiv> \<lambda>a. \<exists>b. r a b \<and> a \<noteq> b\<close>
 definition \<open>post_change_state r \<equiv> \<lambda>b. \<exists>a. r a b \<and> a \<noteq> b\<close>
+definition \<open>change_state \<equiv> pre_change_state \<squnion> post_change_state\<close>
 
 lemma tight_reflpD1[dest]:
   \<open>tight_reflp r \<Longrightarrow> r x y \<Longrightarrow> r x x\<close>
@@ -196,6 +197,19 @@ lemma liftR_le_liftR[simp]:
   \<open>rel_liftR p \<le> rel_liftR q \<longleftrightarrow> p \<le> q\<close>
   by (simp add: rel_liftR_def)
 
+lemma pre_change_state_mono[dest]:
+  \<open>r1 \<le> r2 \<Longrightarrow> pre_change_state r1 x \<Longrightarrow> pre_change_state r2 x\<close>
+  by (force simp add: pre_change_state_def)
+
+lemma post_change_state_mono[dest]:
+  \<open>r1 \<le> r2 \<Longrightarrow> post_change_state r1 x \<Longrightarrow> post_change_state r2 x\<close>
+  by (force simp add: post_change_state_def)
+
+lemma change_state_mono[dest]:
+  \<open>r1 \<le> r2 \<Longrightarrow> change_state r1 x \<Longrightarrow> change_state r2 x\<close>
+  by (force simp add: change_state_def)
+
+
 lemma implies_rel_then_rtranscl_implies_rel:
   assumes assms_induct:
     \<open>r\<^sup>*\<^sup>* x y\<close>
@@ -231,6 +245,18 @@ lemma rtransp_rel_is_rtransclp:
    apply ((rule rtranclp_induct, assumption); force dest: reflpD transpD)
   apply force
   done
+
+lemma rtranclp_absorb_id_right[simp]:
+  \<open>(\<lambda>x y. r x y \<or> x = y)\<^sup>*\<^sup>* = r\<^sup>*\<^sup>*\<close>
+  apply (rule HOL.trans[where s=\<open>r\<^sup>=\<^sup>=\<^sup>*\<^sup>*\<close>])
+   apply (simp del: rtranclp_reflclp add: sup_fun_def)
+  apply simp
+  done
+
+lemma rtranclp_absorb_id_left[simp]:
+  \<open>(\<lambda>x y. x = y \<or> r x y)\<^sup>*\<^sup>* = r\<^sup>*\<^sup>*\<close>
+  by (subst disj_commute, simp)
+
 
 subsection \<open> Function Properties \<close>
 

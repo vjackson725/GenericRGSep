@@ -30,6 +30,15 @@ lemma wsstable_strongerI[intro!]:
   \<open>P s \<Longrightarrow> R\<^sup>*\<^sup>* s s' \<Longrightarrow> (\<lceil> P \<rceil>\<^bsub>R\<^esub>) s'\<close>
   by (force simp add: wsstable_def)
 
+lemma wsstable_step:
+  \<open>R s s' \<Longrightarrow> (\<lceil> P \<rceil>\<^bsub>R\<^esub>) s \<Longrightarrow> (\<lceil> P \<rceil>\<^bsub>R\<^esub>) s'\<close>
+  by (metis rtranclp.rtrancl_into_rtrancl wsstable_def)
+
+lemma swstable_step:
+  \<open>R s s' \<Longrightarrow> (\<lfloor> P \<rfloor>\<^bsub>R\<^esub>) s \<Longrightarrow> (\<lfloor> P \<rfloor>\<^bsub>R\<^esub>) s'\<close>
+  by (simp add: converse_rtranclp_into_rtranclp swstable_def)
+
+
 lemma implies_swstableD:
   \<open>p \<le> \<lfloor> q \<rfloor>\<^bsub>r\<^esub> \<Longrightarrow> r\<^sup>*\<^sup>* s s' \<Longrightarrow> p s \<Longrightarrow> q s'\<close>
   by (simp add: swstable_def le_fun_def)

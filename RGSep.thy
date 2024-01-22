@@ -29,6 +29,14 @@ lemma framed_subresource_rel_refl[intro!]:
   \<open>weak_framed_subresource_rel p h h' h h'\<close>
   by (simp add: framed_subresource_rel_def)
 
+lemma framed_subresource_rel_frame_second:
+  \<open>framed_subresource_rel \<top> ha ha' h h' \<Longrightarrow>
+    h ## hf \<Longrightarrow>
+    h' ## hf \<Longrightarrow>
+    framed_subresource_rel \<top> ha ha' (h + hf) (h' + hf)\<close>
+  using disjoint_add_swap2 partial_add_assoc2
+  by (simp add: framed_subresource_rel_def, meson)
+
 lemma framed_subresource_rel_frame:
   \<open>framed_subresource_rel \<top> ha ha' h h' \<Longrightarrow>
     h ## hf \<Longrightarrow>
@@ -87,6 +95,96 @@ lemma frame_with_frame_leftI:
   apply (meson disjoint_sym_iff partial_add_commute)
   done
 
+lemma framed_rel_step_wsstable:
+  \<open>framed_subresource_rel f hs hs' h h' \<Longrightarrow>
+    r hs hs' \<Longrightarrow>
+    (\<lceil> p \<rceil>\<^bsub>frame r with f\<^esub>) h \<Longrightarrow>
+    (\<lceil> p \<rceil>\<^bsub>frame r with f\<^esub>) h'\<close>
+  apply (clarsimp simp add: frame_with_def wsstable_def)
+  apply (rule_tac x=s in exI)
+  apply clarsimp
+  apply (rule rtranclp.rtrancl_into_rtrancl, assumption)
+  apply (rule_tac x=hs in exI, rule_tac x=hs' in exI)
+  apply clarsimp
+  done
+
+lemma framed_rel_step_swstable:
+  \<open>framed_subresource_rel f hs hs' h h' \<Longrightarrow>
+    r hs hs' \<Longrightarrow>
+    (\<lfloor> p \<rfloor>\<^bsub>frame r with f\<^esub>) h \<Longrightarrow>
+    (\<lfloor> p \<rfloor>\<^bsub>frame r with f\<^esub>) h'\<close>
+  apply (clarsimp simp add: frame_with_def swstable_def)
+  apply (subgoal_tac \<open>(\<lambda>h h'. \<exists>hs hs'. r hs hs' \<and> framed_subresource_rel f hs hs' h h')\<^sup>*\<^sup>* h s'\<close>)
+   apply force
+  apply (rule converse_rtranclp_into_rtranclp; blast)
+  done
+
+
+subsection \<open> Weak relation framing \<close>
+
+definition wframe_with :: \<open>('a \<Rightarrow> 'a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> 'a \<Rightarrow> bool)\<close>
+  (\<open>(wframe _ with _)\<close> [0,50] 50)
+  where
+  \<open>wframe_with r p \<equiv> \<lambda>h h'. \<exists>hs hs'. r hs hs' \<and> weak_framed_subresource_rel p hs hs' h h'\<close>
+
+lemma wframe_with_fullI:
+  \<open>r h h' \<Longrightarrow> (wframe r with p) h h'\<close>
+  by (force simp add: wframe_with_def)
+
+lemma wframe_with_frame_rightI:
+  \<open>p h2 \<Longrightarrow> r h1 h1' \<Longrightarrow> h' = h1' + h2 \<Longrightarrow> h1 ## h2 \<Longrightarrow> h1' ## h2 \<Longrightarrow>
+    (wframe r with p) (h1 + h2) h'\<close>
+  apply (simp add: wframe_with_def framed_subresource_rel_def)
+  apply blast
+  done
+
+lemma weak_framed_rel_mono:
+  \<open>r1 \<le> r2 \<Longrightarrow> (wframe r1 with f) \<le> (wframe r2 with f)\<close>
+  by (force simp add: wframe_with_def)
+
+lemma weak_framed_frame_right:
+  \<open>x ## z \<Longrightarrow> y ## z \<Longrightarrow> (wframe r with \<top>) x y \<Longrightarrow> (wframe r with \<top>) (x + z) (y + z)\<close>
+  apply (clarsimp simp add: wframe_with_def)
+  apply (meson framed_subresource_relI framed_subresource_rel_frame_second top1I)
+  done
+
+lemma weak_framed_frame_left:
+  \<open>z ## x \<Longrightarrow> z ## y \<Longrightarrow> (wframe r with \<top>) x y \<Longrightarrow> (wframe r with \<top>) (z + x) (z + y)\<close>
+  by (metis disjoint_sym partial_add_commute weak_framed_frame_right)
+
+
+lemma wframe_with_frame_leftI:
+  \<open>p h1 \<Longrightarrow> r h2 h2' \<Longrightarrow> h' = h1 + h2' \<Longrightarrow> h1 ## h2 \<Longrightarrow> h1 ## h2' \<Longrightarrow>
+    (wframe r with p) (h1 + h2) h'\<close>
+  apply (simp add: wframe_with_def framed_subresource_rel_def)
+  apply (meson disjoint_sym_iff partial_add_commute)
+  done
+
+lemma weak_framed_rel_step_wsstable:
+  \<open>weak_framed_subresource_rel f hs hs' h h' \<Longrightarrow>
+    r hs hs' \<Longrightarrow>
+    (\<lceil> p \<rceil>\<^bsub>wframe r with f\<^esub>) h \<Longrightarrow>
+    (\<lceil> p \<rceil>\<^bsub>wframe r with f\<^esub>) h'\<close>
+  apply (clarsimp simp add: wframe_with_def wsstable_def)
+  apply (rule_tac x=s in exI)
+  apply clarsimp
+  apply (rule rtranclp.rtrancl_into_rtrancl, assumption)
+  apply (rule_tac x=hs in exI, rule_tac x=hs' in exI)
+  apply clarsimp
+  done
+
+lemma weak_framed_rel_step_swstable:
+  \<open>weak_framed_subresource_rel f hs hs' h h' \<Longrightarrow>
+    r hs hs' \<Longrightarrow>
+    (\<lfloor> p \<rfloor>\<^bsub>wframe r with f\<^esub>) h \<Longrightarrow>
+    (\<lfloor> p \<rfloor>\<^bsub>wframe r with f\<^esub>) h'\<close>
+  apply (clarsimp simp add: wframe_with_def swstable_def)
+  apply (subgoal_tac \<open>(\<lambda>h h'. \<exists>hs hs'. r hs hs' \<and> weak_framed_subresource_rel f hs hs' h h')\<^sup>*\<^sup>* h s'\<close>)
+   apply force
+  apply (rule converse_rtranclp_into_rtranclp; force)
+  done
+
+
 definition
   \<open>framing_coherent f r \<equiv>
     \<forall>hx1 hf1.
@@ -124,13 +222,6 @@ end
 
 
 section \<open> frame consistency predicates \<close>
-
-subsection \<open> Frame rearranging \<close>
-
-definition \<open>frame_rearranging b \<equiv>
-  \<forall>h1 h2 hf.
-    b h1 h2 \<longrightarrow> h1 ## hf \<longrightarrow>
-      (\<exists>h2'. b h1 h2' \<and> h2' ## hf \<and> b (h1 + hf) (h2' + hf))\<close>
 
 subsection \<open> Frame maintains \<close>
 
@@ -202,11 +293,6 @@ lemma frame_equals_maintain_eq_extends:
   \<open>frame_pred_maintains ((=) h) = frame_pred_extends ((=) h)\<close>
   unfolding frame_pred_maintains_def frame_pred_extends_def
   by presburger
-
-
-subsection \<open> Frame closure \<close>
-
-definition \<open>framecl r \<equiv> (\<lambda>a b. (\<exists>x y. r x y \<and> framed_subresource_rel \<top> x y a b))\<close>
 
 
 subsection \<open> Frame closed \<close>
