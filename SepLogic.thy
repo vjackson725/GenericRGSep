@@ -159,6 +159,12 @@ lemma partial_le_plus[simp]: \<open>a ## b \<Longrightarrow> a \<le> a + b\<clos
 lemma partial_le_plus2[simp]: \<open>a ## b \<Longrightarrow> b \<le> a + b\<close>
   by (metis partial_le_plus disjoint_sym partial_add_commute)
 
+lemma partial_le_part_left: \<open>a ## b \<Longrightarrow> a + b \<le> c \<Longrightarrow> a \<le> c\<close>
+  using order.trans partial_le_plus by blast
+
+lemma partial_le_part_right: \<open>a ## b \<Longrightarrow> a + b \<le> c \<Longrightarrow> b \<le> c\<close>
+  using order.trans partial_le_plus2 by blast
+
 (* TODO: think about decreasing and increasing elements from
     'Bringing order to the separation logic Jungle'.
   All our elements are increasing, I think, because of the above two rules.

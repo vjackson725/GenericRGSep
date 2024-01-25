@@ -15,8 +15,8 @@ lemma act_not_eq_iff[simp]:
 
 subsection \<open> Operational semantics steps \<close>
 
-inductive opstep :: \<open>act \<Rightarrow> ('h::perm_alg) \<times> 'h comm \<Rightarrow> 'h \<times> 'h comm \<Rightarrow> bool\<close> where
-  seq_left[intro!]:  \<open>opstep a (h, c1) (h', c1') \<Longrightarrow> opstep a (h, c1 ;; c2) (h', c1' ;; c2)\<close>
+inductive opstep :: \<open>act \<Rightarrow> ('h::perm_alg) \<times> 'h comm \<Rightarrow> ('h \<times> 'h comm) \<Rightarrow> bool\<close> where
+  seq_left[intro!]: \<open>opstep a (h, c1) (h', c1') \<Longrightarrow> opstep a (h, c1 ;; c2) (h', c1' ;; c2)\<close>
 | seq_right[intro!]: \<open>opstep Tau (h, Skip ;; c2) (h, c2)\<close>
 | ndet_tau_left[intro]:  \<open>opstep Tau (h, c1) (h', c1') \<Longrightarrow> opstep Tau (h, c1 \<^bold>+ c2) (h', c1' \<^bold>+ c2)\<close>
 | ndet_tau_right[intro]: \<open>opstep Tau (h, c2) (h', c2') \<Longrightarrow> opstep Tau (h, c1 \<^bold>+ c2) (h', c1 \<^bold>+ c2')\<close>
@@ -26,9 +26,9 @@ inductive opstep :: \<open>act \<Rightarrow> ('h::perm_alg) \<times> 'h comm \<R
 | ndet_local_right[intro]: \<open>opstep Local (h, c2) s' \<Longrightarrow> opstep Local (h, c1 \<^bold>+ c2) s'\<close>
 | par_left[intro]:  \<open>opstep a (h, s) (h', s') \<Longrightarrow> opstep a (h, s \<parallel> t) (h', s' \<parallel> t)\<close>
 | par_right[intro]: \<open>opstep a (h, t) (h', t') \<Longrightarrow> opstep a (h, s \<parallel> t) (h', s \<parallel> t')\<close>
-| par_skip_left[intro!]:  \<open>opstep Tau (h, Skip \<parallel> s2) (h, s2)\<close>
-| par_skip_right[intro!]: \<open>opstep Tau (h, s1 \<parallel> Skip) (h, s1)\<close>
+| par_skip[intro!]:  \<open>opstep Tau (h, Skip \<parallel> Skip) (h, Skip)\<close>
 | iter_skip[intro]: \<open>opstep Tau (h, c\<^sup>\<star>) (h, Skip)\<close>
+  \<comment> \<open> TODO: not quite right... c has to not be able to take a move? \<close>
 | iter_step[intro]: \<open>opstep Tau (h, c\<^sup>\<star>) (h, c ;; c\<^sup>\<star>)\<close>
 | atomic[intro!]: \<open>a = Local \<Longrightarrow> snd s' = Skip \<Longrightarrow> b h (fst s') \<Longrightarrow> opstep a (h, Atomic b) s'\<close>
 
@@ -64,8 +64,7 @@ lemma opstep_iff_standard[opstep_iff]:
     a = Tau \<and> c1 = Skip \<and> s' = (h, c2) \<or>
     a = Tau \<and> c2 = Skip \<and> s' = (h, c1)\<close>
   \<open>opstep a (h, c1 \<parallel> c2) s' \<longleftrightarrow>
-    a = Tau \<and> c1 = Skip \<and> s' = (h, c2) \<or>
-    a = Tau \<and> c2 = Skip \<and> s' = (h, c1) \<or>
+    a = Tau \<and> c1 = Skip \<and> c2 = Skip \<and> s' = (h, Skip) \<or>
     (\<exists>h' c1'. opstep a (h,c1) (h',c1') \<and> s' = (h', c1' \<parallel> c2)) \<or>
     (\<exists>h' c2'. opstep a (h,c2) (h',c2') \<and> s' = (h', c1 \<parallel> c2'))\<close>
   \<open>opstep a (h, c\<^sup>\<star>) s' \<longleftrightarrow>
@@ -108,18 +107,16 @@ lemma opstep_to_ndet_originally_ndet_subexpr:
 lemma opstep_step_to_under_left_ndet_impossible:
   \<open>opstep a s s' \<Longrightarrow> c1' \<^bold>+ c2' \<le> snd s' \<Longrightarrow> snd s \<le> c1' \<Longrightarrow> False\<close>
   apply (induct arbitrary: c1' c2' rule: opstep.inducts; clarsimp)
-              apply (metis less_eq_comm_no_constructorsD(3) less_eq_comm_subexprsD(1,2))
-             apply (metis less_eq_comm_no_constructorsD(3) less_eq_comm_subexprsD(2))
-            apply (metis order.refl less_eq_comm_no_constructorsD(3) less_eq_comm_subexprsD(3,4))
-           apply (metis order.refl less_eq_comm_no_constructorsD(3) less_eq_comm_subexprsD(3,4))
-          apply (metis less_eq_comm_no_constructorsD(3) less_eq_comm_subexprsD(4))
-         apply (metis less_eq_comm_no_constructorsD(3) less_eq_comm_subexprsD(3))
-        apply (metis less_eq_comm_subexprsD(3))
-       apply (metis less_eq_comm_subexprsD(4))
-      apply (metis less_eq_comm_no_constructorsD(3) less_eq_comm_subexprsD(5,6))
-     apply (metis less_eq_comm_no_constructorsD(3) less_eq_comm_subexprsD(5,6))
-    apply (metis less_eq_comm_no_constructorsD(3) less_eq_comm_subexprsD(6))
-   apply (metis less_eq_comm_no_constructorsD(3) less_eq_comm_subexprsD(5))
+            apply (metis less_eq_comm_no_constructorsD(3) less_eq_comm_subexprsD(1,2))
+           apply (metis less_eq_comm_no_constructorsD(3) less_eq_comm_subexprsD(2))
+          apply (metis order.refl less_eq_comm_no_constructorsD(3) less_eq_comm_subexprsD(3,4))
+         apply (metis order.refl less_eq_comm_no_constructorsD(3) less_eq_comm_subexprsD(3,4))
+        apply (metis less_eq_comm_no_constructorsD(3) less_eq_comm_subexprsD(4))
+       apply (metis less_eq_comm_no_constructorsD(3) less_eq_comm_subexprsD(3))
+      apply (metis less_eq_comm_subexprsD(3))
+     apply (metis less_eq_comm_subexprsD(4))
+    apply (metis less_eq_comm_no_constructorsD(3) less_eq_comm_subexprsD(5,6))
+   apply (metis less_eq_comm_no_constructorsD(3) less_eq_comm_subexprsD(5,6))
   apply (metis less_eq_comm_no_constructorsD(3) less_eq_comm_subexprsD(7))
   done
 
@@ -130,18 +127,16 @@ lemma opstep_step_to_left_ndet_impossible:
 lemma opstep_step_to_under_right_ndet_impossible:
   \<open>opstep a s s' \<Longrightarrow> c1' \<^bold>+ c2' \<le> snd s' \<Longrightarrow> snd s \<le> c2' \<Longrightarrow> False\<close>
   apply (induct arbitrary: c1' c2' rule: opstep.inducts; clarsimp)
-              apply (metis less_eq_comm_no_constructorsD(4) less_eq_comm_subexprsD(1,2))
-             apply (metis less_eq_comm_no_constructorsD(4) less_eq_comm_subexprsD(2))
-            apply (metis order.refl less_eq_comm_no_constructorsD(4) less_eq_comm_subexprsD(3,4))
-           apply (metis order.refl less_eq_comm_no_constructorsD(4) less_eq_comm_subexprsD(3,4))
-          apply (metis less_eq_comm_no_constructorsD(4) less_eq_comm_subexprsD(4))
-         apply (metis less_eq_comm_no_constructorsD(4) less_eq_comm_subexprsD(3))
-        apply (metis less_eq_comm_subexprsD(3))
-       apply (metis less_eq_comm_subexprsD(4))
-      apply (metis less_eq_comm_no_constructorsD(4) less_eq_comm_subexprsD(5,6))
-     apply (metis less_eq_comm_no_constructorsD(4) less_eq_comm_subexprsD(5,6))
-    apply (metis less_eq_comm_no_constructorsD(4) less_eq_comm_subexprsD(6))
-   apply (metis less_eq_comm_no_constructorsD(4) less_eq_comm_subexprsD(5))
+            apply (metis less_eq_comm_no_constructorsD(4) less_eq_comm_subexprsD(1,2))
+           apply (metis less_eq_comm_no_constructorsD(4) less_eq_comm_subexprsD(2))
+          apply (metis order.refl less_eq_comm_no_constructorsD(4) less_eq_comm_subexprsD(3,4))
+         apply (metis order.refl less_eq_comm_no_constructorsD(4) less_eq_comm_subexprsD(3,4))
+        apply (metis less_eq_comm_no_constructorsD(4) less_eq_comm_subexprsD(4))
+       apply (metis less_eq_comm_no_constructorsD(4) less_eq_comm_subexprsD(3))
+      apply (metis less_eq_comm_subexprsD(3))
+     apply (metis less_eq_comm_subexprsD(4))
+    apply (metis less_eq_comm_no_constructorsD(4) less_eq_comm_subexprsD(5,6))
+   apply (metis less_eq_comm_no_constructorsD(4) less_eq_comm_subexprsD(5,6))
   apply (metis less_eq_comm_no_constructorsD(4) less_eq_comm_subexprsD(7))
   done
 
@@ -303,6 +298,82 @@ lemma opstep_frame_pred_maintains2:
   using assms opstep_frame_pred_maintainsD
   by fastforce
 
+subsubsection \<open> Opstep Unframe \<close>
+
+lemma opstep_unframe':
+  fixes s s' :: \<open>('a::cancel_perm_alg) \<times> 'a comm\<close>
+  assumes
+    \<open>s \<midarrow>a\<rightarrow> s'\<close>
+    \<open>s = (h + hf, c)\<close>
+    \<open>s' = (h' + hf, c')\<close>
+    \<open>all_atom_comm (unframe_safe (rel_lift ((=) hf))) c\<close>
+    \<open>h ## hf\<close>
+    \<open>h' ## hf\<close>
+  shows
+    \<open>(h, c) \<midarrow>a\<rightarrow> (h', c')\<close>
+  using assms
+  apply -
+  apply (induct arbitrary: h h' c c' hf rule: opstep.induct)
+                apply (simp add: opstep_iff; fail)+ (* slow *)
+  apply (simp add: opstep_iff unframe_safeD)
+  done
+
+lemma opstep_unframe_right:
+  fixes h :: \<open>'a::cancel_perm_alg\<close>
+  assumes
+    \<open>(h + hf, c) \<midarrow>a\<rightarrow> (h' + hf, c')\<close>
+    \<open>all_atom_comm (unframe_safe (rel_lift ((=) hf))) c\<close>
+    \<open>h ## hf\<close>
+    \<open>h' ## hf\<close>
+  shows
+    \<open>(h, c) \<midarrow>a\<rightarrow> (h', c')\<close>
+  using assms opstep_unframe'
+  by blast
+
+lemma opstep_unframe_left:
+  fixes h :: \<open>'a::cancel_perm_alg\<close>
+  assumes
+    \<open>(hf + h, c) \<midarrow>a\<rightarrow> (hf + h', c')\<close>
+    \<open>all_atom_comm (unframe_safe (rel_lift ((=) hf))) c\<close>
+    \<open>hf ## h\<close>
+    \<open>hf ## h'\<close>
+  shows
+    \<open>(h, c) \<midarrow>a\<rightarrow> (h', c')\<close>
+  using assms opstep_unframe'
+  by (metis disjoint_sym_iff partial_add_commute)
+
+(*
+lemma opstep_strong_unframe':
+  fixes s :: \<open>('a::cancel_perm_alg) \<times> 'a comm\<close>
+  assumes
+    \<open>s \<midarrow>a\<rightarrow> s'\<close>
+    \<open>s = (h + hf, c)\<close>
+    \<open>all_atom_comm (unframe_safe (rel_lift ((=) hf))) c\<close>
+    \<open>all_atom_comm (\<lambda>b. \<forall>x. x ## hf \<longrightarrow> Ex (b (x + hf)) \<longrightarrow> (\<exists>y. y ## hf \<and> b (x + hf) (y + hf))) c\<close>
+    \<open>h ## hf\<close>
+  shows
+    \<open>\<exists>h'. (h, c) \<midarrow>a\<rightarrow> (h', snd s')\<close>
+  using assms
+  apply -
+  apply (induct arbitrary: h c hf rule: opstep.induct)
+                apply fastforce
+               apply fastforce
+              apply fastforce
+             apply fastforce
+            apply fastforce
+           apply fastforce
+  subgoal sorry
+         apply fastforce
+        apply fastforce
+  apply fastforce
+  apply fastforce
+     apply fastforce
+    apply fastforce
+apply fastforce
+              sledgehammer
+  apply (simp add: opstep_iff unframe_safeD)
+  done
+*)
 
 subsubsection \<open> adding parallel \<close>
 
@@ -335,60 +406,90 @@ qed
 lemmas rev_opstep_preserves_all_atom_comm = opstep_preserves_all_atom_comm[rotated]
 
 
-section \<open> Termination and Abort \<close>
+subsection \<open> Operational Semantics \<close>
 
-text \<open> TODO: distinguish safe termination from abort \<close>
+inductive opsem
+  :: \<open>act list \<Rightarrow> ('a::perm_alg) \<times> 'a comm \<Rightarrow> 'a \<times> 'a comm \<Rightarrow> bool\<close>
+  where
+  base[intro!]: \<open>opsem [] s s\<close>
+| step[intro!]: \<open>s \<midarrow>a\<rightarrow> s' \<Longrightarrow> opsem as s' s'' \<Longrightarrow> opsem (a # as) s s''\<close>
 
-definition \<open>can_compute s \<equiv> \<exists>a s'. s \<midarrow>a\<rightarrow> s'\<close>
+inductive_cases opsem_NilE[elim!]: \<open>opsem [] s s'\<close>
+inductive_cases opsem_ConsE[elim!]: \<open>opsem (a # as) s s'\<close>
 
-lemma can_compute_iff:
-  \<open>can_compute (h, Skip) \<longleftrightarrow> False\<close>
-  \<open>can_compute (h, c1 ;; c2) \<longleftrightarrow> c1 = Skip \<or> can_compute (h,c1)\<close>
-  \<open>can_compute (h, c1 \<^bold>+ c2) \<longleftrightarrow>
-    c1 = Skip \<or> c2 = Skip \<or> can_compute (h,c1) \<or> can_compute (h,c2)\<close>
-  \<open>can_compute (h, c1 \<parallel> c2) \<longleftrightarrow>
-    c1 = Skip \<or> c2 = Skip \<or> can_compute (h,c1) \<or> can_compute (h,c2)\<close>
-  \<open>can_compute (h, c\<^sup>\<star>) \<longleftrightarrow> True\<close>
-  \<open>can_compute (h, Atomic b) \<longleftrightarrow> (\<exists>h'. b h h')\<close>
-  unfolding can_compute_def
-       apply (fastforce simp add: opstep_iff)
-      apply (fastforce simp add: opstep_iff)
-  subgoal
-    apply (clarsimp simp add: opstep_iff)
-    apply (rule iffI)
-     apply force
-    apply (elim disjE; clarsimp)
-       apply blast
-      apply blast
-     apply (case_tac a)
-      apply metis
-     apply blast
-    apply (case_tac a)
-     apply metis
-    apply blast
-    done
-  subgoal
-    apply (clarsimp simp add: opstep_iff)
-    apply (rule iffI)
-     apply force
-    apply (elim disjE; clarsimp)
-       apply blast
-      apply blast
-     apply (case_tac a)
-      apply metis
-     apply blast
-    apply (case_tac a)
-     apply metis
-    apply blast
-    done
-   apply (fastforce simp add: opstep_iff)
-  apply (fastforce simp add: opstep_iff)
+lemma opsem_iff[simp]:
+  \<open>opsem [] s s' \<longleftrightarrow> s' = s\<close>
+  \<open>opsem (a # as) s s'' \<longleftrightarrow> (\<exists>s'. (s \<midarrow>a\<rightarrow> s') \<and> opsem as s' s'')\<close>
+  by force+
+
+
+(*
+paragraph \<open> pretty opsem \<close>
+
+abbreviation(input) pretty_opsem :: \<open>_ \<Rightarrow> _ \<Rightarrow> _ \<Rightarrow> _\<close> (\<open>_ \<midarrow>(_)\<rightarrow>\<^sup>\<star> _\<close> [60,0,60] 60) where
+  \<open>hc \<midarrow>as\<rightarrow>\<^sup>\<star> hc' \<equiv> opsem as hc hc'\<close>
+
+subsection \<open> Theorems about the operational semantics \<close>
+
+paragraph \<open> Reverse-cons transitive closure rules \<close>
+
+lemma opsem_step_rev:
+  \<open>opsem as s s' \<Longrightarrow> s' \<midarrow>a\<rightarrow> s'' \<Longrightarrow> opsem (as @ [a]) s s''\<close>
+  apply (induct rule: opsem.induct)
+   apply (metis append_self_conv2 opsem.simps)
+  apply force
   done
 
-lemma not_skip_can_compute:
-  \<open>c \<noteq> Skip \<Longrightarrow> \<exists>y. g h y \<Longrightarrow> atoms_guarantee g c \<Longrightarrow> can_compute (h, c)\<close>
-  by (induct c arbitrary: h)
-    (fastforce simp add: can_compute_iff)+
+lemma opsem_step_revE:
+  \<open>opsem (as @ [a]) s s'' \<Longrightarrow> (\<And>s'. opsem as s s' \<Longrightarrow> opstep a s' s'' \<Longrightarrow> P) \<Longrightarrow> P\<close>
+  by (induct as arbitrary: a s s'')
+    (simp, blast)+
+
+lemma opsem_rev_cons_iff[simp]:
+  \<open>opsem (as @ [a]) s s'' \<longleftrightarrow> (\<exists>s'. opsem as s s' \<and> (s' \<midarrow>a\<rightarrow> s''))\<close>
+  by (meson opsem_step_rev opsem_step_revE)
+
+lemma opsem_rev_induct[consumes 1, case_names Nil Snoc]:
+  \<open>opsem as s s' \<Longrightarrow>
+    (\<And>r s. P r [] s s) \<Longrightarrow>
+    (\<And>s r a s' as s''.
+      opsem as s s' \<Longrightarrow>
+      opstep a s' s'' \<Longrightarrow>
+      P r as s s' \<Longrightarrow>
+      P r (as @ [a]) s s'') \<Longrightarrow>
+    P r as s s'\<close>
+  by (induct as arbitrary: s s' rule: rev_induct) force+
+
+lemma opsem_stepI:
+  \<open>s \<midarrow>a\<rightarrow> s' \<Longrightarrow> s \<midarrow>[a]\<rightarrow>\<^sup>\<star> s'\<close>
+  by blast
+
+lemma opsem_trans:
+  \<open>s \<midarrow>as1\<rightarrow>\<^sup>\<star> s' \<Longrightarrow> s' \<midarrow>as2\<rightarrow>\<^sup>\<star> s'' \<Longrightarrow> s \<midarrow>as1 @ as2\<rightarrow>\<^sup>\<star> s''\<close>
+  by (induct arbitrary: as2 s'' rule: opsem.induct)
+    force+
+
+lemma skipped_opsem_only_env:
+  \<open>s \<midarrow>as\<rightarrow>\<^sup>\<star> s' \<Longrightarrow> snd s = Skip \<Longrightarrow> as = []\<close>
+  by (induct rule: opsem.induct)
+    (force elim: opstep.cases)+
+
+inductive opstep_trancl :: \<open>act list \<Rightarrow> ('h::perm_alg) \<times> 'h comm \<Rightarrow> ('h \<times> 'h comm) \<Rightarrow> bool\<close> where
+  step1[intro!]: \<open>opstep a s s' \<Longrightarrow> opstep_trancl [a] s s'\<close>
+| step[intro!]: \<open>opstep a s s' \<Longrightarrow> opstep_trancl as s' s'' \<Longrightarrow> opstep_trancl (a # as) s s''\<close>
+
+inductive opstep_rtrancl :: \<open>act list \<Rightarrow> ('h::perm_alg) \<times> 'h comm \<Rightarrow> ('h \<times> 'h comm) \<Rightarrow> bool\<close> where
+  refl[intro!]: \<open>opstep_rtrancl [] s s\<close>
+| step[intro!]: \<open>opstep a s s' \<Longrightarrow> opstep_rtrancl as s' s'' \<Longrightarrow> opstep_rtrancl (a # as) s s''\<close>
+
+paragraph \<open> Pretty operational semantics \<close>
+
+abbreviation(input) pretty_opstep_trancl :: \<open>_ \<Rightarrow> _ \<Rightarrow> _ \<Rightarrow> _\<close> (\<open>_ \<midarrow>(_)\<rightarrow>\<^sup>+ _\<close> [60,0,60] 60) where
+  \<open>hs \<midarrow>as\<rightarrow>\<^sup>+ ht \<equiv> opstep_trancl as hs ht\<close>
+
+abbreviation(input) pretty_opstep_rtrancl :: \<open>_ \<Rightarrow> _ \<Rightarrow> _ \<Rightarrow> _\<close> (\<open>_ \<midarrow>(_)\<rightarrow>\<^sup>\<star> _\<close> [60,0,60] 60) where
+  \<open>hs \<midarrow>as\<rightarrow>\<^sup>\<star> ht \<equiv> opstep_rtrancl as hs ht\<close>
+*)
 
 
 section \<open> Sugared atomic programs \<close>
@@ -479,72 +580,6 @@ lemma opstep_WhileLoop_false[intro]:
   by (simp add: opstep_iff)
 
 
-subsection \<open> Operational Semantics \<close>
-
-inductive opsem
-  :: \<open>act list \<Rightarrow> ('a::perm_alg) \<times> 'a comm \<Rightarrow> 'a \<times> 'a comm \<Rightarrow> bool\<close>
-  where
-  base[intro!]: \<open>opsem [] s s\<close>
-| step[intro!]: \<open>s \<midarrow>a\<rightarrow> s' \<Longrightarrow> opsem as s' s'' \<Longrightarrow> opsem (a # as) s s''\<close>
-
-inductive_cases opsem_NilE[elim!]: \<open>opsem [] s s'\<close>
-inductive_cases opsem_ConsE[elim!]: \<open>opsem (a # as) s s'\<close>
-
-lemma opsem_iff[simp]:
-  \<open>opsem [] s s' \<longleftrightarrow> s' = s\<close>
-  \<open>opsem (a # as) s s'' \<longleftrightarrow> (\<exists>s'. (s \<midarrow>a\<rightarrow> s') \<and> opsem as s' s'')\<close>
-  by force+
-
-paragraph \<open> pretty opsem \<close>
-
-abbreviation(input) pretty_opsem :: \<open>_ \<Rightarrow> _ \<Rightarrow> _ \<Rightarrow> _\<close> (\<open>_ \<midarrow>(_)\<rightarrow>\<^sup>\<star> _\<close> [60,0,60] 60) where
-  \<open>hc \<midarrow>as\<rightarrow>\<^sup>\<star> hc' \<equiv> opsem as hc hc'\<close>
-
-subsection \<open> Theorems about the operational semantics \<close>
-
-paragraph \<open> Reverse-cons transitive closure rules \<close>
-
-lemma opsem_step_rev:
-  \<open>opsem as s s' \<Longrightarrow> s' \<midarrow>a\<rightarrow> s'' \<Longrightarrow> opsem (as @ [a]) s s''\<close>
-  apply (induct rule: opsem.induct)
-   apply (metis append_self_conv2 opsem.simps)
-  apply force
-  done
-
-lemma opsem_step_revE:
-  \<open>opsem (as @ [a]) s s'' \<Longrightarrow> (\<And>s'. opsem as s s' \<Longrightarrow> opstep a s' s'' \<Longrightarrow> P) \<Longrightarrow> P\<close>
-  by (induct as arbitrary: a s s'')
-    (simp, blast)+
-
-lemma opsem_rev_cons_iff[simp]:
-  \<open>opsem (as @ [a]) s s'' \<longleftrightarrow> (\<exists>s'. opsem as s s' \<and> (s' \<midarrow>a\<rightarrow> s''))\<close>
-  by (meson opsem_step_rev opsem_step_revE)
-
-lemma opsem_rev_induct[consumes 1, case_names Nil Snoc]:
-  \<open>opsem as s s' \<Longrightarrow>
-    (\<And>r s. P r [] s s) \<Longrightarrow>
-    (\<And>s r a s' as s''.
-      opsem as s s' \<Longrightarrow>
-      opstep a s' s'' \<Longrightarrow>
-      P r as s s' \<Longrightarrow>
-      P r (as @ [a]) s s'') \<Longrightarrow>
-    P r as s s'\<close>
-  by (induct as arbitrary: s s' rule: rev_induct) force+
-
-lemma opsem_stepI:
-  \<open>s \<midarrow>a\<rightarrow> s' \<Longrightarrow> s \<midarrow>[a]\<rightarrow>\<^sup>\<star> s'\<close>
-  by blast
-
-lemma opsem_trans:
-  \<open>s \<midarrow>as1\<rightarrow>\<^sup>\<star> s' \<Longrightarrow> s' \<midarrow>as2\<rightarrow>\<^sup>\<star> s'' \<Longrightarrow> s \<midarrow>as1 @ as2\<rightarrow>\<^sup>\<star> s''\<close>
-  by (induct arbitrary: as2 s'' rule: opsem.induct)
-    force+
-
-lemma skipped_opsem_only_env:
-  \<open>s \<midarrow>as\<rightarrow>\<^sup>\<star> s' \<Longrightarrow> snd s = Skip \<Longrightarrow> as = []\<close>
-  by (induct rule: opsem.induct)
-    (force elim: opstep.cases)+
-
 section \<open> Safe \<close>
 
 inductive safe
@@ -553,8 +588,7 @@ inductive safe
   where
   safe_nil[intro!]: \<open>safe 0 c h r g q\<close>
 | safe_suc[intro]:
-  \<open>\<comment> \<open> computation is frame safe \<close>
-    (\<And>hx. h \<le> hx \<Longrightarrow> can_compute (h, c) \<Longrightarrow> can_compute (hx, c)) \<Longrightarrow>
+  \<open>\<comment> \<open> computation is frame safe (TODO: not needed with atomic actions) \<close>
     \<comment> \<open> if the command is Skip, the postcondition is established \<close>
     (c = Skip \<longrightarrow> q h) \<Longrightarrow>
     \<comment> \<open> opsteps respect the guarantee \<close>
@@ -584,7 +618,6 @@ lemma safe_nil_iff[simp]:
 
 lemma safe_suc_iff:
   \<open>safe (Suc n) c h r g q \<longleftrightarrow>
-    (\<forall>hx. h \<le> hx \<longrightarrow> can_compute (h, c) \<longrightarrow> can_compute (hx, c)) \<and>
     (c = Skip \<longrightarrow> q h) \<and>
     (\<forall>a c' hx hy.
       h \<le> hx \<longrightarrow>
@@ -645,7 +678,7 @@ lemma safe_skip':
   \<open>(\<lceil> q \<rceil>\<^bsub>wframe r with \<top>\<^esub>) h \<Longrightarrow> safe n Skip h r g (\<lceil> q \<rceil>\<^bsub>wframe r with \<top>\<^esub>)\<close>
   apply (induct n arbitrary: h q)
    apply force
-  apply (simp add: safe_suc_iff opstep_iff can_compute_iff wsstable_step)
+  apply (simp add: safe_suc_iff opstep_iff wsstable_step)
   done
 
 lemma safe_skip:
@@ -685,7 +718,6 @@ lemma safe_atom':
    apply force
   apply clarsimp
   apply (rule safe.safe_suc)
-      apply (metis can_compute_iff(6) rtranclp.rtrancl_refl)
      apply force
     apply (clarsimp simp add: shared_restr_def le_fun_def, metis)
    apply (clarsimp simp add: le_fun_def, metis predicate1D safe_skip' swstable_weaker)
@@ -702,7 +734,6 @@ lemma safe_seq_assoc_left:
    apply force
   apply (simp add: safe_suc_iff opstep_iff)
   apply (intro conjI impI allI)
-     apply (metis can_compute_iff(2))
     apply metis+
   done
 
@@ -714,7 +745,6 @@ lemma safe_seq_assoc_right:
    apply force
   apply (simp add: safe_suc_iff opstep_iff)
   apply (intro conjI impI allI)
-     apply (metis can_compute_iff(1-2))
     apply metis+
   done
 
@@ -725,7 +755,6 @@ lemma safe_seq':
   apply (induct arbitrary: c2 q' rule: safe.inducts)
    apply force
   apply (rule safe_suc)
-      apply (force simp add: can_compute_iff)
      apply blast
     apply (clarsimp simp add: opstep_iff)
     apply (elim disjE exE conjE)
@@ -751,7 +780,6 @@ lemma safe_iter':
    apply force
   apply (clarsimp simp add: le_Suc_eq)
   apply (rule safe_suc)
-      apply (simp add: can_compute_iff; fail)
      apply blast
     apply (force simp add: opstep_iff)
     (* subgoal *)
@@ -784,7 +812,6 @@ lemma safe_ndet:
   apply (induct n arbitrary: c1 c2 h)
    apply blast
   apply (rule safe_suc)
-      apply (metis can_compute_iff(3) order.refl safe_sucE)
      apply blast
     apply (rule opstep_act_cases)
       apply blast
@@ -798,20 +825,26 @@ lemma safe_ndet:
 
 subsubsection \<open> Safe Frame \<close>
 
-lemma can_compute_unframe:
-  \<open>h1 ## h \<Longrightarrow> h1 + h ## hf \<Longrightarrow> can_compute (h1 + h, c)\<close>
-  oops
-
+(*
 lemma safe_frame_left:
+  fixes h1 :: \<open>'a :: cancel_perm_alg\<close>
+  shows
   \<open>safe n c h2 r g q2 \<Longrightarrow>
+    all_atom_comm (unframe_safe (rel_lift ((=) hf))) c \<Longrightarrow>
     q1 h1 \<Longrightarrow>
     h1 ## h2 \<Longrightarrow>
     safe n c (h1 + h2) r g (q1 \<^emph> q2)\<close>
   apply (induct rule: safe.inducts)
    apply force
   apply (rule safe_suc)
-      apply clarsimp
+     apply (metis sepconj_def)
+    apply (metis fst_conv opstep_tau_preserves_heap partial_le_part_right)
+   apply clarsimp
+  apply (drule opstep_unframe_left)
+  apply (metis opstep_unframe_left)
+  sledgehammer
   oops
+*)
 
 subsubsection \<open> Parallel \<close>
 
@@ -833,7 +866,6 @@ lemma framed_subresource_rel_frame_extend_left:
   using framed_subresource_rel_frame_extend_right
   by (metis disjoint_sym_iff partial_add_commute)
 
-
 lemma safe_parallel:
   \<open>\<forall>m\<le>n. safe n c1 h1 (r \<squnion> g2) g1 (\<lceil> q1 \<rceil>\<^bsub>wframe r \<squnion> g2 with \<top>\<^esub>) \<Longrightarrow>
     \<forall>m\<le>n. safe n c2 h2 (r \<squnion> g1) g2 (\<lceil> q2 \<rceil>\<^bsub>wframe r \<squnion> g1 with \<top>\<^esub>) \<Longrightarrow>
@@ -848,26 +880,6 @@ lemma safe_parallel:
   apply (clarsimp simp add: le_Suc_eq safe_suc_iff[where r=\<open>_ \<squnion> _\<close>]
       all_conj_distrib all_ex_conjL imp_conjR)
   apply (rule safe_suc)
-      apply (clarsimp simp add: can_compute_def opstep_iff)
-    (* subgoal *)
-      apply (drule iffD1[OF le_iff_sepadd_weak])
-      apply (erule disjE[of \<open>_ = _\<close> \<open>Ex _\<close>])
-       apply metis
-      apply (elim disjE exE conjE)
-         apply metis
-        apply metis
-       apply clarsimp
-       apply (frule opstep_frame_pred_extends, fast, fast, fast)
-       apply clarsimp
-       apply (rename_tac h' hf c1')
-       apply (rule_tac x=a in exI, rule_tac x=\<open>h' + hf\<close> in exI, rule_tac x=\<open>c1' \<parallel> c2\<close> in exI)
-       apply force
-      apply (frule opstep_frame_pred_extends, blast, blast, blast)
-      apply clarsimp
-      apply (rename_tac h' hf c2')
-      apply (rule_tac x=a in exI, rule_tac x=\<open>h' + hf\<close> in exI, rule_tac x=\<open>c1 \<parallel> c2'\<close> in exI)
-      apply force
-    (* done *)
      apply blast
     (* subgoal *)
     apply (clarsimp simp add: opstep_iff)

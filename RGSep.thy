@@ -356,12 +356,21 @@ lemma frame_equals_safe_eq_closed:
   unfolding frame_pred_safe_def frame_pred_closed_def
   by presburger
 
-
 subsection \<open> Frame Step \<close>
 
 definition
   \<open>frame_step_subframe f r \<equiv>
     \<forall>hf. f hf \<longrightarrow> (\<forall>x yf. x ## hf \<longrightarrow> r (x + hf) yf \<longrightarrow> (\<exists>y. r x y))\<close>
+
+subsection \<open> Unframing \<close>
+
+definition
+  \<open>unframe_safe \<ff> \<equiv>
+    \<lambda>r. \<forall>x x' z z'. \<ff> z z' \<longrightarrow> r (x+z) (x'+z') \<longrightarrow> x ## z \<longrightarrow> x' ## z' \<longrightarrow> r x x'\<close>
+
+lemma unframe_safeD:
+  \<open>unframe_safe \<ff> r \<Longrightarrow> \<ff> z z' \<Longrightarrow> x ## z \<Longrightarrow> x' ## z' \<Longrightarrow> r (x + z) (x' + z') \<Longrightarrow> r x x'\<close>
+  by (simp add: unframe_safe_def)
 
 
 section \<open> Language Definition \<close>
