@@ -866,14 +866,50 @@ lemma framed_subresource_rel_frame_extend_left:
   using framed_subresource_rel_frame_extend_right
   by (metis disjoint_sym_iff partial_add_commute)
 
+definition
+  \<open>rel_disjoint_sync r1 r2 \<equiv>
+    \<forall>h1 h2 h'.
+    Ex (r1 h1) \<longrightarrow>
+    Ex (r2 h2) \<longrightarrow>
+    (\<exists>x1 x2. x1 ## x2 \<and> (h1 + h2) = x1 + x2 \<and> (\<exists>y1 y2. y1 ## y2 \<and> h' = y1 + y2 \<and> r1 x1 y1 \<and> r2 x2 y2)) \<longrightarrow>
+    (\<exists>h1' h2'. h1' ## h2' \<and> h' = h1' + h2' \<and> r1 h1 h1' \<and> r2 h2 h2')\<close>
+
+definition rel_sepadd_sync :: \<open>('a::perm_alg \<Rightarrow> 'a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> 'a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> 'a \<Rightarrow> bool)\<close> (infixr \<open>\<^emph>\<^emph>\<^sub>S\<close> 70) where
+  \<open>rel_sepadd_sync r1 r2 \<equiv> \<lambda>a b.
+    \<exists>x1 x2. x1 ## x2 \<and> a = x1 + x2 \<and> (\<exists>y1 y2. y1 ## y2 \<and> b = y1 + y2 \<and> r1 x1 y1 \<and> r2 x2 y2)\<close>
+
+lemma
+  \<open>Ex (r1 h1) \<Longrightarrow>
+    Ex (r2 h1) \<Longrightarrow>
+    (r1 \<^emph>\<^emph>\<^sub>S r2) (h1 + h2) h' \<Longrightarrow>
+    \<exists>h1' h2'. h1' ## h2' \<and> h' = h1' + h2' \<and> r1 h1 h1' \<and> r2 h2 h2'\<close>
+  oops
+
+lemma safe_parallel_skip:
+  \<open>safe n Skip h1 (r1 \<squnion> g2) g1 (\<lceil> q1 \<rceil>\<^bsub>wframe r1 \<squnion> g2 with \<top>\<^esub>) \<Longrightarrow>
+    safe n Skip h2 (r2 \<squnion> g1) g2 (\<lceil> q2 \<rceil>\<^bsub>wframe r2 \<squnion> g1 with \<top>\<^esub>) \<Longrightarrow>
+    h1 ## h2 \<Longrightarrow>
+    rel_add_preserve r \<Longrightarrow>
+    safe n Skip (h1 + h2) (r1 \<^emph>\<^emph>\<^sub>S r2) (g1 \<squnion> g2) (\<lceil> q1 \<rceil>\<^bsub>wframe r1 \<squnion> g2 with \<top>\<^esub> \<^emph> \<lceil> q2 \<rceil>\<^bsub>wframe r2 \<squnion> g1 with \<top>\<^esub>)\<close>
+  apply (induct n arbitrary: h1 h2)
+   apply force
+  apply (intro safe_suc)
+     apply (clarsimp simp add: safe_suc_iff sepconj_def, blast)
+    apply force
+   apply force
+  apply (clarsimp simp add: safe_suc_iff)
+
+  apply (subst (asm)(5) wframe_with_def)
+  apply (clarsimp simp add: framed_subresource_rel_def)
+  oops
+
+
 lemma safe_parallel:
   \<open>\<forall>m\<le>n. safe n c1 h1 (r \<squnion> g2) g1 (\<lceil> q1 \<rceil>\<^bsub>wframe r \<squnion> g2 with \<top>\<^esub>) \<Longrightarrow>
     \<forall>m\<le>n. safe n c2 h2 (r \<squnion> g1) g2 (\<lceil> q2 \<rceil>\<^bsub>wframe r \<squnion> g1 with \<top>\<^esub>) \<Longrightarrow>
     \<forall>hf. all_atom_comm (frame_pred_extends ((=) hf)) c1 \<Longrightarrow>
     \<forall>hf. all_atom_comm (frame_pred_extends ((=) hf)) c2 \<Longrightarrow>
     h1 ## h2 \<Longrightarrow>
-    pre_state g1 h1 \<Longrightarrow>
-    pre_state g2 h2 \<Longrightarrow>
     safe n (c1 \<parallel> c2) (h1 + h2) r (g1 \<squnion> g2) (\<lceil> q1 \<rceil>\<^bsub>wframe r \<squnion> g2 with \<top>\<^esub> \<^emph> \<lceil> q2 \<rceil>\<^bsub>wframe r \<squnion> g1 with \<top>\<^esub>)\<close>
   apply (induct n arbitrary: c1 c2 h1 h2)
    apply force
@@ -890,7 +926,8 @@ lemma safe_parallel:
     (* done *)
    apply (clarsimp simp add: opstep_iff)
    apply (elim disjE exE conjE)
-      apply clarsimp
+     apply clarsimp
+     apply (rule safe_skip)
   oops
 
 

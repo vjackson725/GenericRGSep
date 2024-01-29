@@ -184,18 +184,18 @@ definition
   \<open>rel_add_preserve r \<equiv>
     (\<forall>h1 h2 s.
       h1 ## h2 \<longrightarrow>
-      r\<^sup>=\<^sup>= (h1 + h2) s \<longrightarrow>
-      (\<exists>s1 s2. s1 ## s2 \<and> s = s1 + s2 \<and> r\<^sup>=\<^sup>= h1 s1 \<and> r\<^sup>=\<^sup>= h2 s2))\<close>
+      r (h1 + h2) s \<longrightarrow>
+      (\<exists>s1 s2. s1 ## s2 \<and> s = s1 + s2 \<and> r h1 s1 \<and> r h2 s2))\<close>
 
 definition
   \<open>weak_rel_add_preserve r \<equiv>
     \<forall>p q.
       (\<forall>h1 h2 s.
-        r\<^sup>=\<^sup>= (h1 + h2) s \<longrightarrow>
+        r (h1 + h2) s \<longrightarrow>
         h1 ## h2 \<longrightarrow>
         p h1 \<longrightarrow>
         q h2 \<longrightarrow>
-        (\<exists>s1 s2. s1 ## s2 \<and> s = s1 + s2 \<and> (\<exists>h1'. r\<^sup>=\<^sup>= h1' s1 \<and> p h1') \<and> (\<exists>h2'. r\<^sup>=\<^sup>= h2' s2 \<and> q h2')))\<close>
+        (\<exists>s1 s2. s1 ## s2 \<and> s = s1 + s2 \<and> (\<exists>h1'. r h1' s1 \<and> p h1') \<and> (\<exists>h2'. r h2' s2 \<and> q h2')))\<close>
 
 lemma rel_add_preserve_impl_weak[intro,dest]:
   \<open>rel_add_preserve r \<Longrightarrow> weak_rel_add_preserve r\<close>
@@ -295,7 +295,7 @@ lemma stablerel_transp:
   using order.trans transp_def by fast
 
 lemma stablerel_eqclp[simp]:
-  \<open>stablerel\<^sup>=\<^sup>= = stablerel\<close>
+  \<open>stablerel = stablerel\<close>
   by (simp add: reflp_ge_eq stablerel_reflp sup.absorb1)
 
 lemma stablerel_transclp[simp]:
