@@ -624,8 +624,8 @@ lemma safe_suc_iff:
       (hx, c) \<midarrow>a\<rightarrow> (hy, c') \<longrightarrow>
       (a = Tau \<longrightarrow> hx = hy) \<and>
       (a = Local \<longrightarrow>
-        (\<forall>hxs. hxs \<le> hx \<longrightarrow> change_state r hxs \<longrightarrow>
-          (\<forall>hys. hys \<le> hy \<longrightarrow> change_state r hys \<longrightarrow>
+        (\<forall>hxs. hxs \<le> hx \<longrightarrow> pre_change_state r hxs \<longrightarrow>
+          (\<forall>hys. hys \<le> hy \<longrightarrow> pre_change_state r hys \<longrightarrow>
             g hxs hys)))) \<and>
     (\<forall>a c' h'. (h, c) \<midarrow>a\<rightarrow> (h', c') \<longrightarrow>
       safe n c' h' r g q) \<and>
