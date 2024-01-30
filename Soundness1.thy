@@ -597,8 +597,8 @@ inductive safe
       (hx, c) \<midarrow>a\<rightarrow> (hy, c') \<Longrightarrow>
       (a = Tau \<longrightarrow> hx = hy) \<and>
       (a = Local \<longrightarrow>
-        (\<forall>hxs. hxs \<le> hx \<longrightarrow> change_state r hxs \<longrightarrow>
-          (\<forall>hys. hys \<le> hy \<longrightarrow> change_state r hys \<longrightarrow>
+        (\<forall>hxs. hxs \<le> hx \<longrightarrow> pre_change_state r hxs \<longrightarrow>
+          (\<forall>hys. hys \<le> hy \<longrightarrow> pre_change_state r hys \<longrightarrow>
             g hxs hys)))) \<Longrightarrow>
     \<comment> \<open> opsteps are safe \<close>
     (\<And>a c' h'. (h, c) \<midarrow>a\<rightarrow> (h', c') \<Longrightarrow> safe n c' h' r g q) \<Longrightarrow>
@@ -880,9 +880,10 @@ definition rel_sepadd_sync :: \<open>('a::perm_alg \<Rightarrow> 'a \<Rightarrow
 
 lemma
   \<open>Ex (r1 h1) \<Longrightarrow>
-    Ex (r2 h1) \<Longrightarrow>
+    Ex (r2 h2) \<Longrightarrow>
     (r1 \<^emph>\<^emph>\<^sub>S r2) (h1 + h2) h' \<Longrightarrow>
     \<exists>h1' h2'. h1' ## h2' \<and> h' = h1' + h2' \<and> r1 h1 h1' \<and> r2 h2 h2'\<close>
+  apply (clarsimp simp add: rel_sepadd_sync_def)
   oops
 
 lemma safe_parallel_skip:

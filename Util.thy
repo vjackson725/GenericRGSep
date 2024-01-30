@@ -800,89 +800,115 @@ definition \<open>sp r p \<equiv> \<lambda>y. (\<exists>x. r x y \<and> p x)\<cl
 text \<open> weakest liberal precondition, by way of relations \<close>
 definition \<open>wlp r q \<equiv> \<lambda>x. (\<forall>y. r x y \<longrightarrow> q y)\<close>
 
+paragraph \<open> wlp predicate properties \<close>
 
-lemma \<open>p \<le> q \<Longrightarrow> wlp r p \<le> wlp r q\<close>
+lemma wlp_mono:
+  \<open>p \<le> q \<Longrightarrow> wlp r p \<le> wlp r q\<close>
   by (force simp add: wlp_def)
 
-lemma \<open>wlp r \<top> = \<top>\<close>
+lemma wlp_top[simp]:
+  \<open>wlp r \<top> = \<top>\<close>
   by (force simp add: wlp_def)
 
-lemma \<open>wlp r (p \<sqinter> q) = wlp r p \<sqinter> wlp r q\<close>
+lemma wlp_inf[simp]: \<open>wlp r (p \<sqinter> q) = wlp r p \<sqinter> wlp r q\<close>
   by (force simp add: wlp_def)
 
-lemma \<open>wlp r (\<Sqinter>P) = \<Sqinter>{wlp r p| p. p \<in> P}\<close>
+lemma wlp_Inf[simp]: \<open>wlp r (\<Sqinter>P) = \<Sqinter>(wlp r ` P)\<close>
   by (fastforce simp add: wlp_def)
 
-lemma \<open>wlp r \<bottom> = - pre_state r\<close>
+lemma wlp_bot[simp]:
+  \<open>wlp r \<bottom> = - pre_state r\<close>
   by (simp add: wlp_def fun_eq_iff pre_state_def)
 
-lemma \<open>wlp r p \<squnion> wlp r q \<le> wlp r (p \<squnion> q)\<close>
+lemma wlp_sup_semidistirb:
+  \<open>wlp r p \<squnion> wlp r q \<le> wlp r (p \<squnion> q)\<close>
   by (force simp add: wlp_def)
 
-lemma \<open>deterministic r \<Longrightarrow> wlp r p \<squnion> wlp r q = wlp r (p \<squnion> q)\<close>
+lemma wlp_disj_determ[simp]:
+  \<open>deterministic r \<Longrightarrow> wlp r (p \<squnion> q) = wlp r p \<squnion> wlp r q\<close>
   by (force simp add: deterministic_def wlp_def)
 
-lemma wlp_Sup_semidistrib: \<open>\<Squnion>{wlp r p| p. p \<in> P} \<le> wlp r (\<Squnion>P)\<close>
+lemma wlp_Sup_semidistrib: \<open>\<Squnion>(wlp r ` P) \<le> wlp r (\<Squnion>P)\<close>
   by (force simp add: wlp_def)
 
-lemma
+lemma wlp_Sup_determ[simp]:
   assumes \<open>deterministic r\<close>
     and \<open>P \<noteq> {}\<close>
-  shows \<open>wlp r (\<Squnion>P) = \<Squnion>{wlp r p| p. p \<in> P}\<close>
+  shows \<open>wlp r (\<Squnion>P) = \<Squnion>(wlp r ` P)\<close>
 proof (rule order.antisym; auto simp add: wlp_def)
   fix x
   assume \<open>\<forall>y. r x y \<longrightarrow> (\<exists>px\<in>P. px y)\<close>
   then obtain px where \<open>r x \<le> px\<close> \<open>px \<in> P\<close>
     using assms unfolding deterministic_def
     by (metis ex_in_conv predicate1I)
-  then show \<open>\<exists>q. (\<exists>p. q = (\<lambda>x. \<forall>y. r x y \<longrightarrow> p y) \<and> p \<in> P) \<and> q x\<close>
+  then show \<open>\<exists>f\<in>P. \<forall>y. r x y \<longrightarrow> f y\<close>
     by blast
 qed
 
-lemma \<open>wlp (=) p = p\<close>
+paragraph \<open> wlp relation properties \<close>
+
+lemma wlp_rel_antimono:
+  \<open>r1 \<le> r2 \<Longrightarrow> wlp r2 p \<le> wlp r1 p\<close>
   by (force simp add: wlp_def)
 
-lemma \<open>wlp \<bottom> p = \<top>\<close>
+lemma wlp_eq_rel[simp]:
+  \<open>wlp (=) p = p\<close>
   by (force simp add: wlp_def)
 
-lemma \<open>p < \<top> \<Longrightarrow> wlp \<top> p = \<bottom>\<close>
+lemma wlp_bot_rel[simp]:
+  \<open>wlp \<bottom> p = \<top>\<close>
+  by (force simp add: wlp_def)
+
+lemma wlp_top_rel[simp]:
+  \<open>p < \<top> \<Longrightarrow> wlp \<top> p = \<bottom>\<close>
   by (force simp add: wlp_def less_fun_def)
 
-lemma \<open>wlp (r1 \<squnion> r2) p = wlp r1 p \<sqinter> wlp r2 p\<close>
+lemma wlp_sup_rel[simp]:
+  \<open>wlp (r1 \<squnion> r2) p = wlp r1 p \<sqinter> wlp r2 p\<close>
   by (force simp add: wlp_def fun_eq_iff)
 
-lemma \<open>wlp r1 p \<squnion> wlp r2 p \<le> wlp (r1 \<sqinter> r2) p\<close>
+lemma wlp_inf_rel_semidistrib:
+  \<open>wlp r1 p \<squnion> wlp r2 p \<le> wlp (r1 \<sqinter> r2) p\<close>
   by (force simp add: wlp_def fun_eq_iff)
 
-lemma \<open>wlp (r1 OO r2) p = wlp r1 (wlp r2 p)\<close>
+lemma wlp_comp_rel:
+  \<open>wlp (r1 OO r2) p = wlp r1 (wlp r2 p)\<close>
   by (force simp add: wlp_def)
 
+paragraph \<open> sp predicate properties \<close>
 
-lemma \<open>p \<le> q \<Longrightarrow> sp r p \<le> sp r q\<close>
+lemma sp_mono:
+  \<open>p \<le> q \<Longrightarrow> sp r p \<le> sp r q\<close>
   by (force simp add: sp_def)
 
-lemma \<open>sp r \<bottom> = \<bottom>\<close>
+lemma sp_bot[simp]:
+  \<open>sp r \<bottom> = \<bottom>\<close>
   by (force simp add: sp_def)
 
-lemma \<open>sp r (p \<squnion> q) = sp r p \<squnion> sp r q\<close>
+lemma sp_sup[simp]:
+  \<open>sp r (p \<squnion> q) = sp r p \<squnion> sp r q\<close>
   by (force simp add: sp_def)
 
-lemma \<open>\<Squnion>{sp r p| p. p \<in> P} = sp r (\<Squnion>P)\<close>
+lemma sp_Sup[simp]:
+  \<open>sp r (\<Squnion>P) = \<Squnion>(sp r ` P)\<close>
   by (fastforce simp add: sp_def)
 
-lemma \<open>sp r \<top> = post_state r\<close>
+lemma sp_top[simp]:
+  \<open>sp r \<top> = post_state r\<close>
   by (clarsimp simp add: sp_def post_state_def fun_eq_iff)
 
-lemma \<open>sp r (p \<sqinter> q) \<le> sp r p \<sqinter> sp r q\<close>
+lemma sp_inf_semidistrib:
+  \<open>sp r (p \<sqinter> q) \<le> sp r p \<sqinter> sp r q\<close>
   by (force simp add: sp_def)
 
-lemma \<open>deterministic (r\<inverse>\<inverse>) \<Longrightarrow> sp r (p \<sqinter> q) = sp r p \<sqinter> sp r q\<close>
+lemma sp_inf_determ[simp]:
+  \<open>deterministic (r\<inverse>\<inverse>) \<Longrightarrow> sp r (p \<sqinter> q) = sp r p \<sqinter> sp r q\<close>
   by (simp add: sp_def deterministic_def, blast)
 
 lemma sp_Inf_semidistrib: \<open>sp r (\<Sqinter>P) \<le> \<Sqinter>{sp r p| p. p \<in> P}\<close>
   by (fastforce simp add: sp_def)
 
-lemma
+lemma sp_Inf_determ[simp]:
   assumes \<open>deterministic (r\<inverse>\<inverse>)\<close>
     and \<open>P \<noteq> {}\<close>
   shows \<open>sp r (\<Sqinter>P) = \<Sqinter>{sp r p| p. p \<in> P}\<close>
@@ -892,51 +918,86 @@ lemma
   apply (metis ex_in_conv)
   done
 
-lemma \<open>sp (=) p = p\<close>
+paragraph \<open> sp relation properties \<close>
+
+lemma wsstable_rel_mono:
+  \<open>r1 \<le> r2 \<Longrightarrow> sp r1 p \<le> sp r2 p\<close>
   by (force simp add: sp_def)
 
-lemma \<open>sp \<bottom> p = \<bottom>\<close>
+lemma sp_eq_rel[simp]:
+  \<open>sp (=) p = p\<close>
   by (force simp add: sp_def)
 
-lemma \<open>\<bottom> < p \<Longrightarrow> sp \<top> p = \<top>\<close>
+lemma sp_bot_rel[simp]:
+  \<open>sp \<bottom> p = \<bottom>\<close>
+  by (force simp add: sp_def)
+
+lemma sp_top_rel[simp]:
+  \<open>\<bottom> < p \<Longrightarrow> sp \<top> p = \<top>\<close>
   by (force simp add: sp_def less_fun_def fun_eq_iff)
 
-lemma \<open>sp (r1 \<squnion> r2) p = sp r1 p \<squnion> sp r2 p\<close>
+lemma sp_sup_rel[simp]:
+  \<open>sp (r1 \<squnion> r2) p = sp r1 p \<squnion> sp r2 p\<close>
   by (force simp add: sp_def)
 
-lemma \<open>sp (r1 \<sqinter> r2) p \<le> sp r1 p \<sqinter> sp r2 p\<close>
+lemma sp_inf_rel_semidistrib:
+  \<open>sp (r1 \<sqinter> r2) p \<le> sp r1 p \<sqinter> sp r2 p\<close>
   by (force simp add: sp_def)
 
-lemma \<open>sp (r1 OO r2) p = sp r2 (sp r1 p)\<close>
+lemma sp_comp_rel:
+  \<open>sp (r1 OO r2) p = sp r2 (sp r1 p)\<close>
   by (force simp add: sp_def relcompp_apply)
 
+paragraph \<open> wlp/sp refl/trans relation properties \<close>
 
-lemma \<open>reflp r1 \<Longrightarrow> transp r2 \<Longrightarrow> r1 \<le> r2 \<Longrightarrow> sp r1 (sp r2 p) = sp r2 p\<close>
+lemma sp_refl_le_trans_eq[simp]:
+  \<open>reflp r1 \<Longrightarrow> transp r2 \<Longrightarrow> r1 \<le> r2 \<Longrightarrow> sp r1 (sp r2 p) = sp r2 p\<close>
   by (simp add: reflp_def transp_def sp_def, fast)
 
-lemma \<open>reflp r1 \<Longrightarrow> transp r2 \<Longrightarrow> r1 \<le> r2 \<Longrightarrow> sp r2 (sp r1 p) = sp r2 p\<close>
+lemma sp_refl_le_trans_eq2[simp]:
+  \<open>reflp r1 \<Longrightarrow> transp r2 \<Longrightarrow> r1 \<le> r2 \<Longrightarrow> sp r2 (sp r1 p) = sp r2 p\<close>
   by (simp add: reflp_def transp_def sp_def, fast)
 
-lemma \<open>reflp r1 \<Longrightarrow> transp r2 \<Longrightarrow> r1 \<le> r2 \<Longrightarrow> wlp r1 (wlp r2 p) = wlp r2 p\<close>
+lemma wlp_refl_le_trans_eq[simp]:
+  \<open>reflp r1 \<Longrightarrow> transp r2 \<Longrightarrow> r1 \<le> r2 \<Longrightarrow> wlp r1 (wlp r2 p) = wlp r2 p\<close>
   by (simp add: reflp_def transp_def wlp_def, fast)
 
-lemma \<open>reflp r1 \<Longrightarrow> transp r2 \<Longrightarrow> r1 \<le> r2 \<Longrightarrow> wlp r2 (wlp r1 p) = wlp r2 p\<close>
+lemma wlp_refl_le_trans_eq2[simp]:
+  \<open>reflp r1 \<Longrightarrow> transp r2 \<Longrightarrow> r1 \<le> r2 \<Longrightarrow> wlp r2 (wlp r1 p) = wlp r2 p\<close>
   by (simp add: reflp_def transp_def wlp_def, fast)
 
-lemma \<open>reflp r1 \<Longrightarrow> transp r2 \<Longrightarrow> r1 \<le> r2 \<Longrightarrow> wlp r1 (sp r2 p) = sp r2 p\<close>
+lemma wlp_sp_refl_le_trans_eq[simp]:
+  \<open>reflp r1 \<Longrightarrow> transp r2 \<Longrightarrow> r1 \<le> r2 \<Longrightarrow> wlp r1 (sp r2 p) = sp r2 p\<close>
   by (simp add: reflp_def transp_def wlp_def sp_def, fast)
 
-lemma \<open>reflp r1 \<Longrightarrow> transp r2 \<Longrightarrow> r1 \<le> r2 \<Longrightarrow> sp r1 (wlp r2 p) = wlp r2 p\<close>
+lemma sp_wlp_refl_le_trans_eq[simp]:
+  \<open>reflp r1 \<Longrightarrow> transp r2 \<Longrightarrow> r1 \<le> r2 \<Longrightarrow> sp r1 (wlp r2 p) = wlp r2 p\<close>
   by (simp add: reflp_def transp_def wlp_def sp_def, blast)
 
-lemma \<open>reflp r \<Longrightarrow> wlp r p \<le> p\<close>
+paragraph \<open> wlp/sp misc properties \<close>
+
+lemma wlp_refl_rel_le: \<open>reflp r \<Longrightarrow> wlp r p \<le> p\<close>
   by (metis predicate1I[of \<open>wlp r p\<close> p for r p] reflpD wlp_def)
 
-lemma \<open>reflp r \<Longrightarrow> p \<le> sp r p\<close>
+lemma wlp_refl_relD: \<open>reflp r \<Longrightarrow> wlp r p s \<Longrightarrow> p s\<close>
+  by (simp add: reflpD wlp_def)
+
+lemma sp_refl_rel_le: \<open>reflp r \<Longrightarrow> p \<le> sp r p\<close>
   by (metis predicate1I[of p \<open>sp r p\<close> for r p] reflpD sp_def)
 
+lemma sp_refl_relI: \<open>reflp r \<Longrightarrow> p s \<Longrightarrow> sp r p s\<close>
+  by (force simp add: reflpD sp_def)
 
-definition seq_fun :: \<open>('a \<Rightarrow> 'b) \<Rightarrow> ('b \<Rightarrow> 'c) \<Rightarrow> ('a \<Rightarrow> 'c)\<close> (infixr \<open>\<^bold>;\<close> 55) where
-  \<open>seq_fun f g \<equiv> \<lambda>x. g (f x)\<close>
+lemma wlp_impliesD[dest]:
+  \<open>p \<le> wlp r q  \<Longrightarrow> r s s' \<Longrightarrow> p s \<Longrightarrow> q s'\<close>
+  by (metis predicate1D wlp_def)
+
+lemma sp_impliesD[dest]:
+  \<open>sp r p \<le> q \<Longrightarrow> r s s' \<Longrightarrow> p s \<Longrightarrow> q s'\<close>
+  by (metis predicate1D sp_def)
+
+lemma wlp_weaker_iff_sp_stronger:
+  \<open>p \<le> wlp R p \<longleftrightarrow> sp R p \<le> p\<close>
+  by (force simp add: wlp_def sp_def le_fun_def)
 
 end

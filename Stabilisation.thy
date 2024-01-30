@@ -5,52 +5,38 @@ begin
 section \<open>Stabilisation\<close>
 
 (* strongest weaker stable predicate *) (* \<box>\<^sup>\<rightarrow> *)
-definition swstable
+abbreviation swstable
   :: \<open>('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> 'a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool)\<close>
   ("\<lfloor> _ \<rfloor>\<^bsub>_\<^esub>" [0,0] 90)
   where
-  \<open>\<lfloor> P \<rfloor>\<^bsub>R\<^esub> \<equiv> \<lambda>s. \<forall>s'. R\<^sup>*\<^sup>* s s' \<longrightarrow> P s'\<close>
+  \<open>\<lfloor> P \<rfloor>\<^bsub>R\<^esub> \<equiv> wlp R\<^sup>*\<^sup>* P\<close>
 
 (* weakest stronger stable predicate *) (* \<diamondsuit>\<^sup>\<leftarrow> *)
-definition wsstable
+abbreviation wsstable
   :: \<open>('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> 'a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool)\<close>
   ("\<lceil> _ \<rceil>\<^bsub>_\<^esub>" [0,0] 90)
   where
-  \<open>\<lceil> P \<rceil>\<^bsub>R\<^esub> \<equiv> \<lambda>s'. \<exists>s. R\<^sup>*\<^sup>* s s' \<and> P s\<close>
+  \<open>\<lceil> P \<rceil>\<^bsub>R\<^esub> \<equiv> sp R\<^sup>*\<^sup>* P\<close>
 
-subsection \<open>basic logical properties\<close>
+subsection \<open> logical properties \<close>
 
 lemma swstable_weaker[intro!]: \<open>\<lfloor> P \<rfloor>\<^bsub>R\<^esub> \<le> P\<close>
-  by (force simp add: swstable_def)
+  by (simp add: wlp_refl_rel_le)
 
 lemma wsstable_stronger[intro!]: \<open>P \<le> \<lceil> P \<rceil>\<^bsub>R\<^esub>\<close>
-  by (force simp add: wsstable_def)
+  by (simp add: sp_refl_rel_le)
 
 lemma wsstable_strongerI[intro!]:
   \<open>P s \<Longrightarrow> R\<^sup>*\<^sup>* s s' \<Longrightarrow> (\<lceil> P \<rceil>\<^bsub>R\<^esub>) s'\<close>
-  by (force simp add: wsstable_def)
+  by (force simp add: sp_def)
 
 lemma wsstable_step:
   \<open>R s s' \<Longrightarrow> (\<lceil> P \<rceil>\<^bsub>R\<^esub>) s \<Longrightarrow> (\<lceil> P \<rceil>\<^bsub>R\<^esub>) s'\<close>
-  by (metis rtranclp.rtrancl_into_rtrancl wsstable_def)
+  by (metis (full_types) rtranclp.simps sp_def)
 
 lemma swstable_step:
   \<open>R s s' \<Longrightarrow> (\<lfloor> P \<rfloor>\<^bsub>R\<^esub>) s \<Longrightarrow> (\<lfloor> P \<rfloor>\<^bsub>R\<^esub>) s'\<close>
-  by (simp add: converse_rtranclp_into_rtranclp swstable_def)
-
-
-lemma implies_swstableD:
-  \<open>p \<le> \<lfloor> q \<rfloor>\<^bsub>r\<^esub> \<Longrightarrow> r\<^sup>*\<^sup>* s s' \<Longrightarrow> p s \<Longrightarrow> q s'\<close>
-  by (simp add: swstable_def le_fun_def)
-
-lemma wsstable_impliesD:
-  \<open>\<lceil> p \<rceil>\<^bsub>r\<^esub> \<le> q \<Longrightarrow> r\<^sup>*\<^sup>* s s' \<Longrightarrow> p s \<Longrightarrow> q s'\<close>
-  by (force simp add: wsstable_def le_fun_def)
-
-
-lemma wsstable_weaker_iff_swstable_stronger:
-  \<open>p \<le> \<lfloor> p \<rfloor>\<^bsub>R\<^esub> \<longleftrightarrow> \<lceil> p \<rceil>\<^bsub>R\<^esub> \<le> p\<close>
-  by (force simp add: wsstable_def swstable_def le_fun_def)
+  by (simp add: converse_rtranclp_into_rtranclp wlp_def)
 
 definition stable :: \<open>('a \<Rightarrow> 'a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool) \<Rightarrow> bool\<close> where
   \<open>stable R p \<equiv> \<lfloor> p \<rfloor>\<^bsub>R\<^esub> = p\<close>
@@ -61,7 +47,7 @@ lemma stable_eq:
 
 lemma stable_eq2:
   \<open>stable R p \<longleftrightarrow> \<lceil> p \<rceil>\<^bsub>R\<^esub> \<le> p\<close>
-  by (simp add: stable_eq wsstable_weaker_iff_swstable_stronger)
+  by (simp add: stable_eq wlp_weaker_iff_sp_stronger)
 
 lemma stable_def2:
   \<open>stable R p = (\<lceil> p \<rceil>\<^bsub>R\<^esub> = p)\<close>
@@ -75,38 +61,22 @@ lemmas stableI2[intro] = iffD2[OF stable_eq2]
 
 lemma stable_iff:
   \<open>stable r p \<longleftrightarrow> (\<forall>x y. r\<^sup>*\<^sup>* x y \<longrightarrow> p x \<longrightarrow> p y)\<close>
-  by (metis predicate1I stableI stable_def2 swstable_def wsstable_strongerI)
+  by (force simp add: stable_eq2 sp_def le_fun_def)
 
 lemma stable_antimono:
   \<open>r1 \<le> r2 \<Longrightarrow> stable r2 p \<Longrightarrow> stable r1 p\<close>
-  by (simp add: stable_def swstable_def fun_eq_iff)
-    (metis rev_predicate2D rtranclp.rtrancl_refl rtranclp_mono)
+  by (metis (full_types) mono_rtranclp predicate2D stable_iff)
 
 lemmas stable_antimono'[dest] = stable_antimono[rotated]
-
-subsection \<open>(semi)distributivity properties\<close>
-
-lemma swstable_conj_distrib: \<open>\<lfloor> P \<sqinter> Q \<rfloor>\<^bsub>R\<^esub> = \<lfloor> P \<rfloor>\<^bsub>R\<^esub> \<sqinter> \<lfloor> Q \<rfloor>\<^bsub>R\<^esub>\<close>
-  by (force simp add: swstable_def)
-
-lemma swstable_disj_semidistrib: \<open>\<lfloor> P \<rfloor>\<^bsub>R\<^esub> \<squnion> \<lfloor> Q \<rfloor>\<^bsub>R\<^esub> \<le> \<lfloor> P \<squnion> Q \<rfloor>\<^bsub>R\<^esub>\<close>
-  by (force simp add: swstable_def)
-
-lemma wsstable_disj_distrib: \<open>\<lceil> P \<squnion> Q \<rceil>\<^bsub>R\<^esub> = \<lceil> P \<rceil>\<^bsub>R\<^esub> \<squnion> \<lceil> Q \<rceil>\<^bsub>R\<^esub>\<close>
-  by (force simp add: wsstable_def)
-
-lemma wsstable_conj_semidistrib: \<open>\<lceil> P \<sqinter> Q \<rceil>\<^bsub>R\<^esub> \<le> \<lceil> P \<rceil>\<^bsub>R\<^esub> \<sqinter> \<lceil> Q \<rceil>\<^bsub>R\<^esub>\<close>
-  by (force simp add: wsstable_def)
 
 subsection \<open>Rely Monotonicity\<close>
 
 lemma swstable_rely_antimono: \<open>R \<le> S \<Longrightarrow> \<lfloor> P \<rfloor>\<^bsub>S\<^esub> \<le> \<lfloor> P \<rfloor>\<^bsub>R\<^esub>\<close>
-  using mono_rtranclp
-  by (force simp add: swstable_def le_fun_def)
+  by (simp add: rtranclp_mono wlp_rel_antimono)
 
 lemma wsstable_rely_le_mono:
   \<open>R \<le> S \<Longrightarrow> \<lfloor> P \<rfloor>\<^bsub>R\<^esub> \<le> Q \<Longrightarrow> \<lfloor> P \<rfloor>\<^bsub>S\<^esub> \<le> Q\<close>
-  by (metis order_trans swstable_rely_antimono)
+  by (meson order_trans swstable_rely_antimono)
 
 lemma wsstable_rely_ge_antimono:
   \<open>R \<le> S \<Longrightarrow> P \<le> \<lfloor> Q \<rfloor>\<^bsub>S\<^esub> \<Longrightarrow> P \<le> \<lfloor> Q \<rfloor>\<^bsub>R\<^esub>\<close>
@@ -116,8 +86,7 @@ lemmas wsstable_rely_le_monoD = wsstable_rely_le_mono[rotated]
 lemmas wsstable_rely_ge_antimonoD = wsstable_rely_ge_antimono[rotated]
 
 lemma wsstable_rely_mono: \<open>R \<le> S \<Longrightarrow> \<lceil> P \<rceil>\<^bsub>R\<^esub> \<le> \<lceil> P \<rceil>\<^bsub>S\<^esub>\<close>
-  using mono_rtranclp
-  by (force simp add: wsstable_def le_fun_def)
+  by (simp add: rtranclp_mono wsstable_rel_mono)
 
 lemma wsstable_rely_le_antimono:
   \<open>R \<le> S \<Longrightarrow> \<lceil> P \<rceil>\<^bsub>S\<^esub> \<le> Q \<Longrightarrow> \<lceil> P \<rceil>\<^bsub>R\<^esub> \<le> Q\<close>
@@ -132,20 +101,19 @@ lemmas wsstable_rely_ge_monoD = wsstable_rely_ge_mono[rotated]
 
 subsection \<open>nested stabilisation\<close>
 
-lemma wsstable_absorb[simp]:
-  assumes \<open>R\<^sup>*\<^sup>* = Ra\<^sup>*\<^sup>* OO Rb\<^sup>*\<^sup>*\<close>
-  shows \<open>\<lceil> \<lceil> P \<rceil>\<^bsub>Ra\<^esub> \<rceil>\<^bsub>Rb\<^esub> = \<lceil> P \<rceil>\<^bsub>R\<^esub>\<close>
-  by (force simp add: assms wsstable_def relcompp_apply fun_eq_iff)
+lemma wsstable_absorb:
+  \<open>R\<^sup>*\<^sup>* = Ra\<^sup>*\<^sup>* OO Rb\<^sup>*\<^sup>* \<Longrightarrow> \<lceil> \<lceil> P \<rceil>\<^bsub>Ra\<^esub> \<rceil>\<^bsub>Rb\<^esub> = \<lceil> P \<rceil>\<^bsub>R\<^esub>\<close>
+  by (simp add: sp_comp_rel)
 
 lemma wsstable_absorb1[simp]: \<open>R \<le> R' \<Longrightarrow> \<lceil> \<lceil> P \<rceil>\<^bsub>R\<^esub> \<rceil>\<^bsub>R'\<^esub> = \<lceil> P \<rceil>\<^bsub>R'\<^esub>\<close>
-  by (simp add: rel_le_rtranscp_relcompp_absorb)
+  by (simp add: rel_le_rtranscp_relcompp_absorb(2) wsstable_absorb)
 
 lemma wsstable_absorb2[simp]: \<open>R \<le> R' \<Longrightarrow> \<lceil> \<lceil> P \<rceil>\<^bsub>R'\<^esub> \<rceil>\<^bsub>R\<^esub> = \<lceil> P \<rceil>\<^bsub>R'\<^esub>\<close>
-  by (simp add: rel_le_rtranscp_relcompp_absorb)
+  by (simp add: rel_le_rtranscp_relcompp_absorb(1) wsstable_absorb)
 
 lemma swstable_absorb[simp]:
   \<open>R\<^sup>*\<^sup>* = Rb\<^sup>*\<^sup>* OO Ra\<^sup>*\<^sup>* \<Longrightarrow> \<lfloor> \<lfloor> P \<rfloor>\<^bsub>Ra\<^esub> \<rfloor>\<^bsub>Rb\<^esub> = \<lfloor> P \<rfloor>\<^bsub>R\<^esub>\<close>
-  by (force simp add: swstable_def relcompp_apply imp_ex imp_conjL fun_eq_iff)
+  by (simp add: wlp_comp_rel)
 
 lemma swstable_absorb1[simp]: \<open>R \<le> R' \<Longrightarrow> \<lfloor> \<lfloor> P \<rfloor>\<^bsub>R\<^esub> \<rfloor>\<^bsub>R'\<^esub> = \<lfloor> P \<rfloor>\<^bsub>R'\<^esub>\<close>
   by (simp add: rel_le_rtranscp_relcompp_absorb)
@@ -154,18 +122,30 @@ lemma swstable_absorb2[simp]: \<open>R \<le> R' \<Longrightarrow> \<lfloor> \<lf
   by (simp add: rel_le_rtranscp_relcompp_absorb)
 
 lemma wsstable_swstable_absorb[simp]: \<open>R \<le> R' \<Longrightarrow> \<lceil> \<lfloor> P \<rfloor>\<^bsub>R'\<^esub> \<rceil>\<^bsub>R\<^esub> = \<lfloor> P \<rfloor>\<^bsub>R'\<^esub>\<close>
-  unfolding wsstable_def swstable_def
-  by (metis (opaque_lifting) predicate2D rtranclp.rtrancl_refl rtranclp_trans rtranclp_mono)
+  by (simp add: rtranclp_mono)
 
 lemma swstable_wsstable_absorb[simp]: \<open>R \<le> R' \<Longrightarrow> \<lfloor> \<lceil> P \<rceil>\<^bsub>R'\<^esub> \<rfloor>\<^bsub>R\<^esub> = \<lceil> P \<rceil>\<^bsub>R'\<^esub>\<close>
-  unfolding wsstable_def swstable_def
-  by (metis (opaque_lifting) predicate2D rtranclp.rtrancl_refl rtranclp_trans rtranclp_mono)
+  by (simp add: rtranclp_mono)
 
 paragraph \<open> swstable preserves precision \<close>
 
-lemma swstable_preserves_precise[dest]:
+lemma wlp_refl_preserves_precise:
+  \<open>reflp r \<Longrightarrow> precise p \<Longrightarrow> precise (wlp r p)\<close>
+  by (simp add: precise_def sepcoimp_def sepconj_def wlp_def le_fun_def reflp_def)
+
+lemma wlp_refl_preserves_precise2:
+  \<open>reflp r \<Longrightarrow> precise2 p \<Longrightarrow> precise2 (wlp r p)\<close>
+  by (simp add: precise2_def sepcoimp_def sepconj_def wlp_def le_fun_def reflp_def, metis)
+
+
+lemma swstable_preserves_precise:
   \<open>precise p \<Longrightarrow> precise (\<lfloor> p \<rfloor>\<^bsub>r\<^esub>)\<close>
-  by (clarsimp simp add: precise_def swstable_def)
+  by (simp add: wlp_refl_preserves_precise)
+
+lemma swstable_preserves_precise2:
+  \<open>precise2 p \<Longrightarrow> precise2 (\<lfloor> p \<rfloor>\<^bsub>r\<^esub>)\<close>
+  by (simp add: wlp_refl_preserves_precise2)
+
 
 section \<open> Properties of stabilisation in a perm algebra \<close>
 
@@ -197,28 +177,41 @@ definition
         q h2 \<longrightarrow>
         (\<exists>s1 s2. s1 ## s2 \<and> s = s1 + s2 \<and> (\<exists>h1'. r h1' s1 \<and> p h1') \<and> (\<exists>h2'. r h2' s2 \<and> q h2')))\<close>
 
-lemma rel_add_preserve_impl_weak[intro,dest]:
+lemma rel_add_preserve_impl_weak:
   \<open>rel_add_preserve r \<Longrightarrow> weak_rel_add_preserve r\<close>
   unfolding weak_rel_add_preserve_def rel_add_preserve_def
-  by meson
+  by fast
 
 paragraph \<open> Semidistributivity \<close>
+
+lemma wlp_sepconj_semidistrib:
+  fixes R :: \<open>'a \<Rightarrow> 'a \<Rightarrow> bool\<close>
+  assumes \<open>rel_add_preserve r\<close>
+  shows \<open>wlp r p \<^emph> wlp r q \<le> wlp r (p \<^emph> q)\<close>
+  using assms
+  by (simp add: rel_add_preserve_def sepconj_def le_fun_def wlp_def, blast)
+
+lemma sp_sepconj_semidistrib:
+  fixes R :: \<open>'a \<Rightarrow> 'a \<Rightarrow> bool\<close>
+  assumes \<open>weak_rel_add_preserve r\<close>
+  shows \<open>sp r (p \<^emph> q) \<le> sp r p \<^emph> sp r q\<close>
+  using assms
+  by (fastforce simp add: weak_rel_add_preserve_def sp_def sepconj_def le_fun_def)
+
 
 lemma swstable_sepconj_semidistrib:
   fixes R :: \<open>'a \<Rightarrow> 'a \<Rightarrow> bool\<close>
   assumes \<open>rel_add_preserve (R\<^sup>*\<^sup>*)\<close>
   shows \<open>\<lfloor> P \<rfloor>\<^bsub>R\<^esub> \<^emph> \<lfloor> Q \<rfloor>\<^bsub>R\<^esub> \<le> \<lfloor> P \<^emph> Q \<rfloor>\<^bsub>R\<^esub>\<close>
   using assms
-  unfolding rel_add_preserve_def swstable_def sepconj_def
-  by blast
+  by (simp add: rel_add_preserve_def sepconj_def le_fun_def wlp_def, blast)
 
 lemma wsstable_sepconj_semidistrib:
   fixes R :: \<open>'a \<Rightarrow> 'a \<Rightarrow> bool\<close>
   assumes \<open>weak_rel_add_preserve (R\<^sup>*\<^sup>*)\<close>
   shows \<open>\<lceil> P \<^emph> Q \<rceil>\<^bsub>R\<^esub> \<le> \<lceil> P \<rceil>\<^bsub>R\<^esub> \<^emph> \<lceil> Q \<rceil>\<^bsub>R\<^esub>\<close>
   using assms
-  unfolding weak_rel_add_preserve_def wsstable_def sepconj_def
-  by force
+  by (force simp add: weak_rel_add_preserve_def sp_def sepconj_def le_fun_def)
 
 paragraph \<open> Semidistributivity by rely merging \<close>
 
@@ -236,14 +229,14 @@ lemma rely_merge_rtranscl[simp]: \<open>(rely_merge r1 r2)\<^sup>*\<^sup>* = rel
 
 lemma swstable_sepconj_semidistrib_forwards:
   \<open>\<lfloor> P \<rfloor>\<^bsub>R1\<^esub> \<^emph> \<lfloor> Q \<rfloor>\<^bsub>R2\<^esub> \<le> \<lfloor> P \<^emph> Q \<rfloor>\<^bsub>rely_merge R1 R2\<^esub>\<close>
-  apply (clarsimp simp add: swstable_def sepconj_def fun_eq_iff)
+  apply (clarsimp simp add: wlp_def sepconj_def fun_eq_iff)
   apply (simp add: rely_merge_def sepconj_def)
   apply blast
   done
 
 lemma wsstable_sepconj_semidistrib_backwards:
   \<open>\<lceil> P \<^emph> Q \<rceil>\<^bsub>rely_merge R1 R2\<^esub> \<le> \<lceil> P \<rceil>\<^bsub>R1\<^esub> \<^emph> \<lceil> Q \<rceil>\<^bsub>R2\<^esub>\<close>
-  apply (clarsimp simp add: wsstable_def sepconj_def fun_eq_iff)
+  apply (clarsimp simp add: sp_def sepconj_def fun_eq_iff)
   apply (simp add: rely_merge_def sepconj_def)
   apply blast
   done
@@ -281,113 +274,7 @@ lemma stableres_plus_eq: \<open>stableres (a + b) = stableres a + stableres b\<c
   nitpick
   oops
 
-
-abbreviation(input) stablerel :: \<open>'a \<Rightarrow> 'a \<Rightarrow> bool\<close> where
-  \<open>stablerel a b \<equiv> stableres a \<le> stableres b\<close>
-
-
-lemma stablerel_reflp:
-  \<open>reflp stablerel\<close>
-  by (simp add: reflpI)
-
-lemma stablerel_transp:
-  \<open>transp stablerel\<close>
-  using order.trans transp_def by fast
-
-lemma stablerel_eqclp[simp]:
-  \<open>stablerel = stablerel\<close>
-  by (simp add: reflp_ge_eq stablerel_reflp sup.absorb1)
-
-lemma stablerel_transclp[simp]:
-  \<open>stablerel\<^sup>*\<^sup>* = stablerel\<close>
-  by (metis stablerel_reflp stablerel_transp rtransp_rel_is_rtransclp)
-
-
-lemma stablerel_additivity_of_update:
-  assumes
-    \<open>a1 ## a2\<close>
-    \<open>stablerel (a1 + a2) b\<close> 
-  shows \<open>\<exists>b1 b2. b1 ## b2 \<and> b = b1 + b2 \<and> stablerel a1 b1 \<and> stablerel a2 b2\<close>
-proof -
-  obtain c where c_props:
-    \<open>b = stableres a1 + stableres a2 + c\<close>
-    \<open>stableres a1 + stableres a2 ## c\<close>
-    using assms
-    by (meson order.trans le_iff_sepadd stableres_subres stableres_concave)
-
-  have disjoint_props:
-    \<open>stableres a1 ## half c\<close>
-    \<open>stableres a2 ## half c\<close>
-    \<open>stableres a1 ## stableres a2 + c\<close>
-    \<open>stableres a1 + half c ## stableres a2 + half c\<close>
-    using assms(1) c_props(2)
-    apply -
-       apply (metis disjoint_add_leftL half_disjoint_preservation_right
-        stableres_disjoint_preservation)
-      apply (metis disjoint_add_leftR half_disjoint_preservation_right
-        stableres_disjoint_preservation)
-     apply (metis disjoint_add_rightR disjoint_add_right_commute disjoint_sym_iff
-        partial_add_commute stableres_disjoint_preservation)
-    apply (meson disjoint_add_leftR disjoint_add_swap2 half_disjoint_distribR
-        stableres_disjoint_preservation)
-    done
-
-  have \<open>b = stableres a1 + half c + (stableres a2 + half c)\<close>
-    using assms(1)
-    by (metis c_props disjoint_props(1-3) disjoint_add_leftR half_additive_split half_self_disjoint
-        partial_add_double_assoc stableres_disjoint_preservation)
-  then show ?thesis
-    using assms(1)
-    apply -
-    apply (rule_tac x=\<open>stableres a1 + half c\<close> in exI)
-    apply (rule_tac x=\<open>stableres a2 + half c\<close> in exI)
-    apply (intro conjI)
-       apply (simp add: disjoint_props(4))
-      apply force
-     apply (metis disjoint_props(1) partial_le_plus stableres_idem stableres_mono)
-    apply (metis disjoint_props(2) partial_le_plus stableres_idem stableres_mono)
-    done
-qed
-
-abbreviation swstablerel :: \<open>('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool)\<close> (\<open>\<lfloor> _ \<rfloor>\<close>) where
-  \<open>\<lfloor> P \<rfloor> \<equiv> \<lfloor> P \<rfloor>\<^bsub>stablerel\<^esub>\<close>
-
-abbreviation wsstablerel :: \<open>('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool)\<close> (\<open>\<lceil> _ \<rceil>\<close>) where
-  \<open>\<lceil> P \<rceil> \<equiv> \<lceil> P \<rceil>\<^bsub>stablerel\<^esub>\<close>
-
-abbreviation(input) wsstablerel_temporal :: \<open>('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool)\<close> (\<open>\<diamond>\<^sup>- _\<close> [81] 80) where
-  \<open>\<diamond>\<^sup>- P \<equiv> \<lceil> P \<rceil>\<^bsub>stablerel\<^esub>\<close>
-
-abbreviation(input) swstablerel_temporal :: \<open>('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool)\<close> (\<open>\<box> _\<close> [81] 80) where
-  \<open>\<box> P \<equiv> \<lfloor> P \<rfloor>\<^bsub>stablerel\<^esub>\<close>
-
-lemma swstablerel_sepconj_semidistrib:
-  fixes P Q :: \<open>'a \<Rightarrow> bool\<close>
-  shows \<open>\<lfloor> P \<rfloor> \<^emph> \<lfloor> Q \<rfloor> \<le> \<lfloor> P \<^emph> Q \<rfloor>\<close>
-  by (rule swstable_sepconj_semidistrib, simp add: rel_add_preserve_def stablerel_additivity_of_update)
-
-lemma wsstablerel_sepconj_semidistrib:
-  fixes P Q :: \<open>'a \<Rightarrow> bool\<close>
-  shows \<open>\<lceil> P \<^emph> Q \<rceil> \<le> \<lceil> P \<rceil> \<^emph> \<lceil> Q \<rceil>\<close>
-  by (rule wsstable_sepconj_semidistrib[OF rel_add_preserve_impl_weak])
-    (simp add: rel_add_preserve_def stablerel_additivity_of_update)
-
 end
-
-
-lemma swstable_necessitation: \<open>\<top> \<le> P \<Longrightarrow> \<top> \<le> \<box> P\<close>
-  by (metis order_eq_refl swstable_wsstable_absorb top.extremum_uniqueI wsstable_stronger)
-
-lemma swstable_impl_distrib: \<open>\<box>(P \<leadsto> Q) \<sqinter> \<box> P \<le> \<box> Q\<close>
-  by (metis (no_types, lifting) double_compl inf.absorb1 inf.orderI inf_idem sup_neg_inf
-      swstable_conj_distrib implies_def)
-
-lemma wsstabledual_necessitation: \<open>\<top> \<le> P \<Longrightarrow> \<top> \<le> - (\<diamond>\<^sup>- (- P))\<close>
-  by (metis (mono_tags, lifting) double_compl order_antisym predicate1I top_apply uminus_apply
-      wsstable_def wsstable_stronger)
-
-lemma wsstabledual_impl_distrib: \<open>\<diamond>\<^sup>- Q \<le> \<diamond>\<^sup>-(-P \<sqinter> Q) \<squnion> \<diamond>\<^sup>-(P)\<close>
-  by (force simp add: le_fun_def wsstable_def)
 
 instantiation prod :: (stable_sep_alg,stable_sep_alg) stable_sep_alg
 begin

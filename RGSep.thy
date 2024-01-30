@@ -100,24 +100,16 @@ lemma framed_rel_step_wsstable:
     r hs hs' \<Longrightarrow>
     (\<lceil> p \<rceil>\<^bsub>frame r with f\<^esub>) h \<Longrightarrow>
     (\<lceil> p \<rceil>\<^bsub>frame r with f\<^esub>) h'\<close>
-  apply (clarsimp simp add: frame_with_def wsstable_def)
-  apply (rule_tac x=s in exI)
-  apply clarsimp
-  apply (rule rtranclp.rtrancl_into_rtrancl, assumption)
-  apply (rule_tac x=hs in exI, rule_tac x=hs' in exI)
-  apply clarsimp
-  done
+  using rtranclp.rtrancl_into_rtrancl[of \<open>frame r with f\<close>]
+  by (simp add: frame_with_def sp_def, blast)
 
 lemma framed_rel_step_swstable:
   \<open>framed_subresource_rel f hs hs' h h' \<Longrightarrow>
     r hs hs' \<Longrightarrow>
     (\<lfloor> p \<rfloor>\<^bsub>frame r with f\<^esub>) h \<Longrightarrow>
     (\<lfloor> p \<rfloor>\<^bsub>frame r with f\<^esub>) h'\<close>
-  apply (clarsimp simp add: frame_with_def swstable_def)
-  apply (subgoal_tac \<open>(\<lambda>h h'. \<exists>hs hs'. r hs hs' \<and> framed_subresource_rel f hs hs' h h')\<^sup>*\<^sup>* h s'\<close>)
-   apply force
-  apply (rule converse_rtranclp_into_rtranclp; blast)
-  done
+  using converse_rtranclp_into_rtranclp[of \<open>frame r with f\<close>]
+  by (simp add: frame_with_def wlp_def, blast)
 
 
 subsection \<open> Weak relation framing \<close>
@@ -165,24 +157,16 @@ lemma weak_framed_rel_step_wsstable:
     r hs hs' \<Longrightarrow>
     (\<lceil> p \<rceil>\<^bsub>wframe r with f\<^esub>) h \<Longrightarrow>
     (\<lceil> p \<rceil>\<^bsub>wframe r with f\<^esub>) h'\<close>
-  apply (clarsimp simp add: wframe_with_def wsstable_def)
-  apply (rule_tac x=s in exI)
-  apply clarsimp
-  apply (rule rtranclp.rtrancl_into_rtrancl, assumption)
-  apply (rule_tac x=hs in exI, rule_tac x=hs' in exI)
-  apply clarsimp
-  done
+  using rtranclp.rtrancl_into_rtrancl[of \<open>wframe r with f\<close>]
+  by (simp add: wframe_with_def sp_def, blast)
 
 lemma weak_framed_rel_step_swstable:
   \<open>weak_framed_subresource_rel f hs hs' h h' \<Longrightarrow>
     r hs hs' \<Longrightarrow>
     (\<lfloor> p \<rfloor>\<^bsub>wframe r with f\<^esub>) h \<Longrightarrow>
     (\<lfloor> p \<rfloor>\<^bsub>wframe r with f\<^esub>) h'\<close>
-  apply (clarsimp simp add: wframe_with_def swstable_def)
-  apply (subgoal_tac \<open>(\<lambda>h h'. \<exists>hs hs'. r hs hs' \<and> weak_framed_subresource_rel f hs hs' h h')\<^sup>*\<^sup>* h s'\<close>)
-   apply force
-  apply (rule converse_rtranclp_into_rtranclp; force)
-  done
+  using converse_rtranclp_into_rtranclp[of \<open>wframe r with f\<close>]
+  by (simp add: wframe_with_def wlp_def, blast)
 
 
 definition
@@ -563,7 +547,7 @@ lemma frame_conj_helper:
   apply (rename_tac h1a h1b h2a h2b)
   apply (frule(1) precise_f)
   apply simp
-  apply (metis precise_f predicate1D wsstable_def wsstable_stronger)
+  apply (metis precise_f predicate1D sp_def wsstable_stronger)
   done
 
 lemma backwards_frame:
@@ -573,6 +557,6 @@ lemma backwards_frame:
 lemma backwards_done:
   \<open>rgsat Skip r g (\<lfloor> p \<rfloor>\<^bsub>r\<^esub>) p\<close>
   by (rule rgsat_weaken[OF rgsat_skip _ _ order.refl order.refl, where p'=\<open>\<lfloor> p \<rfloor>\<^bsub>r\<^esub>\<close> and q'=p])
-    (clarsimp simp add: wsstable_def swstable_def le_fun_def)+
+    (clarsimp simp add: sp_def wlp_def le_fun_def)+
 
 end
