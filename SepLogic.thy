@@ -207,6 +207,16 @@ lemma disjoint_add_swap2:
   \<open>a ## b \<Longrightarrow> a + b ## c \<Longrightarrow> a ## b + c\<close>
   by (simp add: disjoint_add_right_commute2 disjoint_sym_iff partial_add_commute)
 
+lemma disjoint_middle_swap:
+  \<open>a ## b \<Longrightarrow> a + b ## c \<Longrightarrow> a + b + c ## d \<Longrightarrow> a + c ## b + d\<close>
+  by (metis disjoint_add_leftR disjoint_add_right_commute2 disjoint_add_swap2 disjoint_sym_iff
+      partial_add_assoc)
+
+lemma disjoint_middle_swap2:
+  \<open>b ## c \<Longrightarrow> b + c ## d \<Longrightarrow> a ## b + c + d \<Longrightarrow> a + c ## b + d\<close>
+  by (metis disjoint_add_rightR disjoint_add_right_commute2 disjoint_add_rightL partial_add_assoc
+      partial_add_commute)
+
 lemma weak_positivity: \<open>a ## b \<Longrightarrow> a + b = c \<Longrightarrow> c ## c \<Longrightarrow> a ## a\<close>
   by (meson disjoint_add_rightL disjoint_sym)
 
@@ -217,8 +227,20 @@ lemma positivityR: \<open>a ## b \<Longrightarrow> a + b = c \<Longrightarrow> c
   using disjoint_sym partial_add_commute positivity by blast
 
 lemma partial_add_left_commute:
-  \<open>a ## b \<Longrightarrow> b ## c \<Longrightarrow> a ## c \<Longrightarrow> b + (a + c) = a + (b + c)\<close>
-  by (metis disjoint_sym partial_add_assoc partial_add_commute)
+  \<open>a ## c \<Longrightarrow> b ## a + c \<Longrightarrow> b ## c \<Longrightarrow> a ## b + c \<Longrightarrow> b + (a + c) = a + (b + c)\<close>
+  by (metis disjoint_add_rightL partial_add_assoc partial_add_commute)
+
+lemma partial_add_left_commute':
+  \<open>a ## b \<Longrightarrow> a ## c \<Longrightarrow> b ## c \<Longrightarrow> b + (a + c) = a + (b + c)\<close>
+  by (metis disjoint_sym_iff partial_add_assoc partial_add_commute)
+
+lemma partial_add_right_commute:
+  \<open>a ## b \<Longrightarrow> a + b ## c \<Longrightarrow> a ## c \<Longrightarrow> a + c ## b \<Longrightarrow> a + b + c = a + c + b\<close>
+  by (metis disjoint_add_leftR partial_add_assoc partial_add_commute)
+
+lemma partial_add_right_commute':
+  \<open>a ## b \<Longrightarrow> a ## c \<Longrightarrow> b ## c \<Longrightarrow> a + b + c = a + c + b\<close>
+  by (simp add: disjoint_sym_iff partial_add_assoc partial_add_commute)
 
 lemma disjoint_preservation:
   \<open>a' \<le> a \<Longrightarrow> a ## b \<Longrightarrow> a' ## b\<close>
@@ -1800,7 +1822,7 @@ end
 
 section \<open> Instances \<close>
 
-instantiation prod :: (multiunit_sep_alg,multiunit_sep_alg) perm_alg
+instantiation prod :: (perm_alg,perm_alg) perm_alg
 begin
 
 definition plus_prod  :: \<open>'a \<times> 'b \<Rightarrow> 'a \<times> 'b \<Rightarrow> 'a \<times> 'b\<close> where
@@ -1811,29 +1833,45 @@ definition disjoint_prod  :: \<open>'a \<times> 'b \<Rightarrow> 'a \<times> 'b 
   \<open>disjoint_prod a b \<equiv> (fst a ## fst b \<and> snd a ## snd b)\<close>
 declare disjoint_prod_def[simp]
 
+(* these definitions are horrible because we don't have a 0, and thus can't prove the addition
+    property if the definition is done pointwise. *)
 definition less_eq_prod  :: \<open>'a \<times> 'b \<Rightarrow> 'a \<times> 'b \<Rightarrow> bool\<close> where
-  \<open>less_eq_prod a b \<equiv> fst a \<le> fst b \<and> snd a \<le> snd b\<close>
-declare less_eq_prod_def[simp]
+  \<open>less_eq_prod a b \<equiv>
+    a = b \<or>
+      ((fst a \<noteq> fst b \<or> snd a \<noteq> snd b) \<and>
+        (\<exists>c. fst a ## c \<and> fst b = fst a + c) \<and>
+        (\<exists>c. snd a ## c \<and> snd b = snd a + c))\<close>
 
 definition less_prod  :: \<open>'a \<times> 'b \<Rightarrow> 'a \<times> 'b \<Rightarrow> bool\<close> where
-  \<open>less_prod a b \<equiv> fst a < fst b \<and> snd a \<le> snd b \<or> fst a \<le> fst b \<and> snd a < snd b\<close>
-declare less_prod_def[simp]
+  \<open>less_prod a b \<equiv>
+    (fst a \<noteq> fst b \<or> snd a \<noteq> snd b) \<and>
+      (\<exists>c. fst a ## c \<and> fst b = fst a + c) \<and>
+      (\<exists>c. snd a ## c \<and> snd b = snd a + c)\<close>
 
 instance
   apply standard
-            apply force
-           apply force
-          apply (force simp add: partial_add_assoc)
-         apply (force dest: partial_add_commute)
+            apply (simp add: less_prod_def less_eq_prod_def)
+            apply (metis order_antisym_conv partial_le_plus)
+           apply (force simp add: less_prod_def less_eq_prod_def)
+          apply (simp add: less_prod_def less_eq_prod_def, metis disjoint_add_swap2 partial_add_assoc2 prod.expand)
+         apply (metis less_eq_prod_def order_antisym_conv partial_le_plus)
         apply (force simp add: partial_add_assoc)
-       apply (force simp add: disjoint_sym_iff partial_add_commute)
-      apply (force simp add: disjoint_sym)
+       apply (force dest: partial_add_commute)
+      apply (force simp add: disjoint_sym_iff)
      apply (force dest: disjoint_add_rightL)
     apply (force dest: disjoint_add_right_commute)
    apply (force dest: positivity)
   apply (clarsimp simp add: less_iff_sepadd)
-  apply (simp add: le_iff_sepadd_weak, metis disjoint_sym_iff unitof_disjoint unitof_is_unitR2)
+  apply (simp add: less_prod_def less_eq_prod_def, blast)
   done
+
+lemma less_eq_prod1:
+  \<open>fst a < fst b \<Longrightarrow> snd a ## c \<Longrightarrow> snd b = snd a + c \<Longrightarrow> a \<le> b\<close>
+  by (force simp add: less_prod_def less_eq_prod_def less_iff_sepadd le_iff_sepadd_weak)
+
+lemma less_eq_prod2:
+  \<open>fst a ## c \<Longrightarrow> fst b = fst a + c \<Longrightarrow> snd a < snd b \<Longrightarrow> a \<le> b\<close>
+  by (force simp add: less_prod_def less_eq_prod_def less_iff_sepadd le_iff_sepadd_weak)
 
 end
 
@@ -1846,6 +1884,18 @@ declare unitof_prod_def[simp]
 
 instance
   by standard force+
+
+lemma mu_less_eq_prod_def[simp]:
+  fixes a b :: \<open>_::multiunit_sep_alg \<times> _::multiunit_sep_alg\<close>
+  shows \<open>a \<le> b \<longleftrightarrow> fst a \<le> fst b \<and> snd a \<le> snd b\<close>
+  apply (simp add: less_eq_prod_def le_iff_sepadd_weak)
+  apply (metis prod.expand unitof_disjoint2 unitof_is_unitR2)
+  done
+
+lemma mu_less_prod_def[simp]:
+  fixes a b :: \<open>_::multiunit_sep_alg \<times> _::multiunit_sep_alg\<close>
+  shows \<open>a < b \<longleftrightarrow> fst a \<le> fst b \<and> snd a < snd b \<or> fst a < fst b \<and> snd a \<le> snd b\<close>
+  by (metis less_le_not_le mu_less_eq_prod_def)
 
 end
 

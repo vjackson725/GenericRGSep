@@ -161,39 +161,63 @@ text \<open> This is probably too strong a property to be useful. It essentially
       Compare this approach with the rely splitting approach later. \<close>
 
 definition
-  \<open>rel_add_preserve r \<equiv>
+  \<open>rel_add_preserve r p1 p2 \<equiv>
     (\<forall>h1 h2 s.
       h1 ## h2 \<longrightarrow>
       r (h1 + h2) s \<longrightarrow>
+      p1 h1 \<longrightarrow>
+      p2 h2 \<longrightarrow>
       (\<exists>s1 s2. s1 ## s2 \<and> s = s1 + s2 \<and> r h1 s1 \<and> r h2 s2))\<close>
 
+lemma rel_add_preserve_pred_mono1:
+  \<open>p1 \<le> p2 \<Longrightarrow> rel_add_preserve r p2 q \<Longrightarrow> rel_add_preserve r p1 q\<close>
+  by (force simp add: rel_add_preserve_def)
+
+lemma rel_add_preserve_pred_mono2:
+  \<open>q1 \<le> q2 \<Longrightarrow> rel_add_preserve r p q2 \<Longrightarrow> rel_add_preserve r p q1\<close>
+  by (force simp add: rel_add_preserve_def)
+
+lemma rel_add_preserve_pred_mono:
+  \<open>p1 \<le> p2 \<Longrightarrow> q1 \<le> q2 \<Longrightarrow> rel_add_preserve r p2 q2 \<Longrightarrow> rel_add_preserve r p1 q1\<close>
+  by (force simp add: rel_add_preserve_def)
+
 definition
-  \<open>weak_rel_add_preserve r \<equiv>
-    \<forall>p q.
-      (\<forall>h1 h2 s.
-        r (h1 + h2) s \<longrightarrow>
-        h1 ## h2 \<longrightarrow>
-        p h1 \<longrightarrow>
-        q h2 \<longrightarrow>
-        (\<exists>s1 s2. s1 ## s2 \<and> s = s1 + s2 \<and> (\<exists>h1'. r h1' s1 \<and> p h1') \<and> (\<exists>h2'. r h2' s2 \<and> q h2')))\<close>
+  \<open>weak_rel_add_preserve r p q \<equiv>
+    (\<forall>h1 h2 s.
+      r (h1 + h2) s \<longrightarrow>
+      h1 ## h2 \<longrightarrow>
+      p h1 \<longrightarrow>
+      q h2 \<longrightarrow>
+      (\<exists>s1 s2. s1 ## s2 \<and> s = s1 + s2 \<and> (\<exists>h1'. r h1' s1 \<and> p h1') \<and> (\<exists>h2'. r h2' s2 \<and> q h2')))\<close>
 
 lemma rel_add_preserve_impl_weak:
-  \<open>rel_add_preserve r \<Longrightarrow> weak_rel_add_preserve r\<close>
+  \<open>rel_add_preserve r p q \<Longrightarrow> weak_rel_add_preserve r p q\<close>
   unfolding weak_rel_add_preserve_def rel_add_preserve_def
   by fast
+
+lemma rel_add_preserveD:
+  \<open>rel_add_preserve r p q \<Longrightarrow>
+    r (a + b) c \<Longrightarrow>
+    p a \<Longrightarrow>
+    q b \<Longrightarrow>
+    a ## b \<Longrightarrow>
+    (\<exists>ca cb. ca ## cb \<and> c = ca + cb \<and> r a ca \<and> r b cb)\<close>
+  by (simp add: rel_add_preserve_def)
 
 paragraph \<open> Semidistributivity \<close>
 
 lemma wlp_sepconj_semidistrib:
   fixes R :: \<open>'a \<Rightarrow> 'a \<Rightarrow> bool\<close>
-  assumes \<open>rel_add_preserve r\<close>
+  assumes \<open>rel_add_preserve r \<top> \<top>\<close>
   shows \<open>wlp r p \<^emph> wlp r q \<le> wlp r (p \<^emph> q)\<close>
   using assms
-  by (simp add: rel_add_preserve_def sepconj_def le_fun_def wlp_def, blast)
+  apply (clarsimp simp add: rel_add_preserve_def sepconj_def le_fun_def wlp_def)
+  apply blast
+  done
 
 lemma sp_sepconj_semidistrib:
   fixes R :: \<open>'a \<Rightarrow> 'a \<Rightarrow> bool\<close>
-  assumes \<open>weak_rel_add_preserve r\<close>
+  assumes \<open>weak_rel_add_preserve r p q\<close>
   shows \<open>sp r (p \<^emph> q) \<le> sp r p \<^emph> sp r q\<close>
   using assms
   by (fastforce simp add: weak_rel_add_preserve_def sp_def sepconj_def le_fun_def)
@@ -201,17 +225,18 @@ lemma sp_sepconj_semidistrib:
 
 lemma swstable_sepconj_semidistrib:
   fixes R :: \<open>'a \<Rightarrow> 'a \<Rightarrow> bool\<close>
-  assumes \<open>rel_add_preserve (R\<^sup>*\<^sup>*)\<close>
+  assumes \<open>rel_add_preserve (R\<^sup>*\<^sup>*) \<top> \<top>\<close>
   shows \<open>\<lfloor> P \<rfloor>\<^bsub>R\<^esub> \<^emph> \<lfloor> Q \<rfloor>\<^bsub>R\<^esub> \<le> \<lfloor> P \<^emph> Q \<rfloor>\<^bsub>R\<^esub>\<close>
   using assms
-  by (simp add: rel_add_preserve_def sepconj_def le_fun_def wlp_def, blast)
+  by (metis wlp_sepconj_semidistrib)
 
 lemma wsstable_sepconj_semidistrib:
-  fixes R :: \<open>'a \<Rightarrow> 'a \<Rightarrow> bool\<close>
-  assumes \<open>weak_rel_add_preserve (R\<^sup>*\<^sup>*)\<close>
-  shows \<open>\<lceil> P \<^emph> Q \<rceil>\<^bsub>R\<^esub> \<le> \<lceil> P \<rceil>\<^bsub>R\<^esub> \<^emph> \<lceil> Q \<rceil>\<^bsub>R\<^esub>\<close>
+  fixes r :: \<open>'a \<Rightarrow> 'a \<Rightarrow> bool\<close>
+  assumes \<open>weak_rel_add_preserve r\<^sup>*\<^sup>* p q\<close>
+  shows \<open>\<lceil> p \<^emph> q \<rceil>\<^bsub>r\<^esub> \<le> \<lceil> p \<rceil>\<^bsub>r\<^esub> \<^emph> \<lceil> q \<rceil>\<^bsub>r\<^esub>\<close>
   using assms
-  by (force simp add: weak_rel_add_preserve_def sp_def sepconj_def le_fun_def)
+  by (metis sp_sepconj_semidistrib)
+
 
 paragraph \<open> Semidistributivity by rely merging \<close>
 

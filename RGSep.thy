@@ -49,6 +49,22 @@ lemma framed_subresource_rel_sym:
   \<open>framed_subresource_rel p a b a' b' \<Longrightarrow> framed_subresource_rel p b a b' a'\<close>
   using framed_subresource_rel_def by auto
 
+lemma framed_subresource_le_firstD[dest]:
+  \<open>framed_subresource_rel f ha ha' h h' \<Longrightarrow> ha \<le> h\<close>
+  using framed_subresource_rel_def by auto
+
+lemma framed_subresource_le_secondD[dest]:
+  \<open>framed_subresource_rel f ha ha' h h' \<Longrightarrow> ha' \<le> h'\<close>
+  using framed_subresource_rel_def by auto
+
+lemma wframed_subresource_le_firstD[dest]:
+  \<open>weak_framed_subresource_rel f ha ha' h h' \<Longrightarrow> ha \<le> h\<close>
+  using framed_subresource_rel_def by auto
+
+lemma wframed_subresource_le_secondD[dest]:
+  \<open>weak_framed_subresource_rel f ha ha' h h' \<Longrightarrow> ha' \<le> h'\<close>
+  using framed_subresource_rel_def by auto
+
 end
 
 lemma (in multiunit_sep_alg) mu_sep_alg_compatible_framed_subresource_rel_iff:
@@ -167,6 +183,73 @@ lemma weak_framed_rel_step_swstable:
     (\<lfloor> p \<rfloor>\<^bsub>wframe r with f\<^esub>) h'\<close>
   using converse_rtranclp_into_rtranclp[of \<open>wframe r with f\<close>]
   by (simp add: wframe_with_def wlp_def, blast)
+
+lemma frame_with_idem[simp]:
+  \<open>(frame (frame r with p) with q) = (frame r with p \<^emph> q)\<close>
+  apply (clarsimp simp add: frame_with_def fun_eq_iff framed_subresource_rel_def sepconj_def)
+  apply (rule iffI)
+   apply (clarsimp, metis disjoint_add_leftR disjoint_add_swap2 partial_add_assoc2)
+  apply (clarsimp, metis disjoint_add_rightL disjoint_add_swap partial_add_assoc3)
+  done
+
+lemma wframe_with_idem[simp]:
+  \<open>(wframe (wframe r with p) with q) = (wframe r with p \<squnion> q \<squnion> p \<^emph> q)\<close>
+  apply (clarsimp simp add: wframe_with_def fun_eq_iff sepconj_def framed_subresource_rel_def)
+  apply (rule iffI)
+   apply (elim disjE conjE exE)
+      apply blast
+     apply blast
+    apply blast
+   apply (clarsimp, metis disjoint_add_rightR disjoint_add_swap2 disjoint_sym partial_add_assoc2)
+  apply (elim disjE conjE exE)
+     apply blast
+    apply blast
+   apply blast
+  apply (clarsimp, metis disjoint_add_rightL disjoint_add_swap partial_add_assoc3)
+  done
+
+lemma wframe_frame_with_idem[simp]:
+  \<open>(wframe (frame r with p) with q) = (frame r with p \<squnion> p \<^emph> q)\<close>
+  apply (clarsimp simp add: frame_with_def wframe_with_def fun_eq_iff sepconj_def
+      framed_subresource_rel_def)
+  apply (rule iffI)
+   apply (elim disjE conjE exE)
+    apply blast
+   apply (clarsimp, metis disjoint_add_rightR disjoint_add_swap2 disjoint_sym partial_add_assoc2)
+  apply (elim disjE conjE exE)
+   apply blast
+  apply (clarsimp, metis disjoint_add_rightL disjoint_add_swap partial_add_assoc3)
+  done
+
+lemma frame_wframe_with_idem[simp]:
+  \<open>(frame (wframe r with p) with q) = (frame r with q \<squnion> p \<^emph> q)\<close>
+  apply (clarsimp simp add: frame_with_def wframe_with_def fun_eq_iff sepconj_def
+      framed_subresource_rel_def)
+  apply (rule iffI)
+   apply (elim disjE conjE exE)
+    apply blast
+   apply (clarsimp, metis disjoint_add_rightR disjoint_add_swap2 disjoint_sym partial_add_assoc2)
+  apply (elim disjE conjE exE)
+   apply blast
+  apply (clarsimp, metis disjoint_add_rightL disjoint_add_swap partial_add_assoc3)
+  done
+
+
+lemma frame_with_sup_rel_eq:
+  \<open>(frame r1 \<squnion> r2 with p) = (frame r1 with p) \<squnion> (frame r2 with p)\<close>
+  by (fastforce simp add: fun_eq_iff frame_with_def)
+
+lemma wframe_with_sup_rel_eq:
+  \<open>(wframe r1 \<squnion> r2 with p) = (wframe r1 with p) \<squnion> (wframe r2 with p)\<close>
+  by (fastforce simp add: fun_eq_iff wframe_with_def)
+
+lemma frame_with_inf_rel_semidistrib:
+  \<open>(frame r1 \<sqinter> r2 with p) \<le> (frame r1 with p) \<sqinter> (frame r2 with p)\<close>
+  by (force simp add: fun_eq_iff frame_with_def)
+
+lemma wframe_with_inf_rel_semidistrib:
+  \<open>(wframe r1 \<sqinter> r2 with p) \<le> (wframe r1 with p) \<sqinter> (wframe r2 with p)\<close>
+  by (force simp add: fun_eq_iff wframe_with_def)
 
 
 definition
@@ -355,6 +438,21 @@ definition
 lemma unframe_safeD:
   \<open>unframe_safe \<ff> r \<Longrightarrow> \<ff> z z' \<Longrightarrow> x ## z \<Longrightarrow> x' ## z' \<Longrightarrow> r (x + z) (x' + z') \<Longrightarrow> r x x'\<close>
   by (simp add: unframe_safe_def)
+
+subsection \<open> Strong Unframing \<close>
+
+definition
+  \<open>strong_unframe_safe \<ff> r \<equiv>
+    \<forall>x z xz'. r (x+z) xz' \<longrightarrow> x ## z \<longrightarrow> (\<exists>x' z'. \<ff> z z' \<and> x' ## z' \<and> xz' = x' + z' \<and> r x x')\<close>
+
+lemma strong_unframe_safeD:
+  \<open>strong_unframe_safe \<ff> r \<Longrightarrow> x ## z \<Longrightarrow> r (x + z) xz' \<Longrightarrow>
+    \<exists>x' z'. \<ff> z z' \<and> x' ## z' \<and> xz' = x' + z' \<and> r x x'\<close>
+  by (simp add: strong_unframe_safe_def)
+
+lemma strong_unframe_safe_mono:
+  \<open>\<ff>1 \<le> \<ff>2 \<Longrightarrow> strong_unframe_safe \<ff>1 r \<Longrightarrow> strong_unframe_safe \<ff>2 r\<close>
+  by (fastforce simp add: strong_unframe_safe_def post_state_def le_fun_def)
 
 
 section \<open> Language Definition \<close>
@@ -549,10 +647,6 @@ lemma frame_conj_helper:
   apply simp
   apply (metis precise_f predicate1D sp_def wsstable_stronger)
   done
-
-lemma backwards_frame:
-  \<open>rgsat c r g p q \<Longrightarrow> rel_add_preserve (r\<^sup>*\<^sup>*) \<Longrightarrow> rgsat c r g (p \<^emph> \<lfloor> f \<rfloor>\<^bsub>r \<squnion> g\<^esub>) (q \<^emph> f)\<close>
-  oops
 
 lemma backwards_done:
   \<open>rgsat Skip r g (\<lfloor> p \<rfloor>\<^bsub>r\<^esub>) p\<close>

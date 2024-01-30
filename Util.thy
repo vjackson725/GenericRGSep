@@ -119,8 +119,15 @@ definition \<open>rel_liftL p \<equiv> \<lambda>a b. p a\<close>
 definition \<open>rel_liftR p \<equiv> \<lambda>a b. p b\<close>
 definition \<open>rel_lift p \<equiv> \<lambda>a b. p a \<and> p b\<close>
 
-definition \<open>pre_state r \<equiv> \<lambda>a. \<exists>b. r a b\<close>
-definition \<open>post_state r \<equiv> \<lambda>b. \<exists>a. r a b\<close>
+definition \<open>pre_state_of B r \<equiv> \<lambda>a. \<exists>b\<in>B. r a b\<close>
+definition \<open>post_state_of A r \<equiv> \<lambda>b. \<exists>a\<in>A. r a b\<close>
+
+abbreviation \<open>pre_state \<equiv> pre_state_of UNIV\<close>
+abbreviation \<open>post_state \<equiv> post_state_of UNIV\<close>
+
+lemmas pre_state_def = pre_state_of_def[of UNIV, simplified]
+lemmas post_state_def = post_state_of_def[of UNIV, simplified]
+
 definition \<open>prepost_state \<equiv> pre_state \<squnion> post_state\<close>
 
 abbreviation \<open>tight_reflp r \<equiv> reflp_on (Collect (prepost_state r)) r\<close>
