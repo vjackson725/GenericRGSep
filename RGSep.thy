@@ -65,9 +65,16 @@ lemma wframed_subresource_le_secondD[dest]:
   \<open>weak_framed_subresource_rel f ha ha' h h' \<Longrightarrow> ha' \<le> h'\<close>
   using framed_subresource_rel_def by auto
 
+lemma framed_subresource_rel_top_same_sub_iff[simp]:
+  \<open>framed_subresource_rel f a a b b' \<longleftrightarrow> b = b' \<and> (\<exists>xf. a ## xf \<and> b = a + xf \<and> f xf)\<close>
+  by (force simp add: framed_subresource_rel_def le_iff_sepadd_weak)
+
 end
 
-lemma (in multiunit_sep_alg) mu_sep_alg_compatible_framed_subresource_rel_iff:
+context multiunit_sep_alg
+begin
+
+lemma mu_sep_alg_compatible_framed_subresource_rel_iff:
   assumes
     \<open>compatible h h'\<close>
     \<open>p (unitof h)\<close>
@@ -77,6 +84,8 @@ lemma (in multiunit_sep_alg) mu_sep_alg_compatible_framed_subresource_rel_iff:
   apply (simp add: framed_subresource_rel_def)
   apply (metis compatible_then_same_unit unitof_disjoint2 unitof_is_unitR2)
   done
+
+end
 
 lemma (in sep_alg) sep_alg_framed_subresource_rel_iff:
   \<open>p 0 \<Longrightarrow>
@@ -365,8 +374,8 @@ lemma frame_equals_maintain_eq_extends:
 subsection \<open> Frame closed \<close>
 
 definition
-  \<open>frame_pred_closed p r \<equiv>
-    \<forall>h h'. r h h' \<longrightarrow> (\<forall>hf. p hf \<longrightarrow> h ## hf \<longrightarrow> h' ## hf \<longrightarrow> r (h + hf) (h' + hf))\<close>
+  \<open>frame_pred_closed f r \<equiv>
+    \<forall>h h'. r h h' \<longrightarrow> (\<forall>hf. f hf \<longrightarrow> h ## hf \<longrightarrow> h' ## hf \<longrightarrow> r (h + hf) (h' + hf))\<close>
 
 abbreviation \<open>frame_closed \<equiv> frame_pred_closed (\<lambda>_. True)\<close>
 
@@ -405,23 +414,23 @@ subsection \<open> Frame pred safe \<close>
 text \<open> more powerful frame_closed \<close>
 
 definition
-  \<open>frame_pred_safe f \<equiv>
-    \<lambda>r. \<forall>x x' z z'. r x x' \<longrightarrow> f z \<longrightarrow> x ## z \<longrightarrow> f z' \<longrightarrow> x' ## z' \<longrightarrow> r (x+z) (x'+z')\<close>
+  \<open>frame_pred_safe \<ff> \<equiv>
+    \<lambda>r. \<forall>x x' z z'. r x x' \<longrightarrow> \<ff> z z' \<longrightarrow> x ## z \<longrightarrow> x' ## z' \<longrightarrow> r (x+z) (x'+z')\<close>
 
 lemma frame_pred_extends_eq_heap_implies_safe:
-  \<open>frame_pred_extends ((=) hf) \<le> frame_pred_safe ((=) hf)\<close>
+  \<open>frame_pred_extends ((=) hf) \<le> frame_pred_safe (rel_lift ((=) hf))\<close>
   unfolding frame_pred_extends_def frame_pred_safe_def le_fun_def
   by force
 
 lemma frame_pred_safe_implies_closed:
-  \<open>frame_pred_safe p f \<le> frame_pred_closed p f\<close>
+  \<open>frame_pred_safe (rel_lift f) \<le> frame_pred_closed f\<close>
   unfolding frame_pred_safe_def frame_pred_closed_def
   by auto
 
 lemma frame_equals_safe_eq_closed:
-  \<open>frame_pred_safe ((=) h) = frame_pred_closed ((=) h)\<close>
+  \<open>frame_pred_safe (rel_lift ((=) h)) = frame_pred_closed ((=) h)\<close>
   unfolding frame_pred_safe_def frame_pred_closed_def
-  by presburger
+  by force
 
 subsection \<open> Frame Step \<close>
 

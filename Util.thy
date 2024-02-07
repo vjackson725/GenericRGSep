@@ -72,6 +72,19 @@ lemma ex_eq_pair_iff[simp]:
 
 lemmas disjCI2 = disjCI[THEN Meson.disj_comm]
 
+subsection \<open> Predicates \<close>
+
+definition pred_Times :: \<open>('a \<Rightarrow> bool) \<Rightarrow> ('b \<Rightarrow> bool) \<Rightarrow> ('a \<times> 'b \<Rightarrow> bool)\<close>
+  (infixr \<open>\<times>\<^sub>P\<close> 80) where
+  \<open>p \<times>\<^sub>P q \<equiv> \<lambda>(a,b). p a \<and> q b\<close>
+
+lemma pred_Times_iff[simp]: \<open>(p1 \<times>\<^sub>P p2) x \<longleftrightarrow> p1 (fst x) \<and> p2 (snd x)\<close>
+  by (force simp add: pred_Times_def)
+
+lemma pred_Times_almost_assoc:
+  \<open>((p1 \<times>\<^sub>P p2) \<times>\<^sub>P p3) ((a,b),c) = (p1 \<times>\<^sub>P p2 \<times>\<^sub>P p3) (a,b,c)\<close>
+  by simp
+
 
 subsection \<open> datatypes \<close>
 
@@ -203,6 +216,21 @@ lemma liftL_le_liftL[simp]:
 lemma liftR_le_liftR[simp]:
   \<open>rel_liftR p \<le> rel_liftR q \<longleftrightarrow> p \<le> q\<close>
   by (simp add: rel_liftR_def)
+
+lemma rel_lift_top[simp]:
+  \<open>rel_lift \<top> = \<top>\<close>
+  by (force simp add: rel_lift_def)
+
+lemma rel_lift_bot[simp]:
+  \<open>rel_lift \<bottom> = \<bottom>\<close>
+  by (force simp add: rel_lift_def)
+lemma rel_lift_pred_True[simp]:
+  \<open>rel_lift (\<lambda>x. True) = \<top>\<close>
+  by (force simp add: rel_lift_def)
+
+lemma rel_lift_pred_False[simp]:
+  \<open>rel_lift (\<lambda>x. False) = \<bottom>\<close>
+  by (force simp add: rel_lift_def)
 
 lemma pre_change_state_mono[dest]:
   \<open>r1 \<le> r2 \<Longrightarrow> pre_change_state r1 x \<Longrightarrow> pre_change_state r2 x\<close>
