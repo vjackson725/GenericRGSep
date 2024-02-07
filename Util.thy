@@ -218,16 +218,20 @@ lemma change_state_mono[dest]:
 
 subsubsection \<open> relation tuples \<close>
 
-definition rel_prod :: \<open>('a \<Rightarrow> 'b \<Rightarrow> bool) \<Rightarrow> ('c \<Rightarrow> 'd \<Rightarrow> bool) \<Rightarrow> ('a \<times> 'c \<Rightarrow> 'b \<times> 'd \<Rightarrow> bool)\<close>
+definition rel_Times :: \<open>('a \<Rightarrow> 'b \<Rightarrow> bool) \<Rightarrow> ('c \<Rightarrow> 'd \<Rightarrow> bool) \<Rightarrow> ('a \<times> 'c \<Rightarrow> 'b \<times> 'd \<Rightarrow> bool)\<close>
   (infixr \<open>\<times>\<^sub>R\<close> 80) where
   \<open>r1 \<times>\<^sub>R r2 \<equiv> \<lambda>(a,c) (b, d). r1 a b \<and> r2 c d\<close>
 
-lemma rel_prod_iff[simp]: \<open>(r1 \<times>\<^sub>R r2) x y \<longleftrightarrow> r1 (fst x) (fst y) \<and> r2 (snd x) (snd y)\<close>
-  by (force simp add: rel_prod_def)
+lemma rel_Times_iff[simp]: \<open>(r1 \<times>\<^sub>R r2) x y \<longleftrightarrow> r1 (fst x) (fst y) \<and> r2 (snd x) (snd y)\<close>
+  by (force simp add: rel_Times_def)
 
-lemma rel_prod_almost_assoc:
+lemma rel_Times_almost_assoc:
   \<open>((r1 \<times>\<^sub>R r2) \<times>\<^sub>R r3) ((a,b),c) ((a',b'),c') = (r1 \<times>\<^sub>R r2 \<times>\<^sub>R r3) (a,b,c) (a',b',c')\<close>
   by simp
+
+lemma rel_Times_reflp_iff[simp]:
+  \<open>reflp (r1 \<times>\<^sub>R r2) \<longleftrightarrow> reflp r1 \<and> reflp r2\<close>
+  by (simp add: rel_Times_def reflp_def)
 
 subsubsection \<open> relation misc \<close>
 

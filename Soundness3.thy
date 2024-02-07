@@ -650,7 +650,7 @@ lemma safe_skip':
 lemma safe_skip:
   \<open>p (hl, hs) \<Longrightarrow> sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) p \<le> q \<Longrightarrow> safe n Skip hl hs r g q\<close>
   apply (rule safe_postpred_monoD[OF safe_skip'[where q=p]])
-   apply (metis (mono_tags, lifting) rel_prod_iff rtranclp.rtrancl_refl sp_def)
+   apply (metis (mono_tags, lifting) rel_Times_iff rtranclp.rtrancl_refl sp_def)
   apply blast
   done
   
@@ -723,37 +723,84 @@ lemma safe_seq:
 
 subsection \<open> Iteration \<close>
 
-lemma safe_iter':
-  \<open>(\<forall>m h'. m \<le> n \<longrightarrow> (\<lceil> i \<rceil>\<^bsub>wframe r with \<top>\<^esub>) h' \<longrightarrow> safe m c h' r g (\<lceil> i \<rceil>\<^bsub>wframe r with \<top>\<^esub>)) \<Longrightarrow>
-    (\<lceil> i \<rceil>\<^bsub>wframe r with \<top>\<^esub>) h \<Longrightarrow>
-    safe n (c\<^sup>\<star>) h r g (\<lceil> i \<rceil>\<^bsub>wframe r with \<top>\<^esub>)\<close>
-  apply (induct n arbitrary: i h)
-   apply force
-  apply (clarsimp simp add: le_Suc_eq)
-  apply (rule safe_suc)
-      apply blast
-     apply (force simp add: opstep_iff)
-    (* subgoal *)
-    apply (simp add: opstep_iff)
-    apply (elim disjE)
-     apply (simp add: safe_skip'; fail)
-    apply (clarsimp simp add: all_conj_distrib)
-    apply (rule_tac q=\<open>\<lceil> i \<rceil>\<^bsub>wframe r with \<top>\<^esub>\<close> in safe_seq, blast)
-    apply force
-    (* done *)
-   apply (force simp add: wsstable_step)
-  apply blast
+lemma rtranclp_tuple_rel_semidistrib:
+  \<open>(\<lambda>(a, c) (b, d). r1 a b \<and> r2 c d)\<^sup>*\<^sup>* ac bd
+    \<Longrightarrow> r1\<^sup>*\<^sup>* (fst ac) (fst bd) \<and> r2\<^sup>*\<^sup>* (snd ac) (snd bd)\<close>
+  by (induct rule: rtranclp_induct; force)
+
+lemma rel_Times_rtranclp_semidistrib:
+  \<open>(r1 \<times>\<^sub>R r2)\<^sup>*\<^sup>* \<le> r1\<^sup>*\<^sup>* \<times>\<^sub>R r2\<^sup>*\<^sup>*\<close>
+  apply (clarsimp simp add: le_fun_def rel_Times_def)
+  apply (force dest: rtranclp_tuple_rel_semidistrib)
   done
 
+
+lemma rtranclp_tuple_lift_eq_left:
+  \<open>r2\<^sup>*\<^sup>* c d \<Longrightarrow> (\<lambda>(a, c) (b, d). a = b \<and> r2 c d)\<^sup>*\<^sup>* (a,c) (a,d)\<close>
+  by (induct rule: rtranclp_induct, fast, simp add: rtranclp.rtrancl_into_rtrancl)
+
+lemma rtranclp_eq_eq[simp]:
+  \<open>(=)\<^sup>*\<^sup>* = (=)\<close>
+  by (simp add: rtransp_rel_is_rtransclp)
+
+lemma rel_Times_left_eq_rtranclp_distrib[simp]:
+  \<open>((=) \<times>\<^sub>R r2)\<^sup>*\<^sup>* = (=) \<times>\<^sub>R r2\<^sup>*\<^sup>*\<close>
+  apply (rule order.antisym)
+   apply (force dest: rtranclp_tuple_rel_semidistrib simp add: le_fun_def rel_Times_def)
+  apply (force dest: rtranclp_tuple_lift_eq_left simp add: le_fun_def rel_Times_def)
+  done
+
+lemma sp_rely_step:
+  \<open>r y y' \<Longrightarrow>
+    sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) p (x, y) \<Longrightarrow>
+    sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) p (x, y')\<close>
+  by (clarsimp simp add: sp_def,
+      meson rtranclp.rtrancl_into_rtrancl)
+
+declare eq_OO[simp] OO_eq[simp]
+
+lemma rel_Times_comp[simp]:
+  \<open>(a \<times>\<^sub>R b) OO (c \<times>\<^sub>R d) = (a OO c) \<times>\<^sub>R (b OO d)\<close>
+  by (force simp add: fun_eq_iff OO_def)
+
+lemmas sp_rely_stronger = sp_refl_rel_le[where r=\<open>(=) \<times>\<^sub>R r\<^sup>*\<^sup>*\<close> for r, simplified]
+lemmas sp_rely_absorb =
+  sp_comp_rel[where ?r1.0=\<open>(=) \<times>\<^sub>R ra\<^sup>*\<^sup>*\<close> and ?r2.0=\<open>(=) \<times>\<^sub>R rb\<^sup>*\<^sup>*\<close> for ra rb, simplified,
+    symmetric]
+
+lemma safe_iter':
+  \<open>(\<forall>m hl' hs'. m \<le> n \<longrightarrow> sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) i (hl', hs') \<longrightarrow> safe m c hl' hs' r g (sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) i)) \<Longrightarrow>
+    sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) i (hl, hs) \<Longrightarrow>
+    safe n (c\<^sup>\<star>) hl hs r g (sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) i)\<close>
+  apply (induct n arbitrary: i hl hs)
+   apply force
+  apply (rule safe_suc)
+     apply blast
+    apply (force simp add: opstep_iff)
+    (* subgoal *)
+   apply (simp add: le_Suc_eq opstep_iff)
+   apply (elim disjE)
+    apply (simp add: safe_skip'; fail)
+   apply (clarsimp simp add: all_conj_distrib)
+   apply (rule_tac q=\<open>sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) i\<close> in safe_seq; blast)
+    (* done *)
+  apply (simp add: le_Suc_eq all_conj_distrib sp_rely_step)
+  done
+
+
 lemma safe_iter:
-  \<open>(\<And>h n. p' h \<Longrightarrow> safe n c hl hs r g q') \<Longrightarrow>
+  \<open>(\<And>n hl hs. p' (hl, hs) \<Longrightarrow> safe n c hl hs r g q') \<Longrightarrow>
     p \<le> i \<Longrightarrow>
-    \<lceil> i \<rceil>\<^bsub>wframe r with \<top>\<^esub> \<le> p' \<Longrightarrow>
+    sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) i \<le> p' \<Longrightarrow>
     q' \<le> i \<Longrightarrow>
-    \<lceil> i \<rceil>\<^bsub>wframe r with \<top>\<^esub> \<le> q \<Longrightarrow>
-    p h \<Longrightarrow>
+    sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) i \<le> q \<Longrightarrow>
+    p (hl, hs) \<Longrightarrow>
     safe n (c\<^sup>\<star>) hl hs r g q\<close>
-  by (metis (full_types) predicate1D safe_iter' safe_postpred_mono wsstable_stronger)
+  apply (rule safe_postpred_mono, assumption)
+  apply (rule safe_iter')
+   apply (metis (mono_tags) predicate1D safe_postpred_monoD sp_rely_stronger)
+  apply (metis predicate1D sp_rely_stronger)
+  done
 
 subsubsection \<open> Nondeterminism \<close>
 
@@ -761,20 +808,31 @@ lemma safe_ndet:
   \<open>(\<forall>m\<le>n. safe m c1 hl hs r g q) \<Longrightarrow>
     (\<forall>m\<le>n. safe m c2 hl hs r g q) \<Longrightarrow>
     safe n (c1 \<^bold>+ c2) hl hs r g q\<close>
-  apply (induct n arbitrary: c1 c2 h)
+  apply (induct n arbitrary: c1 c2 hl hs)
    apply blast
   apply (rule safe_suc)
      apply blast
     apply (rule opstep_act_cases)
-       apply blast
-      apply (force simp add: opstep_iff)
-     apply (clarsimp simp add: opstep_iff safe_suc_iff le_Suc_eq, metis)
-    apply (clarsimp simp add: opstep_iff safe_suc_iff le_Suc_eq all_conj_distrib imp_conjR)
-    apply (metis (no_types, lifting) order.refl fst_conv opstep_tau_preserves_heap safe_step_monoD)
-   apply (clarsimp simp add: opstep_iff safe_suc_iff le_Suc_eq all_conj_distrib imp_conjR)
-   apply (metis safe_step_monoD)
-  apply force
+      apply blast
+     apply (force simp add: opstep_iff)
+    apply (clarsimp simp add: opstep_iff le_Suc_eq, metis safe_sucE)
+   apply (clarsimp simp add: opstep_iff le_Suc_eq all_conj_distrib imp_conjR)
+   apply (elim disjE)
+        apply fastforce
+       apply (meson safe_sucE; fail)
+      apply clarsimp
+      apply (subst (asm) safe_suc_iff)+
+      apply (metis Pair_inject safe_step_monoD)
+     apply clarsimp
+     apply (subst (asm) safe_suc_iff)+
+     apply (metis Pair_inject safe_step_monoD)
+    apply force
+   apply force
+  apply (clarsimp simp add: le_Suc_eq all_conj_distrib)
+  apply (subst (asm) safe_suc_iff)+
+  apply (metis safe_step_monoD)
   done
+
 
 subsubsection \<open> Parallel \<close>
 
@@ -855,18 +913,6 @@ proof -
   finally show ?thesis .
 qed
 
-lemma
-  \<open>(wframe r with \<top>) h h' \<Longrightarrow>
-    rel_add_preserve r \<top> \<top> \<Longrightarrow>
-    (\<lceil> q1 \<rceil>\<^bsub>wframe r \<squnion> g2 with \<top>\<^esub> \<^emph> \<lceil> q2 \<rceil>\<^bsub>wframe r \<squnion> g1 with \<top>\<^esub>) h \<Longrightarrow>
-    (\<lceil> q1 \<rceil>\<^bsub>wframe r \<squnion> g2 with \<top>\<^esub> \<^emph> \<lceil> q2 \<rceil>\<^bsub>wframe r \<squnion> g1 with \<top>\<^esub>) h'\<close>
-  apply (simp add: wframe_with_def sepconj_def framed_subresource_rel_def sp_def)
-  apply (elim exE disjE conjE)
-   apply clarsimp
-   apply (subgoal_tac \<open>\<exists>h1' h2'. h1' ## h2' \<and> r h1 h1' \<and> r h2 h2' \<and> h' = h1' + h2'\<close>)
-    prefer 2
-  oops
-
 lemma (in perm_alg)
   \<open>x ## y \<Longrightarrow> core_rel x x \<Longrightarrow> core_rel y y \<Longrightarrow> core_rel (x + y) (x + y)\<close>
   unfolding sepadd_dup_def core_rel_def
@@ -879,20 +925,21 @@ lemma (in perm_alg)
       partial_add_commute partial_le_plus2 sepadd_right_mono)
 
 lemma safe_parallel_skip:
-  \<open>safe n Skip h1 (r \<squnion> g2) g1 (\<lceil> q1 \<rceil>\<^bsub>wframe r \<squnion> g2 with \<top>\<^esub>) \<Longrightarrow>
-    safe n Skip h2 (r \<squnion> g1) g2 (\<lceil> q2 \<rceil>\<^bsub>wframe r \<squnion> g1 with \<top>\<^esub>) \<Longrightarrow>
-    h1 ## h2 \<Longrightarrow>
-    weak_rel_add_preserve (wframe r with \<top>)\<^sup>*\<^sup>* (\<lceil> q1 \<rceil>\<^bsub>wframe r \<squnion> g2 with \<top>\<^esub>) (\<lceil> q2 \<rceil>\<^bsub>wframe r \<squnion> g1 with \<top>\<^esub>) \<Longrightarrow>
-    safe n Skip (h1 + h2) r (g1 \<squnion> g2)
-      (\<lceil> q1 \<rceil>\<^bsub>wframe r \<squnion> g2 with \<top>\<^esub> \<^emph> \<lceil> q2 \<rceil>\<^bsub>wframe r \<squnion> g1 with \<top>\<^esub>)\<close>
-  apply (induct n arbitrary: h1 h2)
+  \<open>safe n Skip hl1 hs1 (r \<squnion> g2) g1 (sp ((=) \<times>\<^sub>R (r \<squnion> g2)\<^sup>*\<^sup>*) q1) \<Longrightarrow>
+    safe n Skip hl2 hs2 (r \<squnion> g1) g2 (sp ((=) \<times>\<^sub>R (r \<squnion> g1)\<^sup>*\<^sup>*) q2) \<Longrightarrow>
+    hl1 ## hl2 \<Longrightarrow>
+    hs1 ## hs2 \<Longrightarrow>
+    weak_rel_add_preserve ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) (sp ((=) \<times>\<^sub>R (r \<squnion> g2)\<^sup>*\<^sup>*) q1) (sp ((=) \<times>\<^sub>R (r \<squnion> g1)\<^sup>*\<^sup>*) q2) \<Longrightarrow>
+    safe n Skip (hl1 + hl2) (hs1 + hs2) r (g1 \<squnion> g2)
+      (sp ((=) \<times>\<^sub>R (r \<squnion> g2)\<^sup>*\<^sup>*) q1 \<^emph> sp ((=) \<times>\<^sub>R (r \<squnion> g1)\<^sup>*\<^sup>*) q2)\<close>
+  apply (induct n arbitrary: hl1 hl2 hs1 hs2)
    apply force
-  apply (rule safe_skip[where p=\<open>\<lceil> q1 \<rceil>\<^bsub>wframe r \<squnion> g2 with \<top>\<^esub> \<^emph> \<lceil> q2 \<rceil>\<^bsub>wframe r \<squnion> g1 with \<top>\<^esub>\<close>])
-   apply (clarsimp simp add: sepconj_def safe_suc_iff, blast)
+  apply (elim safe_sucE)
+  apply (rule safe_skip[where p=\<open>(sp ((=) \<times>\<^sub>R (r \<squnion> g2)\<^sup>*\<^sup>*) q1 \<^emph> sp ((=) \<times>\<^sub>R (r \<squnion> g1)\<^sup>*\<^sup>*) q2)\<close>])
+   apply (simp add: sepconj_def, blast)
   apply (rule order.trans)
-   apply (rule sp_sepconj_semidistrib)
-   apply blast
-  apply (simp add: weak_framed_rel_mono[THEN wsstable_absorb2])
+   apply (rule sp_sepconj_semidistrib, blast)
+  apply (simp add: weak_framed_rel_mono sp_rely_absorb rel_le_rtranscp_relcompp_absorb)
   done
 
 lemma opstep_strong_unframe_right:
@@ -939,15 +986,17 @@ lemma pre_state_wframe_with_top':
 lemma safe_parallel:
   fixes h1 h2 :: \<open>'a::crosssplit_sep_alg\<close>
   shows                       
-  \<open>safe n c1 h1 (r \<squnion> g2) g1 (\<lceil> q1 \<rceil>\<^bsub>wframe r \<squnion> g2 with \<top>\<^esub>) \<Longrightarrow>
-    safe n c2 h2 (r \<squnion> g1) g2 (\<lceil> q2 \<rceil>\<^bsub>wframe r \<squnion> g1 with \<top>\<^esub>) \<Longrightarrow>
-    weak_rel_add_preserve (wframe r with \<top>)\<^sup>*\<^sup>*
-      (\<lceil> q1 \<rceil>\<^bsub>wframe r \<squnion> g2 with \<top>\<^esub>)
-      (\<lceil> q2 \<rceil>\<^bsub>wframe r \<squnion> g1 with \<top>\<^esub>) \<Longrightarrow>
+  \<open>safe n c1 hl1 hs1 (r \<squnion> g2) g1 (sp ((=) \<times>\<^sub>R (r \<squnion> g2)\<^sup>*\<^sup>*) q1) \<Longrightarrow>
+    safe n c2 hl2 hs2 (r \<squnion> g1) g2 (sp ((=) \<times>\<^sub>R (r \<squnion> g1)\<^sup>*\<^sup>*) q2) \<Longrightarrow>
+    weak_rel_add_preserve ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*)
+      (sp ((=) \<times>\<^sub>R (r \<squnion> g2)\<^sup>*\<^sup>*) q1)
+      (sp ((=) \<times>\<^sub>R (r \<squnion> g1)\<^sup>*\<^sup>*) q2) \<Longrightarrow>
     rel_add_preserve r \<top> \<top> \<Longrightarrow>
-    h1 ## h2 \<Longrightarrow>
-    safe n (c1 \<parallel> c2) (h1 + h2) r (g1 \<squnion> g2) (\<lceil> q1 \<rceil>\<^bsub>wframe r \<squnion> g2 with \<top>\<^esub> \<^emph> \<lceil> q2 \<rceil>\<^bsub>wframe r \<squnion> g1 with \<top>\<^esub>)\<close>
-  apply (induct n arbitrary: c1 c2 h1 h2)
+    hl1 ## hl2 \<Longrightarrow>
+    hs1 ## hs2 \<Longrightarrow>
+    safe n (c1 \<parallel> c2) (hl1 + hl2) (hs1 + hs2) r (g1 \<squnion> g2)
+      ((sp ((=) \<times>\<^sub>R (r \<squnion> g2)\<^sup>*\<^sup>*) q1) \<^emph> (sp ((=) \<times>\<^sub>R (r \<squnion> g1)\<^sup>*\<^sup>*) q2))\<close>
+  apply (induct n arbitrary: c1 c2 hl1 hs1 hl2 hs2)
    apply force
   apply (clarsimp simp add: le_Suc_eq safe_suc_iff[where r=\<open>_ \<squnion> _\<close>]
       all_conj_distrib all_ex_conjL imp_conjR)
@@ -956,14 +1005,19 @@ lemma safe_parallel:
     (* subgoal *)
     apply (clarsimp simp add: opstep_iff)
     apply (intro conjI)
-     apply (metis fst_conv opstep_tau_preserves_heap)
      apply clarsimp
-     apply (erule disjE)
-      apply clarsimp
+     apply (metis (no_types, lifting) opstep_tau_preserves_heap prod_eq_decompose(2))
+    apply clarsimp
+    apply (erule disjE)
+     apply clarsimp
+
+(*
       apply (drule_tac x=hx in spec, drule mp, (rule partial_le_part_left; assumption),
       drule spec2, drule mp, assumption)
       apply (metis pre_change_state_mono sup_ge1)
-     apply clarsimp
+*)
+  subgoal sorry
+    apply clarsimp
      apply (drule_tac x=hx in spec, drule mp, (rule partial_le_part_right; assumption),
       drule spec2, drule mp, assumption)
      apply (metis pre_change_state_mono sup_ge1)
