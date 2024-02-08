@@ -16,7 +16,7 @@ definition
   \<open>framed_subresource_rel p ha ha' h h' \<equiv>
     (\<exists>hf. p hf \<and> ha ## hf \<and> ha' ## hf \<and> h = ha + hf \<and> h' = ha' + hf)\<close>
 
-abbreviation
+definition
   \<open>weak_framed_subresource_rel p ha ha' h h' \<equiv>
     ha = h \<and> ha' = h' \<or> framed_subresource_rel p ha ha' h h'\<close>
 
@@ -27,7 +27,11 @@ lemma framed_subresource_relI:
 
 lemma framed_subresource_rel_refl[intro!]:
   \<open>weak_framed_subresource_rel p h h' h h'\<close>
-  by (simp add: framed_subresource_rel_def)
+  by (simp add: weak_framed_subresource_rel_def)
+
+lemma framed_subresource_rel_impl_weak[intro]:
+  \<open>framed_subresource_rel p hx hx' h h' \<Longrightarrow> weak_framed_subresource_rel p hx hx' h h'\<close>
+  using weak_framed_subresource_rel_def by force
 
 lemma framed_subresource_rel_frame_second:
   \<open>framed_subresource_rel \<top> ha ha' h h' \<Longrightarrow>
@@ -59,11 +63,11 @@ lemma framed_subresource_le_secondD[dest]:
 
 lemma wframed_subresource_le_firstD[dest]:
   \<open>weak_framed_subresource_rel f ha ha' h h' \<Longrightarrow> ha \<le> h\<close>
-  using framed_subresource_rel_def by auto
+  using weak_framed_subresource_rel_def by auto
 
 lemma wframed_subresource_le_secondD[dest]:
   \<open>weak_framed_subresource_rel f ha ha' h h' \<Longrightarrow> ha' \<le> h'\<close>
-  using framed_subresource_rel_def by auto
+  using weak_framed_subresource_rel_def by auto
 
 lemma framed_subresource_rel_top_same_sub_iff[simp]:
   \<open>framed_subresource_rel f a a b b' \<longleftrightarrow> b = b' \<and> (\<exists>xf. a ## xf \<and> b = a + xf \<and> f xf)\<close>
@@ -81,7 +85,7 @@ lemma mu_sep_alg_compatible_framed_subresource_rel_iff:
   shows
   \<open>weak_framed_subresource_rel p ha ha' h h' \<longleftrightarrow> framed_subresource_rel p ha ha' h h'\<close>
   using assms
-  apply (simp add: framed_subresource_rel_def)
+  apply (simp add: weak_framed_subresource_rel_def framed_subresource_rel_def)
   apply (metis compatible_then_same_unit unitof_disjoint2 unitof_is_unitR2)
   done
 
@@ -90,7 +94,7 @@ end
 lemma (in sep_alg) sep_alg_framed_subresource_rel_iff:
   \<open>p 0 \<Longrightarrow>
     weak_framed_subresource_rel p ha ha' h h' \<longleftrightarrow> framed_subresource_rel p ha ha' h h'\<close>
-  apply (simp add: framed_subresource_rel_def)
+  apply (simp add: weak_framed_subresource_rel_def framed_subresource_rel_def)
   apply (metis sepadd_0_right zero_disjointR)
   done
 
@@ -151,7 +155,7 @@ lemma wframe_with_fullI:
 lemma wframe_with_frame_rightI:
   \<open>p h2 \<Longrightarrow> r h1 h1' \<Longrightarrow> h' = h1' + h2 \<Longrightarrow> h1 ## h2 \<Longrightarrow> h1' ## h2 \<Longrightarrow>
     (wframe r with p) (h1 + h2) h'\<close>
-  apply (simp add: wframe_with_def framed_subresource_rel_def)
+  apply (simp add: wframe_with_def weak_framed_subresource_rel_def framed_subresource_rel_def)
   apply blast
   done
 
@@ -161,7 +165,7 @@ lemma weak_framed_rel_mono:
 
 lemma weak_framed_frame_right:
   \<open>x ## z \<Longrightarrow> y ## z \<Longrightarrow> (wframe r with \<top>) x y \<Longrightarrow> (wframe r with \<top>) (x + z) (y + z)\<close>
-  apply (clarsimp simp add: wframe_with_def)
+  apply (clarsimp simp add: wframe_with_def weak_framed_subresource_rel_def)
   apply (meson framed_subresource_relI framed_subresource_rel_frame_second top1I)
   done
 
@@ -173,7 +177,7 @@ lemma weak_framed_frame_left:
 lemma wframe_with_frame_leftI:
   \<open>p h1 \<Longrightarrow> r h2 h2' \<Longrightarrow> h' = h1 + h2' \<Longrightarrow> h1 ## h2 \<Longrightarrow> h1 ## h2' \<Longrightarrow>
     (wframe r with p) (h1 + h2) h'\<close>
-  apply (simp add: wframe_with_def framed_subresource_rel_def)
+  apply (simp add: wframe_with_def weak_framed_subresource_rel_def framed_subresource_rel_def)
   apply (meson disjoint_sym_iff partial_add_commute)
   done
 
@@ -203,7 +207,8 @@ lemma frame_with_idem[simp]:
 
 lemma wframe_with_idem[simp]:
   \<open>(wframe (wframe r with p) with q) = (wframe r with p \<squnion> q \<squnion> p \<^emph> q)\<close>
-  apply (clarsimp simp add: wframe_with_def fun_eq_iff sepconj_def framed_subresource_rel_def)
+  apply (clarsimp simp add: wframe_with_def fun_eq_iff sepconj_def weak_framed_subresource_rel_def
+      framed_subresource_rel_def)
   apply (rule iffI)
    apply (elim disjE conjE exE)
       apply blast
@@ -220,7 +225,7 @@ lemma wframe_with_idem[simp]:
 lemma wframe_frame_with_idem[simp]:
   \<open>(wframe (frame r with p) with q) = (frame r with p \<squnion> p \<^emph> q)\<close>
   apply (clarsimp simp add: frame_with_def wframe_with_def fun_eq_iff sepconj_def
-      framed_subresource_rel_def)
+      weak_framed_subresource_rel_def framed_subresource_rel_def)
   apply (rule iffI)
    apply (elim disjE conjE exE)
     apply blast
@@ -233,7 +238,7 @@ lemma wframe_frame_with_idem[simp]:
 lemma frame_wframe_with_idem[simp]:
   \<open>(frame (wframe r with p) with q) = (frame r with q \<squnion> p \<^emph> q)\<close>
   apply (clarsimp simp add: frame_with_def wframe_with_def fun_eq_iff sepconj_def
-      framed_subresource_rel_def)
+      weak_framed_subresource_rel_def framed_subresource_rel_def)
   apply (rule iffI)
    apply (elim disjE conjE exE)
     apply blast

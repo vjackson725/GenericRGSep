@@ -187,8 +187,10 @@ lemma opstep_local_frame':
     all_atom_comm (local_frame_safe (rel_lift f)) (snd s) \<Longrightarrow>
     ((lf, snd (fst s)), snd s) \<midarrow>a\<rightarrow> ((lf', snd (fst s')), snd s')\<close>
   apply (induct rule: opstep.inducts)
-               apply (force simp add: opstep_iff ndet_local_left ndet_local_right)+
-  apply (force simp add: framed_subresource_rel_def local_frame_safe_def)
+               apply (force simp add: opstep_iff ndet_local_left ndet_local_right
+      weak_framed_subresource_rel_def)+
+  apply (force simp add: weak_framed_subresource_rel_def framed_subresource_rel_def
+      local_frame_safe_def)
   done
 
 lemma opstep_local_frame:
@@ -737,14 +739,14 @@ lemma safe_seq_assoc_left:
   apply (subst safe_suc_iff)
   apply (simp add: opstep_iff)
   apply (intro conjI impI allI)
-       apply metis
       apply metis
      apply metis
     apply metis
   subgoal
-    apply clarsimp
-    apply (elim disjE exE conjE, force) (* slow *)
-    apply (metis opstep_local_frame rel_lift_top)
+    apply (clarsimp simp add: weak_framed_subresource_rel_def)
+    apply (elim disjE exE conjE, presburger, presburger)
+      apply (metis framed_subresource_rel_top_same_sub_iff)
+    apply (metis (no_types, lifting) opstep_local_frame2 rel_lift_top)
     done
   apply (metis opstep_preserves_all_atom_comm)
   done
@@ -757,17 +759,14 @@ lemma safe_seq_assoc_right:
   apply (induct arbitrary: c1 c2 c3 rule: safe.inducts)
    apply force
   apply (subst safe_suc_iff)
-  apply (simp add: opstep_iff)
+  apply (simp add: opstep_iff weak_framed_subresource_rel_def)
   apply (intro conjI impI allI)
         apply metis
        apply metis
       apply metis
      apply metis
     apply metis
-  subgoal
-    apply clarsimp
-    apply (metis opstep_local_frame rel_lift_top)
-    done
+   apply (metis opstep_local_frame2 rel_lift_top)
   apply (metis opstep_preserves_all_atom_comm)
   done
 
@@ -780,8 +779,8 @@ lemma safe_seq':
   apply (rule safe_suc)
        apply blast
       apply (clarsimp simp add: opstep_iff, (elim disjE exE conjE; force))
-     apply (simp add: opstep_iff framed_subresource_rel_def, metis)
-    apply (simp add: opstep_iff framed_subresource_rel_def, metis)
+     apply (simp add: opstep_iff, metis)
+    apply (simp add: opstep_iff weak_framed_subresource_rel_def framed_subresource_rel_def, metis)
    apply (simp add: opstep_iff, (elim disjE exE conjE; force))
   apply force
   done
@@ -849,7 +848,7 @@ lemma safe_iter':
        apply blast
       apply (force simp add: opstep_iff)
      apply (force simp add: opstep_iff)
-    apply (force simp add: opstep_iff)
+    apply (force simp add: opstep_iff weak_framed_subresource_rel_def)
     (* subgoal *)
    apply (simp add: le_Suc_eq opstep_iff)
    apply (elim disjE)
@@ -892,11 +891,13 @@ lemma safe_ndet:
      apply (clarsimp simp add: opstep_iff le_Suc_eq, metis safe_sucE)
   subgoal
     apply (simp add: opstep_iff)
-    apply (elim disjE exE conjE; (simp; fail)?) (* 1 \<rightarrow> 4 *)
+    apply (elim disjE exE conjE) (* 1 \<rightarrow> 6 *)
+         apply (metis (no_types, lifting) order.refl safe_sucE)
+        apply (metis (no_types, lifting) order.refl safe_sucE)
        apply (metis (no_types, lifting) order.refl safe_sucE)
       apply (metis (no_types, lifting) order.refl safe_sucE)
-     apply (metis (no_types, lifting) order.refl safe_sucE)
-    apply (metis (no_types, lifting) order.refl safe_sucE)
+     apply (force simp add: weak_framed_subresource_rel_def)
+    apply (force simp add: weak_framed_subresource_rel_def)
     done
   subgoal
     apply (clarsimp simp add: opstep_iff le_Suc_eq all_conj_distrib imp_conjR)
@@ -943,24 +944,6 @@ lemma (in perm_alg)
   by (metis (mono_tags, opaque_lifting) disjoint_preservation2 disjoint_sym_iff order.trans
       partial_add_commute partial_le_plus2 sepadd_right_mono)
 
-lemma safe_parallel_skip:
-  \<open>safe n Skip hl1 hs1 (r \<squnion> g2) g1 (sp ((=) \<times>\<^sub>R (r \<squnion> g2)\<^sup>*\<^sup>*) q1) \<Longrightarrow>
-    safe n Skip hl2 hs2 (r \<squnion> g1) g2 (sp ((=) \<times>\<^sub>R (r \<squnion> g1)\<^sup>*\<^sup>*) q2) \<Longrightarrow>
-    hl1 ## hl2 \<Longrightarrow>
-    hs1 ## hs2 \<Longrightarrow>
-    weak_rel_add_preserve ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) (sp ((=) \<times>\<^sub>R (r \<squnion> g2)\<^sup>*\<^sup>*) q1) (sp ((=) \<times>\<^sub>R (r \<squnion> g1)\<^sup>*\<^sup>*) q2) \<Longrightarrow>
-    safe n Skip (hl1 + hl2) (hs1 + hs2) r (g1 \<squnion> g2)
-      (sp ((=) \<times>\<^sub>R (r \<squnion> g2)\<^sup>*\<^sup>*) q1 \<^emph> sp ((=) \<times>\<^sub>R (r \<squnion> g1)\<^sup>*\<^sup>*) q2)\<close>
-  apply (induct n arbitrary: hl1 hl2 hs1 hs2)
-   apply force
-  apply (elim safe_sucE)
-  apply (rule safe_skip[where p=\<open>(sp ((=) \<times>\<^sub>R (r \<squnion> g2)\<^sup>*\<^sup>*) q1 \<^emph> sp ((=) \<times>\<^sub>R (r \<squnion> g1)\<^sup>*\<^sup>*) q2)\<close>])
-   apply (simp add: sepconj_def, blast)
-  apply (rule order.trans)
-   apply (rule sp_sepconj_semidistrib, blast)
-  apply (simp add: weak_framed_rel_mono sp_rely_absorb rel_le_rtranscp_relcompp_absorb)
-  done
-
 lemma opstep_strong_unframe_right:
   \<open>opstep a s s' \<Longrightarrow>
     hx ## hf \<Longrightarrow>
@@ -988,7 +971,7 @@ lemma opstep_strong_unframe_left:
 lemma wframe_with_top:
   \<open>(wframe r with \<top>) h h'
     \<longleftrightarrow> (r h h' \<or> (\<exists>hx hx' hf. hx ## hf \<and> hx' ## hf \<and> r hx hx' \<and> h = hx + hf \<and> h' = hx' + hf))\<close>
-  by (force simp add: wframe_with_def framed_subresource_rel_def)
+  by (force simp add: wframe_with_def weak_framed_subresource_rel_def framed_subresource_rel_def)
 
 lemma wframe_with_top':
   fixes h h' :: \<open>'a::sep_alg\<close>
@@ -1021,7 +1004,7 @@ lemma strong_unframe_safe_mono:
 lemma opstep_local_unframe':
   \<open>s \<midarrow>a\<rightarrow> s' \<Longrightarrow>
     all_atom_comm (strong_local_unframe_safe \<ff>) (snd s) \<Longrightarrow>
-    tight_reflp \<ff> \<Longrightarrow>
+    \<ff> hf hf \<Longrightarrow>
     hl ## hf \<Longrightarrow>
     fst (fst s) = hl + hf \<Longrightarrow>
     \<exists>hl' hf'.
@@ -1037,7 +1020,7 @@ lemma opstep_local_unframe':
 lemma opstep_local_unframe:
   \<open>((hl + hf, hs), c) \<midarrow>a\<rightarrow> ((hlf', hs'), c') \<Longrightarrow>
     all_atom_comm (strong_local_unframe_safe \<ff>) c \<Longrightarrow>
-    reflp \<ff> \<Longrightarrow>
+    \<ff> hf hf \<Longrightarrow>
     hl ## hf \<Longrightarrow>
     \<exists>hl' hf'.
       hl' ## hf' \<and>
@@ -1049,7 +1032,7 @@ lemma opstep_local_unframe:
 lemma opstep_local_unframe_left:
   \<open>((hf + hl, hs), c) \<midarrow>a\<rightarrow> ((hlf', hs'), c') \<Longrightarrow>
     all_atom_comm (strong_local_unframe_safe \<ff>) c \<Longrightarrow>
-    reflp \<ff> \<Longrightarrow>
+    \<ff> hf hf \<Longrightarrow>
     hf ## hl \<Longrightarrow>
     \<exists>hl' hf'.
       hf' ## hl' \<and>
@@ -1062,6 +1045,24 @@ lemma opstep_local_unframe_left:
   apply (meson disjoint_sym_iff partial_add_commute)
   done
 
+
+lemma safe_parallel_skip:
+  \<open>safe n Skip hl1 hs1 (r \<squnion> g2) g1 (sp ((=) \<times>\<^sub>R (r \<squnion> g2)\<^sup>*\<^sup>*) q1) \<Longrightarrow>
+    safe n Skip hl2 hs2 (r \<squnion> g1) g2 (sp ((=) \<times>\<^sub>R (r \<squnion> g1)\<^sup>*\<^sup>*) q2) \<Longrightarrow>
+    hl1 ## hl2 \<Longrightarrow>
+    hs1 ## hs2 \<Longrightarrow>
+    weak_rel_add_preserve ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) (sp ((=) \<times>\<^sub>R (r \<squnion> g2)\<^sup>*\<^sup>*) q1) (sp ((=) \<times>\<^sub>R (r \<squnion> g1)\<^sup>*\<^sup>*) q2) \<Longrightarrow>
+    safe n Skip (hl1 + hl2) (hs1 + hs2) r (g1 \<squnion> g2)
+      (sp ((=) \<times>\<^sub>R (r \<squnion> g2)\<^sup>*\<^sup>*) q1 \<^emph> sp ((=) \<times>\<^sub>R (r \<squnion> g1)\<^sup>*\<^sup>*) q2)\<close>
+  apply (induct n arbitrary: hl1 hl2 hs1 hs2)
+   apply force
+  apply (elim safe_sucE)
+  apply (rule safe_skip[where p=\<open>(sp ((=) \<times>\<^sub>R (r \<squnion> g2)\<^sup>*\<^sup>*) q1 \<^emph> sp ((=) \<times>\<^sub>R (r \<squnion> g1)\<^sup>*\<^sup>*) q2)\<close>])
+   apply (simp add: sepconj_def, blast)
+  apply (rule order.trans)
+   apply (rule sp_sepconj_semidistrib, blast)
+  apply (simp add: weak_framed_rel_mono sp_rely_absorb rel_le_rtranscp_relcompp_absorb)
+  done
 
 lemma safe_parallel:
   fixes hl1 hl2 :: \<open>'a::sep_alg\<close>
@@ -1101,25 +1102,24 @@ next
       \<open>hs1 + hs2 \<le> hsx\<close>
       \<open>opstep Local ((hl1 + hl2, hsx), c1 \<parallel> c2) ((hl', hsx'), c')\<close>
     then show \<open>(g1 \<squnion> g2) hsx hsx'\<close>
-      using Suc.prems(5,6)
+      using Suc.prems(1-2,5-8)
      apply (clarsimp simp add: opstep_iff)
      apply (elim disjE)
       (* c1 step *)
-      apply clarsimp
-       apply (frule opstep_local_unframe, blast)
-      sledgehammer
-      apply clarsimp
-      apply (elim safe_sucE)
-      apply (drule meta_spec2, drule meta_spec2, drule meta_mp[where P=\<open>_ \<le> _\<close>],
-      rule partial_le_part_left, assumption, assumption)
-      apply blast
+       apply clarsimp
+       apply (frule opstep_local_unframe, blast, blast, blast)
+       apply clarsimp
+       apply (elim safe_sucE)
+       apply (drule meta_spec2, drule meta_spec2, drule meta_mp[where P=\<open>_ \<le> _\<close>],
+          rule partial_le_part_left, assumption, assumption)
+       apply blast
     (* c2 step *)
-     apply clarsimp
-     apply (frule opstep_local_unframe_left, blast, blast, blast)
-     apply clarsimp
-     apply (elim safe_sucE)+
-     apply (drule meta_spec2, drule meta_spec2, drule meta_mp[where P=\<open>_ \<le> _\<close>],
-      rule partial_le_part_right, assumption, assumption)
+      apply clarsimp
+      apply (frule opstep_local_unframe_left, blast, blast, blast)
+      apply clarsimp
+      apply (elim safe_sucE)+
+      apply (drule meta_spec2, drule meta_spec2, drule meta_mp[where P=\<open>_ \<le> _\<close>],
+          rule partial_le_part_right, assumption, assumption)
       apply blast
       done
   next
@@ -1127,71 +1127,153 @@ next
     assume
       \<open>opstep a ((hl1 + hl2, hs1 + hs2), c1 \<parallel> c2) ((hl', hs'), c')\<close>
       \<open>weak_framed_subresource_rel \<top> (hl1 + hl2) hl' hlb hlb'\<close>
-    show
+    then show
       \<open>opstep a ((hlb, hs1 + hs2), c1 \<parallel> c2) ((hlb', hs'), c')\<close>
-      sorry
+      using Suc.prems(5-)
+      apply (elim opstep_parE safe_sucE) (* 1 \<rightarrow> 3 *)
+        (* c1 \<parallel> c2 \<rightarrow> c1' \<parallel> c2 *)
+        apply clarify
+        apply (frule opstep_local_unframe, blast, force, blast)
+        apply (elim conjE exE)
+        apply (rule opstep.par_left)
+      subgoal sorry
+          (* c1 \<parallel> c2 \<rightarrow> c1 \<parallel> c2' *)
+       apply clarify
+       apply (frule opstep_local_unframe_left, blast, force, blast)
+       apply (elim conjE exE)
+       apply (rule opstep.par_right)
+      subgoal sorry
+          (* Skip \<parallel> Skip \<rightarrow> Skip *)
+      apply clarify
+      subgoal sorry
+      done
   next
     fix a c' hl' hs'
+
+    have safe_c1:
+      \<open>c1 = Skip \<Longrightarrow> sp ((=) \<times>\<^sub>R (r \<squnion> g2)\<^sup>*\<^sup>*) q1 (hl1, hs1)\<close>
+      \<open>(\<And>c' hl' hs'. opstep Tau ((hl1, hs1), c1) ((hl', hs'), c') \<Longrightarrow> hl1 = hl' \<and> hs1 = hs')\<close>
+      \<open>(\<And>c' hl' hsx hsx'. hs1 \<le> hsx \<Longrightarrow> opstep Local ((hl1, hsx), c1) ((hl', hsx'), c') \<Longrightarrow> g1 hsx hsx')\<close>
+      \<open>(\<And>a c' hl' hs' hlb hlb'.
+        opstep a ((hl1, hs1), c1) ((hl', hs'), c') \<Longrightarrow>
+        weak_framed_subresource_rel \<top> hl1 hl' hlb hlb' \<Longrightarrow> opstep a ((hlb, hs1), c1) ((hlb', hs'), c'))\<close>
+      \<open>(\<And>a c' hl' hs'.
+        opstep a ((hl1, hs1), c1) ((hl', hs'), c') \<Longrightarrow>
+        safe n c' hl' hs' (r \<squnion> g2) g1 (sp ((=) \<times>\<^sub>R (r \<squnion> g2)\<^sup>*\<^sup>*) q1))\<close>
+      \<open>(\<And>hs'. (r \<squnion> g2) hs1 hs' \<Longrightarrow> safe n c1 hl1 hs' (r \<squnion> g2) g1 (sp ((=) \<times>\<^sub>R (r \<squnion> g2)\<^sup>*\<^sup>*) q1))\<close>
+      using Suc.prems(1)
+      apply -
+           apply (metis safe_sucE)
+          apply (metis safe_sucE)
+         apply (metis safe_sucE)
+        apply fastforce
+       apply (metis safe_sucE)
+      apply (metis safe_sucE)
+      done
+
+    have safe_c2:
+      \<open>c2 = Skip \<Longrightarrow> sp ((=) \<times>\<^sub>R (r \<squnion> g1)\<^sup>*\<^sup>*) q2 (hl2, hs2)\<close>
+      \<open>(\<And>c' hl' hs'. opstep Tau ((hl2, hs2), c2) ((hl', hs'), c') \<Longrightarrow> hl2 = hl' \<and> hs2 = hs')\<close>
+      \<open>(\<And>c' hl' hsx hsx'. hs2 \<le> hsx \<Longrightarrow> opstep Local ((hl2, hsx), c2) ((hl', hsx'), c') \<Longrightarrow> g2 hsx hsx')\<close>
+      \<open>(\<And>a c' hl' hs' hlb hlb'.
+        opstep a ((hl2, hs2), c2) ((hl', hs'), c') \<Longrightarrow>
+        weak_framed_subresource_rel \<top> hl2 hl' hlb hlb' \<Longrightarrow> opstep a ((hlb, hs2), c2) ((hlb', hs'), c'))\<close>
+      \<open>(\<And>a c' hl' hs'.
+        opstep a ((hl2, hs2), c2) ((hl', hs'), c') \<Longrightarrow>
+        safe n c' hl' hs' (r \<squnion> g1) g2 (sp ((=) \<times>\<^sub>R (r \<squnion> g1)\<^sup>*\<^sup>*) q2))\<close>
+      \<open>(\<And>hs'. (r \<squnion> g1) hs2 hs' \<Longrightarrow> safe n c2 hl2 hs' (r \<squnion> g1) g2 (sp ((=) \<times>\<^sub>R (r \<squnion> g1)\<^sup>*\<^sup>*) q2))\<close>
+      using Suc.prems(2)
+      apply -
+           apply (metis safe_sucE)
+          apply (metis safe_sucE)
+         apply (metis safe_sucE)
+        apply fastforce
+       apply (metis safe_sucE)
+      apply (metis safe_sucE)
+      done
+
     assume \<open>opstep a ((hl1 + hl2, hs1 + hs2), c1 \<parallel> c2) ((hl', hs'), c')\<close>
-    show \<open>safe n c' hl' hs' r (g1 \<squnion> g2) (sp ((=) \<times>\<^sub>R (r \<squnion> g2)\<^sup>*\<^sup>*) q1 \<^emph> sp ((=) \<times>\<^sub>R (r \<squnion> g1)\<^sup>*\<^sup>*) q2)\<close>
-      sorry
+    then show \<open>safe n c' hl' hs' r (g1 \<squnion> g2) (sp ((=) \<times>\<^sub>R (r \<squnion> g2)\<^sup>*\<^sup>*) q1 \<^emph> sp ((=) \<times>\<^sub>R (r \<squnion> g1)\<^sup>*\<^sup>*) q2)\<close>
+      using Suc.prems(3-)
+      apply (elim opstep_parE safe_sucE)
+        (* c1 \<parallel> c2 \<rightarrow> c1' \<parallel> c2 *)
+        apply (rename_tac c1')
+        apply clarsimp
+        apply (frule opstep_local_unframe, blast, force, blast)
+        apply clarsimp
+        apply (rename_tac hl1')
+        apply (subgoal_tac
+          \<open>\<exists>hs1' hs2'. hs1' ## hs2' \<and> hs' = hs1' + hs2' \<and>
+              opstep a ((hl1, hs1), c1) ((hl1', hs1'), c1') \<and> g1 hs2 hs2'\<close>)
+         prefer 2
+      subgoal sorry
+        apply clarsimp
+        apply (rule Suc.hyps[OF safe_c1(5) safe_c2(6)])
+               apply blast
+              apply blast
+             apply force
+            apply force
+           apply (meson opstep_preserves_all_atom_comm[OF _ Suc.prems(5)]; fail)
+      subgoal sorry
+         apply blast
+        apply blast
+          (* c1 \<parallel> c2 \<rightarrow> c1 \<parallel> c2' *)
+       apply (rename_tac c2')
+       apply clarsimp
+       apply (frule opstep_local_unframe_left, blast, force, blast)
+       apply clarsimp
+       apply (rename_tac hl2')
+       apply (subgoal_tac
+          \<open>\<exists>hs1' hs2'. hs1' ## hs2' \<and> hs' = hs1' + hs2' \<and>
+              opstep a ((hl2, hs2), c2) ((hl2', hs2'), c2') \<and> g2 hs1 hs1'\<close>)
+        prefer 2
+      subgoal sorry
+       apply clarsimp
+        apply (rule Suc.hyps[OF safe_c1(6) safe_c2(5)])
+               apply blast
+             apply blast
+            apply force
+           apply force
+      subgoal sorry
+         apply (meson opstep_preserves_all_atom_comm[OF _ Suc.prems(6)]; fail)
+        apply blast
+       apply blast
+          (* Skip \<parallel> Skip \<rightarrow> Skip *)
+      apply (insert safe_c1(1) safe_c2(1))
+      apply clarsimp
+      apply (rule safe_parallel_skip)
+          apply (rule safe_skip', force)
+         apply (rule safe_skip', force)
+        apply blast
+       apply blast
+      apply (metis Suc.prems(3))
+      done
   next
     fix hs'
     assume \<open>r (hs1 + hs2) hs'\<close>
-    show \<open>safe n (c1 \<parallel> c2) (hl1 + hl2) hs' r (g1 \<squnion> g2)
+    then show \<open>safe n (c1 \<parallel> c2) (hl1 + hl2) hs' r (g1 \<squnion> g2)
         (sp ((=) \<times>\<^sub>R (r \<squnion> g2)\<^sup>*\<^sup>*) q1 \<^emph> sp ((=) \<times>\<^sub>R (r \<squnion> g1)\<^sup>*\<^sup>*) q2)\<close>
-      sorry
+      using Suc.prems(3,4-8)
+      apply -
+      apply (frule iffD1[OF meta_eq_to_obj_eq[OF rel_add_preserve_def]])
+      apply (drule spec2, drule spec, drule mp, assumption, drule mp, assumption)
+      apply (elim conjE impE exE, blast, blast)
+      apply simp
+      apply (insert Suc.prems(1,2))
+      apply (rule Suc.hyps)
+             apply (erule safe_sucE, fast)
+            apply (erule safe_sucE, fast)
+           apply fastforce
+          apply fastforce
+         apply fastforce
+        apply fastforce
+       apply fastforce
+      apply fastforce
+      done
   qed
 qed
-    (* subgoal *)
-    apply (elim opstep_parE safe_sucE) (* 3 \<rightarrow> 5 *)
-    (* c1 \<parallel> c2 \<rightarrow> c1' \<parallel> c2 *)
-      apply clarify
-      apply (frule opstep_local_unframe, blast, blast, blast)
-      apply (elim conjE exE)
-      apply (rule opstep.par_left)
-  subgoal sorry
-      (* c1 \<parallel> c2 \<rightarrow> c1 \<parallel> c2' *)
-     apply clarify
-     apply (frule opstep_local_unframe_left, blast, blast, blast)
-     apply (elim conjE exE)
-     apply (rule opstep.par_right)
-  subgoal sorry
-      (* Skip \<parallel> Skip \<rightarrow> Skip *)
-    apply clarify
-  subgoal sorry
-      (* done *)
-      (* subgoal *)
-   apply (elim opstep_parE safe_sucE) (* 2 \<rightarrow> 4 *)
-    (* c1 \<parallel> c2 \<rightarrow> c1' \<parallel> c2 *)
-     apply clarsimp
 
-      (* c1 \<parallel> c2 \<rightarrow> c1 \<parallel> c2' *)
-      (* Skip \<parallel> Skip \<rightarrow> Skip *)
-
-
-  oops
-   apply (clarsimp simp add: wframe_with_top' all_simps(5)[symmetric] imp_conjL imp_conjR
-      all_conj_distrib simp del: all_simps(5))
-   apply (drule cross_split, blast, blast, blast)
-   apply clarsimp
-   apply (rename_tac h1s h1l h2s h2l)
-   apply (frule_tac a=h1s and b=h2s in rel_add_preserveD, blast, blast, blast, blast)
-   apply clarsimp
-   apply (rename_tac h1s' h2s')
-   apply (drule_tac x=c1 and y=c2 in meta_spec2,
-      drule_tac x=\<open>h1s' + h1l\<close> and y=\<open>h2s' + h2l\<close> in meta_spec2)
-   apply (drule meta_mp, metis disjoint_add_leftL disjoint_add_rightL)
-   apply (drule meta_mp, metis disjoint_add_leftR disjoint_sym)
-   apply (drule meta_mp)
-  subgoal sorry
-   apply (drule meta_mp)
-  subgoal sorry
-   apply (drule meta_mp, metis disjoint_add_rightL disjoint_add_swap disjoint_middle_swap)
-   apply (metis disjoint_add_leftR disjoint_add_swap2 disjoint_sym partial_add_double_assoc)
-    (* done *)
-  apply blast
-  done
+thm choice
 
 
 subsubsection \<open> Frame rule \<close>
