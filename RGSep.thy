@@ -584,6 +584,18 @@ lemma all_atom_comm_conj_eq:
   \<open>all_atom_comm (p \<sqinter> q) c \<longleftrightarrow> all_atom_comm p c \<and> all_atom_comm q c\<close>
   by (induct c) force+
 
+lemma all_atom_comm_pconj_eq[simp]:
+  \<open>all_atom_comm (\<lambda>x. p x \<and> q x) c \<longleftrightarrow> all_atom_comm p c \<and> all_atom_comm q c\<close>
+  by (induct c) force+
+
+lemma all_atom_comm_top_eq[simp]:
+  \<open>all_atom_comm \<top> c\<close>
+  by (induct c) force+
+
+lemma all_atom_comm_pTrue_eq[simp]:
+  \<open>all_atom_comm (\<lambda>x. True) c\<close>
+  by (induct c) force+
+
 abbreviation \<open>atoms_subrel_guarantee g \<equiv> all_atom_comm (\<lambda>b. b \<le> g)\<close>
 abbreviation \<open>atoms_preserve_guarantee g \<equiv> all_atom_comm (\<lambda>b. \<forall>s. Ex (g s) \<longrightarrow> Ex (b s))\<close>
 abbreviation \<open>atoms_guarantee g c \<equiv> atoms_subrel_guarantee g c \<and> atoms_preserve_guarantee g c\<close>

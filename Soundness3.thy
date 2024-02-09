@@ -2,6 +2,97 @@ theory Soundness3
   imports RGSep
 begin
 
+
+definition \<open>all_atom_comm2 p c1 c2 \<equiv> all_atom_comm (\<lambda>b1. all_atom_comm (\<lambda>b2. p b1 b2) c2) c1\<close>
+
+lemma all_atom_comm2_commute:
+  \<open>all_atom_comm2 p c1 c2 \<longleftrightarrow> all_atom_comm2 (\<lambda>x y. p y x) c2 c1\<close>
+proof -
+  {
+    fix q
+    assume
+      \<open>all_atom_comm q c1\<close>
+      \<open>q = (\<lambda>b1. all_atom_comm (p b1) c2)\<close>
+    then have \<open>all_atom_comm (\<lambda>b1. all_atom_comm (\<lambda>b2. p b2 b1) c1) c2\<close>
+      by (induct rule: all_atom_comm.induct) simp+
+  }
+  moreover {
+    fix q
+    assume
+      \<open>all_atom_comm q c2\<close>
+      \<open>q = (\<lambda>b1. all_atom_comm (\<lambda>b2. p b2 b1) c1)\<close>
+    then have \<open>all_atom_comm (\<lambda>b1. all_atom_comm (p b1) c2) c1\<close>
+      by (induct rule: all_atom_comm.induct) simp+
+  }
+  ultimately show ?thesis
+    by (force simp add: all_atom_comm2_def)
+qed 
+
+lemma all_atom_comm2_simps[simp]:
+  \<open>all_atom_comm2 p Skip cy \<longleftrightarrow> True\<close>
+  \<open>all_atom_comm2 p (c1 ;; c2) cy \<longleftrightarrow> all_atom_comm2 p c1 cy \<and> all_atom_comm2 p c2 cy\<close>
+  \<open>all_atom_comm2 p (c1 \<^bold>+ c2) cy \<longleftrightarrow> all_atom_comm2 p c1 cy \<and> all_atom_comm2 p c2 cy\<close>
+  \<open>all_atom_comm2 p (c1 \<parallel> c2) cy \<longleftrightarrow> all_atom_comm2 p c1 cy \<and> all_atom_comm2 p c2 cy\<close>
+  \<open>all_atom_comm2 p (c\<^sup>\<star>) cy \<longleftrightarrow> all_atom_comm2 p c cy\<close>
+  \<open>all_atom_comm2 p (Atomic b1) cy \<longleftrightarrow> all_atom_comm (p b1) cy\<close>
+  \<open>all_atom_comm2 p cx Skip \<longleftrightarrow> True\<close>
+  \<open>all_atom_comm2 p cx (c1 ;; c2) \<longleftrightarrow> all_atom_comm2 p cx c1 \<and> all_atom_comm2 p cx c2\<close>
+  \<open>all_atom_comm2 p cx (c1 \<^bold>+ c2) \<longleftrightarrow> all_atom_comm2 p cx c1 \<and> all_atom_comm2 p cx c2\<close>
+  \<open>all_atom_comm2 p cx (c1 \<parallel> c2) \<longleftrightarrow> all_atom_comm2 p cx c1 \<and> all_atom_comm2 p cx c2\<close>
+  \<open>all_atom_comm2 p cx (c\<^sup>\<star>) \<longleftrightarrow> all_atom_comm2 p cx c\<close>
+  \<open>all_atom_comm2 p cx (Atomic b2) \<longleftrightarrow> all_atom_comm (\<lambda>b1. p b1 b2) cx\<close>
+  by (clarsimp simp add: all_atom_comm2_def)+
+
+
+lemma rtranclp_tuple_rel_semidistrib:
+  \<open>(\<lambda>(a, c) (b, d). r1 a b \<and> r2 c d)\<^sup>*\<^sup>* ac bd
+    \<Longrightarrow> r1\<^sup>*\<^sup>* (fst ac) (fst bd) \<and> r2\<^sup>*\<^sup>* (snd ac) (snd bd)\<close>
+  by (induct rule: rtranclp_induct; force)
+
+lemma rel_Times_rtranclp_semidistrib:
+  \<open>(r1 \<times>\<^sub>R r2)\<^sup>*\<^sup>* \<le> r1\<^sup>*\<^sup>* \<times>\<^sub>R r2\<^sup>*\<^sup>*\<close>
+  apply (clarsimp simp add: le_fun_def rel_Times_def)
+  apply (force dest: rtranclp_tuple_rel_semidistrib)
+  done
+
+
+lemma rtranclp_tuple_lift_eq_left:
+  \<open>r2\<^sup>*\<^sup>* c d \<Longrightarrow> (\<lambda>(a, c) (b, d). a = b \<and> r2 c d)\<^sup>*\<^sup>* (a,c) (a,d)\<close>
+  by (induct rule: rtranclp_induct, fast, simp add: rtranclp.rtrancl_into_rtrancl)
+
+lemma rtranclp_eq_eq[simp]:
+  \<open>(=)\<^sup>*\<^sup>* = (=)\<close>
+  by (simp add: rtransp_rel_is_rtransclp)
+
+lemma rel_Times_left_eq_rtranclp_distrib[simp]:
+  \<open>((=) \<times>\<^sub>R r2)\<^sup>*\<^sup>* = (=) \<times>\<^sub>R r2\<^sup>*\<^sup>*\<close>
+  apply (rule order.antisym)
+   apply (force dest: rtranclp_tuple_rel_semidistrib simp add: le_fun_def rel_Times_def)
+  apply (force dest: rtranclp_tuple_lift_eq_left simp add: le_fun_def rel_Times_def)
+  done
+
+lemma sp_rely_step:
+  \<open>r y y' \<Longrightarrow>
+    sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) p (x, y) \<Longrightarrow>
+    sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) p (x, y')\<close>
+  by (clarsimp simp add: sp_def,
+      meson rtranclp.rtrancl_into_rtrancl)
+
+declare eq_OO[simp] OO_eq[simp]
+
+lemma rel_Times_comp[simp]:
+  \<open>(a \<times>\<^sub>R b) OO (c \<times>\<^sub>R d) = (a OO c) \<times>\<^sub>R (b OO d)\<close>
+  by (force simp add: fun_eq_iff OO_def)
+
+lemmas sp_rely_stronger = sp_refl_rel_le[where r=\<open>(=) \<times>\<^sub>R r\<^sup>*\<^sup>*\<close> for r, simplified]
+lemmas sp_rely_absorb =
+  sp_comp_rel[where ?r1.0=\<open>(=) \<times>\<^sub>R ra\<^sup>*\<^sup>*\<close> and ?r2.0=\<open>(=) \<times>\<^sub>R rb\<^sup>*\<^sup>*\<close> for ra rb, simplified,
+    symmetric]
+
+lemma wlp_rely_step[dest]:
+  \<open>wlp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) p (hl, hs) \<Longrightarrow>r hs hs' \<Longrightarrow> wlp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) p (hl, hs')\<close>
+  by (simp add: converse_rtranclp_into_rtranclp wlp_def)
+
 section \<open> Operational Semantics \<close>
 
 subsection \<open> Actions \<close>
@@ -598,10 +689,15 @@ inductive safe
     (\<And>c' hl' hs'.
       ((hl, hs), c) \<midarrow>Tau\<rightarrow> ((hl', hs'), c') \<Longrightarrow> (hl, hs) = (hl', hs')) \<Longrightarrow>
     \<comment> \<open> opsteps respect the guarantee \<close>
-    (\<And>c' hl' hsx hsx'.
-      hs \<le> hsx \<Longrightarrow>
-      ((hl, hsx), c) \<midarrow>Local\<rightarrow> ((hl', hsx'), c') \<Longrightarrow>
-      g hsx hsx') \<Longrightarrow>
+    (\<And>c' hl' hs'.
+      ((hl, hs), c) \<midarrow>Local\<rightarrow> ((hl', hs'), c') \<Longrightarrow>
+      g hs hs') \<Longrightarrow>
+    \<comment> \<open> shared frame opsteps respect the guarantee in the frame \<close>
+    (\<And>c' hl' hs' hsf hsf'.
+      hs ## hsf \<Longrightarrow>
+      hs' ## hsf' \<Longrightarrow>
+      ((hl, hs + hsf), c) \<midarrow>Local\<rightarrow> ((hl', hs' + hsf'), c') \<Longrightarrow>
+      g (hs + hsf) (hs' + hsf') \<and> g hsf hsf') \<Longrightarrow>
     \<comment> \<open> opsteps are locally frame closed \<close>
     (\<And>a c' hl' hs' hlb hlb'.
       ((hl, hs), c) \<midarrow>a\<rightarrow> ((hl', hs'), c') \<Longrightarrow>
@@ -631,10 +727,14 @@ lemma safe_suc_iff:
     (\<forall>c' hl' hs'.
       ((hl, hs), c) \<midarrow>Tau\<rightarrow> ((hl', hs'), c') \<longrightarrow>
       (hl, hs) = (hl', hs')) \<and>
-    (\<forall>c' hl' hsx hsx'.
-      hs \<le> hsx \<longrightarrow>
-      ((hl, hsx), c) \<midarrow>Local\<rightarrow> ((hl', hsx'), c') \<longrightarrow>
-      g hsx hsx') \<and>
+    (\<forall>c' hl' hs'.
+      ((hl, hs), c) \<midarrow>Local\<rightarrow> ((hl', hs'), c') \<longrightarrow>
+      g hs hs') \<and>
+    (\<forall>c' hl' hs' hsf hsf'.
+      hs ## hsf \<longrightarrow>
+      hs' ## hsf' \<longrightarrow>
+      ((hl, hs + hsf), c) \<midarrow>Local\<rightarrow> ((hl', hs' + hsf'), c') \<longrightarrow>
+      g (hs + hsf) (hs' + hsf') \<and> g hsf hsf') \<and>
     (\<forall>a c' hl' hs' hlb hlb'.
       ((hl, hs), c) \<midarrow>a\<rightarrow> ((hl', hs'), c') \<longrightarrow>
       weak_framed_subresource_rel \<top> hl hl' hlb hlb' \<longrightarrow>
@@ -672,7 +772,14 @@ lemma safe_rely_antimonoD:
   \<open>safe n c hl hs r g q \<Longrightarrow> r' \<le> r \<Longrightarrow> safe n c hl hs r' g q\<close>
   apply (induct rule: safe.induct)
    apply force
-  apply (subst safe_suc_iff, fast)
+  apply (rule safe_suc)
+        apply metis
+       apply metis
+      apply metis
+     apply metis
+    apply metis
+   apply metis
+  apply (metis predicate2D_conj)
   done
 
 lemmas safe_rely_antimono = safe_rely_antimonoD[rotated]
@@ -713,18 +820,21 @@ lemma safe_atom':
     \<forall>hs'. r\<^sup>*\<^sup>* (snd h) hs' \<longrightarrow> Ex (b h) \<longrightarrow> Ex (b (fst h, hs')) \<Longrightarrow>
     local_frame_safe \<top> b \<Longrightarrow>
     wlp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) p (hl, hs) \<Longrightarrow>
-    \<forall>hl hs hl' hs'. b (hl, hs) (hl', hs') \<le> g hs hs' \<Longrightarrow>
+    \<forall>hl hs hl' hs'. b (hl, hs) (hl', hs') \<longrightarrow> g hs hs' \<Longrightarrow>
+    \<forall>hl hl' hs' hsf hsf' hsx.
+      hsx ## hsf \<longrightarrow> hs' ## hsf' \<longrightarrow> b (hl, hsx + hsf) (hl', hs' + hsf') \<longrightarrow> g hsf hsf' \<Longrightarrow>
     safe n (Atomic b) hl hs r g (sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) q)\<close>
   apply (induct n arbitrary: hl hs)
    apply force
   apply clarsimp
   apply (rule safe.safe_suc)
-       apply force
+        apply force
+       apply (clarsimp simp add: le_fun_def; fail)
       apply (clarsimp simp add: le_fun_def; fail)
      apply (clarsimp simp add: le_fun_def; fail)
     apply (rule opstep_local_frame, blast, fast, force)
-   apply (clarsimp, rule safe_skip', fastforce)
-  apply (simp add: converse_rtranclp_into_rtranclp wlp_def)
+   apply (clarsimp, rule safe_skip', fastforce) (* slow *)
+  apply blast
   done
 
 subsubsection \<open> Sequencing \<close>
@@ -739,6 +849,8 @@ lemma safe_seq_assoc_left:
   apply (subst safe_suc_iff)
   apply (simp add: opstep_iff)
   apply (intro conjI impI allI)
+        apply metis
+       apply metis
       apply metis
      apply metis
     apply metis
@@ -761,6 +873,8 @@ lemma safe_seq_assoc_right:
   apply (subst safe_suc_iff)
   apply (simp add: opstep_iff weak_framed_subresource_rel_def)
   apply (intro conjI impI allI)
+          apply metis
+         apply metis
         apply metis
        apply metis
       apply metis
@@ -780,6 +894,7 @@ lemma safe_seq':
        apply blast
       apply (clarsimp simp add: opstep_iff, (elim disjE exE conjE; force))
      apply (simp add: opstep_iff, metis)
+     apply (simp add: opstep_iff, metis)
     apply (simp add: opstep_iff weak_framed_subresource_rel_def framed_subresource_rel_def, metis)
    apply (simp add: opstep_iff, (elim disjE exE conjE; force))
   apply force
@@ -793,51 +908,6 @@ lemma safe_seq:
 
 subsection \<open> Iteration \<close>
 
-lemma rtranclp_tuple_rel_semidistrib:
-  \<open>(\<lambda>(a, c) (b, d). r1 a b \<and> r2 c d)\<^sup>*\<^sup>* ac bd
-    \<Longrightarrow> r1\<^sup>*\<^sup>* (fst ac) (fst bd) \<and> r2\<^sup>*\<^sup>* (snd ac) (snd bd)\<close>
-  by (induct rule: rtranclp_induct; force)
-
-lemma rel_Times_rtranclp_semidistrib:
-  \<open>(r1 \<times>\<^sub>R r2)\<^sup>*\<^sup>* \<le> r1\<^sup>*\<^sup>* \<times>\<^sub>R r2\<^sup>*\<^sup>*\<close>
-  apply (clarsimp simp add: le_fun_def rel_Times_def)
-  apply (force dest: rtranclp_tuple_rel_semidistrib)
-  done
-
-
-lemma rtranclp_tuple_lift_eq_left:
-  \<open>r2\<^sup>*\<^sup>* c d \<Longrightarrow> (\<lambda>(a, c) (b, d). a = b \<and> r2 c d)\<^sup>*\<^sup>* (a,c) (a,d)\<close>
-  by (induct rule: rtranclp_induct, fast, simp add: rtranclp.rtrancl_into_rtrancl)
-
-lemma rtranclp_eq_eq[simp]:
-  \<open>(=)\<^sup>*\<^sup>* = (=)\<close>
-  by (simp add: rtransp_rel_is_rtransclp)
-
-lemma rel_Times_left_eq_rtranclp_distrib[simp]:
-  \<open>((=) \<times>\<^sub>R r2)\<^sup>*\<^sup>* = (=) \<times>\<^sub>R r2\<^sup>*\<^sup>*\<close>
-  apply (rule order.antisym)
-   apply (force dest: rtranclp_tuple_rel_semidistrib simp add: le_fun_def rel_Times_def)
-  apply (force dest: rtranclp_tuple_lift_eq_left simp add: le_fun_def rel_Times_def)
-  done
-
-lemma sp_rely_step:
-  \<open>r y y' \<Longrightarrow>
-    sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) p (x, y) \<Longrightarrow>
-    sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) p (x, y')\<close>
-  by (clarsimp simp add: sp_def,
-      meson rtranclp.rtrancl_into_rtrancl)
-
-declare eq_OO[simp] OO_eq[simp]
-
-lemma rel_Times_comp[simp]:
-  \<open>(a \<times>\<^sub>R b) OO (c \<times>\<^sub>R d) = (a OO c) \<times>\<^sub>R (b OO d)\<close>
-  by (force simp add: fun_eq_iff OO_def)
-
-lemmas sp_rely_stronger = sp_refl_rel_le[where r=\<open>(=) \<times>\<^sub>R r\<^sup>*\<^sup>*\<close> for r, simplified]
-lemmas sp_rely_absorb =
-  sp_comp_rel[where ?r1.0=\<open>(=) \<times>\<^sub>R ra\<^sup>*\<^sup>*\<close> and ?r2.0=\<open>(=) \<times>\<^sub>R rb\<^sup>*\<^sup>*\<close> for ra rb, simplified,
-    symmetric]
-
 lemma safe_iter':
   \<open>(\<forall>m hl' hs'. m \<le> n \<longrightarrow> sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) i (hl', hs') \<longrightarrow> safe m c hl' hs' r g (sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) i)) \<Longrightarrow>
     sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) i (hl, hs) \<Longrightarrow>
@@ -845,13 +915,14 @@ lemma safe_iter':
   apply (induct n arbitrary: i hl hs)
    apply force
   apply (rule safe_suc)
-       apply blast
+        apply blast
+       apply (force simp add: opstep_iff)
       apply (force simp add: opstep_iff)
-     apply (force simp add: opstep_iff)
+     apply (force simp add: opstep_iff weak_framed_subresource_rel_def)
     apply (force simp add: opstep_iff weak_framed_subresource_rel_def)
     (* subgoal *)
    apply (simp add: le_Suc_eq opstep_iff)
-   apply (elim disjE)
+    apply (elim disjE)
     apply (simp add: safe_skip'; fail)
    apply (clarsimp simp add: all_conj_distrib)
    apply (rule_tac q=\<open>sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) i\<close> in safe_seq; blast)
@@ -885,9 +956,10 @@ lemma safe_ndet:
   apply (rule safe_suc)
      apply blast
     apply (rule opstep_act_cases)
-        apply blast
+         apply blast
+        apply (force simp add: opstep_iff)
        apply (force simp add: opstep_iff)
-      apply (force simp add: opstep_iff)
+      apply (clarsimp simp add: opstep_iff le_Suc_eq, metis safe_sucE)
      apply (clarsimp simp add: opstep_iff le_Suc_eq, metis safe_sucE)
   subgoal
     apply (simp add: opstep_iff)
@@ -990,11 +1062,11 @@ definition
   \<open>strong_local_unframe_safe \<ff> r \<equiv>
     \<forall>x z xz' s s'.
       r (x+z, s) (xz', s') \<longrightarrow> x ## z \<longrightarrow>
-      (\<exists>x' z'. \<ff> z z' \<and> x' ## z' \<and> xz' = x' + z' \<and> r (x, s) (x', s'))\<close>
+      (\<exists>x' z'. \<ff> z z' \<and> x' ## z' \<and> xz' = x' + z') \<and> (\<exists>x''. r (x, s) (x'', s'))\<close>
 
 lemma strong_unframe_safeD:
   \<open>strong_local_unframe_safe \<ff> r \<Longrightarrow> x ## z \<Longrightarrow> r (x+z, s) (xz', s') \<Longrightarrow>
-    \<exists>x' z'. \<ff> z z' \<and> x' ## z' \<and> xz' = x' + z' \<and> r (x, s) (x', s')\<close>
+    (\<exists>x' z'. \<ff> z z' \<and> x' ## z' \<and> xz' = x' + z') \<and> (\<exists>x''. r (x, s) (x'', s'))\<close>
   by (simp add: strong_local_unframe_safe_def)
 
 lemma strong_unframe_safe_mono:
@@ -1007,14 +1079,26 @@ lemma opstep_local_unframe':
     \<ff> hf hf \<Longrightarrow>
     hl ## hf \<Longrightarrow>
     fst (fst s) = hl + hf \<Longrightarrow>
-    \<exists>hl' hf'.
+    (\<exists>hl' hf'.
       hl' ## hf' \<and>
       \<ff> hf hf' \<and>
-      fst (fst s') = hl' + hf' \<and>
-      ((hl, snd (fst s)), snd s) \<midarrow>a\<rightarrow> ((hl', snd (fst s')), snd s')\<close>
+      fst (fst s') = hl' + hf') \<and>
+    (\<exists>hl''. ((hl, snd (fst s)), snd s) \<midarrow>a\<rightarrow> ((hl'', snd (fst s')), snd s'))\<close>
   apply (induct rule: opstep.inducts)
-               apply (force simp add: opstep_iff ndet_local_left ndet_local_right dest: reflp_onD)+
-  apply (force simp add: strong_local_unframe_safe_def local_frame_safe_def)
+               apply fastforce
+              apply fastforce
+             apply (force dest: reflp_onD)
+            apply (force dest: reflp_onD)
+           apply fastforce
+          apply fastforce
+         apply (force dest: reflp_onD)
+        apply (force dest: reflp_onD)
+       apply fastforce
+      apply fastforce
+     apply fastforce
+    apply fastforce
+   apply fastforce
+  apply (fastforce simp add: strong_local_unframe_safe_def local_frame_safe_def)
   done
 
 lemma opstep_local_unframe:
@@ -1022,11 +1106,11 @@ lemma opstep_local_unframe:
     all_atom_comm (strong_local_unframe_safe \<ff>) c \<Longrightarrow>
     \<ff> hf hf \<Longrightarrow>
     hl ## hf \<Longrightarrow>
-    \<exists>hl' hf'.
+    (\<exists>hl' hf'.
       hl' ## hf' \<and>
       hlf' = hl' + hf' \<and>
-      \<ff> hf hf' \<and>
-      ((hl, hs), c) \<midarrow>a\<rightarrow> ((hl', hs'), c')\<close>
+      \<ff> hf hf') \<and>
+    (\<exists>hl''. ((hl, hs), c) \<midarrow>a\<rightarrow> ((hl'', hs'), c'))\<close>
   using opstep_local_unframe' by fastforce
 
 lemma opstep_local_unframe_left:
@@ -1034,11 +1118,11 @@ lemma opstep_local_unframe_left:
     all_atom_comm (strong_local_unframe_safe \<ff>) c \<Longrightarrow>
     \<ff> hf hf \<Longrightarrow>
     hf ## hl \<Longrightarrow>
-    \<exists>hl' hf'.
+    (\<exists>hl' hf'.
       hf' ## hl' \<and>
       hlf' = hf' + hl' \<and>
-      \<ff> hf hf' \<and>
-      ((hl, hs), c) \<midarrow>a\<rightarrow> ((hl', hs'), c')\<close>
+      \<ff> hf hf') \<and>
+    (\<exists>hl''. ((hl, hs), c) \<midarrow>a\<rightarrow> ((hl'', hs'), c'))\<close>
   apply (subst (asm) partial_add_commute, blast)
   apply (drule disjoint_sym)
   apply (drule opstep_local_unframe, blast, blast, blast)
@@ -1097,11 +1181,10 @@ next
     then show \<open>(hl1 + hl2, hs1 + hs2) = (hl', hs')\<close>
       by (metis (no_types, lifting) opstep_tau_preserves_heap prod_eq_decompose(2))
   next
-    fix c' hl' hsx hsx'
+    fix c' hl' hs12'
     assume
-      \<open>hs1 + hs2 \<le> hsx\<close>
-      \<open>opstep Local ((hl1 + hl2, hsx), c1 \<parallel> c2) ((hl', hsx'), c')\<close>
-    then show \<open>(g1 \<squnion> g2) hsx hsx'\<close>
+      \<open>opstep Local ((hl1 + hl2, hs1 + hs2), c1 \<parallel> c2) ((hl', hs12'), c')\<close>
+    then show \<open>(g1 \<squnion> g2) (hs1 + hs2) hs12'\<close>
       using Suc.prems(1-2,5-8)
      apply (clarsimp simp add: opstep_iff)
      apply (elim disjE)
@@ -1110,17 +1193,13 @@ next
        apply (frule opstep_local_unframe, blast, blast, blast)
        apply clarsimp
        apply (elim safe_sucE)
-       apply (drule meta_spec2, drule meta_spec2, drule meta_mp[where P=\<open>_ \<le> _\<close>],
-          rule partial_le_part_left, assumption, assumption)
-       apply blast
+       apply (metis (no_types, opaque_lifting) sepadd_0_right zero_disjointR)
     (* c2 step *)
       apply clarsimp
       apply (frule opstep_local_unframe_left, blast, blast, blast)
       apply clarsimp
-      apply (elim safe_sucE)+
-      apply (drule meta_spec2, drule meta_spec2, drule meta_mp[where P=\<open>_ \<le> _\<close>],
-          rule partial_le_part_right, assumption, assumption)
-      apply blast
+      apply (elim safe_sucE)
+      apply (metis (no_types, lifting) disjoint_sym partial_add_commute sepadd_0_right zero_disjointR)
       done
   next
     fix a c' hl' hs' hlb hlb'
@@ -1135,16 +1214,21 @@ next
         apply clarify
         apply (frule opstep_local_unframe, blast, force, blast)
         apply (elim conjE exE)
+        apply clarsimp
+
+        apply (simp add: weak_framed_subresource_rel_def, elim disjE)
+         apply clarsimp
         apply (rule opstep.par_left)
       subgoal sorry
           (* c1 \<parallel> c2 \<rightarrow> c1 \<parallel> c2' *)
        apply clarify
        apply (frule opstep_local_unframe_left, blast, force, blast)
        apply (elim conjE exE)
+       apply clarsimp
        apply (rule opstep.par_right)
       subgoal sorry
           (* Skip \<parallel> Skip \<rightarrow> Skip *)
-      apply clarify
+      apply clarsimp
       subgoal sorry
       done
   next
@@ -1272,8 +1356,6 @@ next
       done
   qed
 qed
-
-thm choice
 
 
 subsubsection \<open> Frame rule \<close>
