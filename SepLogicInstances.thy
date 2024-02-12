@@ -177,6 +177,10 @@ lemma plus_option_simps[simp]:
   \<open>a + None = a\<close>
   by (simp add: plus_option_def split: option.splits)+
 
+lemma plus_None_iff[simp]:
+  \<open>a + b = None \<longleftrightarrow> a = None \<and> b = None\<close>
+  by (simp add: plus_option_def split: option.splits)
+
 definition disjoint_option :: \<open>'a option \<Rightarrow> 'a option \<Rightarrow> bool\<close> where
   \<open>disjoint_option a b \<equiv>
     case a of None \<Rightarrow> True | Some x \<Rightarrow> (case b of None \<Rightarrow> True | Some y \<Rightarrow> x ## y)\<close>
