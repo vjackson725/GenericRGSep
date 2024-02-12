@@ -1148,6 +1148,14 @@ lemma safe_parallel_skip:
   apply (simp add: weak_framed_rel_mono sp_rely_absorb rel_le_rtranscp_relcompp_absorb)
   done
 
+
+
+lemma alloc_frame_safe:
+  \<open>h1 ## h2 \<Longrightarrow>
+    \<forall>h h'. b h h' \<longrightarrow> (\<exists>x. x \<notin> dom h \<and> h' = h(x := Some 0)) \<Longrightarrow>
+    strong_local_unframe_safe (rel_lift ((=) h1)) b\<close>
+  oops
+
 lemma safe_parallel:
   fixes hl1 hl2 :: \<open>'a::sep_alg\<close>
     and hs1 hs2 :: \<open>'b::sep_alg\<close>

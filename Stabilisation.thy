@@ -1,5 +1,5 @@
 theory Stabilisation
-  imports SepLogic
+  imports SepLogicInstances
 begin
 
 section \<open>Stabilisation\<close>
