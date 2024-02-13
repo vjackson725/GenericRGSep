@@ -227,20 +227,12 @@ lemma positivityR: \<open>a ## b \<Longrightarrow> a + b = c \<Longrightarrow> c
   using disjoint_sym partial_add_commute positivity by blast
 
 lemma partial_add_left_commute:
-  \<open>a ## c \<Longrightarrow> b ## a + c \<Longrightarrow> b ## c \<Longrightarrow> a ## b + c \<Longrightarrow> b + (a + c) = a + (b + c)\<close>
-  by (metis disjoint_add_rightL partial_add_assoc partial_add_commute)
-
-lemma partial_add_left_commute':
   \<open>a ## b \<Longrightarrow> a ## c \<Longrightarrow> b ## c \<Longrightarrow> b + (a + c) = a + (b + c)\<close>
-  by (metis disjoint_sym_iff partial_add_assoc partial_add_commute)
+  by (metis partial_add_assoc partial_add_commute disjoint_sym)
 
 lemma partial_add_right_commute:
-  \<open>a ## b \<Longrightarrow> a + b ## c \<Longrightarrow> a ## c \<Longrightarrow> a + c ## b \<Longrightarrow> a + b + c = a + c + b\<close>
-  by (metis disjoint_add_leftR partial_add_assoc partial_add_commute)
-
-lemma partial_add_right_commute':
   \<open>a ## b \<Longrightarrow> a ## c \<Longrightarrow> b ## c \<Longrightarrow> a + b + c = a + c + b\<close>
-  by (simp add: disjoint_sym_iff partial_add_assoc partial_add_commute)
+  by (simp add: disjoint_sym partial_add_assoc partial_add_commute)
 
 lemma disjoint_preservation:
   \<open>a' \<le> a \<Longrightarrow> a ## b \<Longrightarrow> a' ## b\<close>
@@ -249,6 +241,14 @@ lemma disjoint_preservation:
 lemma disjoint_preservation2:
   \<open>b' \<le> b \<Longrightarrow> a ## b \<Longrightarrow> a ## b'\<close>
   using disjoint_preservation disjoint_sym by blast
+
+lemma partial_add_assoc_commute_left:
+  \<open>a ## b \<Longrightarrow> a ## c \<Longrightarrow> b ## c \<Longrightarrow> b + a + c = a + (b + c)\<close>
+  by (metis partial_add_assoc partial_add_commute)
+
+lemma partial_add_assoc_commute_right:
+  \<open>a ## b \<Longrightarrow> a ## c \<Longrightarrow> b ## c \<Longrightarrow> a + c + b = a + (b + c)\<close>
+  by (metis partial_add_commute partial_add_assoc_commute_left partial_add_right_commute)
 
 lemma partial_add_assoc2:
   \<open>a ## b \<Longrightarrow> a + b ## c \<Longrightarrow> (a + b) + c = a + (b + c)\<close>
