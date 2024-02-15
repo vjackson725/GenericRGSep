@@ -685,28 +685,23 @@ inductive safe
 | safe_suc[intro]:
   \<open>\<comment> \<open> if the command is Skip, the postcondition is established \<close>
     (c = Skip \<longrightarrow> q (hl, hs)) \<Longrightarrow>
-    \<comment> \<open> tau opsteps do not change the state \<close>
-    (\<And>c' hl' hs'.
-      ((hl, hs), c) \<midarrow>Tau\<rightarrow> ((hl', hs'), c') \<Longrightarrow> (hl, hs) = (hl', hs')) \<Longrightarrow>
-    \<comment> \<open> opsteps respect the guarantee (two parts) \<close>
-    (\<And>c' hl' hs'.
-      ((hl, hs), c) \<midarrow>Local\<rightarrow> ((hl', hs'), c') \<Longrightarrow> g hs hs') \<Longrightarrow>
-    (\<And>c' hl' hsf hsx'.
-      hs ## hsf \<Longrightarrow>
-      ((hl, hs + hsf), c) \<midarrow>Local\<rightarrow> ((hl', hsx'), c') \<Longrightarrow>
-      g (hs + hsf) hsx' \<and>
-      (\<exists>hs' hsf'. hs' ## hsf' \<and> hsx' = hs' + hsf' \<and> g hs hs' \<and> g hsf hsf')) \<Longrightarrow>
-    \<comment> \<open> opsteps are locally frame closed \<close>
-    (\<And>a c' hl' hs' hlb hlb' hf.
-      ((hl, hs), c) \<midarrow>a\<rightarrow> ((hl', hs'), c') \<Longrightarrow>
-      weak_framed_subresource_rel ((=) hf) hl hl' hlb hlb' \<Longrightarrow>
-      ((hlb, hs), c) \<midarrow>a\<rightarrow> ((hlb', hs'), c')) \<Longrightarrow>
-    \<comment> \<open> opsteps are safe \<close>
-    (\<And>a c' hl' hs'.
-        ((hl, hs), c) \<midarrow>a\<rightarrow> ((hl', hs'), c') \<Longrightarrow>
-        safe n c' hl' hs' r g q) \<Longrightarrow>
     \<comment> \<open> rely steps are safe \<close>
-    (\<And>hs'. r hs hs' \<Longrightarrow> safe n c hl hs' r g q) \<Longrightarrow>
+    (\<And>hs'. r hs hs' \<comment> \<open> \<and> hl ## hs' \<close> \<Longrightarrow> safe n c hl hs' r g q) \<Longrightarrow>
+    \<comment> \<open>
+      \<comment> \<open> stuttering steps are safe \<close>
+      (\<And>hs'. r hs hs' \<Longrightarrow> safe n c hl hs' r g q) \<Longrightarrow>
+    \<close>
+    \<comment> \<open> opsteps respect opsteps + the guarantee \<close>
+    (\<And>a hlf hsf c' hx'.
+       ((hl + hlf, hs + hsf), c) \<midarrow>a\<rightarrow> (hx', c') \<Longrightarrow>
+       hl ## hlf \<Longrightarrow>
+       hs ## hsf \<Longrightarrow>
+       (\<exists>hl' hs' hsf'.
+          hx' = (hl' + hlf, hs' + hsf') \<and>
+          (hl', hs') ## hf \<and>
+          g hs hs' \<and>
+          g (hs + hsf) (hs' + hsf') \<and>
+          safe n c' hl' hs' r g q)) \<Longrightarrow>
     \<comment> \<open> conclude a step can be made \<close>
     safe (Suc n) c hl hs r g q\<close>
 
@@ -1028,15 +1023,41 @@ qed
 
 subsubsection \<open> Frame rule \<close>
 
+lemma opstep_strong_unframe_right:
+  \<open>opstep a s s' \<Longrightarrow>
+    s = (hx + hf, c) \<Longrightarrow>
+    s' = (h', c') \<Longrightarrow>
+    hx ## hf \<Longrightarrow>
+    all_atom_comm (strong_unframe_safe (rel_lift f)) c \<Longrightarrow>
+    f hf \<Longrightarrow>
+    (\<exists>hx' hf'. f hf' \<and> hx' ## hf' \<and> h' = hx' + hf' \<and> opstep a (hx, c) (hx', c'))\<close>
+  apply (induct arbitrary: hx hf c h' c' rule: opstep.inducts)
+               apply (blast+)[13]
+  apply (simp add: opstep_iff rel_lift_def inf_fun_def)
+  apply (drule_tac strong_unframe_safeD, blast, blast)
+  apply blast
+  done
+
+lemma opstep_strong_unframe_left:
+  \<open>opstep a s s' \<Longrightarrow>
+    s = (hf + hx, c) \<Longrightarrow>
+    s' = (h', c') \<Longrightarrow>
+    hf ## hx \<Longrightarrow>
+    all_atom_comm (strong_unframe_safe (rel_lift f)) c \<Longrightarrow>
+    f hf \<Longrightarrow>
+    (\<exists>hx' hf'. f hf' \<and> hf' ## hx' \<and> h' = hf' + hx' \<and> opstep a (hx, c) (hx', c'))\<close>
+  by (metis disjoint_sym_iff opstep_strong_unframe_right partial_add_commute)
+
 lemma safe_frame:
   \<open>safe n c hl hs r g q \<Longrightarrow>
+    all_atom_comm (strong_unframe_safe (rel_lift f)) c \<Longrightarrow>
     hl ## hlf \<Longrightarrow>
     hs ## hsf \<Longrightarrow>
     f (hlf, hsf) \<Longrightarrow>
     safe n c (hl + hlf) (hs + hsf) r g (q \<^emph> f)\<close>
 proof (induct arbitrary: hlf hsf rule: safe.induct)
   case (safe_nil c hl hs r g q)
-  then show ?case sorry
+  then show ?case by blast
 next
   case (safe_suc c q hl hs g n r)
   show ?case
@@ -1045,6 +1066,14 @@ next
     apply (rule safe.safe_suc)
           apply (clarsimp simp add: sepconj_def, fast)
          apply (metis fst_conv opstep_tau_preserves_heap)
+        apply (frule opstep_strong_unframe_right[where hx=\<open>(hl, hs)\<close> and hf=\<open>(hlf, hsf)\<close>])
+             apply (simp; fail)
+            apply (simp; fail)
+           apply (simp; fail)
+          apply blast
+         apply blast
+        apply clarsimp
+
     sorry
 qed
 
@@ -1118,30 +1147,6 @@ lemma (in perm_alg)
   unfolding sepadd_dup_def core_rel_def
   by (metis (mono_tags, opaque_lifting) disjoint_preservation2 disjoint_sym_iff order.trans
       partial_add_commute partial_le_plus2 sepadd_right_mono)
-
-lemma opstep_strong_unframe_right:
-  \<open>opstep a s s' \<Longrightarrow>
-    hx ## hf \<Longrightarrow>
-    s = (hx + hf, c) \<Longrightarrow>
-    s' = (h', c') \<Longrightarrow>
-    all_atom_comm (strong_unframe_safe (rel_lift ((=) hf))) c \<Longrightarrow>
-    (\<exists>hx'. hx' ## hf \<and> h' = hx' + hf \<and> opstep a (hx, c) (hx', c'))\<close>
-  apply (induct arbitrary: hx hf c h' c' rule: opstep.inducts)
-               apply (blast+)[13]
-  apply (simp add: opstep_iff rel_lift_def inf_fun_def)
-  apply (drule_tac strong_unframe_safeD, blast, blast)
-  apply blast
-  done
-
-
-lemma opstep_strong_unframe_left:
-  \<open>opstep a s s' \<Longrightarrow>
-    hf ## hx \<Longrightarrow>
-    s = (hf + hx, c) \<Longrightarrow>
-    s' = (h', c') \<Longrightarrow>
-    all_atom_comm (strong_unframe_safe (rel_lift ((=) hf))) c \<Longrightarrow>
-    (\<exists>hx'. hf ## hx' \<and> h' = hf + hx' \<and> opstep a (hx, c) (hx', c'))\<close>
-  by (metis disjoint_sym_iff opstep_strong_unframe_right partial_add_commute)
 
 lemma wframe_with_top:
   \<open>(wframe r with \<top>) h h'
