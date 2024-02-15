@@ -698,8 +698,10 @@ inductive safe
        hs ## hsf \<Longrightarrow>
        (\<exists>hl' hs' hsf'.
           hx' = (hl' + hlf, hs' + hsf') \<and>
-          (hl', hs') ## hf \<and>
+          hl' ## hlf \<and>
+          hs' ## hsf' \<and>
           g hs hs' \<and>
+          g hsf hsf' \<and>
           g (hs + hsf) (hs' + hsf') \<and>
           safe n c' hl' hs' r g q)) \<Longrightarrow>
     \<comment> \<open> conclude a step can be made \<close>
@@ -717,28 +719,24 @@ lemma safe_nil_iff[simp]:
 lemma safe_suc_iff:
   \<open>safe (Suc n) c hl hs r g q \<longleftrightarrow>
     (c = Skip \<longrightarrow> q (hl, hs)) \<and>
-    (\<forall>c' hl' hs'.
-      ((hl, hs), c) \<midarrow>Tau\<rightarrow> ((hl', hs'), c') \<longrightarrow>
-      (hl, hs) = (hl', hs')) \<and>
-    (\<forall>c' hl' hs'.
-      ((hl, hs), c) \<midarrow>Local\<rightarrow> ((hl', hs'), c') \<longrightarrow> g hs hs') \<and>
-    (\<forall>c' hl' hsf hsx'.
-      hs ## hsf \<longrightarrow>
-      ((hl, hs + hsf), c) \<midarrow>Local\<rightarrow> ((hl', hsx'), c') \<longrightarrow>
-      g (hs + hsf) hsx' \<and>
-      (\<exists>hs' hsf'. hs' ## hsf' \<and> hsx' = hs' + hsf' \<and> g hs hs' \<and> g hsf hsf')) \<and>
-    (\<forall>a c' hl' hs' hlb hlb' hf.
-      ((hl, hs), c) \<midarrow>a\<rightarrow> ((hl', hs'), c') \<longrightarrow>
-      weak_framed_subresource_rel ((=) hf) hl hl' hlb hlb' \<longrightarrow>
-      ((hlb, hs), c) \<midarrow>a\<rightarrow> ((hlb', hs'), c')) \<and>
-    (\<forall>a c' hl' hs'.
-      ((hl, hs), c) \<midarrow>a\<rightarrow> ((hl', hs'), c') \<longrightarrow>
-      safe n c' hl' hs' r g q) \<and>
-    (\<forall>hl' hs'. r hs hs' \<longrightarrow> safe n c hl hs' r g q)\<close>
+    (\<forall>hs'. r hs hs' \<longrightarrow> safe n c hl hs' r g q) \<and>
+    (\<forall>a hlf hsf c' hx'.
+       ((hl + hlf, hs + hsf), c) \<midarrow>a\<rightarrow> (hx', c') \<longrightarrow>
+       hl ## hlf \<longrightarrow>
+       hs ## hsf \<longrightarrow>
+       (\<exists>hl' hs' hsf'.
+          hx' = (hl' + hlf, hs' + hsf') \<and>
+          hl' ## hlf \<and>
+          hs' ## hsf' \<and>
+          g hs hs' \<and>
+          g hsf hsf' \<and>
+          g (hs + hsf) (hs' + hsf') \<and>
+          safe n c' hl' hs' r g q))\<close>
   apply (rule iffI)
-   apply (erule safe_sucE; force)
-   apply (rule safe_suc; metis)
+   apply (erule safe_sucE, presburger)
+  apply (rule safe_suc; presburger)
   done
+
 
 subsubsection \<open> Monotonicity \<close>
 
@@ -746,7 +744,7 @@ lemma safe_postpred_monoD:
   \<open>safe n c hl hs r g q \<Longrightarrow> q \<le> q' \<Longrightarrow> safe n c hl hs r g q'\<close>
   apply (induct rule: safe.induct)
    apply blast
-  apply (simp add: le_fun_def safe_suc; fail)
+  apply (simp add: le_fun_def safe_suc_iff, fast)
   done
 
 lemmas safe_postpred_mono = safe_postpred_monoD[rotated]
@@ -765,14 +763,7 @@ lemma safe_rely_antimonoD:
   \<open>safe n c hl hs r g q \<Longrightarrow> r' \<le> r \<Longrightarrow> safe n c hl hs r' g q\<close>
   apply (induct rule: safe.induct)
    apply force
-  apply (rule safe_suc)
-        apply metis
-       apply metis
-      apply metis
-     apply metis
-    apply metis
-   apply metis
-  apply (metis predicate2D_conj)
+  apply (rule safe_suc; fast)
   done
 
 lemmas safe_rely_antimono = safe_rely_antimonoD[rotated]
@@ -784,8 +775,12 @@ lemma safe_step_monoD:
   apply (clarsimp simp add: le_Suc_iff0)
   apply (erule disjE, fast)
   apply clarsimp
-  apply (subst safe_suc_iff, force)
+  apply (rule safe_suc)
+    apply fast
+   apply fast
+  apply fast
   done
+
 
 subsubsection \<open> Skip \<close>
 
@@ -805,32 +800,68 @@ lemma safe_skip:
   apply blast
   done
 
+
 subsubsection \<open> Atomic \<close>
 
+lemma rel_lift_impl_iff_sp_impl:
+  \<open>rel_liftL p \<sqinter> b \<le> rel_liftR q \<longleftrightarrow> sp b p \<le> q\<close>
+  by (force simp add: le_fun_def sp_def wlp_def pre_state_def)
+
+
 lemma safe_atom':
-  \<open>rel_liftL (wlp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) p) \<sqinter> b \<le> rel_liftR (sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) q) \<Longrightarrow>
-    wlp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) p \<le> pre_state b \<Longrightarrow>
-    \<forall>hs'. r\<^sup>*\<^sup>* (snd h) hs' \<longrightarrow> Ex (b h) \<longrightarrow> Ex (b (fst h, hs')) \<Longrightarrow>
-    local_frame_safe \<top> b \<Longrightarrow>
+  \<open>rel_liftL (wlp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) p) \<sqinter> b \<le> rel_liftR q \<Longrightarrow>
     wlp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) p (hl, hs) \<Longrightarrow>
-    (\<forall>hl hs hl' hs'. b (hl, hs) (hl', hs') \<longrightarrow> g hs hs') \<Longrightarrow>
-    (\<forall>hl hs hl' hsf hsx'.
-        b (hl, hs + hsf) (hl', hsx') \<longrightarrow>
-        (\<exists>hs' hsf'. hs' ## hsf' \<and> hsx' = hs' + hsf' \<and> g hs hs' \<and> g hsf hsf')) \<Longrightarrow>
+    (\<forall>hlf hs2 hsf hx'.
+      r\<^sup>*\<^sup>* hs hs2 \<longrightarrow>
+      b (hl + hlf, hs2 + hsf) hx' \<longrightarrow>
+      hl ## hlf \<longrightarrow>
+      hs2 ## hsf \<longrightarrow>
+      (\<exists>hl'. fst hx' = hl' + hlf \<and>
+        (\<exists>hs' hsf'.
+          snd hx' = hs' + hsf' \<and>
+          hl' ## hlf \<and>
+          hs' ## hsf' \<and>
+          g hs2 hs' \<and>
+          g hsf hsf' \<and>
+          g (hs2 + hsf) (hs' + hsf')))) \<Longrightarrow>
+    \<comment> \<open> TODO: review this assumption \<close>
+    (\<forall>hl' hlf hsf hs' hsf' hs2. 
+      r\<^sup>*\<^sup>* hs hs2 \<longrightarrow>
+      b (hl + hlf, hs2 + hsf) (hl' + hlf, hs' + hsf') \<longrightarrow>
+      hl' ## hlf \<longrightarrow>
+      hs' ## hsf' \<longrightarrow>
+      g hs2 hs' \<longrightarrow>
+      g hsf hsf' \<longrightarrow>
+      b (hl, hs2) (hl', hs')) \<Longrightarrow>
     safe n (Atomic b) hl hs r g (sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) q)\<close>
-  apply (induct n arbitrary: hl hs)
-   apply force
-  apply clarsimp
-  apply (rule safe.safe_suc)
-        apply force
-       apply (clarsimp simp add: le_fun_def; fail)
+proof (induct n arbitrary: hl hs)
+  case 0
+  then show ?case by force
+next
+  case (Suc n)
+  show ?case
+    using Suc.prems
+    apply (intro safe.safe_suc)
       apply force
-     apply force
-    apply (drule opstep_local_frame, fast,
-      metis atom local_frame_safe_framerel_antimonoD top_greatest, blast)
-   apply (clarsimp, rule safe_skip', fastforce) (* slow *)
-  apply blast
-  done
+     apply (rule Suc.hyps, fast, fast, meson converse_rtranclp_into_rtranclp,
+        meson converse_rtranclp_into_rtranclp)
+    apply (subst (asm) rel_lift_impl_iff_sp_impl)
+    apply clarsimp
+    apply (drule spec, drule mp, rule rtranclp.rtrancl_refl)
+    apply (drule spec2, drule spec2, drule mp, assumption)
+    apply clarsimp
+    apply (rule_tac x=hl' in exI, simp)
+    apply (rule_tac x=hs' in exI, rule_tac x=hsf' in exI, simp)
+    apply (rule safe_skip[where p=\<open>sp b (wlp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) p)\<close>, rotated])
+     apply (clarsimp simp add: rel_Times_def)
+     apply (rule sp_mono2, assumption)
+     apply (rule subst[of _ _ \<open>\<lambda>x. sp x p s\<close> for p s, rotated], fast)
+     apply fastforce
+    apply (simp add: sp_def)
+    apply (meson Suc.prems(2) rtranclp.rtrancl_refl)
+    done
+qed
+
 
 subsubsection \<open> Sequencing \<close>
 
@@ -841,19 +872,14 @@ lemma safe_seq_assoc_left:
     safe n ((c1 ;; c2) ;; c3) hl hs r g q\<close>
   apply (induct arbitrary: c1 c2 c3 rule: safe.inducts)
    apply force
-  apply (subst safe_suc_iff)
+  apply (rule safe_suc)
+    apply blast
+   apply blast
   apply (clarsimp simp add: opstep_iff)
-  apply (intro conjI allI impI)
-       apply metis
-       apply metis
-      apply metis
-     apply metis
-    apply metis
-   apply (elim disjE conjE exE)
-    apply (metis framed_subresource_rel_top_same_sub_iff weak_framed_subresource_rel_def)
-   apply (clarify, metis comm.inject(1) opstep_iff(1))
-  apply (metis opstep_preserves_all_atom_comm)
-  done
+  apply (elim disjE conjE exE)
+   apply metis
+  sledgehammer
+  oops
 
 lemma safe_seq_assoc_right:
   \<open>safe n c hl hs r g q \<Longrightarrow>

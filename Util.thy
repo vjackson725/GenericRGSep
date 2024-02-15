@@ -848,10 +848,12 @@ qed
 
 
 text \<open> strongest postcondition, by way of relations \<close>
-definition \<open>sp r p \<equiv> \<lambda>y. (\<exists>x. r x y \<and> p x)\<close>
+definition sp :: \<open>('a \<Rightarrow> 'b \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool) \<Rightarrow> ('b \<Rightarrow> bool)\<close> where
+  \<open>sp r p \<equiv> \<lambda>y. (\<exists>x. r x y \<and> p x)\<close>
 
 text \<open> weakest liberal precondition, by way of relations \<close>
-definition \<open>wlp r q \<equiv> \<lambda>x. (\<forall>y. r x y \<longrightarrow> q y)\<close>
+definition wlp :: \<open>('a \<Rightarrow> 'b \<Rightarrow> bool) \<Rightarrow> ('b \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool)\<close> where
+  \<open>wlp r q \<equiv> \<lambda>x. (\<forall>y. r x y \<longrightarrow> q y)\<close>
 
 paragraph \<open> wlp predicate properties \<close>
 
@@ -932,6 +934,10 @@ paragraph \<open> sp predicate properties \<close>
 
 lemma sp_mono:
   \<open>p \<le> q \<Longrightarrow> sp r p \<le> sp r q\<close>
+  by (force simp add: sp_def)
+
+lemma sp_mono2:
+  \<open>p \<le> q \<Longrightarrow> sp r p x \<Longrightarrow> sp r q x\<close>
   by (force simp add: sp_def)
 
 lemma sp_bot[simp]:
