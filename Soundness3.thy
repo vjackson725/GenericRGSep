@@ -703,14 +703,12 @@ inductive safe
        ((hl, hs), c) \<midarrow>Local\<rightarrow> (hx', c') \<Longrightarrow>
        (\<exists>hl' hs'. hx' = (hl', hs') \<and> g hs hs' \<and>  safe n c' hl' hs' r g q)) \<Longrightarrow>
     (\<And>hlf hsf c' hx'.
-       ((hl + hlf, hs + hsf), c) \<midarrow>Local\<rightarrow> (hx', c') \<Longrightarrow>
-       (hl, hs) ## (hlf, hsf) \<Longrightarrow>
-       (\<exists>hl' hs' hsf'.
+        ((hl + hlf, hs + hsf), c) \<midarrow>Local\<rightarrow> (hx', c') \<Longrightarrow>
+        (hl, hs) ## (hlf, hsf) \<Longrightarrow>
+        (\<exists>hl' hs' hsf'.
           hx' = (hl' + hlf, hs' + hsf') \<and>
-          hl' ## hlf \<and>
-          hs' ## hsf' \<and>
-          g hs hs' \<and>
-          g hsf hsf' \<and>
+          (hl', hs') ## (hlf, hsf') \<and>
+          g\<^sup>=\<^sup>= hsf hsf' \<and>
           g (hs + hsf) (hs' + hsf') \<and>
           safe n c' hl' hs' r g q)) \<Longrightarrow>
   \<comment> \<open>
@@ -751,15 +749,12 @@ lemma safe_suc_iff:
           g hs hs' \<and>
           safe n c' hl' hs' r g q)) \<and>
     (\<forall>hlf hsf c' hx'.
-       ((hl + hlf, hs + hsf), c) \<midarrow>Local\<rightarrow> (hx', c') \<longrightarrow>
-       hl ## hlf \<longrightarrow>
-       hs ## hsf \<longrightarrow>
-       (\<exists>hl' hs' hsf'.
+        ((hl + hlf, hs + hsf), c) \<midarrow>Local\<rightarrow> (hx', c') \<longrightarrow>
+        (hl, hs) ## (hlf, hsf) \<longrightarrow>
+        (\<exists>hl' hs' hsf'.
           hx' = (hl' + hlf, hs' + hsf') \<and>
-          hl' ## hlf \<and>
-          hs' ## hsf' \<and>
-          g hs hs' \<and>
-          g hsf hsf' \<and>
+          (hl', hs') ## (hlf, hsf') \<and>
+          g\<^sup>=\<^sup>= hsf hsf' \<and>
           g (hs + hsf) (hs' + hsf') \<and>
           safe n c' hl' hs' r g q))\<close>
   apply (rule iffI)
@@ -774,22 +769,28 @@ lemma safe_postpred_monoD:
   \<open>safe n c hl hs r g q \<Longrightarrow> q \<le> q' \<Longrightarrow> safe n c hl hs r g q'\<close>
   apply (induct rule: safe.induct)
    apply blast
-  apply (simp add: le_fun_def safe_suc_iff, fast)
+  apply (clarsimp simp add: le_fun_def safe_suc_iff, metis)
   done
 
 lemmas safe_postpred_mono = safe_postpred_monoD[rotated]
 
 lemma safe_guarantee_monoD:
   \<open>safe n c hl hs r g q \<Longrightarrow> g \<le> g' \<Longrightarrow> safe n c hl hs r g' q\<close>
-  apply (induct rule: safe.induct)
-   apply blast
-  apply (simp add: le_fun_def)
-  apply (rule safe_suc)
-     apply blast
-    apply blast
-   apply force
-  apply (metis disjoint_prod_def fst_conv snd_conv)
-  done
+proof (induct rule: safe.induct)
+  case safe_nil
+  then show ?case by blast
+next
+  case (safe_suc c q hl hs r n g)
+  show ?case
+    using safe_suc.prems
+    apply -
+    apply (rule safe.safe_suc)
+       apply (simp add: safe_suc.hyps(1); fail)
+      apply (simp add: safe_suc.hyps(3); fail)
+     apply (metis rev_predicate2D safe_suc.hyps(4))
+    apply (drule safe_suc.hyps(5), assumption, fast)
+    done
+qed
 
 lemmas safe_guarantee_mono = safe_guarantee_monoD[rotated]
 
@@ -864,7 +865,6 @@ lemma safe_atom':
           snd hx' = hs' + hsf' \<and>
           hl' ## hlf \<and>
           hs' ## hsf' \<and>
-          g hs2 hs' \<and>
           g hsf hsf' \<and>
           g (hs2 + hsf) (hs' + hsf')
         ))) \<Longrightarrow>
@@ -1020,8 +1020,7 @@ next
         \<exists>hl' hs' hsf'.
            hx' = (hl' + hlf, hs' + hsf') \<and>
            hl' ## hlf \<and> hs' ## hsf' \<and>
-          g hs hs' \<and>
-          g hsf hsf' \<and>
+          g\<^sup>=\<^sup>= hsf hsf' \<and>
           g (hs + hsf) (hs' + hsf') \<and>
           safe n c' hl' hs' r g q\<close>
     using Suc.prems(1)
@@ -1039,8 +1038,7 @@ next
         \<exists>hl' hs' hsf'.
           hx' = (hl' + hlf, hs' + hsf') \<and>
           hl' ## hlf \<and> hs' ## hsf' \<and>
-          g hs hs' \<and>
-          g hsf hsf' \<and>
+          g\<^sup>=\<^sup>= hsf hsf' \<and>
           g (hs + hsf) (hs' + hsf') \<and>
           safe n c' hl' hs' r g q\<close>
     using Suc.prems(2)
@@ -1057,7 +1055,10 @@ next
        apply blast
       apply (meson Suc.hyps c1_Suc(2) c2_Suc(2) safe_step_monoD; fail)
      apply (simp add: opstep_iff, metis c1_Suc(3) c2_Suc(3))
-    apply (simp add: opstep_iff, metis c1_Suc(4) c2_Suc(4))
+    apply (simp add: opstep_iff)
+    apply (elim disjE conjE)
+     apply (drule c1_Suc(4); blast)
+    apply (drule c2_Suc(4); blast)
     done
 qed
 
@@ -1104,7 +1105,7 @@ lemma safe_frame:
         hs ## hsf \<longrightarrow>
         g (hs + hsf) hshsf' \<longrightarrow>
         f (hlf, hsf) \<longrightarrow>
-        (\<exists>hs' hsf'. hs' ## hsf' \<and> hshsf' = hs' + hsf' \<and> g hs hs' \<and> f (hlf, hsf')))\<close>
+        (\<exists>hs' hsf'. hs' ## hsf' \<and> hshsf' = hs' + hsf' \<and> g hs hs' \<and> g\<^sup>=\<^sup>= hsf hsf'))\<close>
   shows
   \<open>safe n c hl hs r g q \<Longrightarrow>
     rely_safe r f hlf \<Longrightarrow>
@@ -1119,7 +1120,7 @@ proof (induct arbitrary: hlf hsf f rule: safe.induct)
 next
   case (safe_suc c q hl hs r n g)
 
-  note helper = iffD1[OF meta_eq_to_obj_eq[OF guar_safe_def[of g f]], THEN spec2, THEN spec,
+  note guar_safeD = iffD1[OF meta_eq_to_obj_eq[OF guar_safe_def[of g f]], THEN spec2, THEN spec,
       THEN mp, THEN mp, THEN mp, rotated 2]
 
   show ?case
@@ -1172,11 +1173,31 @@ next
     subgoal sorry
     apply (drule mp, metis disjoint_add_leftR disjoint_add_rightL)
     apply (subst (asm) partial_add_commute[of hsf], metis disjoint_add_leftR)
-    apply (frule helper, assumption, fast)
-     apply (metis disjoint_add_leftR disjoint_sym)
+    apply (erule disjE)
+     prefer 2
+      (* case eq *)
+     apply clarsimp
+     apply (rule_tac x=\<open>hl' + hlf\<close> in exI, rule conjI)
+      apply (metis disjoint_add_leftR partial_add_assoc3)
+     apply (rule_tac x=\<open>hs' + hsf\<close> in exI, rule_tac x=\<open>hsf'\<close> in exI, rule conjI)
+      apply (metis disjoint_add_leftR partial_add_assoc3)
+     apply (rule conjI)
+      apply (meson disjoint_add_leftR disjoint_add_swap)
+     apply (rule conjI)
+      apply (meson disjoint_add_leftR disjoint_add_swap)
+     apply (rule conjI)
+      apply blast
+     apply (rule conjI)
+      apply (metis disjoint_add_leftR partial_add_assoc2 partial_add_assoc3)
+     apply (drule_tac x=hsf in spec)
+     apply (drule mp, meson disjoint_add_leftR disjoint_add_rightL)
+     apply (drule mp, blast)
+     apply (simp add: sup_fun_def; fail)
+      (* case guar *)
+    apply (frule guar_safeD, assumption, fast, metis disjoint_add_leftR disjoint_sym)
     apply clarsimp
     apply (rename_tac hsf'x hsfx)
-    apply (drule_tac x=\<open>hsf'x\<close> in spec, drule mp, metis disjoint_add_rightL)
+    apply (drule_tac x=\<open>hsfx\<close> in spec, drule mp, metis disjoint_add_rightR)
     apply (simp add: sup_fun_def)
     apply (rule exI, rule conjI)
      apply (subst partial_add_assoc[symmetric, of _ hlf])
@@ -1184,16 +1205,15 @@ next
        apply (metis disjoint_add_leftR)
       apply (metis disjoint_add_leftR disjoint_add_rightR)
      apply fast
-    apply (rule_tac x=\<open>hs' + hsf'x\<close> in exI, rule_tac x=\<open>hsfx\<close> in exI, rule conjI)
-     apply (metis partial_add_assoc3)
+    apply (rule_tac x=\<open>hs' + hsfx\<close> in exI, rule_tac x=\<open>hsf'x\<close> in exI, rule conjI)
+     apply (metis disjoint_add_rightL disjoint_add_rightR partial_add_assoc_commute_right)
     apply (intro conjI)
-         apply (metis disjoint_add_leftR disjoint_add_swap)
-        apply (metis disjoint_add_swap)
-    subgoal sorry
-    subgoal sorry
-     apply (metis partial_add_assoc2 partial_add_assoc3)
+        apply (metis disjoint_add_leftR disjoint_add_swap)
+       apply (metis disjoint_add_swap disjoint_sym_iff partial_add_commute)
+      apply force
+     apply (metis disjoint_add_rightL disjoint_add_rightR partial_add_assoc2 partial_add_assoc_commute_right)
     apply (drule mp)
-    subgoal sorry
+     apply (metis (no_types, lifting) sp_rely_step trivial_sp_rely_step)
     apply fast
     done
 qed
