@@ -1027,11 +1027,15 @@ lemma opstep_strong_unframe_left:
     (\<exists>hx' hf'. f hf' \<and> hf' ## hx' \<and> h' = hf' + hx' \<and> opstep a (hx, c) (hx', c'))\<close>
   by (metis disjoint_sym_iff opstep_strong_unframe_right partial_add_commute)
 
+(*
+ strong_unframe_safe (rel_lift (\<lambda>hs. \<exists>hl. f (hl, hs)) \<sqinter> (=)) r
+*)
+
 lemma safe_frame:
   fixes hsf :: \<open>'a :: perm_alg\<close>
   shows
   \<open>safe n c hl hs r g q \<Longrightarrow>
-    strong_unframe_safe (rel_lift (f \<circ> Pair hlf) \<sqinter> (=)) r \<Longrightarrow>
+    strong_unframe_safe (rel_lift ((=) hlf)) r \<Longrightarrow>
     hl ## hlf \<Longrightarrow>
     hs ## hsf \<Longrightarrow>
     f (hlf, hsf) \<Longrightarrow>
@@ -1059,81 +1063,18 @@ next
        apply (simp add: disjoint_sym_iff; fail)
       apply fast
       (* subgoal 3 *)
-     apply (drule safe_suc.hyps(5))
-      apply force
+     apply (frule safe_suc.hyps(5), force)
      apply (clarsimp simp add: sp_comp_rel simp del: sup_apply)
-     apply (drule_tac y=\<open>sp ((=) \<times>\<^sub>R (r \<squnion> g)\<^sup>*\<^sup>*) f\<close> in spec2)
-     apply (drule mp)
-    subgoal sorry
-     apply (drule mp)
-    subgoal sorry
-     apply (drule mp, blast)
-     apply (drule spec, drule mp, blast)
-     apply (simp del: sup_apply)
-     apply (drule mp)
-      apply (metis (no_types, lifting) sp_rely_step trivial_sp_rely_step)
-     apply blast
       (* subgoal 4 *)
-    oops
     apply (rename_tac hlf' hsf' c' hx')
-     apply clarsimp
-    apply (subst (asm) partial_add_assoc[of hl hlf], fast,
-        metis disjoint_add_leftR, metis disjoint_add_leftL)
-    apply (subst (asm) partial_add_assoc[of hs hsf], fast,
-        metis disjoint_add_leftR, metis disjoint_add_leftL)
+    apply (subst (asm) partial_add_assoc, blast, force dest: disjoint_add_leftR,
+        force dest: disjoint_add_leftL)
+    apply (subst (asm) partial_add_assoc, blast, force dest: disjoint_add_leftR,
+        force dest: disjoint_add_leftL)
     apply (drule safe_suc.hyps(5))
-     apply (simp, metis disjoint_add_swap2)
-    apply clarsimp
-    apply (rename_tac hsf'')
-    apply (drule_tac x=hlf and y=\<open>sp ((=) \<times>\<^sub>R (r \<squnion> g)\<^sup>*\<^sup>*) f\<close> in spec2)
-    apply (drule mp)
-    subgoal sorry
-    apply (drule mp)
-    subgoal sorry
-    apply (drule mp, metis disjoint_add_leftR disjoint_add_rightL)
-    apply (subst (asm) partial_add_commute[of hsf], metis disjoint_add_leftR)
-    apply (erule disjE)
-     prefer 2
-      (* case eq *)
-     apply clarsimp
-     apply (rule_tac x=\<open>hl' + hlf\<close> in exI, rule conjI)
-      apply (metis disjoint_add_leftR partial_add_assoc3)
-     apply (rule_tac x=\<open>hs' + hsf\<close> in exI, rule_tac x=\<open>hsf'\<close> in exI, rule conjI)
-      apply (metis disjoint_add_leftR partial_add_assoc3)
-     apply (rule conjI)
-      apply (meson disjoint_add_leftR disjoint_add_swap)
-     apply (rule conjI)
-      apply (meson disjoint_add_leftR disjoint_add_swap)
-     apply (rule conjI)
-      apply blast
-     apply (rule conjI)
-      apply (metis disjoint_add_leftR partial_add_assoc2 partial_add_assoc3)
-     apply (drule_tac x=hsf in spec)
-     apply (drule mp, meson disjoint_add_leftR disjoint_add_rightL)
-     apply (drule mp, blast)
-     apply (simp add: sup_fun_def; fail)
-      (* case guar *)
-    apply (frule guar_safeD, assumption, fast, metis disjoint_add_leftR disjoint_sym)
-    apply clarsimp
-    apply (rename_tac hsf'x hsfx)
-    apply (drule_tac x=\<open>hsfx\<close> in spec, drule mp, metis disjoint_add_rightR)
-    apply (simp add: sup_fun_def)
-    apply (rule exI, rule conjI)
-     apply (subst partial_add_assoc[symmetric, of _ hlf])
-        apply (metis disjoint_add_leftR disjoint_add_rightL)
-       apply (metis disjoint_add_leftR)
-      apply (metis disjoint_add_leftR disjoint_add_rightR)
-     apply fast
-    apply (rule_tac x=\<open>hs' + hsfx\<close> in exI, rule_tac x=\<open>hsf'x\<close> in exI, rule conjI)
-     apply (metis disjoint_add_rightL disjoint_add_rightR partial_add_assoc_commute_right)
-    apply (intro conjI)
-        apply (metis disjoint_add_leftR disjoint_add_swap)
-       apply (metis disjoint_add_swap disjoint_sym_iff partial_add_commute)
-      apply force
-     apply (metis disjoint_add_rightL disjoint_add_rightR partial_add_assoc2 partial_add_assoc_commute_right)
-    apply (drule mp)
-     apply (metis (no_types, lifting) sp_rely_step trivial_sp_rely_step)
-    apply fast
+     apply (simp add: disjoint_add_swap2)
+    apply (clarsimp simp add: sp_comp_rel simp del: sup_apply)
+    apply (metis disjoint_add_leftR disjoint_add_rightL disjoint_add_swap partial_add_assoc2)
     done
 qed
 
