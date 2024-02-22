@@ -96,10 +96,6 @@ lemma trivial_sp_rely_step[intro]:
   \<open>p x \<Longrightarrow> sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) p x\<close>
   by (simp add: sp_refl_relI)
 
-lemma sp_double_rely_eq[simp]:
-  \<open>sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) (sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) p) = sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) p\<close>
-  by (simp add: rel_le_rtranscp_relcompp_absorb(2) sp_rely_absorb)
-
 section \<open> Operational Semantics \<close>
 
 subsection \<open> Actions \<close>
@@ -1132,28 +1128,28 @@ next
       apply (frule iffD1[OF meta_eq_to_obj_eq[OF rely_safe_def]])
       apply (drule spec2, drule spec, drule mp, fast, drule mp, assumption, drule mp, assumption)
       apply (elim exE conjE)
-      apply clarsimp
-      apply (drule safe_suc.hyps(3)[where f=\<open>sp ((=) \<times>\<^sub>R (r \<squnion> g)\<^sup>*\<^sup>*) f\<close>])
+      apply (clarsimp simp del: sup_apply)
+      apply (drule safe_suc.hyps(3)[where f=\<open>sp ((=) \<times>\<^sub>R g\<^sup>*\<^sup>*) f\<close>])
     subgoal sorry
     subgoal sorry
          apply force
         apply force
        apply (force simp add: sup_fun_def)
-      apply (force simp add: sup_fun_def)
+      apply (force simp add: sp_comp_rel simp del: sup_apply)
       (* subgoal 3 *)
      apply (drule safe_suc.hyps(5))
       apply force
-     apply clarsimp
-     apply (drule_tac y=\<open>sp ((=) \<times>\<^sub>R (r \<squnion> g)\<^sup>*\<^sup>*) f\<close> in spec2)
+     apply (clarsimp simp del: sup_apply)
+     apply (drule_tac y=\<open>sp ((=) \<times>\<^sub>R g\<^sup>*\<^sup>*) f\<close> in spec2)
      apply (drule mp)
     subgoal sorry
      apply (drule mp)
     subgoal sorry
      apply (drule mp, blast)
      apply (drule spec, drule mp, blast)
-     apply (simp add: sup_fun_def)
+     apply (simp add: sp_comp_rel del: sup_apply)
      apply (drule mp)
-      apply (metis (no_types, lifting) sp_rely_step trivial_sp_rely_step)
+      apply (metis rtranclp_reflclp sp_rely_step trivial_sp_rely_step)
      apply blast
       (* subgoal 4 *)
     apply (rename_tac hlf' hsf' c' hx')

@@ -122,10 +122,10 @@ lemma swstable_absorb2[simp]: \<open>R \<le> R' \<Longrightarrow> \<lfloor> \<lf
   by (simp add: rel_le_rtranscp_relcompp_absorb)
 
 lemma wsstable_swstable_absorb[simp]: \<open>R \<le> R' \<Longrightarrow> \<lceil> \<lfloor> P \<rfloor>\<^bsub>R'\<^esub> \<rceil>\<^bsub>R\<^esub> = \<lfloor> P \<rfloor>\<^bsub>R'\<^esub>\<close>
-  by (simp add: rtranclp_mono)
+  by (metis order.eq_iff swstable_absorb2 wlp_weaker_iff_sp_stronger wsstable_stronger)
 
 lemma swstable_wsstable_absorb[simp]: \<open>R \<le> R' \<Longrightarrow> \<lfloor> \<lceil> P \<rceil>\<^bsub>R'\<^esub> \<rfloor>\<^bsub>R\<^esub> = \<lceil> P \<rceil>\<^bsub>R'\<^esub>\<close>
-  by (simp add: rtranclp_mono)
+  by (metis order.eq_iff swstable_weaker wlp_weaker_iff_sp_stronger wsstable_absorb2)
 
 paragraph \<open> swstable preserves precision \<close>
 

@@ -311,6 +311,29 @@ lemma rtranclp_absorb_id_left[simp]:
   by (subst disj_commute, simp)
 
 
+lemma refl_le_trans_eq[simp]:
+  \<open>reflp r1 \<Longrightarrow> transp r2 \<Longrightarrow> r1 \<le> r2 \<Longrightarrow> r1 OO r2 = r2\<close>
+  by (metis (no_types, lifting) OO_eq eq_comp_r reflclp_ident_if_reflp relcompp_distrib2
+      sup.absorb_iff2 transp_subrel_compp_smaller(2))
+
+lemma refl_le_trans_eq2[simp]:
+  \<open>reflp r1 \<Longrightarrow> transp r2 \<Longrightarrow> r1 \<le> r2 \<Longrightarrow> r2 OO r1 = r2\<close>
+  by (metis (no_types, lifting) OO_eq dual_order.eq_iff reflp_eq relcompp_mono
+      transp_subrel_compp_smaller(1))
+
+lemma rtransp_relcompp_absorb_lr[simp]: \<open>(r1 \<squnion> r2)\<^sup>*\<^sup>* OO r1\<^sup>*\<^sup>* = (r1 \<squnion> r2)\<^sup>*\<^sup>*\<close>
+  by (simp add: rel_le_rtranscp_relcompp_absorb(1))
+
+lemma rtransp_relcompp_absorb_rr[simp]: \<open>(r1 \<squnion> r2)\<^sup>*\<^sup>* OO r2\<^sup>*\<^sup>* = (r1 \<squnion> r2)\<^sup>*\<^sup>*\<close>
+  by (simp add: rel_le_rtranscp_relcompp_absorb(1))
+
+lemma rtransp_relcompp_absorb_rl[simp]: \<open>r2\<^sup>*\<^sup>* OO (r1 \<squnion> r2)\<^sup>*\<^sup>* = (r1 \<squnion> r2)\<^sup>*\<^sup>*\<close>
+  by (simp add: rel_le_rtranscp_relcompp_absorb(2))
+
+lemma rtransp_relcompp_absorb_ll[simp]: \<open>r1\<^sup>*\<^sup>*  OO (r1 \<squnion> r2)\<^sup>*\<^sup>* = (r1 \<squnion> r2)\<^sup>*\<^sup>*\<close>
+  by (simp add: rel_le_rtranscp_relcompp_absorb(2))
+
+
 subsection \<open> Function Properties \<close>
 
 lemmas bij_betw_disjoint_insert =
@@ -927,7 +950,7 @@ lemma wlp_inf_rel_semidistrib:
   by (force simp add: wlp_def fun_eq_iff)
 
 lemma wlp_comp_rel:
-  \<open>wlp (r1 OO r2) p = wlp r1 (wlp r2 p)\<close>
+  \<open>wlp r1 (wlp r2 p) = wlp (r1 OO r2) p\<close>
   by (force simp add: wlp_def)
 
 paragraph \<open> sp predicate properties \<close>
@@ -1004,34 +1027,8 @@ lemma sp_inf_rel_semidistrib:
   by (force simp add: sp_def)
 
 lemma sp_comp_rel:
-  \<open>sp (r1 OO r2) p = sp r2 (sp r1 p)\<close>
+  \<open>sp r2 (sp r1 p) = sp (r1 OO r2) p\<close>
   by (force simp add: sp_def relcompp_apply)
-
-paragraph \<open> wlp/sp refl/trans relation properties \<close>
-
-lemma sp_refl_le_trans_eq[simp]:
-  \<open>reflp r1 \<Longrightarrow> transp r2 \<Longrightarrow> r1 \<le> r2 \<Longrightarrow> sp r1 (sp r2 p) = sp r2 p\<close>
-  by (simp add: reflp_def transp_def sp_def, fast)
-
-lemma sp_refl_le_trans_eq2[simp]:
-  \<open>reflp r1 \<Longrightarrow> transp r2 \<Longrightarrow> r1 \<le> r2 \<Longrightarrow> sp r2 (sp r1 p) = sp r2 p\<close>
-  by (simp add: reflp_def transp_def sp_def, fast)
-
-lemma wlp_refl_le_trans_eq[simp]:
-  \<open>reflp r1 \<Longrightarrow> transp r2 \<Longrightarrow> r1 \<le> r2 \<Longrightarrow> wlp r1 (wlp r2 p) = wlp r2 p\<close>
-  by (simp add: reflp_def transp_def wlp_def, fast)
-
-lemma wlp_refl_le_trans_eq2[simp]:
-  \<open>reflp r1 \<Longrightarrow> transp r2 \<Longrightarrow> r1 \<le> r2 \<Longrightarrow> wlp r2 (wlp r1 p) = wlp r2 p\<close>
-  by (simp add: reflp_def transp_def wlp_def, fast)
-
-lemma wlp_sp_refl_le_trans_eq[simp]:
-  \<open>reflp r1 \<Longrightarrow> transp r2 \<Longrightarrow> r1 \<le> r2 \<Longrightarrow> wlp r1 (sp r2 p) = sp r2 p\<close>
-  by (simp add: reflp_def transp_def wlp_def sp_def, fast)
-
-lemma sp_wlp_refl_le_trans_eq[simp]:
-  \<open>reflp r1 \<Longrightarrow> transp r2 \<Longrightarrow> r1 \<le> r2 \<Longrightarrow> sp r1 (wlp r2 p) = wlp r2 p\<close>
-  by (simp add: reflp_def transp_def wlp_def sp_def, blast)
 
 paragraph \<open> wlp/sp misc properties \<close>
 

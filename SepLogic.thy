@@ -992,7 +992,7 @@ lemma compatible_units_identical:
   \<open>compatible a z \<Longrightarrow> sepadd_unit a \<Longrightarrow> sepadd_unit z \<Longrightarrow> a = z\<close>
   by (metis converse_compatibleE step_compatible_units_identical)
 
-lemma compatible_unit_disjoint[dest, simp]:
+lemma compatible_unit_disjoint[dest]:
   \<open>compatible u a \<Longrightarrow> sepadd_unit u \<Longrightarrow> a ## u\<close>
   apply (induct rule: compatible_induct)
    apply force
@@ -1000,7 +1000,7 @@ lemma compatible_unit_disjoint[dest, simp]:
       partial_add_commute sepadd_unit_right)
   done
 
-lemma compatible_unit_disjoint2[dest, simp]:
+lemma compatible_unit_disjoint2[dest]:
   \<open>compatible a u \<Longrightarrow> sepadd_unit u \<Longrightarrow> a ## u\<close>
   apply (induct rule: converse_compatible_induct)
    apply force
@@ -1008,7 +1008,7 @@ lemma compatible_unit_disjoint2[dest, simp]:
       partial_add_commute sepadd_unit_right)
   done
 
-lemma compatible_to_unit_is_unit_left[simp]:
+lemma compatible_to_unit_is_unit_left:
   \<open>compatible u a \<Longrightarrow> sepadd_unit u \<Longrightarrow> u + a = a\<close>
   apply (induct rule: compatible_induct)
    apply force
@@ -1018,9 +1018,9 @@ lemma compatible_to_unit_is_unit_left[simp]:
   apply (metis compatible_unit_disjoint disjoint_add_leftL partial_add_commute sepadd_unit_right)
   done
 
-lemma compatible_to_unit_is_unit_right[simp]:
+lemma compatible_to_unit_is_unit_right:
   \<open>compatible u a \<Longrightarrow> sepadd_unit u \<Longrightarrow> a + u = a\<close>
-  by (simp add: sepadd_unit_right)
+  by (simp add: compatible_unit_disjoint sepadd_unit_right)
 
 end
 
