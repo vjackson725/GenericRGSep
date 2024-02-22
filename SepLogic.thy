@@ -1153,11 +1153,11 @@ lemmas disjointness_right_plusI' =
   disjointness_right_plusI[OF disjoint_sym disjoint_sym]
   disjointness_right_plusI[OF disjoint_sym disjoint_sym disjoint_sym]
 
-lemma disjointness_left_plus_eq:
+lemma disjointness_left_plus_eq[simp]:
   \<open>a ## b \<Longrightarrow> a + b ## c \<longleftrightarrow> a ## c \<and> b ## c\<close>
   by (metis disjointness_left_plusI disjoint_add_leftL disjoint_add_leftR)
 
-lemma disjointness_right_plus_eq:
+lemma disjointness_right_plus_eq[simp]:
   \<open>b ## c \<Longrightarrow> a ## b + c \<longleftrightarrow> a ## b \<and> a ## c\<close>
   by (metis disjointness_right_plusI disjoint_add_rightL disjoint_add_rightR)
 

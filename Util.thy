@@ -250,12 +250,12 @@ definition rel_Times :: \<open>('a \<Rightarrow> 'b \<Rightarrow> bool) \<Righta
   (infixr \<open>\<times>\<^sub>R\<close> 80) where
   \<open>r1 \<times>\<^sub>R r2 \<equiv> \<lambda>(a,c) (b, d). r1 a b \<and> r2 c d\<close>
 
-lemma rel_Times_iff: \<open>(r1 \<times>\<^sub>R r2) x y \<longleftrightarrow> r1 (fst x) (fst y) \<and> r2 (snd x) (snd y)\<close>
+lemma rel_Times_iff[simp]: \<open>(r1 \<times>\<^sub>R r2) (x1, x2) (y1, y2) \<longleftrightarrow> r1 x1 y1 \<and> r2 x2 y2\<close>
   by (force simp add: rel_Times_def)
 
 lemma rel_Times_almost_assoc:
   \<open>((r1 \<times>\<^sub>R r2) \<times>\<^sub>R r3) ((a,b),c) ((a',b'),c') = (r1 \<times>\<^sub>R r2 \<times>\<^sub>R r3) (a,b,c) (a',b',c')\<close>
-  by (simp add: rel_Times_iff)
+  by simp
 
 lemma rel_Times_reflp_iff[simp]:
   \<open>reflp (r1 \<times>\<^sub>R r2) \<longleftrightarrow> reflp r1 \<and> reflp r2\<close>
