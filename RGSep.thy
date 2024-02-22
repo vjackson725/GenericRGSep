@@ -469,6 +469,26 @@ lemma strong_unframe_safe_mono:
   by (fastforce simp add: strong_unframe_safe_def post_state_def le_fun_def)
 
 
+definition
+  \<open>weak_unframe_safe \<ff> r \<equiv>
+    \<forall>x z xz'. r (x+z) xz' \<longrightarrow> x ## z \<longrightarrow> (\<exists>z'\<le>xz'. \<ff> z z')\<close>
+
+lemma weak_unframe_safeD:
+  \<open>weak_unframe_safe \<ff> r \<Longrightarrow>
+    x ## z \<Longrightarrow>
+    r (x + z) xz' \<Longrightarrow>
+    \<exists>z'\<le>xz'. \<ff> z z'\<close>
+  by (simp add: weak_unframe_safe_def)
+
+lemma weak_unframe_safe_frame_mono:
+  \<open>\<ff>1 \<le> \<ff>2 \<Longrightarrow> weak_unframe_safe \<ff>1 r \<Longrightarrow> weak_unframe_safe \<ff>2 r\<close>
+  by (fastforce simp add: weak_unframe_safe_def)
+
+lemma weak_unframe_safe_rel_antimono:
+  \<open>r1 \<le> r2 \<Longrightarrow> weak_unframe_safe \<ff> r2 \<Longrightarrow> weak_unframe_safe \<ff> r1\<close>
+  by (fastforce simp add: weak_unframe_safe_def)
+
+
 section \<open> Language Definition \<close>
 
 subsection \<open> Commands \<close>

@@ -648,7 +648,7 @@ inductive safe
     (c = Skip \<longrightarrow> q (hl, hs)) \<Longrightarrow>
     \<comment> \<open> rely steps are safe \<close>
     (\<And>hs'.
-      (\<forall>hsx hsx'. weak_framed_subresource_rel \<top> hs hs' hsx hsx' \<longrightarrow> r hsx hsx') \<Longrightarrow>
+      r hs hs' \<Longrightarrow>
       safe n c hl hs' r g q) \<Longrightarrow>
     \<comment> \<open>
       \<comment> \<open> stuttering steps are safe \<close>
@@ -682,7 +682,7 @@ lemma safe_suc_iff:
   \<open>safe (Suc n) c hl hs r g q \<longleftrightarrow>
     (c = Skip \<longrightarrow> q (hl, hs)) \<and>
     (\<forall>hs'. 
-      (\<forall>hsx hsx'. weak_framed_subresource_rel \<top> hs hs' hsx hsx' \<longrightarrow> r hsx hsx') \<longrightarrow>
+      r hs hs' \<longrightarrow>
       safe n c hl hs' r g q) \<and>
     (\<forall>c' hx'.
        ((hl, hs), c) \<midarrow>Local\<rightarrow> (hx', c') \<longrightarrow>
@@ -950,7 +950,7 @@ next
   have safe_suc1:
     \<open>c1 = Skip \<longrightarrow> q (hl, hs)\<close>
     \<open>\<And>hs'. 
-      (\<forall>hsx hsx'. weak_framed_subresource_rel \<top> hs hs' hsx hsx' \<longrightarrow> r hsx hsx') \<Longrightarrow>
+      r hs hs' \<Longrightarrow>
       safe n c1 hl hs' r g q\<close>
     \<open>\<And>c' hx'.
       opstep Local ((hl, hs), c1) (hx', c') \<Longrightarrow>
@@ -967,7 +967,7 @@ next
   have safe_suc2:
     \<open>c2 = Skip \<longrightarrow> q (hl, hs)\<close>
     \<open>\<And>hs'. 
-      (\<forall>hsx hsx'. weak_framed_subresource_rel \<top> hs hs' hsx hsx' \<longrightarrow> r hsx hsx') \<Longrightarrow>
+      r hs hs' \<Longrightarrow>
       safe n c2 hl hs' r g q\<close>
     \<open>\<And>c' hx'.
       opstep Local ((hl, hs), c2) (hx', c') \<Longrightarrow>
@@ -1028,10 +1028,10 @@ lemma opstep_strong_unframe_left:
   by (metis disjoint_sym_iff opstep_strong_unframe_right partial_add_commute)
 
 lemma safe_frame:
-  fixes hsf :: \<open>'a :: disjoint_parts_perm_alg\<close>
+  fixes hsf :: \<open>'a :: perm_alg\<close>
   shows
   \<open>safe n c hl hs r g q \<Longrightarrow>
-    strong_unframe_safe (rel_lift ((=) hsf)) r \<Longrightarrow>
+    strong_unframe_safe (rel_lift (f \<circ> Pair hlf) \<sqinter> (=)) r \<Longrightarrow>
     hl ## hlf \<Longrightarrow>
     hs ## hsf \<Longrightarrow>
     f (hlf, hsf) \<Longrightarrow>
@@ -1051,15 +1051,13 @@ next
       apply (clarsimp simp add: weak_framed_subresource_rel_def framed_subresource_rel_def
         all_conj_distrib all_simps(5)[symmetric] imp_conjL simp del: all_simps(5) sup_apply)
       apply (frule strong_unframe_safeD, assumption, assumption)
-      apply (clarsimp simp del: sup_apply)
+      apply (clarsimp simp add: le_iff_sepadd simp del: sup_apply)
       apply (rule safe_suc.hyps(3))
-          apply (clarsimp simp add: weak_framed_subresource_rel_def framed_subresource_rel_def
-        all_conj_distrib all_simps(5)[symmetric] imp_conjL simp del: all_simps(5) sup_apply)
-          apply (drule_tac x=hf in spec, drule mp, blast, drule mp)
-
-    thm safe_suc.hyps(3)
-      
-    subgoal sorry
+          apply force
+         apply force
+        apply fast
+       apply (simp add: disjoint_sym_iff; fail)
+      apply fast
       (* subgoal 3 *)
      apply (drule safe_suc.hyps(5))
       apply force
@@ -1076,6 +1074,7 @@ next
       apply (metis (no_types, lifting) sp_rely_step trivial_sp_rely_step)
      apply blast
       (* subgoal 4 *)
+    oops
     apply (rename_tac hlf' hsf' c' hx')
      apply clarsimp
     apply (subst (asm) partial_add_assoc[of hl hlf], fast,
