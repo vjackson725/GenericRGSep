@@ -230,6 +230,10 @@ lemma partial_add_left_commute:
   \<open>a ## b \<Longrightarrow> a ## c \<Longrightarrow> b ## c \<Longrightarrow> b + (a + c) = a + (b + c)\<close>
   by (metis partial_add_assoc partial_add_commute disjoint_sym)
 
+lemma partial_add_left_commute2:
+  \<open>b ## c \<Longrightarrow> a ## b + c \<Longrightarrow> b + (a + c) = a + (b + c)\<close>
+  by (metis partial_add_left_commute disjoint_add_rightL disjoint_add_rightR)
+
 lemma partial_add_right_commute:
   \<open>a ## b \<Longrightarrow> a ## c \<Longrightarrow> b ## c \<Longrightarrow> a + b + c = a + c + b\<close>
   by (simp add: disjoint_sym partial_add_assoc partial_add_commute)
@@ -435,6 +439,18 @@ lemma has_core_mono_iff:
   \<open>(\<forall>a b. a \<le> b \<longrightarrow> has_core a \<longrightarrow> has_core b) \<longleftrightarrow>
     (\<forall>x. sepadd_dup x \<longrightarrow> (\<forall>a\<ge>x. has_core a))\<close>
   by (metis core_rel_def order.trans eq_refl)
+
+
+lemma core_rel_additive:
+  \<open>x ## y \<Longrightarrow> core_rel x x \<Longrightarrow> core_rel y y \<Longrightarrow> core_rel (x + y) (x + y)\<close>
+  unfolding sepadd_dup_def core_rel_def
+  by (metis disjoint_add_swap disjoint_middle_swap order_refl partial_add_double_assoc)
+
+lemma core_rel_mono:
+  \<open>x ## y \<Longrightarrow> core_rel x cx \<Longrightarrow> core_rel y cy \<Longrightarrow> core_rel (x + y) cxy \<Longrightarrow> cx + cy \<le> cxy\<close>
+  unfolding sepadd_dup_def core_rel_def
+  by (metis (mono_tags, opaque_lifting) disjoint_preservation2 disjoint_sym_iff order.trans
+      partial_add_commute partial_le_plus2 sepadd_right_mono)
 
 
 subsection \<open>sepdomeq\<close>

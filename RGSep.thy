@@ -443,51 +443,6 @@ definition
   \<open>frame_step_subframe f r \<equiv>
     \<forall>hf. f hf \<longrightarrow> (\<forall>x yf. x ## hf \<longrightarrow> r (x + hf) yf \<longrightarrow> (\<exists>y. r x y))\<close>
 
-subsection \<open> Unframing \<close>
-
-definition
-  \<open>unframe_safe \<ff> \<equiv>
-    \<lambda>r. \<forall>x x' z z'. \<ff> z z' \<longrightarrow> r (x+z) (x'+z') \<longrightarrow> x ## z \<longrightarrow> x' ## z' \<longrightarrow> r x x'\<close>
-
-lemma unframe_safeD:
-  \<open>unframe_safe \<ff> r \<Longrightarrow> \<ff> z z' \<Longrightarrow> x ## z \<Longrightarrow> x' ## z' \<Longrightarrow> r (x + z) (x' + z') \<Longrightarrow> r x x'\<close>
-  by (simp add: unframe_safe_def)
-
-subsection \<open> Strong Unframing \<close>
-
-definition
-  \<open>strong_unframe_safe \<ff> r \<equiv>
-    \<forall>x z xz'. r (x+z) xz' \<longrightarrow> x ## z \<longrightarrow> (\<exists>x' z'. \<ff> z z' \<and> x' ## z' \<and> xz' = x' + z' \<and> r x x')\<close>
-
-lemma strong_unframe_safeD:
-  \<open>strong_unframe_safe \<ff> r \<Longrightarrow> x ## z \<Longrightarrow> r (x + z) xz' \<Longrightarrow>
-    \<exists>x' z'. \<ff> z z' \<and> x' ## z' \<and> xz' = x' + z' \<and> r x x'\<close>
-  by (simp add: strong_unframe_safe_def)
-
-lemma strong_unframe_safe_mono:
-  \<open>\<ff>1 \<le> \<ff>2 \<Longrightarrow> strong_unframe_safe \<ff>1 r \<Longrightarrow> strong_unframe_safe \<ff>2 r\<close>
-  by (fastforce simp add: strong_unframe_safe_def post_state_def le_fun_def)
-
-
-definition
-  \<open>weak_unframe_safe \<ff> r \<equiv>
-    \<forall>x z xz'. r (x+z) xz' \<longrightarrow> x ## z \<longrightarrow> (\<exists>z'\<le>xz'. \<ff> z z')\<close>
-
-lemma weak_unframe_safeD:
-  \<open>weak_unframe_safe \<ff> r \<Longrightarrow>
-    x ## z \<Longrightarrow>
-    r (x + z) xz' \<Longrightarrow>
-    \<exists>z'\<le>xz'. \<ff> z z'\<close>
-  by (simp add: weak_unframe_safe_def)
-
-lemma weak_unframe_safe_frame_mono:
-  \<open>\<ff>1 \<le> \<ff>2 \<Longrightarrow> weak_unframe_safe \<ff>1 r \<Longrightarrow> weak_unframe_safe \<ff>2 r\<close>
-  by (fastforce simp add: weak_unframe_safe_def)
-
-lemma weak_unframe_safe_rel_antimono:
-  \<open>r1 \<le> r2 \<Longrightarrow> weak_unframe_safe \<ff> r2 \<Longrightarrow> weak_unframe_safe \<ff> r1\<close>
-  by (fastforce simp add: weak_unframe_safe_def)
-
 
 section \<open> Language Definition \<close>
 

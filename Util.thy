@@ -1056,4 +1056,8 @@ lemma wlp_weaker_iff_sp_stronger:
   \<open>p \<le> wlp R p \<longleftrightarrow> sp R p \<le> p\<close>
   by (force simp add: wlp_def sp_def le_fun_def)
 
+lemma rel_lift_impl_iff_sp_impl:
+  \<open>rel_liftL p \<sqinter> b \<le> rel_liftR q \<longleftrightarrow> sp b p \<le> q\<close>
+  by (force simp add: le_fun_def sp_def wlp_def pre_state_def)
+
 end
