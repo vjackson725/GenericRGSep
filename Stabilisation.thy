@@ -20,13 +20,13 @@ abbreviation wsstable
 
 subsection \<open> logical properties \<close>
 
-lemma swstable_weaker[intro!]: \<open>\<lfloor> P \<rfloor>\<^bsub>R\<^esub> \<le> P\<close>
+lemma swstable_weaker[intro]: \<open>\<lfloor> P \<rfloor>\<^bsub>R\<^esub> \<le> P\<close>
   by (simp add: wlp_refl_rel_le)
 
-lemma wsstable_stronger[intro!]: \<open>P \<le> \<lceil> P \<rceil>\<^bsub>R\<^esub>\<close>
+lemma wsstable_stronger[intro]: \<open>P \<le> \<lceil> P \<rceil>\<^bsub>R\<^esub>\<close>
   by (simp add: sp_refl_rel_le)
 
-lemma wsstable_strongerI[intro!]:
+lemma wsstable_strongerI[intro]:
   \<open>P s \<Longrightarrow> R\<^sup>*\<^sup>* s s' \<Longrightarrow> (\<lceil> P \<rceil>\<^bsub>R\<^esub>) s'\<close>
   by (force simp add: sp_def)
 
@@ -273,7 +273,7 @@ class stable_sep_alg = halving_sep_alg +
   fixes stableres :: \<open>'a \<Rightarrow> 'a\<close>
   assumes stableres_concave[intro]: \<open>a ## b \<Longrightarrow> stableres a + stableres b \<le> stableres (a + b)\<close>
   assumes stableres_idem[simp]: \<open>stableres (stableres a) = stableres a\<close>
-  assumes stableres_subres[intro!]: \<open>stableres a \<le> a\<close>
+  assumes stableres_subres[intro]: \<open>stableres a \<le> a\<close>
 begin
 
 lemma stableres_mono: \<open>a \<le> b \<Longrightarrow> stableres a \<le> stableres b\<close>

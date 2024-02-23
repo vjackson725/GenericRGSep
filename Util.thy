@@ -42,10 +42,11 @@ lemma all2_push[simp]:
   \<open>(\<forall>x y. P y \<longrightarrow> Q x y) = (\<forall>y. P y \<longrightarrow> (\<forall>x. Q x y))\<close>
   by force
 
-lemma all_ex_conjL:
-  \<open>(\<forall>x. (\<exists>y. P x y \<and> Q x y) \<longrightarrow> R x)
-    \<longleftrightarrow> (\<forall>x y. P x y \<longrightarrow> Q x y \<longrightarrow> R x)\<close>
-  by blast
+lemma imp_ex_conjL:
+  \<open>\<And>P Q. ((\<exists>x. P x \<and> Q x) \<longrightarrow> R) \<longleftrightarrow> (\<forall>x. P x \<longrightarrow> Q x \<longrightarrow> R)\<close>
+  \<open>\<And>P Q. ((\<exists>x y. P x y \<and> Q x y) \<longrightarrow> R) \<longleftrightarrow> (\<forall>x y. P x y \<longrightarrow> Q x y \<longrightarrow> R)\<close>
+  \<open>\<And>P Q. ((\<exists>x y z. P x y z \<and> Q x y z) \<longrightarrow> R) \<longleftrightarrow> (\<forall>x y z. P x y z \<longrightarrow> Q x y z \<longrightarrow> R)\<close>
+  by blast+
 
 lemma imp_conj_common:
   \<open>(A1 \<longrightarrow> B \<longrightarrow> C1) \<and> (A2 \<longrightarrow> B \<longrightarrow> C2) \<longleftrightarrow> (B \<longrightarrow> (A1 \<longrightarrow> C1) \<and> (A2 \<longrightarrow> C2))\<close>
@@ -78,12 +79,12 @@ definition pred_Times :: \<open>('a \<Rightarrow> bool) \<Rightarrow> ('b \<Righ
   (infixr \<open>\<times>\<^sub>P\<close> 80) where
   \<open>p \<times>\<^sub>P q \<equiv> \<lambda>(a,b). p a \<and> q b\<close>
 
-lemma pred_Times_iff[simp]: \<open>(p1 \<times>\<^sub>P p2) x \<longleftrightarrow> p1 (fst x) \<and> p2 (snd x)\<close>
+lemma pred_Times_iff[simp]: \<open>(p1 \<times>\<^sub>P p2) (a, b) \<longleftrightarrow> p1 a \<and> p2 b\<close>
   by (force simp add: pred_Times_def)
 
 lemma pred_Times_almost_assoc:
   \<open>((p1 \<times>\<^sub>P p2) \<times>\<^sub>P p3) ((a,b),c) = (p1 \<times>\<^sub>P p2 \<times>\<^sub>P p3) (a,b,c)\<close>
-  by simp
+  by (simp add: pred_Times_iff)
 
 
 subsection \<open> datatypes \<close>

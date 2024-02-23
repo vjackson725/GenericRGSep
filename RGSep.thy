@@ -448,20 +448,21 @@ section \<open> Language Definition \<close>
 
 subsection \<open> Commands \<close>
 
-datatype 'h comm =
+datatype ('l,'s) comm =
   Skip
-  | Seq \<open>'h comm\<close> \<open>'h comm\<close> (infixr \<open>;;\<close> 75)
-  | Par \<open>'h comm\<close> \<open>'h comm\<close> (infixr \<open>\<parallel>\<close> 65)
-  | Ndet \<open>'h comm\<close> \<open>'h comm\<close> (infixr \<open>\<^bold>+\<close> 65)
-  | Iter \<open>'h comm\<close> (\<open>_\<^sup>\<star>\<close> [80] 80)
-  | Atomic \<open>'h \<Rightarrow> 'h \<Rightarrow> bool\<close>
+  | Seq \<open>('l,'s) comm\<close> \<open>('l,'s) comm\<close> (infixr \<open>;;\<close> 75)
+  | Par \<open>('l,'s) comm\<close> \<open>('l,'s) comm\<close> (infixr \<open>\<parallel>\<close> 65)
+  | Ndet \<open>('l,'s) comm\<close> \<open>('l,'s) comm\<close> (infixr \<open>\<^bold>+\<close> 65)
+  | Iter \<open>('l,'s) comm\<close> (\<open>_\<^sup>\<star>\<close> [80] 80)
+  | Atomic \<open>'l \<times> 's \<Rightarrow> 'l \<times> 's \<Rightarrow> bool\<close>
 
 
 paragraph \<open> Commands have a subexpression order \<close>
-instantiation comm :: (type) order
+
+instantiation comm :: (type, type) order
 begin
 
-primrec less_eq_comm :: \<open>'a comm \<Rightarrow> 'a comm \<Rightarrow> bool\<close> where
+primrec less_eq_comm :: \<open>('l,'s) comm \<Rightarrow> ('l,'s) comm \<Rightarrow> bool\<close> where
   \<open>less_eq_comm c Skip = (c = Skip)\<close>
 | \<open>less_eq_comm c (c1' ;; c2') = (c = c1' ;; c2' \<or> less_eq_comm c c1' \<or> less_eq_comm c c2')\<close>
 | \<open>less_eq_comm c (c1' \<parallel> c2') = (c = c1' \<parallel> c2' \<or> less_eq_comm c c1' \<or> less_eq_comm c c2')\<close>
@@ -469,7 +470,7 @@ primrec less_eq_comm :: \<open>'a comm \<Rightarrow> 'a comm \<Rightarrow> bool\
 | \<open>less_eq_comm c (c'\<^sup>\<star>) = (c = c'\<^sup>\<star> \<or> less_eq_comm c c')\<close>
 | \<open>less_eq_comm c (Atomic b) = (c = Atomic b)\<close>
 
-definition less_comm :: \<open>'a comm \<Rightarrow> 'a comm \<Rightarrow> bool\<close> where
+definition less_comm :: \<open>('l,'s) comm \<Rightarrow> ('l,'s) comm \<Rightarrow> bool\<close> where
   \<open>less_comm x y \<equiv> x \<noteq> y \<and> x \<le> y\<close>
 
 lemma less_comm_simps[simp]:
@@ -481,10 +482,10 @@ lemma less_comm_simps[simp]:
   \<open>c < Atomic b \<longleftrightarrow> False\<close>
   by (force simp add: less_comm_def)+
 
-lemma less_eq_comm_refl: \<open>(x::'a comm) \<le> x\<close>
+lemma less_eq_comm_refl: \<open>(x::('l,'s) comm) \<le> x\<close>
   by (induct x) force+
 
-lemma less_eq_comm_trans: \<open>(x::'a comm) \<le> y \<Longrightarrow> y \<le> z \<Longrightarrow> x \<le> z\<close>
+lemma less_eq_comm_trans: \<open>(x::('l,'s) comm) \<le> y \<Longrightarrow> y \<le> z \<Longrightarrow> x \<le> z\<close>
   by (induct z arbitrary: x y) force+
 
 lemma less_eq_comm_subexprsD:
@@ -497,9 +498,15 @@ lemma less_eq_comm_subexprsD:
   \<open>(cb\<^sup>\<star>) \<le> c \<Longrightarrow> cb \<le> c\<close>
   by (meson less_eq_comm.simps less_eq_comm_refl less_eq_comm_trans; fail)+
 
-lemma less_eq_comm_antisym: \<open>(x::'a comm) \<le> y \<Longrightarrow> y \<le> x \<Longrightarrow> x = y\<close>
-  by (induct y arbitrary: x)
-    (metis less_eq_comm.simps less_eq_comm_subexprsD)+
+lemma less_eq_comm_antisym: \<open>(x::('l,'s) comm) \<le> y \<Longrightarrow> y \<le> x \<Longrightarrow> x = y\<close>
+  apply (induct y arbitrary: x)
+       apply (simp; fail)+
+      apply (metis RGSep.less_eq_comm_subexprsD(1,2) less_eq_comm.simps(2))
+     apply (metis RGSep.less_eq_comm_subexprsD(5,6) less_eq_comm.simps(3))
+    apply (metis RGSep.less_eq_comm_subexprsD(3,4) less_eq_comm.simps(4))
+   apply (metis RGSep.less_eq_comm_subexprsD(7) less_eq_comm.simps(5))
+  apply (simp; fail)
+  done
 
 instance
   by standard
@@ -521,7 +528,7 @@ lemma less_eq_comm_no_constructorsD:
 
 paragraph \<open> Predicate to ensure atomic actions have a given property \<close>
 
-inductive all_atom_comm :: \<open>(('h \<Rightarrow> 'h \<Rightarrow> bool) \<Rightarrow> bool) \<Rightarrow> 'h comm \<Rightarrow> bool\<close> where
+inductive all_atom_comm :: \<open>(('l \<times> 's \<Rightarrow> 'l \<times> 's \<Rightarrow> bool) \<Rightarrow> bool) \<Rightarrow> ('l,'s) comm \<Rightarrow> bool\<close> where
   skip[iff]: \<open>all_atom_comm p Skip\<close>
 | seq[intro!]: \<open>all_atom_comm p c1 \<Longrightarrow> all_atom_comm p c2 \<Longrightarrow> all_atom_comm p (c1 ;; c2)\<close>
 | par[intro!]: \<open>all_atom_comm p c1 \<Longrightarrow> all_atom_comm p c2 \<Longrightarrow> all_atom_comm p (c1 \<parallel> c2)\<close>
@@ -578,17 +585,61 @@ abbreviation \<open>atoms_guarantee g c \<equiv> atoms_subrel_guarantee g c \<an
 abbreviation \<open>atoms_frame_closed \<equiv> all_atom_comm frame_closed\<close>
 
 
+subsection \<open> Unframing \<close>
+
+definition
+  \<open>unframe_prop \<ff> r \<equiv>
+    \<forall>x z xz'. r (x+z) xz' \<longrightarrow> x ## z \<longrightarrow> (\<exists>x' z'. \<ff> z z' \<and> x' ## z' \<and> xz' = x' + z' \<and> r x x')\<close>
+
+lemma unframe_propD:
+  \<open>unframe_prop \<ff> r \<Longrightarrow> x ## z \<Longrightarrow> r (x + z) xz' \<Longrightarrow>
+    \<exists>x' z'. \<ff> z z' \<and> x' ## z' \<and> xz' = x' + z' \<and> r x x'\<close>
+  by (simp add: unframe_prop_def)
+
+lemma unframe_prop_framerel_mono:
+  \<open>\<ff>1 \<le> \<ff>2 \<Longrightarrow> unframe_prop \<ff>1 r \<Longrightarrow> unframe_prop \<ff>2 r\<close>
+  by (fastforce simp add: unframe_prop_def)
+
+
+subsection \<open> Parallel unframing \<close>
+
+definition
+  \<open>parallel_unframe_prop \<ff>1 \<ff>2 r gx gy \<equiv>
+    \<forall>x y xy'. r (x+y) xy' \<longrightarrow> x ## y \<longrightarrow>
+      (\<exists>x' y'. \<ff>1 x x' \<and> \<ff>2 y y' \<and> x' ## y' \<and> xy' = x' + y' \<and> gx x x' \<and> gy y y')\<close>
+
+lemma parallel_unframe_propD:
+  \<open>parallel_unframe_prop \<ff>1 \<ff>2 r gx gy \<Longrightarrow> x ## y \<Longrightarrow> r (x + y) xy' \<Longrightarrow>
+    (\<exists>x' y'. \<ff>1 x x' \<and> \<ff>2 y y' \<and> x' ## y' \<and> xy' = x' + y' \<and> gx x x' \<and> gy y y')\<close>
+  by (simp add: parallel_unframe_prop_def)
+
+lemma parallel_unframe_prop_mono:
+  \<open>\<ff>1a \<le> \<ff>1b \<Longrightarrow>
+    \<ff>2a \<le> \<ff>2b \<Longrightarrow>
+    gxa \<le> gxb \<Longrightarrow>
+    gya \<le> gyb \<Longrightarrow>
+    parallel_unframe_prop \<ff>1a \<ff>2a r gxa gya \<Longrightarrow>
+    parallel_unframe_prop \<ff>1b \<ff>2b r gxb gyb\<close>
+  by (simp add: parallel_unframe_prop_def le_fun_def, meson)
+
+lemma parallel_unframe_prop_antimono:
+  \<open>rb \<le> ra \<Longrightarrow> parallel_unframe_prop \<ff>1 \<ff>2 ra gx gy \<Longrightarrow> parallel_unframe_prop \<ff>1 \<ff>2 rb gx gy\<close>
+  by (fastforce simp add: parallel_unframe_prop_def le_fun_def)
+
 
 section \<open> Rely-Guarantee Separation Logic \<close>
 
-inductive rgsat
-  :: \<open>('h::perm_alg) comm \<Rightarrow> ('h \<Rightarrow> 'h \<Rightarrow> bool) \<Rightarrow> ('h \<Rightarrow> 'h \<Rightarrow> bool) \<Rightarrow> ('h \<Rightarrow> bool) \<Rightarrow> ('h \<Rightarrow> bool) \<Rightarrow> bool\<close>
+inductive rgsat ::
+  \<open>('l::perm_alg, 's::perm_alg) comm \<Rightarrow>
+    ('s \<Rightarrow> 's \<Rightarrow> bool) \<Rightarrow> ('s \<Rightarrow> 's \<Rightarrow> bool) \<Rightarrow>
+    ('l \<times> 's \<Rightarrow> bool) \<Rightarrow> ('l \<times> 's \<Rightarrow> bool) \<Rightarrow>
+    bool\<close>
   where
   rgsat_skip:
-  \<open>\<lceil> p \<rceil>\<^bsub>r\<^esub> \<le> q \<Longrightarrow> rgsat Skip r g p q\<close>
+  \<open>sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) p \<le> q \<Longrightarrow> rgsat Skip r g p q\<close>
 | rgsat_iter:
   \<open>rgsat c r g p' q' \<Longrightarrow>
-      p \<le> i \<Longrightarrow> \<lceil> i \<rceil>\<^bsub>r\<^esub> \<le> p' \<Longrightarrow> q' \<le> i \<Longrightarrow> \<lceil> i \<rceil>\<^bsub>r\<^esub> \<le> q \<Longrightarrow>
+      p \<le> i \<Longrightarrow> sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) i \<le> p' \<Longrightarrow> q' \<le> i \<Longrightarrow> sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) i \<le> q \<Longrightarrow>
       rgsat (c\<^sup>\<star>) r g p q\<close>
 | rgsat_seq:
   \<open>rgsat c1 r g p1 p2 \<Longrightarrow>
@@ -605,36 +656,34 @@ inductive rgsat
 | rgsat_parallel:
   \<open>rgsat s1 (r \<squnion> g2) g1 p1 q1 \<Longrightarrow>
     rgsat s2 (r \<squnion> g1) g2 p2 q2 \<Longrightarrow>
+    parallel_unframe_prop \<top> \<top> r (r \<squnion> g2) (r \<squnion> g1) \<Longrightarrow>
     g1 \<le> g \<Longrightarrow> g2 \<le> g \<Longrightarrow>
     p \<le> p1 \<^emph> p2 \<Longrightarrow>
-    q1 \<^emph> q2 \<le> q \<Longrightarrow>
+    sp ((=) \<times>\<^sub>R (r \<squnion> g2)\<^sup>*\<^sup>*) q1 \<^emph> sp ((=) \<times>\<^sub>R (r \<squnion> g1)\<^sup>*\<^sup>*) q2 \<le> q \<Longrightarrow>
     rgsat (s1 \<parallel> s2) r g p q\<close>
 | rgsat_atom:
-  \<open>rel_liftL p \<sqinter> b \<le> rel_liftR q \<Longrightarrow>
-    p \<le> pre_state b \<Longrightarrow>
-    (\<forall>h h'. b h h' \<longrightarrow> (\<forall>hf. h ## hf \<longrightarrow> (\<exists>hx'. b (h + hf) hx'))) \<Longrightarrow>
-    Something \<Longrightarrow>
-    b \<le> g \<Longrightarrow>
-    p' \<le> p \<^emph> f \<Longrightarrow>
-    \<lceil> q \<^emph> f \<rceil>\<^bsub>r\<^esub> \<le> q' \<Longrightarrow>
+  \<open>sp b (wlp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) p) \<le> q \<Longrightarrow>
+    b \<le> \<top> \<times>\<^sub>R g \<Longrightarrow>
+    p' \<le> wlp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) p \<^emph> f \<Longrightarrow>
+    sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) (q \<^emph> f) \<le> q' \<Longrightarrow>
     rgsat (Atomic b) r g p' q'\<close>
 | rgsat_frame:
   \<open>rgsat c r g p q \<Longrightarrow>
-    all_atom_comm (frame_pred_maintains f) c \<Longrightarrow>
-    frame_pred_extends f r \<Longrightarrow>
-    frame_step_subframe f r \<Longrightarrow>
-    rgsat c r g (p \<^emph> f) (q \<^emph> f)\<close>
+    unframe_prop ((=) \<sqinter> rel_lift (\<lambda>hs. \<exists>hl. f (hl, hs))) r \<Longrightarrow>
+    sp ((=) \<times>\<^sub>R (r \<squnion> g)\<^sup>*\<^sup>*) f \<le> f' \<Longrightarrow>
+    rgsat c r g (p \<^emph> f) (q \<^emph> f')\<close>
 | rgsat_weaken:
   \<open>rgsat c r' g' p' q' \<Longrightarrow>
     p \<le> p' \<Longrightarrow> q' \<le> q \<Longrightarrow> r \<le> r' \<Longrightarrow> g' \<le> g \<Longrightarrow>
     rgsat c r g p q\<close>
+
 inductive_cases rgsep_doneE[elim]: \<open>rgsat Skip r g p q\<close>
 inductive_cases rgsep_iterE[elim]: \<open>rgsat (c\<^sup>\<star>) r g p q\<close>
 inductive_cases rgsep_parE[elim]: \<open>rgsat (s1 \<parallel> s2) r g p q\<close>
 inductive_cases rgsep_atomE[elim]: \<open>rgsat (Atomic c) r g p q\<close>
 
 lemma rgsat_iter':
-  \<open>rgsat c r g (\<lceil> i \<rceil>\<^bsub>r\<^esub>) i \<Longrightarrow> rgsat (c\<^sup>\<star>) r g i (\<lceil> i \<rceil>\<^bsub>r\<^esub>)\<close>
+  \<open>rgsat c r g (sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) i) i \<Longrightarrow> rgsat (c\<^sup>\<star>) r g i (sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) i)\<close>
   using rgsat_iter[OF _ order.refl order.refl order.refl order.refl]
   by blast
 
@@ -650,8 +699,9 @@ lemma frame_conj_helper:
   done
 
 lemma backwards_done:
-  \<open>rgsat Skip r g (\<lfloor> p \<rfloor>\<^bsub>r\<^esub>) p\<close>
-  by (rule rgsat_weaken[OF rgsat_skip _ _ order.refl order.refl, where p'=\<open>\<lfloor> p \<rfloor>\<^bsub>r\<^esub>\<close> and q'=p])
+  \<open>rgsat Skip r g (wlp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) p) p\<close>
+  by (rule rgsat_weaken[OF rgsat_skip _ _ order.refl order.refl,
+        where p'=\<open>wlp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) p\<close> and q'=p])
     (clarsimp simp add: sp_def wlp_def le_fun_def)+
 
 end

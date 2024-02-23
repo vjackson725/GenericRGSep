@@ -892,6 +892,10 @@ lemmas zero_order = zero_le le_zero_eq not_less_zero zero_less_iff_neq_zero not_
 
 paragraph \<open> Separation Logic \<close>
 
+lemma emp_apply:
+  \<open>emp x \<longleftrightarrow> x = 0\<close>
+  by (simp add: emp_def)
+
 lemma not_coimp_emp0:
   \<open>h \<noteq> 0 \<Longrightarrow> (- (\<top> \<sim>\<^emph> emp)) h\<close>
   apply (clarsimp simp add: sepcoimp_def emp_def)
