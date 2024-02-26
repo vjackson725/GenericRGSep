@@ -564,11 +564,90 @@ lemma safe_atom:
     safe n (Atomic b) hl hs r g q'\<close>
   by (simp add: safe_atom' safe_postpred_mono)
 
+subsection \<open> Refinement closure \<close>
+
+definition abstracts :: \<open>('a \<Rightarrow> 'a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> 'a \<Rightarrow> bool) \<Rightarrow> bool\<close> (infix \<open>\<sqsubseteq>\<close> 55) where
+  \<open>a \<sqsubseteq> c \<equiv> c \<le> a\<close>
+
+lemma
+  \<open>a \<sqsubseteq> c \<Longrightarrow> wlp a q \<le> wlp c q\<close>
+  by (clarsimp simp add: pre_state_def wlp_def fun_eq_iff le_fun_def abstracts_def)
+
+lemma safe_refinement_mono:
+  \<open>safe n prg hl hs r g q \<Longrightarrow> prg = (Atomic a) \<Longrightarrow> a \<sqsubseteq> c \<Longrightarrow> safe n (Atomic c) hl hs r g q\<close>
+  apply (induct arbitrary: a c rule: safe.inducts)
+   apply force
+  apply (simp add: safe_sucE)
+  apply (rule safe_suc)
+     apply blast
+    apply blast
+   apply (clarsimp simp add: opstep_iff abstracts_def le_fun_def, metis)
+  apply (clarsimp simp add: opstep_iff abstracts_def le_fun_def)
+  done
+
+
+lemma safe_frame_refinement_mono:
+  \<open>safe n c hl hs r g q \<Longrightarrow>
+    hl ## hlf \<Longrightarrow>
+    hs ## hsf \<Longrightarrow>
+    q (hl, hs) \<longrightarrow> q (hl + hlf, hs + hsf) \<Longrightarrow>
+    safe n c (hl + hlf) (hs + hsf) r g q\<close>
+  apply (induct rule: safe.inducts)
+   apply force
+  apply (simp add: safe_sucE)
+  apply (rule safe_suc)
+     apply blast
+    apply clarsimp
+   apply (clarsimp simp add: opstep_iff abstracts_def le_fun_def)
+  apply (clarsimp simp add: opstep_iff abstracts_def le_fun_def)
+  done
+
+subsection \<open> Unframing \<close>
+
+definition
+  \<open>weak_unframe_prop \<ff> r \<equiv>
+    \<forall>x z xz'. r (x+z) xz' \<longrightarrow> x ## z \<longrightarrow>
+        (\<exists>x' z'. \<ff> z z' \<and> x' ## z' \<and> xz' = x' + z') \<and> Ex (r x)\<close>
+
+lemma weak_unframe_propD:
+  \<open>weak_unframe_prop \<ff> r \<Longrightarrow> x ## z \<Longrightarrow> r (x + z) xz' \<Longrightarrow>
+    (\<exists>x' z'. \<ff> z z' \<and> x' ## z' \<and> xz' = x' + z') \<and> Ex (r x)\<close>
+  by (simp add: weak_unframe_prop_def)
+
+lemma weak_unframe_prop_framerel_mono:
+  \<open>\<ff>1 \<le> \<ff>2 \<Longrightarrow> weak_unframe_prop \<ff>1 r \<Longrightarrow> weak_unframe_prop \<ff>2 r\<close>
+  by (fastforce simp add: weak_unframe_prop_def)
+
+lemma weak_unframe_prop_rel_antimono:
+  \<open>r1 \<le> r2 \<Longrightarrow> pre_state r1 = pre_state r2 \<Longrightarrow>
+    weak_unframe_prop \<ff> r2 \<Longrightarrow> weak_unframe_prop \<ff> r1\<close>
+  by (simp add: weak_unframe_prop_def pre_state_def le_fun_def, meson)
+
+lemma
+  \<open>safe n c hl hs r g q \<Longrightarrow>
+    c = Atomic b \<Longrightarrow>
+    b' \<le> b \<Longrightarrow>
+    pre_state b \<le> pre_state b' \<Longrightarrow>
+    safe n (Atomic b') hl hs r g q\<close>
+  apply (induct arbitrary: b b' rule: safe.inducts)
+   apply blast+
+  apply (rule safe_suc)
+     apply fastforce
+    apply fastforce
+   apply (simp add: opstep_iff)
+  oops
+
 lemma safe_framed_atom':
   \<open>sp b (sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) p) \<le> q \<Longrightarrow>
     sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) (p \<^emph> f) (hl, hs) \<Longrightarrow>
     unframe_prop ((=) \<sqinter> rel_lift (\<lambda>hs. \<exists>hl. f (hl, hs))) r\<^sup>*\<^sup>* \<Longrightarrow>
-    unframe_prop (rel_lift f) b \<Longrightarrow>
+    weak_unframe_prop (rel_lift f) b \<Longrightarrow>
+    \<forall>x y y' z.
+      sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) p x \<longrightarrow>
+      sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) (p \<^emph> f) (x + z) \<longrightarrow>
+      b x y \<longrightarrow>
+      b (x + z) (y' + z) \<longrightarrow>
+      q y' \<Longrightarrow>
     b \<le> \<top> \<times>\<^sub>R g \<Longrightarrow>
     safe n (Atomic b) hl hs r g (sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) (q \<^emph> f))\<close>
 proof (induct n arbitrary: hl hs)
@@ -589,10 +668,12 @@ next
      apply (clarsimp simp add: le_fun_def sp_def sepconj_def imp_ex_conjL)
      apply (drule unframe_propD, fast, fast)
      apply clarsimp
-     apply (drule unframe_propD[where x=\<open>(xa, xb)\<close> and z=\<open>(za, zb)\<close> for xa xb za zb, simplified],
-        blast, assumption)
+     apply (drule weak_unframe_propD[where x=\<open>(xa, xb)\<close> and z=\<open>(za, zb)\<close> for xa xb za zb,
+          simplified], blast, assumption)
      apply clarsimp
-     apply blast
+     apply (intro exI conjI)
+
+    oops
       (* subgoal 4 *)
     apply (clarsimp simp add: le_fun_def sepconj_def[of q])
     subgoal sorry
