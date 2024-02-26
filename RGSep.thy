@@ -601,6 +601,24 @@ lemma unframe_prop_framerel_mono:
   by (fastforce simp add: unframe_prop_def)
 
 
+definition
+  \<open>weak_unframe_prop \<ff> r \<equiv>
+    \<forall>x z xz'. r (x+z) xz' \<longrightarrow> x ## z \<longrightarrow> (\<exists>x' z'. \<ff> z z' \<and> x' ## z' \<and> xz' = x' + z')\<close>
+
+lemma weak_unframe_propD:
+  \<open>weak_unframe_prop \<ff> r \<Longrightarrow> x ## z \<Longrightarrow> r (x + z) xz' \<Longrightarrow>
+    \<exists>x' z'. \<ff> z z' \<and> x' ## z' \<and> xz' = x' + z'\<close>
+  by (simp add: weak_unframe_prop_def)
+
+lemma weak_unframe_prop_framerel_mono:
+  \<open>\<ff>1 \<le> \<ff>2 \<Longrightarrow> weak_unframe_prop \<ff>1 r \<Longrightarrow> weak_unframe_prop \<ff>2 r\<close>
+  by (fastforce simp add: weak_unframe_prop_def)
+
+lemma weak_unframe_prop_rel_antimono:
+  \<open>r1 \<le> r2 \<Longrightarrow> weak_unframe_prop \<ff> r2 \<Longrightarrow> weak_unframe_prop \<ff> r1\<close>
+  by (fastforce simp add: weak_unframe_prop_def)
+
+
 subsection \<open> Parallel unframing \<close>
 
 definition

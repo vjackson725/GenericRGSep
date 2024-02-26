@@ -515,6 +515,7 @@ definition septract_rev :: \<open>('a \<Rightarrow> bool) \<Rightarrow> ('a \<Ri
 definition subheapexist :: \<open>('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool)\<close> where
   \<open>subheapexist P \<equiv> \<lambda>h. \<exists>h1. h1 \<le> h \<and> P h1\<close>
 
+
 subsection \<open> Seplogic connective properties \<close>
 
 lemma septract_reverse: \<open>P \<midarrow>\<odot> Q = Q \<odot>\<midarrow> P\<close>

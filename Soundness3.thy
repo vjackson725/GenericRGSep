@@ -381,15 +381,15 @@ inductive safe
     \<comment> \<open> opsteps respect opsteps + the guarantee \<close>
     (\<And>c' hx'.
        ((hl, hs), c) \<midarrow>Local\<rightarrow> (hx', c') \<Longrightarrow>
-       (\<exists>hl' hs'. hx' = (hl', hs') \<and> g hs hs' \<and>  safe n c' hl' hs' r g q)) \<Longrightarrow>
-    (\<And>hlf hsf c' hx'.
-        ((hl + hlf, hs + hsf), c) \<midarrow>Local\<rightarrow> (hx', c') \<Longrightarrow>
-        (hl, hs) ## (hlf, hsf) \<Longrightarrow>
-        (\<exists>hl' hs'.
-          hx' = (hl' + hlf, hs' + hsf) \<and>
-          (hl', hs') ## (hlf, hsf) \<and>
-          g (hs + hsf) (hs' + hsf) \<and> \<comment> \<open> might need to be g hs hs', but that might break cancel? \<close>
-          safe n c' hl' hs' r g q)) \<Longrightarrow>
+       (\<exists>hl' hs'. hx' = (hl', hs') \<and> g hs hs' \<and> safe n c' hl' hs' r g q)) \<Longrightarrow>
+    (\<And>c' hf h'hf.
+        ((hl, hs) + hf, c) \<midarrow>Local\<rightarrow> (h'hf, c') \<Longrightarrow>
+        (hl, hs) ## hf \<Longrightarrow>
+        (\<exists>h'.
+          h' ## hf \<and>
+          h'hf = h' + hf \<and>
+          g (hs + snd hf) (snd h' + snd hf) \<and>
+          safe n c' (fst h') (snd h') r g q)) \<Longrightarrow>
     \<comment> \<open> conclude a step can be made \<close>
     safe (Suc n) c hl hs r g q\<close>
 
@@ -414,16 +414,22 @@ lemma safe_suc_iff:
           hx' = (hl', hs') \<and>
           g hs hs' \<and>
           safe n c' hl' hs' r g q)) \<and>
-    (\<forall>hlf hsf c' hx'.
-        ((hl + hlf, hs + hsf), c) \<midarrow>Local\<rightarrow> (hx', c') \<longrightarrow>
-        (hl, hs) ## (hlf, hsf) \<longrightarrow>
-        (\<exists>hl' hs'.
-          hx' = (hl' + hlf, hs' + hsf) \<and>
-          (hl', hs') ## (hlf, hsf) \<and>
-          g (hs + hsf) (hs' + hsf) \<and>
-          safe n c' hl' hs' r g q))\<close>
+    (\<forall>c' hf h'hf.
+        ((hl, hs) + hf, c) \<midarrow>Local\<rightarrow> (h'hf, c') \<longrightarrow>
+        (hl, hs) ## hf \<longrightarrow>
+        (\<exists>h'.
+          h' ## hf \<and>
+          h'hf = h' + hf \<and>
+          g (hs + snd hf) (snd h' + snd hf) \<and>
+          safe n c' (fst h') (snd h') r g q))\<close>
   apply (rule iffI)
-   apply (erule safe_sucE, force)
+   apply (erule safe_sucE)
+   apply (intro conjI)
+      apply blast
+     apply blast
+    apply force
+   apply force
+  apply clarsimp
   apply (rule safe_suc; force)
   done
 
@@ -437,13 +443,13 @@ lemma safe_sucD:
       g hs hs' \<and>
       safe n c' hl' hs' r g q)\<close>
   \<open>safe (Suc n) c hl hs r g q \<Longrightarrow>
-    ((hl + hlf, hs + hsf), c) \<midarrow>Local\<rightarrow> (hx', c') \<Longrightarrow>
-    (hl, hs) ## (hlf, hsf) \<Longrightarrow>
-    (\<exists>hl' hs'.
-      hx' = (hl' + hlf, hs' + hsf) \<and>
-      (hl', hs') ## (hlf, hsf) \<and>
-      g (hs + hsf) (hs' + hsf) \<and>
-      safe n c' hl' hs' r g q)\<close>
+    ((hl, hs) + hf, c) \<midarrow>Local\<rightarrow> (h'hf, c') \<Longrightarrow>
+    (hl, hs) ## hf \<Longrightarrow>
+    (\<exists>h'.
+      h' ## hf \<and>
+      h'hf = h' + hf \<and>
+      g (hs + snd hf) (snd h' + snd hf) \<and>
+      safe n c' (fst h') (snd h') r g q)\<close>
   by (erule safe_sucE, simp; fail)+
 
 
@@ -484,8 +490,8 @@ lemma safe_rely_antimonoD:
    apply force
   apply (rule safe_suc)
      apply blast
-    apply blast
-   apply force
+    apply fast
+   apply metis
   apply metis
   done
 
@@ -598,9 +604,7 @@ lemma safe_frame_refinement_mono:
   apply (rule safe_suc)
      apply blast
     apply clarsimp
-   apply (clarsimp simp add: opstep_iff abstracts_def le_fun_def)
-  apply (clarsimp simp add: opstep_iff abstracts_def le_fun_def)
-  done
+  oops
 
 subsection \<open> Unframing \<close>
 
@@ -793,8 +797,8 @@ next
      apply (force dest: safe_suc1(3) safe_suc2(3) simp add: opstep_iff)
     apply (simp add: opstep_iff)
     apply (elim disjE conjE)
-     apply (drule safe_suc1(4); simp; fail)
-    apply (drule safe_suc2(4); simp; fail)
+     apply (drule safe_suc1(4)[simplified]; fast)
+    apply (drule safe_suc2(4)[simplified]; fast)
     done
 qed
 
@@ -804,6 +808,7 @@ subsection \<open> Safety of frame \<close>
 lemma safe_frame':
   \<open>safe n c hl hs r g q \<Longrightarrow>
     unframe_prop ((=) \<sqinter> rel_lift (\<lambda>hs. \<exists>hl. f (hl, hs))) r \<Longrightarrow>
+    weak_unframe_prop ((=) \<sqinter> rel_lift (\<lambda>hs. \<exists>hl. f (hl, hs))) r \<Longrightarrow>
     hl ## hlf \<Longrightarrow>
     hs ## hsf \<Longrightarrow>
     f (hlf, hsf) \<Longrightarrow>
@@ -813,6 +818,10 @@ proof (induct arbitrary: hlf hsf rule: safe.induct)
   then show ?case by blast
 next
   case (safe_suc c q hl hs r n g)
+
+  note safe_suc_hyps5b =
+    safe_suc.hyps(5)[where hf=\<open>(hlf + hlf', hsf + hsf')\<close> for hlf' hsf',
+      simplified plus_prod_def fst_conv snd_conv]
 
   show ?case
     using safe_suc.prems
@@ -825,29 +834,33 @@ next
       apply (frule unframe_propD, assumption, assumption)
       apply (clarsimp simp add: le_iff_sepadd simp del: sup_apply)
       apply (rule safe_suc.hyps(3))
+           apply force
           apply force
          apply force
         apply fast
        apply (simp add: disjoint_sym_iff; fail)
       apply fast
       (* subgoal 3 *)
-     apply (frule safe_suc.hyps(5), force)
-     apply (clarsimp simp add: sp_comp_rel simp del: sup_apply)
+     apply (frule safe_suc.hyps(5)[where hf=\<open>(hlf, hsf)\<close>, simplified])
+      apply blast
+     apply (clarsimp; fail)
       (* subgoal 4 *)
-    apply (rename_tac hlf' hsf' c' hx')
+    apply (clarsimp simp del: sup_apply)
+    apply (rename_tac hlf' hsf' hl' hs')
     apply (subst (asm) partial_add_assoc, blast, force dest: disjoint_add_leftR,
         force dest: disjoint_add_leftL)
     apply (subst (asm) partial_add_assoc, blast, force dest: disjoint_add_leftR,
         force dest: disjoint_add_leftL)
-    apply (drule safe_suc.hyps(5))
-     apply (simp add: disjoint_add_swap2)
+    apply (drule safe_suc_hyps5b)
+     apply (simp add: disjoint_add_swap2; fail)
     apply (clarsimp simp add: sp_comp_rel simp del: sup_apply)
     apply (drule spec[of _ hlf], drule mp, metis disjoint_add_leftR disjoint_add_rightL)
     apply (drule spec[of _ hsf], drule mp, metis disjoint_add_leftR disjoint_add_rightL)
     apply (drule mp, fast)
-    apply (rule_tac x=\<open>hl' + hlf\<close> in exI, rule conjI, metis disjoint_add_leftR partial_add_assoc3)
-    apply (rule_tac x=\<open>hs' + hsf\<close> in exI, rule conjI, metis disjoint_add_leftR partial_add_assoc3)
-    apply (metis disjoint_add_leftR disjoint_add_swap partial_add_assoc2 partial_add_assoc3)
+    apply (rename_tac hl' hs')
+    apply (rule_tac x=\<open>hl' + hlf\<close> in exI, rule conjI, metis disjoint_add_leftR disjoint_add_swap)
+    apply (rule_tac x=\<open>hs' + hsf\<close> in exI, rule conjI, metis disjoint_add_leftR disjoint_add_swap)
+    apply (metis disjoint_add_leftR partial_add_assoc2 partial_add_assoc3)
     done
 qed
 
