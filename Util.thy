@@ -132,6 +132,7 @@ subsection \<open> Relations \<close>
 definition \<open>rel_liftL p \<equiv> \<lambda>a b. p a\<close>
 definition \<open>rel_liftR p \<equiv> \<lambda>a b. p b\<close>
 definition \<open>rel_lift p \<equiv> \<lambda>a b. p a \<and> p b\<close>
+definition \<open>rel_imp_lift p \<equiv> \<lambda>a b. p a \<longrightarrow> p b\<close>
 
 definition \<open>pre_state_of B r \<equiv> \<lambda>a. \<exists>b\<in>B. r a b\<close>
 definition \<open>post_state_of A r \<equiv> \<lambda>b. \<exists>a\<in>A. r a b\<close>

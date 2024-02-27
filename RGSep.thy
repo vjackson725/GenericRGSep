@@ -588,31 +588,23 @@ abbreviation \<open>atoms_frame_closed \<equiv> all_atom_comm frame_closed\<clos
 subsection \<open> Unframing \<close>
 
 definition
-  \<open>unframe_prop \<ff> r \<equiv>
-    \<forall>x z xz'. r (x+z) xz' \<longrightarrow> x ## z \<longrightarrow> (\<exists>x' z'. \<ff> z z' \<and> x' ## z' \<and> xz' = x' + z' \<and> r x x')\<close>
+  \<open>unframe_prop f r \<equiv>
+    \<forall>x z xz'. r (x+z) xz' \<longrightarrow> x ## z \<longrightarrow> f z \<longrightarrow> (\<exists>x' z'. f z' \<and> x' ## z' \<and> xz' = x' + z' \<and> r x x')\<close>
 
 lemma unframe_propD:
-  \<open>unframe_prop \<ff> r \<Longrightarrow> x ## z \<Longrightarrow> r (x + z) xz' \<Longrightarrow>
-    \<exists>x' z'. \<ff> z z' \<and> x' ## z' \<and> xz' = x' + z' \<and> r x x'\<close>
+  \<open>unframe_prop f r \<Longrightarrow> x ## z \<Longrightarrow> r (x + z) xz' \<Longrightarrow> f z \<Longrightarrow>
+    \<exists>x' z'. f z' \<and> x' ## z' \<and> xz' = x' + z' \<and> r x x'\<close>
   by (simp add: unframe_prop_def)
-
-lemma unframe_prop_framerel_mono:
-  \<open>\<ff>1 \<le> \<ff>2 \<Longrightarrow> unframe_prop \<ff>1 r \<Longrightarrow> unframe_prop \<ff>2 r\<close>
-  by (fastforce simp add: unframe_prop_def)
 
 
 definition
-  \<open>weak_unframe_prop \<ff> r \<equiv>
-    \<forall>x z xz'. r (x+z) xz' \<longrightarrow> x ## z \<longrightarrow> (\<exists>x' z'. \<ff> z z' \<and> x' ## z' \<and> xz' = x' + z')\<close>
+  \<open>weak_unframe_prop f r \<equiv>
+    \<forall>x z xz'. r (x+z) xz' \<longrightarrow> x ## z \<longrightarrow> f z \<longrightarrow> (\<exists>x' z'. f z' \<and> x' ## z' \<and> xz' = x' + z')\<close>
 
 lemma weak_unframe_propD:
-  \<open>weak_unframe_prop \<ff> r \<Longrightarrow> x ## z \<Longrightarrow> r (x + z) xz' \<Longrightarrow>
-    \<exists>x' z'. \<ff> z z' \<and> x' ## z' \<and> xz' = x' + z'\<close>
+  \<open>weak_unframe_prop f r \<Longrightarrow> x ## z \<Longrightarrow> r (x + z) xz' \<Longrightarrow> f z \<Longrightarrow>
+    \<exists>x' z'. f z' \<and> x' ## z' \<and> xz' = x' + z'\<close>
   by (simp add: weak_unframe_prop_def)
-
-lemma weak_unframe_prop_framerel_mono:
-  \<open>\<ff>1 \<le> \<ff>2 \<Longrightarrow> weak_unframe_prop \<ff>1 r \<Longrightarrow> weak_unframe_prop \<ff>2 r\<close>
-  by (fastforce simp add: weak_unframe_prop_def)
 
 lemma weak_unframe_prop_rel_antimono:
   \<open>r1 \<le> r2 \<Longrightarrow> weak_unframe_prop \<ff> r2 \<Longrightarrow> weak_unframe_prop \<ff> r1\<close>
@@ -679,14 +671,14 @@ inductive rgsat ::
     rgsat (s1 \<parallel> s2) r g p q\<close>
 | rgsat_atom:
   \<open>sp b (wlp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) (p \<squnion> p \<^emph> f)) \<le> sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) (q \<squnion> q \<^emph> f) \<Longrightarrow>
-    unframe_prop ((=) \<sqinter> rel_lift f) b \<Longrightarrow>
+    unframe_prop f b \<Longrightarrow>
     b \<le> \<top> \<times>\<^sub>R g \<Longrightarrow>
     p' \<le> wlp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) (p \<squnion> p \<^emph> f) \<Longrightarrow>
     sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) (q \<squnion> q \<^emph> f) \<le> q' \<Longrightarrow>
     rgsat (Atomic b) r g p' q'\<close>
 | rgsat_frame:
   \<open>rgsat c r g p q \<Longrightarrow>
-    unframe_prop ((=) \<sqinter> rel_lift (\<lambda>hs. \<exists>hl. f (hl, hs))) r \<Longrightarrow>
+    unframe_prop (\<lambda>hs. \<exists>hl. f (hl, hs)) r \<Longrightarrow>
     sp ((=) \<times>\<^sub>R (r \<squnion> g)\<^sup>*\<^sup>*) f \<le> f' \<Longrightarrow>
     rgsat c r g (p \<^emph> f) (q \<^emph> f')\<close>
 | rgsat_weaken:

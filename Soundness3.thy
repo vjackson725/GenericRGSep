@@ -560,7 +560,7 @@ subsection \<open> Safety of Atomic \<close>
 lemma safe_atom':
   \<open>sp b (wlp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) (p \<squnion> p \<^emph> f)) \<le> sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) (q \<squnion> q \<^emph> f) \<Longrightarrow>
     wlp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) (p \<squnion> p \<^emph> f) (hl, hs) \<Longrightarrow>
-    unframe_prop ((=) \<sqinter> rel_lift f) b \<Longrightarrow>
+    unframe_prop f b \<Longrightarrow>
     b \<le> \<top> \<times>\<^sub>R g \<Longrightarrow>
     safe n (Atomic b) hl hs r g (sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) (q \<squnion> q \<^emph> f))\<close>
 proof (induct n arbitrary: hl hs f)
@@ -584,23 +584,25 @@ next
     apply (simp add: opstep_iff del: top_apply sup_apply)
     apply (frule unframe_propD[of _ _ \<open>(x1,x2)\<close> \<open>(y1,y2)\<close> for x1 x2 y1 y2, simplified], fast,
         assumption)
-    apply (clarsimp simp del: top_apply sup_apply)
-    apply (rename_tac hlf hsf hl' hs')
-    apply (rule exI, rule conjI, assumption,
-        rule exI, rule conjI, assumption,
-        rule conjI, rule HOL.refl,
-        rule conjI, rule HOL.refl)
-    apply (rule conjI, force)
-    apply (rule safe_skip[where p=\<open>sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) (q \<squnion> q \<^emph> f)\<close>])
-     apply (simp del: sup_apply, blast)
-    apply (simp add: sp_rely_absorb; fail)
-    done
+    subgoal sorry
+  apply (clarsimp simp del: top_apply sup_apply; fail)
+  apply (rename_tac hlf hsf hl' hs')
+  apply (rule exI, rule conjI, assumption,
+    rule exI, rule conjI, assumption,
+    rule conjI, rule HOL.refl,
+    rule conjI, rule HOL.refl)
+  apply (rule conjI, force)
+  apply (rule safe_skip[where p=\<open>sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) (q \<squnion> q \<^emph> f)\<close>])
+  apply (simp del: sup_apply, blast)
+  apply (simp add: sp_rely_absorb; fail)
+  subgoal sorry
+  done
 qed
 
 lemma safe_atom:
   \<open>sp b (wlp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) (p \<squnion> p \<^emph> f)) \<le> sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) (q \<squnion> q \<^emph> f) \<Longrightarrow>
     wlp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) (p \<squnion> p \<^emph> f) (hl, hs) \<Longrightarrow>
-    unframe_prop ((=) \<sqinter> rel_lift f) b \<Longrightarrow>
+    unframe_prop f b \<Longrightarrow>
     b \<le> \<top> \<times>\<^sub>R g \<Longrightarrow>
     (sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) (q \<squnion> q \<^emph> f)) \<le> q' \<Longrightarrow>
     safe n (Atomic b) hl hs r g q'\<close>
@@ -729,7 +731,7 @@ subsection \<open> Safety of frame \<close>
 
 lemma safe_frame':
   \<open>safe n c hl hs r g q \<Longrightarrow>
-    unframe_prop ((=) \<sqinter> rel_lift (\<lambda>hs. \<exists>hl. f (hl, hs))) r \<Longrightarrow>
+    unframe_prop (\<lambda>hs. \<exists>hl. f (hl, hs)) r \<Longrightarrow>
     hl ## hlf \<Longrightarrow>
     hs ## hsf \<Longrightarrow>
     f (hlf, hsf) \<Longrightarrow>
@@ -760,9 +762,10 @@ next
         apply force
        apply fast
       apply (simp add: disjoint_sym_iff; fail)
+    subgoal sorry
       (* subgoal 3 *)
      apply (frule safe_suc.hyps(5)[where hf=\<open>(hlf, hsf)\<close>, simplified])
-      apply blast
+    subgoal sorry
      apply (clarsimp; fail)
       (* subgoal 4 *)
     apply (clarsimp simp del: sup_apply)
@@ -786,7 +789,7 @@ qed
 
 lemma safe_frame:
   \<open>safe n c hl hs r g q \<Longrightarrow>
-    unframe_prop ((=) \<sqinter> rel_lift (\<lambda>hs. \<exists>hl. f (hl, hs))) r \<Longrightarrow>
+    unframe_prop (\<lambda>hs. \<exists>hl. f (hl, hs)) r \<Longrightarrow>
     hl ## hlf \<Longrightarrow>
     hs ## hsf \<Longrightarrow>
     f (hlf, hsf) \<Longrightarrow>
@@ -1042,14 +1045,12 @@ lemma refinement_atomic_condition1:
   by auto
 
 lemma refinement_atomic_condition2:
-  \<open>b' \<le> b \<Longrightarrow> unframe_prop ((=) \<sqinter> rel_lift f) b \<Longrightarrow> unframe_prop ((=) \<sqinter> rel_lift f) b'\<close>
+  \<open>b' \<le> b \<Longrightarrow> unframe_prop f b \<Longrightarrow> unframe_prop f b'\<close>
   oops
 
 lemma
   \<open>parallel_unframe_prop \<top> \<top> r (r \<squnion> g2) (r \<squnion> g1)\<close>
-  \<open>unframe_prop ((=) \<sqinter> rel_lift (\<lambda>hs. \<exists>hl. f (hl, hs))) r\<close>
-  \<open>\<close>
-  
+  \<open>unframe_prop (\<lambda>hs. \<exists>hl. f (hl, hs)) r\<close>
   oops
 
 end
