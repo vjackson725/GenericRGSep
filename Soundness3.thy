@@ -29,26 +29,47 @@ lemma rel_Times_left_eq_rtranclp_distrib[simp]:
   apply (force dest: rtranclp_tuple_lift_eq_left simp add: le_fun_def rel_Times_def)
   done
 
-lemma sp_rely_step:
-  \<open>r y y' \<Longrightarrow>
-    sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) p (x, y) \<Longrightarrow>
-    sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) p (x, y')\<close>
-  by (clarsimp simp add: sp_def, meson rtranclp.rtrancl_into_rtrancl)
-
 declare eq_OO[simp] OO_eq[simp]
 
 lemma rel_Times_comp[simp]:
   \<open>(a \<times>\<^sub>R b) OO (c \<times>\<^sub>R d) = (a OO c) \<times>\<^sub>R (b OO d)\<close>
   by (force simp add: fun_eq_iff OO_def)
 
+
+lemma sp_rely_step:
+  \<open>r y y' \<Longrightarrow>
+    sp ((=) \<times>\<^sub>R rx) p (x, y) \<Longrightarrow>
+    sp ((=) \<times>\<^sub>R (rx OO r)) p (x, y')\<close>
+  by (force simp add: sp_def)
+
+lemma sp_rely_step_tranclp:
+  \<open>r y y' \<Longrightarrow>
+    sp ((=) \<times>\<^sub>R r\<^sup>+\<^sup>+) p (x, y) \<Longrightarrow>
+    sp ((=) \<times>\<^sub>R r\<^sup>+\<^sup>+) p (x, y')\<close>
+  by (simp add: sp_def, meson tranclp.trancl_into_trancl)
+
+lemma sp_rely_step_rtranclp:
+  \<open>r y y' \<Longrightarrow>
+    sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) p (x, y) \<Longrightarrow>
+    sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) p (x, y')\<close>
+  by (simp add: sp_def, meson rtranclp.rtrancl_into_rtrancl)
+
+lemma wlp_rely_step_tranclp:
+  \<open>r y y' \<Longrightarrow>
+    wlp ((=) \<times>\<^sub>R r\<^sup>+\<^sup>+) p (x, y) \<Longrightarrow>
+    wlp ((=) \<times>\<^sub>R r\<^sup>+\<^sup>+) p (x, y')\<close>
+  by (simp add: wlp_def tranclp_into_tranclp2)
+  
+lemma wlp_rely_step_rtranclp:
+  \<open>r y y' \<Longrightarrow>
+    wlp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) p (x, y) \<Longrightarrow>
+    wlp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) p (x, y')\<close>
+  by (simp add: wlp_def converse_rtranclp_into_rtranclp)
+
+
 lemmas sp_rely_stronger = sp_refl_rel_le[where r=\<open>(=) \<times>\<^sub>R r\<^sup>*\<^sup>*\<close> for r, simplified]
 lemmas sp_rely_absorb =
-  sp_comp_rel[where ?r1.0=\<open>(=) \<times>\<^sub>R ra\<^sup>*\<^sup>*\<close> and ?r2.0=\<open>(=) \<times>\<^sub>R rb\<^sup>*\<^sup>*\<close> for ra rb, simplified,
-    symmetric]
-
-lemma wlp_rely_step[dest]:
-  \<open>wlp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) p (hl, hs) \<Longrightarrow>r hs hs' \<Longrightarrow> wlp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) p (hl, hs')\<close>
-  by (simp add: converse_rtranclp_into_rtranclp wlp_def)
+  sp_comp_rel[where ?r1.0=\<open>(=) \<times>\<^sub>R ra\<^sup>*\<^sup>*\<close> and ?r2.0=\<open>(=) \<times>\<^sub>R rb\<^sup>*\<^sup>*\<close> for ra rb, simplified]
 
 lemma trivial_sp_rely_step[intro]:
   \<open>p x \<Longrightarrow> sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) p x\<close>
@@ -537,124 +558,12 @@ lemma safe_skip:
 subsection \<open> Safety of Atomic \<close>
 
 lemma safe_atom':
-  \<open>rel_liftL (wlp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) p) \<sqinter> b \<le> rel_liftR q \<Longrightarrow>
-    wlp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) p (hl, hs) \<Longrightarrow>
+  \<open>sp b (wlp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) (p \<squnion> p \<^emph> f)) \<le> sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) (q \<squnion> q \<^emph> f) \<Longrightarrow>
+    wlp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) (p \<squnion> p \<^emph> f) (hl, hs) \<Longrightarrow>
+    unframe_prop ((=) \<sqinter> rel_lift f) b \<Longrightarrow>
     b \<le> \<top> \<times>\<^sub>R g \<Longrightarrow>
-    safe n (Atomic b) hl hs r g (sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) q)\<close>
-proof (induct n arbitrary: hl hs)
-  case 0
-  then show ?case by force
-next
-  case (Suc n)
-  show ?case
-    using Suc.prems(1-3)
-    apply (intro safe.safe_suc)
-       apply force
-      apply (rule Suc.hyps; fast)
-        (* subgoal 3 *)
-     apply (subst (asm) rel_lift_impl_iff_sp_impl)
-     apply (clarsimp simp add: le_fun_def)
-     apply (metis (no_types, lifting) safe_skip' sp_def trivial_sp_rely_step)
-      (* subgoal 4 *)
-    apply (subst (asm) rel_lift_impl_iff_sp_impl)
-    apply (clarsimp simp add: le_fun_def)
-    subgoal sorry
-    done
-qed
-
-lemma safe_atom:
-  \<open>rel_liftL (wlp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) p) \<sqinter> b \<le> rel_liftR q \<Longrightarrow>
-    wlp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) p (hl, hs) \<Longrightarrow>
-    b \<le> \<top> \<times>\<^sub>R g \<Longrightarrow>
-    sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) q \<le> q' \<Longrightarrow>
-    safe n (Atomic b) hl hs r g q'\<close>
-  by (simp add: safe_atom' safe_postpred_mono)
-
-subsection \<open> Refinement closure \<close>
-
-definition abstracts :: \<open>('a \<Rightarrow> 'a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> 'a \<Rightarrow> bool) \<Rightarrow> bool\<close> (infix \<open>\<sqsubseteq>\<close> 55) where
-  \<open>a \<sqsubseteq> c \<equiv> c \<le> a\<close>
-
-lemma
-  \<open>a \<sqsubseteq> c \<Longrightarrow> wlp a q \<le> wlp c q\<close>
-  by (clarsimp simp add: pre_state_def wlp_def fun_eq_iff le_fun_def abstracts_def)
-
-lemma safe_refinement_mono:
-  \<open>safe n prg hl hs r g q \<Longrightarrow> prg = (Atomic a) \<Longrightarrow> a \<sqsubseteq> c \<Longrightarrow> safe n (Atomic c) hl hs r g q\<close>
-  apply (induct arbitrary: a c rule: safe.inducts)
-   apply force
-  apply (simp add: safe_sucE)
-  apply (rule safe_suc)
-     apply blast
-    apply blast
-   apply (clarsimp simp add: opstep_iff abstracts_def le_fun_def, metis)
-  apply (clarsimp simp add: opstep_iff abstracts_def le_fun_def)
-  done
-
-
-lemma safe_frame_refinement_mono:
-  \<open>safe n c hl hs r g q \<Longrightarrow>
-    hl ## hlf \<Longrightarrow>
-    hs ## hsf \<Longrightarrow>
-    q (hl, hs) \<longrightarrow> q (hl + hlf, hs + hsf) \<Longrightarrow>
-    safe n c (hl + hlf) (hs + hsf) r g q\<close>
-  apply (induct rule: safe.inducts)
-   apply force
-  apply (simp add: safe_sucE)
-  apply (rule safe_suc)
-     apply blast
-    apply clarsimp
-  oops
-
-subsection \<open> Unframing \<close>
-
-definition
-  \<open>weak_unframe_prop \<ff> r \<equiv>
-    \<forall>x z xz'. r (x+z) xz' \<longrightarrow> x ## z \<longrightarrow>
-        (\<exists>x' z'. \<ff> z z' \<and> x' ## z' \<and> xz' = x' + z') \<and> Ex (r x)\<close>
-
-lemma weak_unframe_propD:
-  \<open>weak_unframe_prop \<ff> r \<Longrightarrow> x ## z \<Longrightarrow> r (x + z) xz' \<Longrightarrow>
-    (\<exists>x' z'. \<ff> z z' \<and> x' ## z' \<and> xz' = x' + z') \<and> Ex (r x)\<close>
-  by (simp add: weak_unframe_prop_def)
-
-lemma weak_unframe_prop_framerel_mono:
-  \<open>\<ff>1 \<le> \<ff>2 \<Longrightarrow> weak_unframe_prop \<ff>1 r \<Longrightarrow> weak_unframe_prop \<ff>2 r\<close>
-  by (fastforce simp add: weak_unframe_prop_def)
-
-lemma weak_unframe_prop_rel_antimono:
-  \<open>r1 \<le> r2 \<Longrightarrow> pre_state r1 = pre_state r2 \<Longrightarrow>
-    weak_unframe_prop \<ff> r2 \<Longrightarrow> weak_unframe_prop \<ff> r1\<close>
-  by (simp add: weak_unframe_prop_def pre_state_def le_fun_def, meson)
-
-lemma
-  \<open>safe n c hl hs r g q \<Longrightarrow>
-    c = Atomic b \<Longrightarrow>
-    b' \<le> b \<Longrightarrow>
-    pre_state b \<le> pre_state b' \<Longrightarrow>
-    safe n (Atomic b') hl hs r g q\<close>
-  apply (induct arbitrary: b b' rule: safe.inducts)
-   apply blast+
-  apply (rule safe_suc)
-     apply fastforce
-    apply fastforce
-   apply (simp add: opstep_iff)
-  oops
-
-lemma safe_framed_atom':
-  \<open>sp b (sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) p) \<le> q \<Longrightarrow>
-    sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) (p \<^emph> f) (hl, hs) \<Longrightarrow>
-    unframe_prop ((=) \<sqinter> rel_lift (\<lambda>hs. \<exists>hl. f (hl, hs))) r\<^sup>*\<^sup>* \<Longrightarrow>
-    weak_unframe_prop (rel_lift f) b \<Longrightarrow>
-    \<forall>x y y' z.
-      sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) p x \<longrightarrow>
-      sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) (p \<^emph> f) (x + z) \<longrightarrow>
-      b x y \<longrightarrow>
-      b (x + z) (y' + z) \<longrightarrow>
-      q y' \<Longrightarrow>
-    b \<le> \<top> \<times>\<^sub>R g \<Longrightarrow>
-    safe n (Atomic b) hl hs r g (sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) (q \<^emph> f))\<close>
-proof (induct n arbitrary: hl hs)
+    safe n (Atomic b) hl hs r g (sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) (q \<squnion> q \<^emph> f))\<close>
+proof (induct n arbitrary: hl hs f)
   case 0
   then show ?case by force
 next
@@ -664,25 +573,38 @@ next
     apply (intro safe.safe_suc)
        apply force
       (* subgoal 2 *)
-      apply (rule Suc.hyps; force simp add: sp_rely_step)
+      apply (rule Suc.hyps; force simp add: wlp_rely_step_rtranclp)
       (* subgoal 3 *)
-     apply (simp add: opstep_iff del: top_apply)
+     apply (simp add: opstep_iff del: top_apply sup_apply)
      apply (rule conjI, force)
-     apply (rule safe_skip[of \<open>q \<^emph> f\<close>, rotated], fast)
-     apply (clarsimp simp add: le_fun_def sp_def sepconj_def imp_ex_conjL)
-     apply (drule unframe_propD, fast, fast)
-     apply clarsimp
-     apply (drule weak_unframe_propD[where x=\<open>(xa, xb)\<close> and z=\<open>(za, zb)\<close> for xa xb za zb,
-          simplified], blast, assumption)
-     apply clarsimp
-     apply (intro exI conjI)
-
-    oops
+     apply (rule safe_skip[where p=\<open>sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) (q \<squnion> q \<^emph> f)\<close>])
+      apply (simp del: sup_apply, blast)
+     apply (force simp add: sp_rely_absorb)
       (* subgoal 4 *)
-    apply (clarsimp simp add: le_fun_def sepconj_def[of q])
-    subgoal sorry
+    apply (simp add: opstep_iff del: top_apply sup_apply)
+    apply (frule unframe_propD[of _ _ \<open>(x1,x2)\<close> \<open>(y1,y2)\<close> for x1 x2 y1 y2, simplified], fast,
+        assumption)
+    apply (clarsimp simp del: top_apply sup_apply)
+    apply (rename_tac hlf hsf hl' hs')
+    apply (rule exI, rule conjI, assumption,
+        rule exI, rule conjI, assumption,
+        rule conjI, rule HOL.refl,
+        rule conjI, rule HOL.refl)
+    apply (rule conjI, force)
+    apply (rule safe_skip[where p=\<open>sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) (q \<squnion> q \<^emph> f)\<close>])
+     apply (simp del: sup_apply, blast)
+    apply (simp add: sp_rely_absorb; fail)
     done
 qed
+
+lemma safe_atom:
+  \<open>sp b (wlp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) (p \<squnion> p \<^emph> f)) \<le> sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) (q \<squnion> q \<^emph> f) \<Longrightarrow>
+    wlp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) (p \<squnion> p \<^emph> f) (hl, hs) \<Longrightarrow>
+    unframe_prop ((=) \<sqinter> rel_lift f) b \<Longrightarrow>
+    b \<le> \<top> \<times>\<^sub>R g \<Longrightarrow>
+    (sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) (q \<squnion> q \<^emph> f)) \<le> q' \<Longrightarrow>
+    safe n (Atomic b) hl hs r g q'\<close>
+  by (meson safe_atom' safe_postpred_mono)
 
 
 subsection \<open> Safety of Sequencing \<close>
@@ -743,7 +665,7 @@ lemma safe_iter':
    apply force
   apply (rule safe_suc)
      apply blast
-    apply (clarsimp simp add: le_Suc_eq all_conj_distrib, blast intro: sp_rely_step)
+    apply (clarsimp simp add: sp_rely_step_rtranclp; fail)
    apply (simp add: le_Suc_eq all_conj_distrib opstep_iff; fail)
   apply (simp add: le_Suc_eq all_conj_distrib opstep_iff; fail)
   done
@@ -808,7 +730,6 @@ subsection \<open> Safety of frame \<close>
 lemma safe_frame':
   \<open>safe n c hl hs r g q \<Longrightarrow>
     unframe_prop ((=) \<sqinter> rel_lift (\<lambda>hs. \<exists>hl. f (hl, hs))) r \<Longrightarrow>
-    weak_unframe_prop ((=) \<sqinter> rel_lift (\<lambda>hs. \<exists>hl. f (hl, hs))) r \<Longrightarrow>
     hl ## hlf \<Longrightarrow>
     hs ## hsf \<Longrightarrow>
     f (hlf, hsf) \<Longrightarrow>
@@ -834,12 +755,11 @@ next
       apply (frule unframe_propD, assumption, assumption)
       apply (clarsimp simp add: le_iff_sepadd simp del: sup_apply)
       apply (rule safe_suc.hyps(3))
-           apply force
           apply force
          apply force
-        apply fast
-       apply (simp add: disjoint_sym_iff; fail)
-      apply fast
+        apply force
+       apply fast
+      apply (simp add: disjoint_sym_iff; fail)
       (* subgoal 3 *)
      apply (frule safe_suc.hyps(5)[where hf=\<open>(hlf, hsf)\<close>, simplified])
       apply blast
@@ -873,7 +793,7 @@ lemma safe_frame:
     sp ((=) \<times>\<^sub>R (r \<squnion> g)\<^sup>*\<^sup>*) f \<le> f' \<Longrightarrow>
     safe n c (hl + hlf) (hs + hsf) r g (q \<^emph> f')\<close>
   apply (rule safe_postpred_monoD)
-   apply (rule safe_frame'[of _ _ _ _ _ _ _ _ _]; fast)
+   apply (rule safe_frame'; fast)
   apply (simp add: sepconj_monoR)
   done
 
@@ -897,6 +817,11 @@ next
   note safe_suc1 = safe_sucD[OF Suc.prems(1)]
   note safe_suc2 = safe_sucD[OF Suc.prems(2)]
 
+  note safe_suc1_4 =
+    safe_suc1(4)[of \<open>(hlf,hsf)\<close> for hlf hsf, simplified plus_prod_def fst_conv snd_conv]
+  note safe_suc2_4 =
+    safe_suc2(4)[of \<open>(hlf,hsf)\<close> for hlf hsf, simplified plus_prod_def fst_conv snd_conv]
+
   have safe_suc2_4':
     \<open>\<And>hlf hsf hx' c'.
       opstep Local ((hlf + hl2, hsf + hs2), c2) (hx', c') \<Longrightarrow>
@@ -907,7 +832,7 @@ next
         g2 (hsf + hs2) (hsf + hs') \<and>
         safe n c' hl' hs' (r \<squnion> g1) g2 (sp ((=) \<times>\<^sub>R (r \<squnion> g1)\<^sup>*\<^sup>*) q2)\<close>
     apply (clarsimp simp add: partial_add_commute[of _ hl2] partial_add_commute[of _ hs2])
-    apply (drule safe_suc2(4), (simp add: disjoint_sym_iff; fail))
+    apply (drule safe_suc2_4, (simp add: disjoint_sym_iff; fail))
     apply (clarsimp simp del: sup_apply)
     apply (metis disjoint_sym partial_add_commute)
     done
@@ -930,7 +855,7 @@ next
     apply (subst (asm) partial_add_left_commute2[symmetric, of hs2])
       apply (metis disjoint_add_leftR)
      apply (metis disjoint_add_swap2)
-    apply (drule safe_suc2(4), (simp, metis disjoint_add_left_commute2 disjoint_sym_iff))
+    apply (drule safe_suc2_4, (simp, metis disjoint_add_left_commute2 disjoint_sym_iff))
     apply (clarsimp simp del: sup_apply)
     apply (rule exI, rule conjI)
      apply (rule partial_add_left_commute)
@@ -967,7 +892,7 @@ next
     subgoal
       apply (simp add: opstep_iff del: top_apply sup_apply)
       apply (elim disjE conjE exE)
-       apply (drule safe_suc1(4), force)
+       apply (drule safe_suc1_4, force)
        apply (clarsimp simp del: top_apply sup_apply)
        apply (rule conjI, fast)
        apply (rule Suc.hyps[rotated 2], fast, fast, fast, fast)
@@ -982,24 +907,15 @@ next
       apply (simp add: partial_add_assoc2 opstep_iff del: top_apply sup_apply)
       apply (elim disjE conjE exE)
       subgoal
-        apply (drule safe_suc1(4), (simp add: disjoint_add_swap2; fail))
+        apply (drule safe_suc1_4, (simp add: disjoint_add_swap2; fail))
         apply (clarsimp simp del: top_apply sup_apply)
         apply (rule exI, rule conjI)
-         apply (rule partial_add_assoc[symmetric])
-           apply (metis disjoint_add_leftR disjoint_sym partial_add_commute)
-          apply (metis disjoint_add_leftR)
-         apply (metis disjoint_add_leftR disjoint_sym)
+         apply (rule disjoint_add_swap[rotated], fast, metis disjoint_add_leftR)
         apply (rule exI, rule conjI)
-         apply (rule partial_add_assoc[symmetric])
-           apply (metis disjoint_add_leftR disjoint_sym partial_add_commute)
-          apply (metis disjoint_add_leftR)
-         apply (metis disjoint_add_leftR disjoint_sym)
-        apply (rule conjI)
-         apply (metis disjoint_add_rightL disjoint_add_right_commute2 disjoint_sym partial_add_commute)
-        apply (rule conjI)
-         apply (metis disjoint_add_rightL disjoint_add_right_commute2 disjoint_sym partial_add_commute)
-        apply (rule conjI)
-         apply (metis disjoint_add_leftR partial_add_assoc3 sup2I1)
+         apply (rule disjoint_add_swap[rotated], fast, metis disjoint_add_leftR)
+        apply (rule conjI, metis disjoint_add_leftR partial_add_assoc3)
+        apply (rule conjI, metis disjoint_add_leftR partial_add_assoc3)
+        apply (rule conjI, metis disjoint_add_leftR partial_add_assoc3 sup2I1)
         apply (rule Suc.hyps)
             apply fast
            apply (metis Suc.prems(2) le_add2 plus_1_eq_Suc safe_step_monoD)
@@ -1011,18 +927,12 @@ next
         apply (drule safe_suc2_4'', fast, fast, fast, fast)
         apply (clarsimp simp del: top_apply sup_apply)
         apply (rule exI, rule conjI)
-         apply (rule partial_add_assoc[symmetric])
-           apply (metis disjoint_add_rightL disjoint_sym)
-          apply (metis disjoint_sym)
-         apply (metis disjoint_add_leftL)
+         apply (rule disjoint_add_swap[rotated], fast, metis disjoint_sym)
         apply (rule exI, rule conjI)
-         apply (rule partial_add_assoc[symmetric])
-           apply (metis disjoint_add_rightL disjoint_sym)
-          apply (metis disjoint_sym)
-         apply (metis disjoint_add_leftL)
-        apply (rule conjI, metis disjoint_add_swap disjoint_sym)
-        apply (rule conjI, metis disjoint_add_swap disjoint_sym)
-        apply (rule conjI, simp add: disjoint_sym_iff partial_add_assoc3)
+         apply (rule disjoint_add_swap[rotated], fast, metis disjoint_sym)
+        apply (rule conjI, metis disjoint_sym partial_add_assoc3)
+        apply (rule conjI, metis disjoint_sym partial_add_assoc3)
+        apply (rule conjI, metis disjoint_sym partial_add_assoc3 sup2I2)
         apply (rule Suc.hyps)
             apply (metis Suc.prems(1) le_add2 plus_1_eq_Suc safe_step_monoD)
            apply fast
@@ -1093,12 +1003,7 @@ next
 next
   case (rgsat_atom b r p q g pf f q')
   then show ?case
-    apply -
-    apply (clarsimp simp add: sepconj_def[of p f] le_fun_def[of pf] simp del: sup_apply)
-    apply (rule safe_atom[of r p b q])
-    apply (simp add: rel_lift_impl_iff_sp_impl; fail)
-    done
-    sorry
+    by (blast intro: safe_atom)
 next
   case (rgsat_frame c r g p q f f' n)
   then show ?case
@@ -1115,5 +1020,36 @@ next
   ultimately show ?case
     by (meson safe_guarantee_mono safe_postpred_monoD safe_rely_antimonoD)
 qed
+
+
+subsection \<open> Refinement closure \<close>
+
+lemma safe_refinement_mono:
+  \<open>safe n prg hl hs r g q \<Longrightarrow> prg = (Atomic a) \<Longrightarrow> c \<le> a \<Longrightarrow> safe n (Atomic c) hl hs r g q\<close>
+  apply (induct arbitrary: a c rule: safe.inducts)
+   apply force
+  apply (simp add: safe_sucE)
+  apply (rule safe_suc)
+     apply blast
+    apply blast
+   apply (clarsimp simp add: opstep_iff le_fun_def, metis)
+  apply (clarsimp simp add: opstep_iff le_fun_def)
+  done
+
+lemma refinement_atomic_condition1:
+  \<open>b' \<le> b \<Longrightarrow> sp b (wlp R P) s \<le> Q \<Longrightarrow> sp b' (wlp R P) s \<le> Q\<close>
+  using sp_rel_mono
+  by auto
+
+lemma refinement_atomic_condition2:
+  \<open>b' \<le> b \<Longrightarrow> unframe_prop ((=) \<sqinter> rel_lift f) b \<Longrightarrow> unframe_prop ((=) \<sqinter> rel_lift f) b'\<close>
+  oops
+
+lemma
+  \<open>parallel_unframe_prop \<top> \<top> r (r \<squnion> g2) (r \<squnion> g1)\<close>
+  \<open>unframe_prop ((=) \<sqinter> rel_lift (\<lambda>hs. \<exists>hl. f (hl, hs))) r\<close>
+  \<open>\<close>
+  
+  oops
 
 end

@@ -86,7 +86,7 @@ lemmas wsstable_rely_le_monoD = wsstable_rely_le_mono[rotated]
 lemmas wsstable_rely_ge_antimonoD = wsstable_rely_ge_antimono[rotated]
 
 lemma wsstable_rely_mono: \<open>R \<le> S \<Longrightarrow> \<lceil> P \<rceil>\<^bsub>R\<^esub> \<le> \<lceil> P \<rceil>\<^bsub>S\<^esub>\<close>
-  by (simp add: rtranclp_mono wsstable_rel_mono)
+  by (simp add: rtranclp_mono sp_rel_mono)
 
 lemma wsstable_rely_le_antimono:
   \<open>R \<le> S \<Longrightarrow> \<lceil> P \<rceil>\<^bsub>S\<^esub> \<le> Q \<Longrightarrow> \<lceil> P \<rceil>\<^bsub>R\<^esub> \<le> Q\<close>

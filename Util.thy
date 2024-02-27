@@ -1003,7 +1003,7 @@ lemma sp_Inf_determ[simp]:
 
 paragraph \<open> sp relation properties \<close>
 
-lemma wsstable_rel_mono:
+lemma sp_rel_mono:
   \<open>r1 \<le> r2 \<Longrightarrow> sp r1 p \<le> sp r2 p\<close>
   by (force simp add: sp_def)
 

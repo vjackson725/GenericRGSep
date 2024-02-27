@@ -666,8 +666,6 @@ inductive rgsat ::
 | rgsat_ndet:
   \<open>rgsat c1 r g1 p q1 \<Longrightarrow>
     rgsat c2 r g2 p q2 \<Longrightarrow>
-    frame_closed g1 \<Longrightarrow>
-    frame_closed g2 \<Longrightarrow>
     g1 \<le> g \<Longrightarrow> g2 \<le> g \<Longrightarrow>
     q1 \<le> q \<Longrightarrow> q2 \<le> q \<Longrightarrow>
     rgsat (c1 \<^bold>+ c2) r g p q\<close>
@@ -680,10 +678,11 @@ inductive rgsat ::
     sp ((=) \<times>\<^sub>R (r \<squnion> g2)\<^sup>*\<^sup>*) q1 \<^emph> sp ((=) \<times>\<^sub>R (r \<squnion> g1)\<^sup>*\<^sup>*) q2 \<le> q \<Longrightarrow>
     rgsat (s1 \<parallel> s2) r g p q\<close>
 | rgsat_atom:
-  \<open>sp b (wlp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) p) \<le> q \<Longrightarrow>
+  \<open>sp b (wlp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) (p \<squnion> p \<^emph> f)) \<le> sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) (q \<squnion> q \<^emph> f) \<Longrightarrow>
+    unframe_prop ((=) \<sqinter> rel_lift f) b \<Longrightarrow>
     b \<le> \<top> \<times>\<^sub>R g \<Longrightarrow>
-    p' \<le> wlp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) p \<^emph> f \<Longrightarrow>
-    sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) (q \<^emph> f) \<le> q' \<Longrightarrow>
+    p' \<le> wlp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) (p \<squnion> p \<^emph> f) \<Longrightarrow>
+    sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) (q \<squnion> q \<^emph> f) \<le> q' \<Longrightarrow>
     rgsat (Atomic b) r g p' q'\<close>
 | rgsat_frame:
   \<open>rgsat c r g p q \<Longrightarrow>
