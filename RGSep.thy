@@ -589,10 +589,17 @@ subsection \<open> Unframing \<close>
 
 definition
   \<open>unframe_prop f r \<equiv>
-    \<forall>x z xz'. r (x+z) xz' \<longrightarrow> x ## z \<longrightarrow> f z \<longrightarrow> (\<exists>x' z'. f z' \<and> x' ## z' \<and> xz' = x' + z' \<and> r x x')\<close>
+    \<forall>x z xz'.
+      r (x+z) xz' \<longrightarrow>
+      x ## z \<longrightarrow>
+      f z \<longrightarrow>
+      (\<exists>x' z'. f z' \<and> x' ## z' \<and> xz' = x' + z' \<and> r x x')\<close>
 
 lemma unframe_propD:
-  \<open>unframe_prop f r \<Longrightarrow> x ## z \<Longrightarrow> r (x + z) xz' \<Longrightarrow> f z \<Longrightarrow>
+  \<open>unframe_prop f r \<Longrightarrow>
+    x ## z \<Longrightarrow>
+    r (x + z) xz' \<Longrightarrow>
+    f z \<Longrightarrow>
     \<exists>x' z'. f z' \<and> x' ## z' \<and> xz' = x' + z' \<and> r x x'\<close>
   by (simp add: unframe_prop_def)
 
@@ -639,6 +646,11 @@ lemma parallel_unframe_prop_antimono:
 
 section \<open> Rely-Guarantee Separation Logic \<close>
 
+definition sepconj_conj
+  :: \<open>('a::perm_alg \<times> 'b::perm_alg \<Rightarrow> bool) \<Rightarrow> ('a \<times> 'b \<Rightarrow> bool) \<Rightarrow> ('a \<times> 'b \<Rightarrow> bool)\<close>
+  (infixr \<open>\<^emph>\<and>\<close> 70) where
+  \<open>p \<^emph>\<and> q \<equiv> \<lambda>h. \<exists>a b c. a ## b \<and> h = (a + b, c) \<and> p (a, c) \<and> q (b, c)\<close>
+
 inductive rgsat ::
   \<open>('l::perm_alg, 's::perm_alg) comm \<Rightarrow>
     ('s \<Rightarrow> 's \<Rightarrow> bool) \<Rightarrow> ('s \<Rightarrow> 's \<Rightarrow> bool) \<Rightarrow>
@@ -664,10 +676,9 @@ inductive rgsat ::
 | rgsat_parallel:
   \<open>rgsat s1 (r \<squnion> g2) g1 p1 q1 \<Longrightarrow>
     rgsat s2 (r \<squnion> g1) g2 p2 q2 \<Longrightarrow>
-    parallel_unframe_prop \<top> \<top> r (r \<squnion> g2) (r \<squnion> g1) \<Longrightarrow>
     g1 \<le> g \<Longrightarrow> g2 \<le> g \<Longrightarrow>
-    p \<le> p1 \<^emph> p2 \<Longrightarrow>
-    sp ((=) \<times>\<^sub>R (r \<squnion> g2)\<^sup>*\<^sup>*) q1 \<^emph> sp ((=) \<times>\<^sub>R (r \<squnion> g1)\<^sup>*\<^sup>*) q2 \<le> q \<Longrightarrow>
+    p \<le> p1 \<^emph>\<and> p2 \<Longrightarrow>
+    sp ((=) \<times>\<^sub>R (r \<squnion> g2)\<^sup>*\<^sup>*) q1 \<^emph>\<and> sp ((=) \<times>\<^sub>R (r \<squnion> g1)\<^sup>*\<^sup>*) q2 \<le> q \<Longrightarrow>
     rgsat (s1 \<parallel> s2) r g p q\<close>
 | rgsat_atom:
   \<open>sp b (wlp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) (p \<squnion> p \<^emph> f)) \<le> sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) (q \<squnion> q \<^emph> f) \<Longrightarrow>
