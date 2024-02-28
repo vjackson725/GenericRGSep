@@ -35,7 +35,7 @@ instance
             apply (simp add: less_prod_def less_eq_prod_def)
             apply (metis order_antisym_conv partial_le_plus)
            apply (force simp add: less_prod_def less_eq_prod_def)
-          apply (simp add: less_prod_def less_eq_prod_def, metis disjoint_add_swap2 partial_add_assoc2 prod.expand)
+          apply (simp add: less_prod_def less_eq_prod_def, metis disjoint_add_swap_lr partial_add_assoc2 prod.expand)
          apply (metis less_eq_prod_def order_antisym_conv partial_le_plus)
         apply (force simp add: partial_add_assoc)
        apply (force dest: partial_add_commute)

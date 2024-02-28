@@ -38,7 +38,7 @@ lemma framed_subresource_rel_frame_second:
     h ## hf \<Longrightarrow>
     h' ## hf \<Longrightarrow>
     framed_subresource_rel \<top> ha ha' (h + hf) (h' + hf)\<close>
-  using disjoint_add_swap2 partial_add_assoc2
+  using disjoint_add_swap_lr partial_add_assoc2
   by (simp add: framed_subresource_rel_def, meson)
 
 lemma framed_subresource_rel_frame:
@@ -46,7 +46,7 @@ lemma framed_subresource_rel_frame:
     h ## hf \<Longrightarrow>
     h' ## hf \<Longrightarrow>
     framed_subresource_rel \<top> ha ha' (h + hf) (h' + hf)\<close>
-  using disjoint_add_swap2 partial_add_assoc2
+  using disjoint_add_swap_lr partial_add_assoc2
   by (simp add: framed_subresource_rel_def, meson)
 
 lemma framed_subresource_rel_sym:
@@ -201,8 +201,8 @@ lemma frame_with_idem[simp]:
   \<open>(frame (frame r with p) with q) = (frame r with p \<^emph> q)\<close>
   apply (clarsimp simp add: frame_with_def fun_eq_iff framed_subresource_rel_def sepconj_def)
   apply (rule iffI)
-   apply (clarsimp, metis disjoint_add_leftR disjoint_add_swap2 partial_add_assoc2)
-  apply (clarsimp, metis disjoint_add_rightL disjoint_add_swap partial_add_assoc3)
+   apply (clarsimp, metis disjoint_add_leftR disjoint_add_swap_lr partial_add_assoc2)
+  apply (clarsimp, metis disjoint_add_rightL disjoint_add_swap_rl partial_add_assoc3)
   done
 
 lemma wframe_with_idem[simp]:
@@ -214,12 +214,12 @@ lemma wframe_with_idem[simp]:
       apply blast
      apply blast
     apply blast
-   apply (clarsimp, metis disjoint_add_rightR disjoint_add_swap2 disjoint_sym partial_add_assoc2)
+   apply (clarsimp, metis disjoint_add_rightR disjoint_add_swap_lr disjoint_sym partial_add_assoc2)
   apply (elim disjE conjE exE)
      apply blast
     apply blast
    apply blast
-  apply (clarsimp, metis disjoint_add_rightL disjoint_add_swap partial_add_assoc3)
+  apply (clarsimp, metis disjoint_add_rightL disjoint_add_swap_rl partial_add_assoc3)
   done
 
 lemma wframe_frame_with_idem[simp]:
@@ -229,10 +229,10 @@ lemma wframe_frame_with_idem[simp]:
   apply (rule iffI)
    apply (elim disjE conjE exE)
     apply blast
-   apply (clarsimp, metis disjoint_add_rightR disjoint_add_swap2 disjoint_sym partial_add_assoc2)
+   apply (clarsimp, metis disjoint_add_rightR disjoint_add_swap_lr disjoint_sym partial_add_assoc2)
   apply (elim disjE conjE exE)
    apply blast
-  apply (clarsimp, metis disjoint_add_rightL disjoint_add_swap partial_add_assoc3)
+  apply (clarsimp, metis disjoint_add_rightL disjoint_add_swap_rl partial_add_assoc3)
   done
 
 lemma frame_wframe_with_idem[simp]:
@@ -242,10 +242,10 @@ lemma frame_wframe_with_idem[simp]:
   apply (rule iffI)
    apply (elim disjE conjE exE)
     apply blast
-   apply (clarsimp, metis disjoint_add_rightR disjoint_add_swap2 disjoint_sym partial_add_assoc2)
+   apply (clarsimp, metis disjoint_add_rightR disjoint_add_swap_lr disjoint_sym partial_add_assoc2)
   apply (elim disjE conjE exE)
    apply blast
-  apply (clarsimp, metis disjoint_add_rightL disjoint_add_swap partial_add_assoc3)
+  apply (clarsimp, metis disjoint_add_rightL disjoint_add_swap_rl partial_add_assoc3)
   done
 
 

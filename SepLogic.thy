@@ -199,17 +199,25 @@ lemma disjoint_add_left_commute2:
   \<open>a ## b \<Longrightarrow> a + b ## c \<Longrightarrow> a + c ## b\<close>
   by (metis disjoint_add_leftR disjoint_add_left_commute partial_add_commute)
 
-lemma disjoint_add_swap:
+lemma disjoint_add_swap_rl:
   \<open>b ## c \<Longrightarrow> a ## b + c \<Longrightarrow> a + b ## c\<close>
   by (simp add: disjoint_sym_iff disjoint_add_right_commute partial_add_commute)
 
-lemma disjoint_add_swap2:
+lemma disjoint_add_swap_rl2:
+  \<open>b ## c \<Longrightarrow> a ## b + c \<Longrightarrow> a + c ## b\<close>
+  by (simp add: disjoint_sym_iff disjoint_add_right_commute partial_add_commute)
+
+lemma disjoint_add_swap_lr:
   \<open>a ## b \<Longrightarrow> a + b ## c \<Longrightarrow> a ## b + c\<close>
   by (simp add: disjoint_add_right_commute2 disjoint_sym_iff partial_add_commute)
 
+lemma disjoint_add_swap_lr2:
+  \<open>a ## c \<Longrightarrow> a + c ## b \<Longrightarrow> a ## b + c\<close>
+  by (metis disjoint_add_left_commute disjoint_sym_iff)
+
 lemma disjoint_middle_swap:
   \<open>a ## b \<Longrightarrow> a + b ## c \<Longrightarrow> a + b + c ## d \<Longrightarrow> a + c ## b + d\<close>
-  by (metis disjoint_add_leftR disjoint_add_right_commute2 disjoint_add_swap2 disjoint_sym_iff
+  by (metis disjoint_add_leftR disjoint_add_right_commute2 disjoint_add_swap_lr disjoint_sym_iff
       partial_add_assoc)
 
 lemma disjoint_middle_swap2:
@@ -270,7 +278,7 @@ lemma partial_add_double_assoc:
 lemma sepadd_left_mono:
   \<open>a ## b \<Longrightarrow> a ## c \<Longrightarrow> b \<le> c \<Longrightarrow> a + b \<le> a + c\<close>
   by (simp add: le_iff_sepadd_weak,
-      metis disjoint_add_rightR disjoint_add_swap partial_add_assoc)
+      metis disjoint_add_rightR disjoint_add_swap_rl partial_add_assoc)
 
 lemma sepadd_right_mono: \<open>a ## c \<Longrightarrow> b ## c \<Longrightarrow> a \<le> b \<Longrightarrow> a + c \<le> b + c\<close>
   by (metis disjoint_sym_iff partial_add_commute sepadd_left_mono)
@@ -412,7 +420,7 @@ lemma core_idem:
 lemma core_disjoint:
   \<open>has_core a \<Longrightarrow> the_core a ## a\<close>
   apply (clarsimp simp add: core_rel_def)
-  apply (metis disjoint_add_swap2 le_iff_sepadd_weak sepadd_dup_def)
+  apply (metis disjoint_add_swap_lr le_iff_sepadd_weak sepadd_dup_def)
   done
 
 lemma core_plus_same[simp]:
@@ -444,7 +452,7 @@ lemma has_core_mono_iff:
 lemma core_rel_additive:
   \<open>x ## y \<Longrightarrow> core_rel x x \<Longrightarrow> core_rel y y \<Longrightarrow> core_rel (x + y) (x + y)\<close>
   unfolding sepadd_dup_def core_rel_def
-  by (metis disjoint_add_swap disjoint_middle_swap order_refl partial_add_double_assoc)
+  by (metis disjoint_add_swap_rl disjoint_middle_swap order_refl partial_add_double_assoc)
 
 lemma core_rel_mono:
   \<open>x ## y \<Longrightarrow> core_rel x cx \<Longrightarrow> core_rel y cy \<Longrightarrow> core_rel (x + y) cxy \<Longrightarrow> cx + cy \<le> cxy\<close>
@@ -1017,7 +1025,7 @@ lemma compatible_unit_disjoint[dest]:
   \<open>compatible u a \<Longrightarrow> sepadd_unit u \<Longrightarrow> a ## u\<close>
   apply (induct rule: compatible_induct)
    apply force
-  apply (metis disjoint_add_swap2 disjoint_preservation2 disjoint_sym le_iff_sepadd_weak
+  apply (metis disjoint_add_swap_lr disjoint_preservation2 disjoint_sym le_iff_sepadd_weak
       partial_add_commute sepadd_unit_right)
   done
 
@@ -1025,7 +1033,7 @@ lemma compatible_unit_disjoint2[dest]:
   \<open>compatible a u \<Longrightarrow> sepadd_unit u \<Longrightarrow> a ## u\<close>
   apply (induct rule: converse_compatible_induct)
    apply force
-  apply (metis disjoint_add_swap2 disjoint_preservation2 disjoint_sym le_iff_sepadd_weak
+  apply (metis disjoint_add_swap_lr disjoint_preservation2 disjoint_sym le_iff_sepadd_weak
       partial_add_commute sepadd_unit_right)
   done
 
@@ -1662,10 +1670,10 @@ proof (intro conjI allI impI)
   proof -
     have \<open>b ## a + a\<close>
       using assms
-      by (simp add: disjoint_add_swap disjoint_sym)
+      by (simp add: disjoint_add_swap_rl disjoint_sym)
     moreover have \<open>b + a = b + (a + a)\<close>
       using assms
-      by (metis partial_add_assoc3 partial_add_commute disjoint_add_swap disjoint_sym)
+      by (metis partial_add_assoc3 partial_add_commute disjoint_add_swap_rl disjoint_sym)
     ultimately show ?thesis
       using assms
       by (simp add: disjoint_sym_iff)
