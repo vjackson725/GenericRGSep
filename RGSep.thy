@@ -603,7 +603,6 @@ lemma unframe_propD:
     \<exists>x' z'. f z' \<and> x' ## z' \<and> xz' = x' + z' \<and> r x x'\<close>
   by (simp add: unframe_prop_def)
 
-
 definition
   \<open>weak_unframe_prop f r \<equiv>
     \<forall>x z xz'. r (x+z) xz' \<longrightarrow> x ## z \<longrightarrow> f z \<longrightarrow> (\<exists>x' z'. f z' \<and> x' ## z' \<and> xz' = x' + z')\<close>
@@ -617,32 +616,42 @@ lemma weak_unframe_prop_rel_antimono:
   \<open>r1 \<le> r2 \<Longrightarrow> weak_unframe_prop \<ff> r2 \<Longrightarrow> weak_unframe_prop \<ff> r1\<close>
   by (fastforce simp add: weak_unframe_prop_def)
 
-(*
-subsection \<open> Parallel unframing \<close>
+subsection \<open> Left unframing \<close>
 
 definition
-  \<open>parallel_unframe_prop \<ff>1 \<ff>2 r gx gy \<equiv>
-    \<forall>x y xy'. r (x+y) xy' \<longrightarrow> x ## y \<longrightarrow>
-      (\<exists>x' y'. \<ff>1 x x' \<and> \<ff>2 y y' \<and> x' ## y' \<and> xy' = x' + y' \<and> gx x x' \<and> gy y y')\<close>
+  \<open>left_unframe_prop f r \<equiv>
+    \<forall>x xf x'xf' y y'.
+      r (x+xf, y) (x'xf', y') \<longrightarrow>
+      x ## xf \<longrightarrow>
+      f xf \<longrightarrow>
+      (\<exists>x' xf'. f xf' \<and> x' ## xf' \<and> x'xf' = x' + xf' \<and> r (x, y) (x', y'))\<close>
 
-lemma parallel_unframe_propD:
-  \<open>parallel_unframe_prop \<ff>1 \<ff>2 r gx gy \<Longrightarrow> x ## y \<Longrightarrow> r (x + y) xy' \<Longrightarrow>
-    (\<exists>x' y'. \<ff>1 x x' \<and> \<ff>2 y y' \<and> x' ## y' \<and> xy' = x' + y' \<and> gx x x' \<and> gy y y')\<close>
-  by (simp add: parallel_unframe_prop_def)
+lemma left_unframe_propD:
+  \<open>left_unframe_prop f r \<Longrightarrow>
+    r (x+xf, y) (x'xf', y') \<Longrightarrow>
+    x ## xf \<Longrightarrow>
+    f xf \<Longrightarrow>
+    (\<exists>x' xf'. f xf' \<and> x' ## xf' \<and> x'xf' = x' + xf' \<and> r (x, y) (x', y'))\<close>
+  by (simp add: left_unframe_prop_def)
 
-lemma parallel_unframe_prop_mono:
-  \<open>\<ff>1a \<le> \<ff>1b \<Longrightarrow>
-    \<ff>2a \<le> \<ff>2b \<Longrightarrow>
-    gxa \<le> gxb \<Longrightarrow>
-    gya \<le> gyb \<Longrightarrow>
-    parallel_unframe_prop \<ff>1a \<ff>2a r gxa gya \<Longrightarrow>
-    parallel_unframe_prop \<ff>1b \<ff>2b r gxb gyb\<close>
-  by (simp add: parallel_unframe_prop_def le_fun_def, meson)
+subsection \<open> Left unframing \<close>
 
-lemma parallel_unframe_prop_antimono:
-  \<open>rb \<le> ra \<Longrightarrow> parallel_unframe_prop \<ff>1 \<ff>2 ra gx gy \<Longrightarrow> parallel_unframe_prop \<ff>1 \<ff>2 rb gx gy\<close>
-  by (fastforce simp add: parallel_unframe_prop_def le_fun_def)
-*)
+definition
+  \<open>weak_left_unframe_prop f r \<equiv>
+    \<forall>x xf x'xf' y y'.
+      r (x+xf, y) (x'xf', y') \<longrightarrow>
+      x ## xf \<longrightarrow>
+      f xf \<longrightarrow>
+      (\<exists>x' xf'. f xf' \<and> x' ## xf' \<and> x'xf' = x' + xf')\<close>
+
+lemma weak_left_unframe_propD:
+  \<open>weak_left_unframe_prop f r \<Longrightarrow>
+    r (x+xf, y) (x'xf', y') \<Longrightarrow>
+    x ## xf \<Longrightarrow>
+    f xf \<Longrightarrow>
+    (\<exists>x' xf'. f xf' \<and> x' ## xf' \<and> x'xf' = x' + xf')\<close>
+  by (simp add: weak_left_unframe_prop_def, blast)
+
 
 subsection \<open> Atomic unframing \<close>
 
@@ -704,6 +713,7 @@ inductive rgsat ::
     rgsat (Atomic b) r g p' q'\<close>
 | rgsat_frame:
   \<open>rgsat c r g p q \<Longrightarrow>
+    all_atom_comm (weak_left_unframe_prop f) c \<Longrightarrow>
     sp ((=) \<times>\<^sub>R (r \<squnion> g)\<^sup>*\<^sup>*) (f \<times>\<^sub>P \<top>) \<le> f' \<Longrightarrow>
     rgsat c r g (p \<^emph>\<and> (f \<times>\<^sub>P \<top>)) (q \<^emph>\<and> f')\<close>
 | rgsat_weaken:
