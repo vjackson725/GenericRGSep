@@ -1,6 +1,38 @@
 theory Soundness2
-  imports RGSep
+  imports RGLogic
 begin
+
+lemma framed_rel_step_wsstable:
+  \<open>framed_subresource_rel f hs hs' h h' \<Longrightarrow>
+    r hs hs' \<Longrightarrow>
+    (\<lceil> p \<rceil>\<^bsub>frame r with f\<^esub>) h \<Longrightarrow>
+    (\<lceil> p \<rceil>\<^bsub>frame r with f\<^esub>) h'\<close>
+  using rtranclp.rtrancl_into_rtrancl[of \<open>frame r with f\<close>]
+  by (simp add: frame_with_def sp_def, blast)
+
+lemma framed_rel_step_swstable:
+  \<open>framed_subresource_rel f hs hs' h h' \<Longrightarrow>
+    r hs hs' \<Longrightarrow>
+    (\<lfloor> p \<rfloor>\<^bsub>frame r with f\<^esub>) h \<Longrightarrow>
+    (\<lfloor> p \<rfloor>\<^bsub>frame r with f\<^esub>) h'\<close>
+  using converse_rtranclp_into_rtranclp[of \<open>frame r with f\<close>]
+  by (simp add: frame_with_def wlp_def, blast)
+
+lemma weak_framed_rel_step_wsstable:
+  \<open>weak_framed_subresource_rel f hs hs' h h' \<Longrightarrow>
+    r hs hs' \<Longrightarrow>
+    (\<lceil> p \<rceil>\<^bsub>wframe r with f\<^esub>) h \<Longrightarrow>
+    (\<lceil> p \<rceil>\<^bsub>wframe r with f\<^esub>) h'\<close>
+  using rtranclp.rtrancl_into_rtrancl[of \<open>wframe r with f\<close>]
+  by (simp add: wframe_with_def sp_def, blast)
+
+lemma weak_framed_rel_step_swstable:
+  \<open>weak_framed_subresource_rel f hs hs' h h' \<Longrightarrow>
+    r hs hs' \<Longrightarrow>
+    (\<lfloor> p \<rfloor>\<^bsub>wframe r with f\<^esub>) h \<Longrightarrow>
+    (\<lfloor> p \<rfloor>\<^bsub>wframe r with f\<^esub>) h'\<close>
+  using converse_rtranclp_into_rtranclp[of \<open>wframe r with f\<close>]
+  by (simp add: wframe_with_def wlp_def, blast)
 
 subsection \<open> Seperation algebras + relations \<close>
 

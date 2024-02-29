@@ -1,5 +1,5 @@
-theory RGSep
-  imports Stabilisation
+theory RGLogic
+  imports SepAlgInstances
 begin
 
 subsection \<open> Framed step relation \<close>
@@ -124,22 +124,6 @@ lemma frame_with_frame_leftI:
   apply (meson disjoint_sym_iff partial_add_commute)
   done
 
-lemma framed_rel_step_wsstable:
-  \<open>framed_subresource_rel f hs hs' h h' \<Longrightarrow>
-    r hs hs' \<Longrightarrow>
-    (\<lceil> p \<rceil>\<^bsub>frame r with f\<^esub>) h \<Longrightarrow>
-    (\<lceil> p \<rceil>\<^bsub>frame r with f\<^esub>) h'\<close>
-  using rtranclp.rtrancl_into_rtrancl[of \<open>frame r with f\<close>]
-  by (simp add: frame_with_def sp_def, blast)
-
-lemma framed_rel_step_swstable:
-  \<open>framed_subresource_rel f hs hs' h h' \<Longrightarrow>
-    r hs hs' \<Longrightarrow>
-    (\<lfloor> p \<rfloor>\<^bsub>frame r with f\<^esub>) h \<Longrightarrow>
-    (\<lfloor> p \<rfloor>\<^bsub>frame r with f\<^esub>) h'\<close>
-  using converse_rtranclp_into_rtranclp[of \<open>frame r with f\<close>]
-  by (simp add: frame_with_def wlp_def, blast)
-
 
 subsection \<open> Weak relation framing \<close>
 
@@ -180,22 +164,6 @@ lemma wframe_with_frame_leftI:
   apply (simp add: wframe_with_def weak_framed_subresource_rel_def framed_subresource_rel_def)
   apply (meson disjoint_sym_iff partial_add_commute)
   done
-
-lemma weak_framed_rel_step_wsstable:
-  \<open>weak_framed_subresource_rel f hs hs' h h' \<Longrightarrow>
-    r hs hs' \<Longrightarrow>
-    (\<lceil> p \<rceil>\<^bsub>wframe r with f\<^esub>) h \<Longrightarrow>
-    (\<lceil> p \<rceil>\<^bsub>wframe r with f\<^esub>) h'\<close>
-  using rtranclp.rtrancl_into_rtrancl[of \<open>wframe r with f\<close>]
-  by (simp add: wframe_with_def sp_def, blast)
-
-lemma weak_framed_rel_step_swstable:
-  \<open>weak_framed_subresource_rel f hs hs' h h' \<Longrightarrow>
-    r hs hs' \<Longrightarrow>
-    (\<lfloor> p \<rfloor>\<^bsub>wframe r with f\<^esub>) h \<Longrightarrow>
-    (\<lfloor> p \<rfloor>\<^bsub>wframe r with f\<^esub>) h'\<close>
-  using converse_rtranclp_into_rtranclp[of \<open>wframe r with f\<close>]
-  by (simp add: wframe_with_def wlp_def, blast)
 
 lemma frame_with_idem[simp]:
   \<open>(frame (frame r with p) with q) = (frame r with p \<^emph> q)\<close>
@@ -303,6 +271,9 @@ end
 
 
 section \<open> frame consistency predicates \<close>
+
+context perm_alg
+begin
 
 subsection \<open> Frame maintains \<close>
 
@@ -443,6 +414,8 @@ definition
   \<open>frame_step_subframe f r \<equiv>
     \<forall>hf. f hf \<longrightarrow> (\<forall>x yf. x ## hf \<longrightarrow> r (x + hf) yf \<longrightarrow> (\<exists>y. r x y))\<close>
 
+end
+
 
 section \<open> Language Definition \<close>
 
@@ -501,10 +474,10 @@ lemma less_eq_comm_subexprsD:
 lemma less_eq_comm_antisym: \<open>(x::('l,'s) comm) \<le> y \<Longrightarrow> y \<le> x \<Longrightarrow> x = y\<close>
   apply (induct y arbitrary: x)
        apply (simp; fail)+
-      apply (metis RGSep.less_eq_comm_subexprsD(1,2) less_eq_comm.simps(2))
-     apply (metis RGSep.less_eq_comm_subexprsD(5,6) less_eq_comm.simps(3))
-    apply (metis RGSep.less_eq_comm_subexprsD(3,4) less_eq_comm.simps(4))
-   apply (metis RGSep.less_eq_comm_subexprsD(7) less_eq_comm.simps(5))
+      apply (metis RGLogic.less_eq_comm_subexprsD(1,2) less_eq_comm.simps(2))
+     apply (metis RGLogic.less_eq_comm_subexprsD(5,6) less_eq_comm.simps(3))
+    apply (metis RGLogic.less_eq_comm_subexprsD(3,4) less_eq_comm.simps(4))
+   apply (metis RGLogic.less_eq_comm_subexprsD(7) less_eq_comm.simps(5))
   apply (simp; fail)
   done
 
@@ -730,17 +703,6 @@ lemma rgsat_iter':
   \<open>rgsat c r g (sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) i) i \<Longrightarrow> rgsat (c\<^sup>\<star>) r g i (sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) i)\<close>
   using rgsat_iter[OF _ order.refl order.refl order.refl order.refl]
   by blast
-
-lemma frame_conj_helper:
-  fixes p1 :: \<open>'a::cancel_perm_alg \<Rightarrow> bool\<close>
-  assumes precise_f: \<open>\<And>h h'. (\<lceil> f \<rceil>\<^bsub>r1\<^esub>) h \<Longrightarrow> (\<lceil> f \<rceil>\<^bsub>r2\<^esub>) h' \<Longrightarrow> h' = h\<close>
-  shows \<open>p1 \<^emph> \<lceil> f \<rceil>\<^bsub>r1\<^esub> \<sqinter> p2 \<^emph> \<lceil> f \<rceil>\<^bsub>r2\<^esub> \<le> (p1 \<sqinter> p2) \<^emph> \<lceil> f \<rceil>\<^bsub>r1 \<squnion> r2\<^esub>\<close>
-  apply (clarsimp simp add: sepconj_def)
-  apply (rename_tac h1a h1b h2a h2b)
-  apply (frule(1) precise_f)
-  apply simp
-  apply (metis precise_f predicate1D sp_def wsstable_stronger)
-  done
 
 lemma backwards_done:
   \<open>rgsat Skip r g (wlp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) p) p\<close>

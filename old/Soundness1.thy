@@ -1,5 +1,5 @@
 theory Soundness1
-  imports RGSep
+  imports RGLogic
 begin
 
 section \<open> Operational Semantics \<close>

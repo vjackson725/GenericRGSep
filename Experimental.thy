@@ -1,11 +1,6 @@
 theory Experimental
-  imports RGSep PermHeap
+  imports Soundness
 begin
-
-lemma (in sep_alg)
-  \<open>\<forall>a. \<exists>b. a + b = 0\<close>
-  nitpick
-  oops
 
 context perm_alg
 begin
@@ -16,12 +11,13 @@ definition sepadd_irr :: \<open>'a \<Rightarrow> bool\<close> where
 
 definition \<open>foundation a \<equiv> {j. j \<le> a \<and> sepadd_irr j}\<close>
 
-definition \<open>frame_closed b \<equiv> (\<forall>x y f. b x y \<longrightarrow> x ## f \<longrightarrow> y ## f \<longrightarrow> b (x + f) (y + f))\<close>
-definition \<open>framecl r \<equiv> (\<lambda>a b. (\<exists>x y. r x y \<and> framed_subresource_rel x y a b))\<close>
+definition \<open>framecl r \<equiv> (\<lambda>a b. (\<exists>x y. r x y \<and> framed_subresource_rel \<top> x y a b))\<close>
 
 lemma framecl_frame_closed:
   \<open>frame_closed (framecl b)\<close>
-  by (force simp add: frame_closed_def framecl_def intro: framed_subresource_rel_frame)
+  apply (clarsimp simp add: frame_pred_closed_def framecl_def framed_subresource_rel_def)
+  apply (metis partial_add_assoc2 disjoint_add_swap_lr)
+  done
 
 end
 
@@ -170,7 +166,7 @@ definition
       ) \<and> frame_closed b\<close>
 
 definition
-  \<open>rgsep_rely S \<equiv> (\<lambda>a b. \<exists>x y. (x, y) \<in> S \<and> framed_subresource_rel x y a b)\<^sup>*\<^sup>*\<close>
+  \<open>rgsep_rely S \<equiv> (\<lambda>a b. \<exists>x y. (x, y) \<in> S \<and> framed_subresource_rel \<top> x y a b)\<^sup>*\<^sup>*\<close>
 
 definition
   \<open>good_rely b \<equiv>
@@ -180,6 +176,7 @@ definition
       ) \<and>
       (\<forall>x y f. b x y \<longrightarrow> x ## f \<longrightarrow> y ## f \<longrightarrow> b (x + f) (y + f))\<close>
 
+(*
 lemma wsstable_sepconj_semidistrib_backwards:
   \<open>r = rgsep_rely S \<Longrightarrow>
     S = {a} \<Longrightarrow>
@@ -250,7 +247,7 @@ lemma (in inf_perm_alg) wsstable_semidistrib_disjoint_pre_state_strong2:
   apply (insert wsstable_semidistrib_disjoint_pre_state_strong[of P Q r])
   apply (metis changedom_rtranclp compatible_refl sepinf_idem)
   done
-
+*)
 
 (* The situation that we want to prove is
    { pa \<^emph> pb \<^emph> pc              }
@@ -284,7 +281,7 @@ lemma (in perm_alg) wsstable_semidistrib_realistic:
   nitpick
   oops
 
-
+(*
 class finite_sep_alg = distrib_sep_alg +
   assumes finite_univ: \<open>finite (UNIV :: 'a set)\<close>
   fixes \<II> :: \<open>'a set\<close>
@@ -296,6 +293,32 @@ lemma \<open>sepadd_irr a \<Longrightarrow> sepadd_irr b \<Longrightarrow> a \<n
   by (metis disjoint_preservation disjoint_sym dual_order.antisym le_iff_sepadd)
 
 end
+*)
+
+
+subsection \<open> Refinement closure \<close>
+
+lemma safe_refinement_mono:
+  \<open>safe n prg hl hs r g q \<Longrightarrow> prg = (Atomic a) \<Longrightarrow> c \<le> a \<Longrightarrow> safe n (Atomic c) hl hs r g q\<close>
+  apply (induct arbitrary: a c rule: safe.inducts)
+   apply force
+  apply (simp add: safe_sucE)
+  apply (rule safe_suc)
+        apply blast
+       apply blast
+      apply (clarsimp simp add: opstep_iff le_fun_def; fail)
+     apply (clarsimp simp add: opstep_iff le_fun_def, metis)
+    apply (clarsimp simp add: opstep_iff le_fun_def, metis)
+  done
+
+lemma refinement_atomic_condition1:
+  \<open>b' \<le> b \<Longrightarrow> sp b (wlp R P) s \<le> Q \<Longrightarrow> sp b' (wlp R P) s \<le> Q\<close>
+  using sp_rel_mono
+  by auto
+
+lemma refinement_atomic_condition2:
+  \<open>b' \<le> b \<Longrightarrow> unframe_prop f b \<Longrightarrow> unframe_prop f b'\<close>
+  oops
 
 
 end

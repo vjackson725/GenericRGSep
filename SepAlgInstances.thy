@@ -1,4 +1,4 @@
-theory SepLogicInstances
+theory SepAlgInstances
   imports SepLogic
 begin
 
