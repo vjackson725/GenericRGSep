@@ -630,15 +630,22 @@ subsection \<open> Atomic unframing \<close>
 
 definition
   \<open>atom_unframe_prop b xy \<equiv>
-    (\<forall>xf xxfy'.
-      b (xy +\<^sub>L xf) xxfy' \<longrightarrow> fst xy ## xf \<longrightarrow>
-      (\<exists>xy'. fst xy' ## xf \<and> xxfy' = xy' +\<^sub>L xf \<and> b xy xy'))
+    (\<forall>xf xy'xf.
+      b (xy +\<^sub>L xf) xy'xf \<longrightarrow> fst xy ## xf \<longrightarrow>
+      (\<exists>xy'. fst xy' ## xf \<and> xy'xf = xy' +\<^sub>L xf \<and> b xy xy'))
     \<comment> \<open> \<and> (\<forall>yf xyyf'.
       b (xy +R yf) xyyf' \<longrightarrow> snd xy ## yf \<longrightarrow>
       (\<exists>xy'. snd xy' ## yf \<and> xyyf' = xy' +R yf \<and> b xy xy')) \<and>
     (\<forall>xyf xyxyf'.
       b (xy + xyf) xyxyf' \<longrightarrow> xy ## xyf \<longrightarrow>
       (\<exists>xy'. xy' ## xyf \<and> xyxyf' = xy' + xyf \<and> b xy xy')) \<close>\<close>
+
+lemma atom_unframe_propD:
+  \<open>atom_unframe_prop b xy \<Longrightarrow>
+    b (xy +\<^sub>L xf) xy'xf \<Longrightarrow>
+    fst xy ## xf \<Longrightarrow>
+    (\<exists>xy'. fst xy' ## xf \<and> xy'xf = xy' +\<^sub>L xf \<and> b xy xy')\<close>
+  by (cases xy'xf, clarsimp simp add: atom_unframe_prop_def)
 
 
 section \<open> Rely-Guarantee Separation Logic \<close>

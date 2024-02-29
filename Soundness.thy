@@ -635,13 +635,13 @@ next
       apply (clarsimp simp add: opstep_iff atom_unframe_prop_def le_fun_def
         simp del: top_apply sup_apply, blast) *)
       (* Opstep guarantee 3 *)
-     apply (clarsimp simp add: opstep_iff atom_unframe_prop_def le_fun_def
-        simp del: sup_apply)
+     apply (clarsimp simp add: opstep_iff le_fun_def simp del: sup_apply)
     apply (drule spec, drule mp, rule rtranclp.rtrancl_refl)
-    apply (drule spec2, drule spec, drule mp, fast, drule mp, fast)
+    apply (drule atom_unframe_propD, force, force)
     apply clarsimp
     apply (intro exI conjI, fast, fast)
     apply (rule safe_skip')
+    (* we use the results of strong unframing right here *)
     apply (simp add: sp_def[of b] imp_ex_conjL; fail)
       (* (* Opstep guarantee 4 *)
     apply (clarsimp simp add: opstep_iff atom_unframe_prop_def le_fun_def
