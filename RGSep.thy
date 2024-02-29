@@ -617,7 +617,7 @@ lemma weak_unframe_prop_rel_antimono:
   \<open>r1 \<le> r2 \<Longrightarrow> weak_unframe_prop \<ff> r2 \<Longrightarrow> weak_unframe_prop \<ff> r1\<close>
   by (fastforce simp add: weak_unframe_prop_def)
 
-
+(*
 subsection \<open> Parallel unframing \<close>
 
 definition
@@ -642,6 +642,21 @@ lemma parallel_unframe_prop_mono:
 lemma parallel_unframe_prop_antimono:
   \<open>rb \<le> ra \<Longrightarrow> parallel_unframe_prop \<ff>1 \<ff>2 ra gx gy \<Longrightarrow> parallel_unframe_prop \<ff>1 \<ff>2 rb gx gy\<close>
   by (fastforce simp add: parallel_unframe_prop_def le_fun_def)
+*)
+
+subsection \<open> Atomic unframing \<close>
+
+definition
+  \<open>atom_unframe_prop b xy \<equiv>
+    (\<forall>xf xxfy'.
+      b (xy +\<^sub>L xf) xxfy' \<longrightarrow> fst xy ## xf \<longrightarrow>
+      (\<exists>xy'. fst xy' ## xf \<and> xxfy' = xy' +\<^sub>L xf \<and> b xy xy'))
+    \<comment> \<open> \<and> (\<forall>yf xyyf'.
+      b (xy +R yf) xyyf' \<longrightarrow> snd xy ## yf \<longrightarrow>
+      (\<exists>xy'. snd xy' ## yf \<and> xyyf' = xy' +R yf \<and> b xy xy')) \<and>
+    (\<forall>xyf xyxyf'.
+      b (xy + xyf) xyxyf' \<longrightarrow> xy ## xyf \<longrightarrow>
+      (\<exists>xy'. xy' ## xyf \<and> xyxyf' = xy' + xyf \<and> b xy xy')) \<close>\<close>
 
 
 section \<open> Rely-Guarantee Separation Logic \<close>
@@ -682,16 +697,15 @@ inductive rgsat ::
     rgsat (s1 \<parallel> s2) r g p q\<close>
 | rgsat_atom:
   \<open>sp b (wlp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) (p \<squnion> p \<^emph> f)) \<le> sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) (q \<squnion> q \<^emph> f) \<Longrightarrow>
-    unframe_prop f b \<Longrightarrow>
+    \<forall>st. p' st \<longrightarrow> ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) st \<le> atom_unframe_prop b \<Longrightarrow>
     b \<le> \<top> \<times>\<^sub>R g \<Longrightarrow>
     p' \<le> wlp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) (p \<squnion> p \<^emph> f) \<Longrightarrow>
     sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) (q \<squnion> q \<^emph> f) \<le> q' \<Longrightarrow>
     rgsat (Atomic b) r g p' q'\<close>
 | rgsat_frame:
   \<open>rgsat c r g p q \<Longrightarrow>
-    unframe_prop (\<lambda>hs. \<exists>hl. f (hl, hs)) r \<Longrightarrow>
-    sp ((=) \<times>\<^sub>R (r \<squnion> g)\<^sup>*\<^sup>*) f \<le> f' \<Longrightarrow>
-    rgsat c r g (p \<^emph> f) (q \<^emph> f')\<close>
+    sp ((=) \<times>\<^sub>R (r \<squnion> g)\<^sup>*\<^sup>*) (f \<times>\<^sub>P \<top>) \<le> f' \<Longrightarrow>
+    rgsat c r g (p \<^emph>\<and> (f \<times>\<^sub>P \<top>)) (q \<^emph>\<and> f')\<close>
 | rgsat_weaken:
   \<open>rgsat c r' g' p' q' \<Longrightarrow>
     p \<le> p' \<Longrightarrow> q' \<le> q \<Longrightarrow> r \<le> r' \<Longrightarrow> g' \<le> g \<Longrightarrow>

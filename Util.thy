@@ -86,6 +86,24 @@ lemma pred_Times_almost_assoc:
   \<open>((p1 \<times>\<^sub>P p2) \<times>\<^sub>P p3) ((a,b),c) = (p1 \<times>\<^sub>P p2 \<times>\<^sub>P p3) (a,b,c)\<close>
   by (simp add: pred_Times_iff)
 
+subsubsection \<open> Tuples \<close>
+
+abbreviation plus_right_fst :: \<open>'a::plus \<times> 'b \<Rightarrow> 'a \<Rightarrow> 'a \<times> 'b\<close> (infixl \<open>+\<^sub>L\<close> 65) where
+  \<open>plus_right_fst xy a \<equiv> apfst (\<lambda>z. z + a) xy\<close>
+
+abbreviation plus_right_snd :: \<open>'a \<times> 'b::plus \<Rightarrow> 'b \<Rightarrow> 'a \<times> 'b\<close> (infixl \<open>+\<^sub>R\<close> 65) where
+  \<open>plus_right_snd xy a \<equiv> apsnd (\<lambda>z. z + a) xy\<close>
+
+lemma plus_right_fst_accum[simp]:
+  fixes x :: \<open>'a :: semigroup_add\<close>
+  shows \<open>(xy +\<^sub>L x) +\<^sub>L x' = xy +\<^sub>L (x + x')\<close>
+  by (cases xy, simp add: add.assoc)
+
+lemma plus_right_snd_accum[simp]:
+  fixes y :: \<open>'a :: semigroup_add\<close>
+  shows \<open>(xy +\<^sub>R y) +\<^sub>R y' = xy +\<^sub>R (y + y')\<close>
+  by (cases xy, simp add: add.assoc)
+
 
 subsection \<open> datatypes \<close>
 

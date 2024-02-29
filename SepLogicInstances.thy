@@ -97,6 +97,27 @@ instance
 
 end
 
+subsubsection \<open> extend part-addition to perm_alg-s \<close>
+
+lemma perm_alg_plus_fst_accum[simp]:
+  fixes x :: \<open>'a :: perm_alg\<close>
+  shows \<open>fst xy ## x \<Longrightarrow> fst xy ## x' \<Longrightarrow> x ## x' \<Longrightarrow> (xy +\<^sub>L x) +\<^sub>L x' = xy +\<^sub>L (x + x')\<close>
+  by (cases xy, simp add: partial_add_assoc)
+
+lemma perm_alg_plus_snd_accum[simp]:
+  fixes y :: \<open>'a :: perm_alg\<close>
+  shows \<open>snd xy ## y \<Longrightarrow> snd xy ## y' \<Longrightarrow> y ## y' \<Longrightarrow> (xy +\<^sub>R y) +\<^sub>R y' = xy +\<^sub>R (y + y')\<close>
+  by (cases xy, simp add: partial_add_assoc)
+
+lemma perm_alg_plus_fst_plus_snd_eq[simp]:
+  fixes y :: \<open>'a :: perm_alg\<close>
+  shows
+    \<open>xy +\<^sub>L x +\<^sub>R y = xy + (x, y)\<close>
+    \<open>xy +\<^sub>R y +\<^sub>L x = xy + (x, y)\<close>
+  by simp+
+
+
+subsection \<open> unit \<close>
 
 instantiation unit :: perm_alg
 begin

@@ -564,51 +564,6 @@ lemma safe_skip:
 
 subsection \<open> Safety of Atomic \<close>
 
-abbreviation plus_fst :: \<open>'a::plus \<times> 'b \<Rightarrow> 'a \<Rightarrow> 'a \<times> 'b\<close> (infixl \<open>+\<^sub>L\<close> 65) where
-  \<open>plus_fst xy a \<equiv> apfst (\<lambda>z. z + a) xy\<close>
-
-abbreviation plus_snd :: \<open>'a \<times> 'b::plus \<Rightarrow> 'b \<Rightarrow> 'a \<times> 'b\<close> (infixl \<open>+\<^sub>R\<close> 65) where
-  \<open>plus_snd xy a \<equiv> apsnd (\<lambda>z. z + a) xy\<close>
-
-lemma plus_fst_accum[simp]:
-  fixes x :: \<open>'a :: semigroup_add\<close>
-  shows \<open>(xy +\<^sub>L x) +\<^sub>L x' = xy +\<^sub>L (x + x')\<close>
-  by (cases xy, simp add: add.assoc)
-
-lemma perm_alg_plus_fst_accum[simp]:
-  fixes x :: \<open>'a :: perm_alg\<close>
-  shows \<open>fst xy ## x \<Longrightarrow> fst xy ## x' \<Longrightarrow> x ## x' \<Longrightarrow> (xy +\<^sub>L x) +\<^sub>L x' = xy +\<^sub>L (x + x')\<close>
-  by (cases xy, simp add: partial_add_assoc)
-
-lemma plus_snd_accum[simp]:
-  fixes y :: \<open>'a :: semigroup_add\<close>
-  shows \<open>(xy +\<^sub>L y) +\<^sub>L y' = xy +\<^sub>L (y + y')\<close>
-  by (cases xy, simp add: add.assoc)
-
-lemma perm_alg_plus_snd_accum[simp]:
-  fixes y :: \<open>'a :: perm_alg\<close>
-  shows \<open>snd xy ## y \<Longrightarrow> snd xy ## y' \<Longrightarrow> y ## y' \<Longrightarrow> (xy +\<^sub>R y) +\<^sub>R y' = xy +\<^sub>R (y + y')\<close>
-  by (cases xy, simp add: partial_add_assoc)
-
-lemma perm_alg_plus_fst_plus_snd_eq[simp]:
-  fixes y :: \<open>'a :: perm_alg\<close>
-  shows
-    \<open>xy +\<^sub>L x +\<^sub>R y = xy + (x, y)\<close>
-    \<open>xy +\<^sub>R y +\<^sub>L x = xy + (x, y)\<close>
-  by simp+
-
-definition
-  \<open>atom_unframe_prop b xy \<equiv>
-    (\<forall>xf xxfy'.
-      b (xy +\<^sub>L xf) xxfy' \<longrightarrow> fst xy ## xf \<longrightarrow>
-      (\<exists>xy'. fst xy' ## xf \<and> xxfy' = xy' +\<^sub>L xf \<and> b xy xy'))
-    \<comment> \<open> \<and> (\<forall>yf xyyf'.
-      b (xy +R yf) xyyf' \<longrightarrow> snd xy ## yf \<longrightarrow>
-      (\<exists>xy'. snd xy' ## yf \<and> xyyf' = xy' +R yf \<and> b xy xy')) \<and>
-    (\<forall>xyf xyxyf'.
-      b (xy + xyf) xyxyf' \<longrightarrow> xy ## xyf \<longrightarrow>
-      (\<exists>xy'. xy' ## xyf \<and> xyxyf' = xy' + xyf \<and> b xy xy')) \<close>\<close>
-
 lemma safe_atom':
   \<open>sp b (wlp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) p) \<le> sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) q \<Longrightarrow>
     wlp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) p (hl, hs) \<Longrightarrow>
@@ -1172,17 +1127,20 @@ next
     apply blast
     done
 next
-  case (rgsat_atom b r p q g pf f q')
+  case (rgsat_atom b r p f q g p' q')
   then show ?case
-    thm safe_atom
-    sorry
+    by (blast intro: safe_atom)
 next
   case (rgsat_frame c r g p q f f' n)
   then show ?case
-    apply -
-    apply (clarsimp simp add: sepconj_def[of p f] simp del: sup_apply)
-    apply (drule meta_spec2, drule meta_spec[of _ n], drule meta_mp, assumption)
-    sorry
+    apply (clarsimp simp add: sepconj_conj_def[of p] simp del: sup_apply)
+    apply (rule safe_frame[where f=f and f'=f'])
+        apply blast
+    subgoal sorry
+      apply blast
+     apply blast
+    apply blast
+    done
 next
   case (rgsat_weaken c r' g' p' q' p q r g)
   moreover have \<open>p' (hl, hs)\<close>
@@ -1206,8 +1164,6 @@ lemma safe_refinement_mono:
       apply (clarsimp simp add: opstep_iff le_fun_def; fail)
      apply (clarsimp simp add: opstep_iff le_fun_def, metis)
     apply (clarsimp simp add: opstep_iff le_fun_def, metis)
-   apply (clarsimp simp add: opstep_iff le_fun_def, metis)
-  apply (clarsimp simp add: opstep_iff le_fun_def, metis)
   done
 
 lemma refinement_atomic_condition1:
