@@ -1,5 +1,5 @@
 theory SepAlgInstances
-  imports SepLogic
+  imports SepLogic HOL.Rat
 begin
 
 section \<open> Instances \<close>
@@ -305,6 +305,7 @@ instance
 
 end
 
+section \<open> Discrete Algebra \<close>
 
 typedef 'a discr = \<open>UNIV :: 'a set\<close>
   morphisms the_discr Discr
@@ -342,8 +343,152 @@ instance
 
 end
 
+
+section \<open> Self-additive discrete Algebra \<close>
+
+typedef 'a add_discr = \<open>UNIV :: 'a set\<close>
+  morphisms the_add_discr AddDiscr
+  by blast
+
+lemmas AddDiscr_inverse_iff[simp] = AddDiscr_inverse[simplified]
+lemmas AddDiscr_inject_iff[simp] = AddDiscr_inject[simplified]
+
+instantiation add_discr :: (type) perm_alg
+begin
+
+definition less_eq_add_discr :: \<open>'a add_discr \<Rightarrow> 'a add_discr \<Rightarrow> bool\<close> where
+  \<open>less_eq_add_discr a b \<equiv> the_add_discr a = the_add_discr b\<close>
+
+lemma less_eq_add_discr_iff[simp]:
+  \<open>Discr x \<le> Discr y \<longleftrightarrow> x = y\<close>
+  by (simp add: less_eq_add_discr_def)
+
+definition less_add_discr :: \<open>'a add_discr \<Rightarrow> 'a add_discr \<Rightarrow> bool\<close> where
+  \<open>less_add_discr a b \<equiv> False\<close>
+
+declare less_add_discr_def[simp]
+
+definition plus_add_discr :: \<open>'a add_discr \<Rightarrow> 'a add_discr \<Rightarrow> 'a add_discr\<close> where
+  \<open>plus_add_discr a b \<equiv> a\<close>
+
+definition disjoint_add_discr :: \<open>'a add_discr \<Rightarrow> 'a add_discr \<Rightarrow> bool\<close> where
+  \<open>disjoint_add_discr a b \<equiv> a = b\<close>
+declare disjoint_add_discr_def[simp]
+
+instance
+  by (standard; force simp add: less_eq_add_discr_def plus_add_discr_def the_add_discr_inject)
+
+end
+
+
+section \<open> Fractional FPermissions \<close>
+
+typedef(overloaded) ('a::linordered_semidom) fperm = \<open>{x. (0::'a) < x \<and> x \<le> 1}\<close>
+  morphisms fperm_val FPerm
+  using zero_less_one by blast
+
+setup_lifting type_definition_fperm
+
+lemmas FPerm_inverse_iff[simp] = FPerm_inverse[simplified]
+lemmas FPerm_inject_iff[simp] = FPerm_inject[simplified]
+lemmas fperm_eq_iff_fperm_val_eq = fperm_val_inject[symmetric]
+
+lemma FPerm_eq_iff:
+  \<open>0 < a \<Longrightarrow> a \<le> 1 \<Longrightarrow> FPerm a = pa \<longleftrightarrow> fperm_val pa = a\<close>
+  using fperm_val_inverse by fastforce
+
+lemma eq_FPerm_iff:
+  \<open>0 < a \<Longrightarrow> a \<le> 1 \<Longrightarrow> pa = FPerm a \<longleftrightarrow> fperm_val pa = a\<close>
+  by (metis FPerm_inverse_iff fperm_val_inverse)
+
+lemma fperm_val_conditions:
+  \<open>0 < fperm_val x\<close>
+  \<open>fperm_val x \<le> 1\<close>
+  using fperm_val by force+
+
+lemma fperm_val_never_zero[simp]:
+  \<open>fperm_val x = 0 \<longleftrightarrow> False\<close>
+  by (metis less_irrefl fperm_val_conditions(1))
+
+lemma fperm_val_less_then_fperm_conditions_sub:
+  \<open>fperm_val a < fperm_val b \<Longrightarrow> 0 < fperm_val b - fperm_val a\<close>
+  \<open>fperm_val a < fperm_val b \<Longrightarrow> fperm_val b - fperm_val a \<le> 1\<close>
+  apply (metis add_le_same_cancel2 leD leI le_add_diff_inverse2 order_less_imp_le)
+  apply (metis fperm_val_conditions leD leI le_add_diff_inverse order_less_imp_le pos_add_strict)
+  done
+
+lemma fperm_val_add_gt0:
+  \<open>0 < fperm_val x + fperm_val y\<close>
+  by (simp add: add_pos_pos fperm_val_conditions(1))
+
+
+instantiation fperm :: (linordered_semidom) perm_alg
+begin
+
+definition disjoint_fperm :: \<open>'a fperm \<Rightarrow> 'a fperm \<Rightarrow> bool\<close> where
+  \<open>disjoint_fperm a b \<equiv> fperm_val a + fperm_val b \<le> 1\<close>
+
+definition less_eq_fperm :: \<open>'a fperm \<Rightarrow> 'a fperm \<Rightarrow> bool\<close> where
+  \<open>less_eq_fperm a b \<equiv> fperm_val a \<le> fperm_val b\<close>
+
+lemma less_eq_fperm_iff[simp]:
+  \<open>0 < x \<Longrightarrow> x \<le> 1 \<Longrightarrow> 0 < y \<Longrightarrow> y \<le> 1 \<Longrightarrow> FPerm x \<le> FPerm y \<longleftrightarrow> x \<le> y\<close>
+  by (simp add: less_eq_fperm_def)
+
+definition less_fperm :: \<open>'a fperm \<Rightarrow> 'a fperm \<Rightarrow> bool\<close> where
+  \<open>less_fperm a b \<equiv> fperm_val a < fperm_val b\<close>
+
+lemma less_fperm_iff[simp]:
+  \<open>0 < x \<Longrightarrow> x \<le> 1 \<Longrightarrow> 0 < y \<Longrightarrow> y \<le> 1 \<Longrightarrow> FPerm x < FPerm y \<longleftrightarrow> x < y\<close>
+  by (simp add: less_fperm_def)
+
+lift_definition plus_fperm :: \<open>'a fperm \<Rightarrow> 'a fperm \<Rightarrow> 'a fperm\<close> is \<open>\<lambda>x y. min 1 (x + y)\<close>
+  by (simp add: pos_add_strict)
+
+lemma plus_fperm_iff[simp]:
+  \<open>0 < x \<Longrightarrow> x \<le> 1 \<Longrightarrow> 0 < y \<Longrightarrow> y \<le> 1 \<Longrightarrow> FPerm x + FPerm y = FPerm (min 1 (x + y))\<close>
+  by (simp add: plus_fperm.abs_eq eq_onp_same_args)
+
+lemma plus_fperm_eq:
+  \<open>x + y = FPerm (min 1 (fperm_val x + fperm_val y))\<close>
+  by (metis fperm_val_inverse plus_fperm.rep_eq)
+
+instance
+  apply standard
+            apply (simp add: less_eq_fperm_def less_fperm_def fperm_val_inject; force)+ 
+        apply (force simp add: fperm_eq_iff_fperm_val_eq add.assoc disjoint_fperm_def plus_fperm.rep_eq)
+       apply (force simp add: fperm_eq_iff_fperm_val_eq add.commute disjoint_fperm_def plus_fperm.rep_eq)
+      apply (simp add: disjoint_fperm_def add.commute; fail)
+     apply (simp add: disjoint_fperm_def plus_fperm.rep_eq add.assoc[symmetric])
+     apply (metis fperm_val_conditions(1) ge0_plus_le_then_left_le add_pos_pos order_less_imp_le)
+    apply (simp add: disjoint_fperm_def plus_fperm.rep_eq add.left_commute min.coboundedI2
+      min_add_distrib_right; fail)
+   apply (simp add: disjoint_fperm_def plus_fperm_eq FPerm_eq_iff fperm_val_conditions)
+   apply (metis FPerm_inverse_iff add_cancel_right_right fperm_val_add_gt0 fperm_val_never_zero)
+  apply (rule iffI)
+   apply (clarsimp simp add: less_fperm_def disjoint_fperm_def plus_fperm_eq)
+   apply (rule conjI, blast)
+   apply (rule_tac x=\<open>FPerm (fperm_val b - fperm_val a)\<close> in exI)
+   apply (simp add: fperm_val_less_then_fperm_conditions_sub eq_FPerm_iff fperm_val_conditions; fail)
+  apply (clarsimp simp add: plus_fperm_eq disjoint_fperm_def less_fperm_def eq_FPerm_iff
+      fperm_val_add_gt0 fperm_val_conditions; fail)
+  done
+
+end
+
+
+section \<open> Useful Sepalgebra Constructions \<close>
+
+type_synonym ('i,'v) heap = \<open>'i \<rightharpoonup> 'v discr\<close>
+
+type_synonym ('i,'v) perm_heap = \<open>'i \<rightharpoonup> (rat fperm \<times> 'v add_discr)\<close>
+
+
+section \<open> Results \<close>
+
+text \<open> sepdomeq of two maps (with discrete elements) holds exactly when their domains are equal. \<close>
 lemma sepdomeq_fun:
-  fixes f g :: \<open>'a \<rightharpoonup> 'b discr\<close>
+  fixes f g :: \<open>('a,'b) heap\<close>
   shows \<open>sepdomeq f g \<longleftrightarrow> dom f = dom g\<close>
   apply (simp add: sepdomeq_def disjoint_fun_def disjoint_option_def split: option.splits)
   apply (rule iffI)

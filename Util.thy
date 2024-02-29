@@ -636,6 +636,17 @@ lemma ordered_comm_monoid_add_add_min_assoc:
 lemma le_Suc_iff0: \<open>m \<le> Suc n \<longleftrightarrow> m = 0 \<or> (\<exists>m'. m = Suc m' \<and> m' \<le> n)\<close>
   by presburger
 
+lemma ge0_plus_le_then_left_le:
+  fixes a :: \<open>'a :: ordered_ab_semigroup_monoid_add_imp_le\<close>
+  shows \<open>0 \<le> a \<Longrightarrow> 0 \<le> b \<Longrightarrow> a + b \<le> c \<Longrightarrow> a \<le> c\<close>
+  by (meson le_add_same_cancel1 order_trans)
+
+lemma ge0_plus_le_then_right_le:
+  fixes a :: \<open>'a :: ordered_ab_semigroup_monoid_add_imp_le\<close>
+  shows \<open>0 \<le> a \<Longrightarrow> 0 \<le> b \<Longrightarrow> a + b \<le> c \<Longrightarrow> b \<le> c\<close>
+  by (meson le_add_same_cancel2 order_trans)
+
+
 section \<open> Sequencing Algebra \<close>
 
 text \<open> Note this is a subalgebra of a relation algebra. \<close>
