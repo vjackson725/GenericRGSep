@@ -596,15 +596,15 @@ definition
     \<forall>x xf x'xf' y y'.
       r (x+xf, y) (x'xf', y') \<longrightarrow>
       x ## xf \<longrightarrow>
-      f xf \<longrightarrow>
-      (\<exists>x' xf'. f xf' \<and> x' ## xf' \<and> x'xf' = x' + xf' \<and> r (x, y) (x', y'))\<close>
+      f (xf, y) \<longrightarrow>
+      (\<exists>x' xf'. f (xf', y') \<and> x' ## xf' \<and> x'xf' = x' + xf' \<and> r (x, y) (x', y'))\<close>
 
 lemma left_unframe_propD:
   \<open>left_unframe_prop f r \<Longrightarrow>
     r (x+xf, y) (x'xf', y') \<Longrightarrow>
     x ## xf \<Longrightarrow>
-    f xf \<Longrightarrow>
-    (\<exists>x' xf'. f xf' \<and> x' ## xf' \<and> x'xf' = x' + xf' \<and> r (x, y) (x', y'))\<close>
+    f (xf, y) \<Longrightarrow>
+    (\<exists>x' xf'. f (xf', y') \<and> x' ## xf' \<and> x'xf' = x' + xf' \<and> r (x, y) (x', y'))\<close>
   by (simp add: left_unframe_prop_def)
 
 subsection \<open> Left unframing \<close>
@@ -614,16 +614,16 @@ definition
     \<forall>x xf x'xf' y y'.
       r (x+xf, y) (x'xf', y') \<longrightarrow>
       x ## xf \<longrightarrow>
-      f xf \<longrightarrow>
-      (\<exists>x' xf'. f xf' \<and> x' ## xf' \<and> x'xf' = x' + xf')\<close>
+      f (xf, y) \<longrightarrow>
+      (\<exists>x' xf'. f (xf', y') \<and> x' ## xf' \<and> x'xf' = x' + xf')\<close>
 
 lemma weak_left_unframe_propD:
   \<open>weak_left_unframe_prop f r \<Longrightarrow>
     r (x+xf, y) (x'xf', y') \<Longrightarrow>
     x ## xf \<Longrightarrow>
-    f xf \<Longrightarrow>
-    (\<exists>x' xf'. f xf' \<and> x' ## xf' \<and> x'xf' = x' + xf')\<close>
-  by (simp add: weak_left_unframe_prop_def, blast)
+    f (xf, y) \<Longrightarrow>
+    (\<exists>x' xf'. f (xf', y') \<and> x' ## xf' \<and> x'xf' = x' + xf')\<close>
+  by (force simp add: weak_left_unframe_prop_def)
 
 
 subsection \<open> Atomic unframing \<close>
@@ -649,11 +649,6 @@ lemma atom_unframe_propD:
 
 
 section \<open> Rely-Guarantee Separation Logic \<close>
-
-definition sepconj_conj
-  :: \<open>('a::perm_alg \<times> 'b::perm_alg \<Rightarrow> bool) \<Rightarrow> ('a \<times> 'b \<Rightarrow> bool) \<Rightarrow> ('a \<times> 'b \<Rightarrow> bool)\<close>
-  (infixr \<open>\<^emph>\<and>\<close> 70) where
-  \<open>p \<^emph>\<and> q \<equiv> \<lambda>h. \<exists>a b c. a ## b \<and> h = (a + b, c) \<and> p (a, c) \<and> q (b, c)\<close>
 
 inductive rgsat ::
   \<open>('l::perm_alg, 's::perm_alg) comm \<Rightarrow>
@@ -685,17 +680,16 @@ inductive rgsat ::
     sp ((=) \<times>\<^sub>R (r \<squnion> g2)\<^sup>*\<^sup>*) q1 \<^emph>\<and> sp ((=) \<times>\<^sub>R (r \<squnion> g1)\<^sup>*\<^sup>*) q2 \<le> q \<Longrightarrow>
     rgsat (s1 \<parallel> s2) r g p q\<close>
 | rgsat_atom:
-  \<open>sp b (wlp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) (p \<squnion> p \<^emph> f)) \<le> sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) (q \<squnion> q \<^emph> f) \<Longrightarrow>
-    \<forall>st. p' st \<longrightarrow> ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) st \<le> atom_unframe_prop b \<Longrightarrow>
+  \<open>sp b (wlp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) p) \<le> sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) q \<Longrightarrow>
+    \<forall>f. sp b (wlp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) (p \<^emph>\<and> f)) \<le> sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) (q \<^emph>\<and> f) \<Longrightarrow>
     b \<le> \<top> \<times>\<^sub>R g \<Longrightarrow>
-    p' \<le> wlp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) (p \<squnion> p \<^emph> f) \<Longrightarrow>
-    sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) (q \<squnion> q \<^emph> f) \<le> q' \<Longrightarrow>
+    p' \<le> wlp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) p \<Longrightarrow>
+    sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) q \<le> q' \<Longrightarrow>
     rgsat (Atomic b) r g p' q'\<close>
 | rgsat_frame:
   \<open>rgsat c r g p q \<Longrightarrow>
-    all_atom_comm (weak_left_unframe_prop f) c \<Longrightarrow>
-    sp ((=) \<times>\<^sub>R (r \<squnion> g)\<^sup>*\<^sup>*) (f \<times>\<^sub>P \<top>) \<le> f' \<Longrightarrow>
-    rgsat c r g (p \<^emph>\<and> (f \<times>\<^sub>P \<top>)) (q \<^emph>\<and> f')\<close>
+    sp ((=) \<times>\<^sub>R (r \<squnion> g)\<^sup>*\<^sup>*) f \<le> f' \<Longrightarrow>
+    rgsat c r g (p \<^emph>\<and> f) (q \<^emph>\<and> f')\<close>
 | rgsat_weaken:
   \<open>rgsat c r' g' p' q' \<Longrightarrow>
     p \<le> p' \<Longrightarrow> q' \<le> q \<Longrightarrow> r \<le> r' \<Longrightarrow> g' \<le> g \<Longrightarrow>

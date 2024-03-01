@@ -1063,6 +1063,10 @@ lemma sp_comp_rel:
 
 paragraph \<open> wlp/sp misc properties \<close>
 
+lemma wlp_weaker_iff_sp_stronger:
+  \<open>p \<le> wlp r q \<longleftrightarrow> sp r p \<le> q\<close>
+  by (force simp add: wlp_def sp_def le_fun_def)
+
 lemma wlp_refl_rel_le: \<open>reflp r \<Longrightarrow> wlp r p \<le> p\<close>
   by (metis predicate1I[of \<open>wlp r p\<close> p for r p] reflpD wlp_def)
 
@@ -1083,12 +1087,27 @@ lemma sp_impliesD[dest]:
   \<open>sp r p \<le> q \<Longrightarrow> r s s' \<Longrightarrow> p s \<Longrightarrow> q s'\<close>
   by (metis predicate1D sp_def)
 
-lemma wlp_weaker_iff_sp_stronger:
-  \<open>p \<le> wlp R p \<longleftrightarrow> sp R p \<le> p\<close>
-  by (force simp add: wlp_def sp_def le_fun_def)
+lemmas refl_rel_wlp_le_sp = order.trans[OF wlp_refl_rel_le sp_refl_rel_le]
+lemmas refl_rel_wlp_impl_sp = predicate1D[OF refl_rel_wlp_le_sp]
 
 lemma rel_lift_impl_iff_sp_impl:
   \<open>rel_liftL p \<sqinter> b \<le> rel_liftR q \<longleftrightarrow> sp b p \<le> q\<close>
   by (force simp add: le_fun_def sp_def wlp_def pre_state_def)
+
+lemma sp_wlp_weak_absorb:
+  \<open>r2 OO r1 \<le> r \<Longrightarrow> sp r2 (wlp r p) \<le> wlp r1 p\<close>
+  by (force simp add: sp_comp_rel le_fun_def sp_def wlp_def OO_def)
+
+lemma sp_wlp_absorb:
+  \<open>transp r1 \<Longrightarrow> reflp r2 \<Longrightarrow> r2 \<le> r1 \<Longrightarrow> sp r2 (wlp r1 p) = wlp r1 p\<close>
+  by (rule order.antisym; simp add: sp_wlp_weak_absorb sp_refl_rel_le)
+
+lemma wlp_sp_weak_absorb:
+  \<open>r2 OO r1 \<le> r \<Longrightarrow> sp r2 p \<le> wlp r1 (sp r p)\<close>
+  by (force simp add: sp_comp_rel le_fun_def sp_def wlp_def)
+
+lemma wlp_sp_absorb:
+  \<open>reflp r1 \<Longrightarrow> transp r2 \<Longrightarrow> r1 \<le> r2 \<Longrightarrow> wlp r1 (sp r2 p) = sp r2 p\<close>
+  by (rule order.antisym; simp add: wlp_sp_weak_absorb wlp_refl_rel_le)
 
 end

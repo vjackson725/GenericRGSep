@@ -2,7 +2,9 @@ theory SepAlgInstances
   imports SepLogic HOL.Rat
 begin
 
-section \<open> Instances \<close>
+section \<open> Product \<close>
+
+subsection \<open> perm_alg \<close>
 
 instantiation prod :: (perm_alg,perm_alg) perm_alg
 begin
@@ -57,6 +59,8 @@ lemma less_eq_prod2:
 
 end
 
+subsection \<open> mu_sep_alg \<close>
+
 instantiation prod :: (multiunit_sep_alg,multiunit_sep_alg) multiunit_sep_alg
 begin
 
@@ -81,6 +85,8 @@ lemma mu_less_prod_def[simp]:
 
 end
 
+subsection \<open> sep_alg \<close>
+
 instantiation prod :: (sep_alg,sep_alg) sep_alg
 begin
 
@@ -97,7 +103,7 @@ instance
 
 end
 
-subsubsection \<open> extend part-addition to perm_alg-s \<close>
+subsubsection \<open> add_fst & add_snd for tuple perm_alg \<close>
 
 lemma perm_alg_plus_fst_accum[simp]:
   fixes x :: \<open>'a :: perm_alg\<close>
@@ -116,8 +122,31 @@ lemma perm_alg_plus_fst_plus_snd_eq[simp]:
     \<open>xy +\<^sub>R y +\<^sub>L x = xy + (x, y)\<close>
   by simp+
 
+subsubsection \<open> Sepconj-conj \<close>
 
-subsection \<open> unit \<close>
+definition sepconj_conj
+  :: \<open>('a::perm_alg \<times> 'b::perm_alg \<Rightarrow> bool) \<Rightarrow> ('a \<times> 'b \<Rightarrow> bool) \<Rightarrow> ('a \<times> 'b \<Rightarrow> bool)\<close>
+  (infixr \<open>\<^emph>\<and>\<close> 70) where
+  \<open>p \<^emph>\<and> q \<equiv> \<lambda>h. \<exists>a b c. a ## b \<and> h = (a + b, c) \<and> p (a, c) \<and> q (b, c)\<close>
+
+lemma sepconj_conjI:
+  \<open>p (a, y) \<Longrightarrow> q (b, y) \<Longrightarrow> a ## b \<Longrightarrow> x = a + b \<Longrightarrow> (p \<^emph>\<and> q) (x, y)\<close>
+  by (force simp add: sepconj_conj_def)
+
+lemma sepconj_conj_assoc:
+  \<open>(p \<^emph>\<and> q) \<^emph>\<and> r = p \<^emph>\<and> (q \<^emph>\<and> r)\<close>
+  apply (clarsimp simp add: sepconj_conj_def fun_eq_iff)
+  apply (rule iffI)
+   apply (metis disjoint_add_leftR disjoint_add_swap_lr partial_add_assoc2)
+  apply (metis disjoint_add_rightL disjoint_add_swap_rl partial_add_assoc3)
+  done
+
+lemma sepconj_conj_monoR:
+  \<open>q \<le> q' \<Longrightarrow> p \<^emph>\<and> q \<le> p \<^emph>\<and> q'\<close>
+  by (force simp add: sepconj_conj_def)
+
+
+section \<open> Unit \<close>
 
 instantiation unit :: perm_alg
 begin
