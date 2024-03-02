@@ -98,352 +98,141 @@ lemma (in sep_alg) sep_alg_framed_subresource_rel_iff:
   apply (metis sepadd_0_right zero_disjointR)
   done
 
-subsection \<open> Relation framing \<close>
-
-text \<open> embellish a relation with frames \<close>
-
-context perm_alg
-begin
-
-definition frame_with :: \<open>('a \<Rightarrow> 'a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> 'a \<Rightarrow> bool)\<close>
-  (\<open>(frame _ with _)\<close> [0,50] 50)
-  where
-  \<open>frame_with r p \<equiv> \<lambda>h h'. (\<exists>hs hs'. r hs hs' \<and> framed_subresource_rel p hs hs' h h')\<close>
-
-lemma frame_with_frame_rightI:
-  \<open>p h2 \<Longrightarrow> r h1 h1' \<Longrightarrow> h' = h1' + h2 \<Longrightarrow> h1 ## h2 \<Longrightarrow> h1' ## h2 \<Longrightarrow>
-    (frame r with p) (h1 + h2) h'\<close>
-  apply (simp add: frame_with_def framed_subresource_rel_def)
-  apply blast
-  done
-
-lemma frame_with_frame_leftI:
-  \<open>p h1 \<Longrightarrow> r h2 h2' \<Longrightarrow> h' = h1 + h2' \<Longrightarrow> h1 ## h2 \<Longrightarrow> h1 ## h2' \<Longrightarrow>
-    (frame r with p) (h1 + h2) h'\<close>
-  apply (simp add: frame_with_def framed_subresource_rel_def)
-  apply (meson disjoint_sym_iff partial_add_commute)
-  done
-
-
-subsection \<open> Weak relation framing \<close>
-
-definition wframe_with :: \<open>('a \<Rightarrow> 'a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> 'a \<Rightarrow> bool)\<close>
-  (\<open>(wframe _ with _)\<close> [0,50] 50)
-  where
-  \<open>wframe_with r p \<equiv> \<lambda>h h'. \<exists>hs hs'. r hs hs' \<and> weak_framed_subresource_rel p hs hs' h h'\<close>
-
-lemma wframe_with_fullI:
-  \<open>r h h' \<Longrightarrow> (wframe r with p) h h'\<close>
-  by (force simp add: wframe_with_def)
-
-lemma wframe_with_frame_rightI:
-  \<open>p h2 \<Longrightarrow> r h1 h1' \<Longrightarrow> h' = h1' + h2 \<Longrightarrow> h1 ## h2 \<Longrightarrow> h1' ## h2 \<Longrightarrow>
-    (wframe r with p) (h1 + h2) h'\<close>
-  apply (simp add: wframe_with_def weak_framed_subresource_rel_def framed_subresource_rel_def)
-  apply blast
-  done
-
-lemma weak_framed_rel_mono:
-  \<open>r1 \<le> r2 \<Longrightarrow> (wframe r1 with f) \<le> (wframe r2 with f)\<close>
-  by (force simp add: wframe_with_def)
-
-lemma weak_framed_frame_right:
-  \<open>x ## z \<Longrightarrow> y ## z \<Longrightarrow> (wframe r with \<top>) x y \<Longrightarrow> (wframe r with \<top>) (x + z) (y + z)\<close>
-  apply (clarsimp simp add: wframe_with_def weak_framed_subresource_rel_def)
-  apply (meson framed_subresource_relI framed_subresource_rel_frame_second top1I)
-  done
-
-lemma weak_framed_frame_left:
-  \<open>z ## x \<Longrightarrow> z ## y \<Longrightarrow> (wframe r with \<top>) x y \<Longrightarrow> (wframe r with \<top>) (z + x) (z + y)\<close>
-  by (metis disjoint_sym partial_add_commute weak_framed_frame_right)
-
-
-lemma wframe_with_frame_leftI:
-  \<open>p h1 \<Longrightarrow> r h2 h2' \<Longrightarrow> h' = h1 + h2' \<Longrightarrow> h1 ## h2 \<Longrightarrow> h1 ## h2' \<Longrightarrow>
-    (wframe r with p) (h1 + h2) h'\<close>
-  apply (simp add: wframe_with_def weak_framed_subresource_rel_def framed_subresource_rel_def)
-  apply (meson disjoint_sym_iff partial_add_commute)
-  done
-
-lemma frame_with_idem[simp]:
-  \<open>(frame (frame r with p) with q) = (frame r with p \<^emph> q)\<close>
-  apply (clarsimp simp add: frame_with_def fun_eq_iff framed_subresource_rel_def sepconj_def)
-  apply (rule iffI)
-   apply (clarsimp, metis disjoint_add_leftR disjoint_add_swap_lr partial_add_assoc2)
-  apply (clarsimp, metis disjoint_add_rightL disjoint_add_swap_rl partial_add_assoc3)
-  done
-
-lemma wframe_with_idem[simp]:
-  \<open>(wframe (wframe r with p) with q) = (wframe r with p \<squnion> q \<squnion> p \<^emph> q)\<close>
-  apply (clarsimp simp add: wframe_with_def fun_eq_iff sepconj_def weak_framed_subresource_rel_def
-      framed_subresource_rel_def)
-  apply (rule iffI)
-   apply (elim disjE conjE exE)
-      apply blast
-     apply blast
-    apply blast
-   apply (clarsimp, metis disjoint_add_rightR disjoint_add_swap_lr disjoint_sym partial_add_assoc2)
-  apply (elim disjE conjE exE)
-     apply blast
-    apply blast
-   apply blast
-  apply (clarsimp, metis disjoint_add_rightL disjoint_add_swap_rl partial_add_assoc3)
-  done
-
-lemma wframe_frame_with_idem[simp]:
-  \<open>(wframe (frame r with p) with q) = (frame r with p \<squnion> p \<^emph> q)\<close>
-  apply (clarsimp simp add: frame_with_def wframe_with_def fun_eq_iff sepconj_def
-      weak_framed_subresource_rel_def framed_subresource_rel_def)
-  apply (rule iffI)
-   apply (elim disjE conjE exE)
-    apply blast
-   apply (clarsimp, metis disjoint_add_rightR disjoint_add_swap_lr disjoint_sym partial_add_assoc2)
-  apply (elim disjE conjE exE)
-   apply blast
-  apply (clarsimp, metis disjoint_add_rightL disjoint_add_swap_rl partial_add_assoc3)
-  done
-
-lemma frame_wframe_with_idem[simp]:
-  \<open>(frame (wframe r with p) with q) = (frame r with q \<squnion> p \<^emph> q)\<close>
-  apply (clarsimp simp add: frame_with_def wframe_with_def fun_eq_iff sepconj_def
-      weak_framed_subresource_rel_def framed_subresource_rel_def)
-  apply (rule iffI)
-   apply (elim disjE conjE exE)
-    apply blast
-   apply (clarsimp, metis disjoint_add_rightR disjoint_add_swap_lr disjoint_sym partial_add_assoc2)
-  apply (elim disjE conjE exE)
-   apply blast
-  apply (clarsimp, metis disjoint_add_rightL disjoint_add_swap_rl partial_add_assoc3)
-  done
-
-
-lemma frame_with_sup_rel_eq:
-  \<open>(frame r1 \<squnion> r2 with p) = (frame r1 with p) \<squnion> (frame r2 with p)\<close>
-  by (fastforce simp add: fun_eq_iff frame_with_def)
-
-lemma wframe_with_sup_rel_eq:
-  \<open>(wframe r1 \<squnion> r2 with p) = (wframe r1 with p) \<squnion> (wframe r2 with p)\<close>
-  by (fastforce simp add: fun_eq_iff wframe_with_def)
-
-lemma frame_with_inf_rel_semidistrib:
-  \<open>(frame r1 \<sqinter> r2 with p) \<le> (frame r1 with p) \<sqinter> (frame r2 with p)\<close>
-  by (force simp add: fun_eq_iff frame_with_def)
-
-lemma wframe_with_inf_rel_semidistrib:
-  \<open>(wframe r1 \<sqinter> r2 with p) \<le> (wframe r1 with p) \<sqinter> (wframe r2 with p)\<close>
-  by (force simp add: fun_eq_iff wframe_with_def)
-
-
-definition
-  \<open>framing_coherent f r \<equiv>
-    \<forall>hx1 hf1.
-      f hf1 \<longrightarrow>
-      Ex (r hx1) \<longrightarrow>
-      hx1 ## hf1 \<longrightarrow> \<comment> \<open> for all compatible start state-1 and frame-1 \<close>
-      (\<forall>hx2 hy2 hf2.
-        f hf2 \<longrightarrow>
-        r hx2 hy2 \<longrightarrow>
-        hx2 ## hf2 \<longrightarrow> \<comment> \<open> for all compatible start state-2 and frame-2 \<close>
-        hx1 + hf1 = hx2 + hf2 \<longrightarrow> \<comment> \<open> if they add to the same thing \<close>
-        (\<exists>hy1. r hx1 hy1 \<and> hy1 ## hf1 \<and> hy2 + hf2 = hy1 + hf1))
-           \<comment> \<open> then there exists an hy1 that adds with frame-1 to hy2 + hf2 \<close>
-  \<close>
-
-lemma frame_coherent_rel_with_frame_right_iff:
-  \<open>framing_coherent f r \<Longrightarrow>
-    f hf1 \<Longrightarrow>
-    r hx1 y \<Longrightarrow>
-    hx1 ## hf1 \<Longrightarrow>
-    (frame r with f) (hx1 + hf1) h' \<longleftrightarrow> (\<exists>hy1'. r hx1 hy1' \<and> hy1' ## hf1 \<and> h' = hy1' + hf1)\<close>
-  by (simp add: framing_coherent_def frame_with_def framed_subresource_rel_def, blast)
-
-lemma frame_coherent_rel_with_frame_left_iff:
-  \<open>framing_coherent f r \<Longrightarrow>
-    f hf1 \<Longrightarrow>
-    r hx1 y \<Longrightarrow>
-    hx1 ## hf1 \<Longrightarrow>
-    (frame r with f) (hf1 + hx1) h' \<longleftrightarrow> (\<exists>hy1'. r hx1 hy1' \<and> hy1' ## hf1 \<and> h' = hf1 + hy1')\<close>
-  apply (simp add: framing_coherent_def frame_with_def framed_subresource_rel_def)
-  apply (metis partial_add_commute) (* slow *)
-  done
-
-end
-
-
-section \<open> frame consistency predicates \<close>
-
-context perm_alg
-begin
-
-subsection \<open> Frame maintains \<close>
-
-definition
-  \<open>frame_pred_maintains f r \<equiv>
-    \<forall>x y z. r x y \<longrightarrow> f z \<longrightarrow> x ## z \<longrightarrow> (y ## z \<and> r (x+z) (y+z))\<close>
-
-lemma frame_pred_maintainsD:
-  \<open>frame_pred_maintains f b \<Longrightarrow>
-    b h1 h2 \<Longrightarrow>
-    f hf \<Longrightarrow>
-    h1 ## hf \<Longrightarrow>
-    h2 ## hf \<and> b (h1 + hf) (h2 + hf)\<close>
-  by (simp add: frame_pred_maintains_def)
-
-lemma frame_pred_maintains:
-  \<open>frame_pred_maintains f b \<Longrightarrow>
-    b h1 h2 \<Longrightarrow>
-    f hf \<Longrightarrow>
-    h1 ## hf \<Longrightarrow>
-    b (h1 + hf) (h2 + hf)\<close>
-  by (simp add: frame_pred_maintains_def)
-
-lemma frame_pred_maintains2:
-  \<open>frame_pred_maintains f b \<Longrightarrow> b h1 h2 \<Longrightarrow> f hf \<Longrightarrow> h1 ## hf \<Longrightarrow> h2 ## hf\<close>
-  by (simp add: frame_pred_maintains_def)
-
-lemma frame_pred_maintains_antimono':
-  \<open>q \<le> p \<Longrightarrow> frame_pred_maintains p \<le> frame_pred_maintains q\<close>
-  by (fastforce simp add: frame_pred_maintains_def)
-
-lemma frame_pred_maintains_antimono:
-  \<open>q \<le> p \<Longrightarrow> frame_pred_maintains p r \<Longrightarrow> frame_pred_maintains q r\<close>
-  using frame_pred_maintains_antimono' by auto
-
-lemmas frame_pred_maintains_antimonoD = frame_pred_maintains_antimono[rotated]
-
-lemma frame_pred_maintains_relconjI:
-  \<open>frame_pred_maintains p r1 \<Longrightarrow> frame_pred_maintains p r2 \<Longrightarrow> frame_pred_maintains p (r1 \<sqinter> r2)\<close>
-  by (force simp add: frame_pred_maintains_def)
-
-lemma frame_pred_maintains_reldisjI:
-  \<open>frame_pred_maintains p r1 \<Longrightarrow> frame_pred_maintains p r2 \<Longrightarrow> frame_pred_maintains p (r1 \<squnion> r2)\<close>
-  by (simp add: frame_pred_maintains_def)
-
-subsection \<open> Frame extends \<close>
-
-text \<open> more powerful maintains \<close>
-
-definition \<open>frame_pred_extends f b \<equiv>
-  \<forall>h1 h2 hf1.
-    b h1 h2 \<longrightarrow> h1 ## hf1 \<longrightarrow> f hf1 \<longrightarrow>
-      (\<exists>hf2. h2 ## hf2 \<and> f hf2 \<and> b (h1 + hf1) (h2 + hf2))\<close>
-
-lemma frame_pred_extendsD:
-  \<open>frame_pred_extends f b \<Longrightarrow>
-    b h1 h2 \<Longrightarrow>
-    f hf1 \<Longrightarrow>
-    h1 ## hf1 \<Longrightarrow>
-    \<exists>hf2. h2 ## hf2 \<and> f hf2 \<and> b (h1 + hf1) (h2 + hf2)\<close>
-  by (simp add: frame_pred_extends_def)
-
-lemma frame_pred_maintains_implies_extends:
-  \<open>frame_pred_maintains f \<le> frame_pred_extends f\<close>
-  unfolding frame_pred_maintains_def frame_pred_extends_def
-  by auto
-
-lemma frame_equals_maintain_eq_extends:
-  \<open>frame_pred_maintains ((=) h) = frame_pred_extends ((=) h)\<close>
-  unfolding frame_pred_maintains_def frame_pred_extends_def
-  by presburger
-
-
-subsection \<open> Frame closed \<close>
-
-definition
-  \<open>frame_pred_closed f r \<equiv>
-    \<forall>h h'. r h h' \<longrightarrow> (\<forall>hf. f hf \<longrightarrow> h ## hf \<longrightarrow> h' ## hf \<longrightarrow> r (h + hf) (h' + hf))\<close>
-
-abbreviation \<open>frame_closed \<equiv> frame_pred_closed (\<lambda>_. True)\<close>
-
-lemma frame_pred_closedD:
-  \<open>frame_pred_closed f b \<Longrightarrow>
-    b h1 h2 \<Longrightarrow>
-    f hf \<Longrightarrow>
-    h1 ## hf \<Longrightarrow>
-    h2 ## hf \<Longrightarrow>
-    b (h1 + hf) (h2 + hf)\<close>
-  by (simp add: frame_pred_closed_def)
-
-lemma frame_pred_closed_antimono':
-  \<open>q \<le> p \<Longrightarrow> frame_pred_closed p \<le> frame_pred_closed q\<close>
-  by (force simp add: frame_pred_closed_def)
-
-lemma frame_pred_closed_antimono:
-  \<open>q \<le> p \<Longrightarrow> frame_pred_closed p r \<Longrightarrow> frame_pred_closed q r\<close>
-  using frame_pred_closed_antimono' by auto
-
-lemmas frame_pred_closed_antimonoD = frame_pred_closed_antimono[rotated]
-
-lemma frame_pred_closed_disjI:
-  \<open>frame_pred_closed p r1 \<Longrightarrow> frame_pred_closed p r2 \<Longrightarrow>
-    frame_pred_closed p (r1 \<squnion> r2)\<close>
-  by (simp add: frame_pred_closed_def all_conj_distrib)
-
-lemma frame_pred_maintains_implies_closed:
-  \<open>frame_pred_maintains p \<le> frame_pred_closed p\<close>
-  unfolding frame_pred_maintains_def frame_pred_closed_def le_fun_def
-  by force
-
-
-subsection \<open> Frame pred safe \<close>
-
-text \<open> more powerful frame_closed \<close>
-
-definition
-  \<open>frame_pred_safe \<ff> \<equiv>
-    \<lambda>r. \<forall>x x' z z'. r x x' \<longrightarrow> \<ff> z z' \<longrightarrow> x ## z \<longrightarrow> x' ## z' \<longrightarrow> r (x+z) (x'+z')\<close>
-
-lemma frame_pred_extends_eq_heap_implies_safe:
-  \<open>frame_pred_extends ((=) hf) \<le> frame_pred_safe (rel_lift ((=) hf))\<close>
-  unfolding frame_pred_extends_def frame_pred_safe_def le_fun_def
-  by force
-
-lemma frame_pred_safe_implies_closed:
-  \<open>frame_pred_safe (rel_lift f) \<le> frame_pred_closed f\<close>
-  unfolding frame_pred_safe_def frame_pred_closed_def
-  by auto
-
-lemma frame_equals_safe_eq_closed:
-  \<open>frame_pred_safe (rel_lift ((=) h)) = frame_pred_closed ((=) h)\<close>
-  unfolding frame_pred_safe_def frame_pred_closed_def
-  by force
-
-subsection \<open> Frame Step \<close>
-
-definition
-  \<open>frame_step_subframe f r \<equiv>
-    \<forall>hf. f hf \<longrightarrow> (\<forall>x yf. x ## hf \<longrightarrow> r (x + hf) yf \<longrightarrow> (\<exists>y. r x y))\<close>
-
-end
-
 
 section \<open> Language Definition \<close>
 
 subsection \<open> Commands \<close>
 
-datatype ('l,'s) comm =
+datatype 'a comm =
   Skip
-  | Seq \<open>('l,'s) comm\<close> \<open>('l,'s) comm\<close> (infixr \<open>;;\<close> 75)
-  | Par \<open>('l,'s) comm\<close> \<open>('l,'s) comm\<close> (infixr \<open>\<parallel>\<close> 65)
-  | Ndet \<open>('l,'s) comm\<close> \<open>('l,'s) comm\<close> (infixr \<open>\<^bold>+\<close> 65)
-  | Iter \<open>('l,'s) comm\<close> (\<open>_\<^sup>\<star>\<close> [80] 80)
-  | Atomic \<open>'l \<times> 's \<Rightarrow> 'l \<times> 's \<Rightarrow> bool\<close>
+  | Seq \<open>'a comm\<close> \<open>'a comm\<close> (infixr \<open>;;\<close> 75)
+  | Par \<open>'a comm\<close> \<open>'a comm\<close> (infixr \<open>\<parallel>\<close> 65)
+  | Ndet \<open>'a comm\<close> \<open>'a comm\<close> (infixr \<open>\<^bold>+\<close> 65)
+  | Atomic \<open>'a \<Rightarrow> 'a \<Rightarrow> bool\<close>
+\<comment> \<open> loops are represented by (least) fixed points. Fixed point variables are done in de Brijn
+style. \<close>
+  | Fix \<open>'a comm\<close> (\<open>\<mu>\<close>)
+  | FixVar nat
+
+subsection \<open> substitution \<close>
+
+primrec map_fixvar :: \<open>(nat \<Rightarrow> nat) \<Rightarrow> 'a comm \<Rightarrow> 'a comm\<close> where
+  \<open>map_fixvar f Skip = Skip\<close>
+| \<open>map_fixvar f (c1 ;; c2) = map_fixvar f c1 ;; map_fixvar f c2\<close>
+| \<open>map_fixvar f (c1 \<parallel> c2) = map_fixvar f c1 \<parallel> map_fixvar f c2\<close>
+| \<open>map_fixvar f (c1 \<^bold>+ c2) = map_fixvar f c1 \<^bold>+ map_fixvar f c2\<close>
+| \<open>map_fixvar f (\<mu> c) = \<mu> (map_fixvar (case_nat 0 (Suc \<circ> f)) c)\<close>
+| \<open>map_fixvar f (FixVar x) = FixVar (f x)\<close>
+| \<open>map_fixvar f (Atomic b) = Atomic b\<close>
 
 
-paragraph \<open> Commands have a subexpression order \<close>
+lemma map_fixvar_size[simp]:
+  \<open>size (map_fixvar f c) = size c\<close>
+  by (induct c arbitrary: f) force+
 
-instantiation comm :: (type, type) order
+lemma map_fixvar_comp:
+  \<open>map_fixvar f (map_fixvar g c) = map_fixvar (f \<circ> g) c\<close>
+  by (induct c arbitrary: f g)
+    (force intro: arg_cong2[where f=map_fixvar, OF _ refl] simp add: comp_def split: nat.splits)+
+
+lemma map_fixvar_rev_iff:
+  \<open>map_fixvar f c = c1' ;; c2' \<longleftrightarrow>
+    (\<exists>c1 c2. c = c1 ;; c2 \<and> c1' = map_fixvar f c1 \<and> c2' = map_fixvar f c2)\<close>
+  \<open>map_fixvar f c = c1' \<parallel> c2' \<longleftrightarrow>
+      (\<exists>c1 c2. c = c1 \<parallel> c2 \<and> c1' = map_fixvar f c1 \<and> c2' = map_fixvar f c2)\<close>
+  \<open>map_fixvar f c = c1' \<^bold>+ c2' \<longleftrightarrow>
+      (\<exists>c1 c2. c = c1 \<^bold>+ c2 \<and> c1' = map_fixvar f c1 \<and> c2' = map_fixvar f c2)\<close>
+  \<open>map_fixvar f c = \<mu> c' \<longleftrightarrow>
+      (\<exists>ca. c = \<mu> ca \<and> c' = map_fixvar (case_nat 0 (Suc \<circ> f)) ca)\<close>
+  \<open>map_fixvar f c = Skip \<longleftrightarrow> c = Skip\<close>
+  \<open>map_fixvar f c = FixVar y \<longleftrightarrow> (\<exists>x. c = FixVar x \<and> f x = y)\<close>
+  \<open>map_fixvar f c = Atomic b \<longleftrightarrow> c = Atomic b\<close>
+       apply ((induct c; simp), metis)
+      apply ((induct c; simp), metis)
+     apply ((induct c; simp), metis)
+    apply ((induct c; simp), blast)
+   apply (induct c; simp; fail)+
+  done
+
+lemmas map_fixvar_sym_rev_iff = map_fixvar_rev_iff[THEN trans[OF eq_commute]]
+
+lemma map_fixvar_inj_inject:
+  \<open>inj f \<Longrightarrow> (map_fixvar f c1 = map_fixvar f c2) = (c1 = c2)\<close>
+proof (induct c1 arbitrary: c2 f)
+  case (Fix c1)
+  moreover have \<open>inj (case_nat 0 (Suc \<circ> f))\<close>
+    using Fix.prems
+    apply (clarsimp simp add: inj_def)
+    apply (case_tac x; case_tac y; simp)
+    done
+  ultimately show ?case
+    by (force simp add: map_fixvar_sym_rev_iff)
+next
+  case (FixVar x)
+  then show ?case
+    by (metis injD map_fixvar_rev_iff(6))
+qed (force simp add: map_fixvar_sym_rev_iff)+
+
+
+primrec fixvar_subst :: \<open>'a comm \<Rightarrow> nat \<Rightarrow> 'a comm \<Rightarrow> 'a comm\<close> (\<open>_[_ \<leftarrow> _]\<close> [1000, 0, 0] 1000) where
+  \<open>Skip[_ \<leftarrow> _] = Skip\<close>
+| \<open>(c1 ;; c2)[x \<leftarrow> c'] = (c1[x \<leftarrow> c'] ;; c2[x \<leftarrow> c'])\<close>
+| \<open>(c1 \<parallel> c2)[x \<leftarrow> c'] = (c1[x \<leftarrow> c'] \<parallel> c2[x \<leftarrow> c'])\<close>
+| \<open>(c1 \<^bold>+ c2)[x \<leftarrow> c'] = (c1[x \<leftarrow> c'] \<^bold>+ c2[x \<leftarrow> c'])\<close>
+| \<open>(\<mu> c)[x \<leftarrow> c'] = \<mu> (c[Suc x \<leftarrow> c'])\<close>
+| \<open>(FixVar y)[x \<leftarrow> c'] = (if x = y then c' else FixVar y)\<close>
+| \<open>(Atomic b)[_ \<leftarrow> _] = Atomic b\<close>
+
+lemma fixvar_subst_rev_iff:
+  \<open>c[x \<leftarrow> cx] = Skip \<longleftrightarrow> c = Skip \<or> c = FixVar x \<and> cx = Skip\<close>
+  \<open>c[x \<leftarrow> cx] = c1' ;; c2' \<longleftrightarrow>
+    (\<exists>c1 c2. c = c1 ;; c2 \<and> c1' = c1[x \<leftarrow> cx] \<and> c2' = c2[x \<leftarrow> cx]) \<or>
+    c = FixVar x \<and> cx = c1' ;; c2'\<close>
+  \<open>c[x \<leftarrow> cx] = c1' \<parallel> c2' \<longleftrightarrow>
+      (\<exists>c1 c2. c = c1 \<parallel> c2 \<and> c1' = c1[x \<leftarrow> cx] \<and> c2' = c2[x \<leftarrow> cx]) \<or>
+      c = FixVar x \<and> cx = c1' \<parallel> c2'\<close>
+  \<open>c[x \<leftarrow> cx] = c1' \<^bold>+ c2' \<longleftrightarrow>
+      (\<exists>c1 c2. c = c1 \<^bold>+ c2 \<and> c1' = c1[x \<leftarrow> cx] \<and> c2' = c2[x \<leftarrow> cx]) \<or>
+      c = FixVar x \<and> cx = c1' \<^bold>+ c2'\<close>
+  \<open>c[x \<leftarrow> cx] = \<mu> c' \<longleftrightarrow>
+      (\<exists>ca. c = \<mu> ca \<and> c' = ca[Suc x \<leftarrow> cx]) \<or>
+      c = FixVar x \<and> cx = \<mu> c'\<close>
+  \<open>c[x \<leftarrow> cx] = FixVar y \<longleftrightarrow> c = FixVar x \<and> cx = FixVar y \<or> x \<noteq> y \<and> c = FixVar y\<close>
+  \<open>c[x \<leftarrow> cx] = Atomic b \<longleftrightarrow> c = Atomic b \<or> c = FixVar x \<and> cx = Atomic b\<close>
+        apply (induct c; simp; fail)
+       apply ((induct c; simp), metis)
+      apply ((induct c; simp), metis)
+     apply ((induct c; simp), metis)
+    apply ((induct c; simp), blast)
+   apply ((induct c; simp), blast)
+  apply ((induct c; simp))
+  done
+
+lemma fixvar_subst_over_map_avoid:
+  \<open>\<forall>y. f y \<noteq> x \<Longrightarrow> (map_fixvar f c)[x \<leftarrow> cx] = map_fixvar f c\<close>
+  apply (induct c arbitrary: x f)
+        apply (simp; fail)+
+   apply (drule_tac x=\<open>Suc x\<close> in meta_spec, drule_tac x=\<open>case_nat 0 (Suc \<circ> f)\<close> in meta_spec,
+      clarsimp split: nat.splits)
+  apply force
+  done
+
+subsection \<open> subexpression order \<close>
+
+(*
+instantiation comm :: (type) order
 begin
 
-primrec less_eq_comm :: \<open>('l,'s) comm \<Rightarrow> ('l,'s) comm \<Rightarrow> bool\<close> where
-  \<open>less_eq_comm c Skip = (c = Skip)\<close>
-| \<open>less_eq_comm c (c1' ;; c2') = (c = c1' ;; c2' \<or> less_eq_comm c c1' \<or> less_eq_comm c c2')\<close>
-| \<open>less_eq_comm c (c1' \<parallel> c2') = (c = c1' \<parallel> c2' \<or> less_eq_comm c c1' \<or> less_eq_comm c c2')\<close>
-| \<open>less_eq_comm c (c1' \<^bold>+ c2') = (c = c1' \<^bold>+ c2' \<or> less_eq_comm c c1' \<or> less_eq_comm c c2')\<close>
-| \<open>less_eq_comm c (c'\<^sup>\<star>) = (c = c'\<^sup>\<star> \<or> less_eq_comm c c')\<close>
-| \<open>less_eq_comm c (Atomic b) = (c = Atomic b)\<close>
+fun less_eq_comm :: \<open>'a comm \<Rightarrow> 'a comm \<Rightarrow> bool\<close> where
+  \<open>(c \<le> Skip) = (c = Skip)\<close>
+| \<open>(c \<le> c1' ;; c2') = (c = c1' ;; c2' \<or> c \<le> c1' \<or> c \<le> c2')\<close>
+| \<open>(c \<le> c1' \<parallel> c2') = (c = c1' \<parallel> c2' \<or> c \<le> c1' \<or> c \<le> c2')\<close>
+| \<open>(c \<le> c1' \<^bold>+ c2') = (c = c1' \<^bold>+ c2' \<or> c \<le> c1' \<or> c \<le> c2')\<close>
+| \<open>(c \<le> \<mu> c') = (c = \<mu> c' \<or> map_fixvar Suc c \<le> c')\<close>
+| \<open>(c \<le> FixVar x) = (c = FixVar x)\<close>
+| \<open>(c \<le> Atomic b) = (c = Atomic b)\<close>
 
-definition less_comm :: \<open>('l,'s) comm \<Rightarrow> ('l,'s) comm \<Rightarrow> bool\<close> where
+definition less_comm :: \<open>'a comm \<Rightarrow> 'a comm \<Rightarrow> bool\<close> where
   \<open>less_comm x y \<equiv> x \<noteq> y \<and> x \<le> y\<close>
 
 lemma less_comm_simps[simp]:
@@ -451,15 +240,30 @@ lemma less_comm_simps[simp]:
   \<open>c < c1' ;; c2' \<longleftrightarrow> c \<noteq> c1' ;; c2' \<and> (c \<le> c1' \<or> c \<le> c2')\<close>
   \<open>c < c1' \<parallel> c2' \<longleftrightarrow> c \<noteq> c1' \<parallel> c2' \<and> (c \<le> c1' \<or> c \<le> c2')\<close>
   \<open>c < c1' \<^bold>+ c2' \<longleftrightarrow> c \<noteq> c1' \<^bold>+ c2' \<and> (c \<le> c1' \<or> c \<le> c2')\<close>
-  \<open>c < c'\<^sup>\<star> \<longleftrightarrow> c \<noteq> c'\<^sup>\<star> \<and> c \<le> c'\<close>
+  \<comment> \<open>c < \<mu> c' \<longleftrightarrow> c \<noteq> \<mu> c' \<or> map_fixvar Suc c \<le> c'\<close>
+  \<open>c < FixVar x \<longleftrightarrow> False\<close>
   \<open>c < Atomic b \<longleftrightarrow> False\<close>
   by (force simp add: less_comm_def)+
 
-lemma less_eq_comm_refl: \<open>(x::('l,'s) comm) \<le> x\<close>
+lemma less_eq_comm_refl: \<open>(x::'a comm) \<le> x\<close>
   by (induct x) force+
 
-lemma less_eq_comm_trans: \<open>(x::('l,'s) comm) \<le> y \<Longrightarrow> y \<le> z \<Longrightarrow> x \<le> z\<close>
-  by (induct z arbitrary: x y) force+
+lemma less_eq_comm_map_fixvar_inj_mono:
+  \<open>(x::'a comm) \<le> y \<Longrightarrow> inj f \<Longrightarrow> map_fixvar f x \<le> map_fixvar f y\<close>
+  apply (induct y arbitrary: x f)
+        apply force+
+   apply clarsimp
+   apply (erule disjE, force)
+   apply (simp add: map_fixvar_comp comp_def if_distrib[of Suc])
+   apply (case_tac x)
+  oops
+
+lemma less_eq_comm_trans: \<open>(x::'a comm) \<le> y \<Longrightarrow> y \<le> z \<Longrightarrow> x \<le> z\<close>
+  apply (induct z arbitrary: x y) 
+        apply force+
+   apply clarsimp
+   apply (erule disjE, force)
+  oops
 
 lemma less_eq_comm_subexprsD:
   \<open>(c1 ;; c2) \<le> c \<Longrightarrow> c1 \<le> c\<close>
@@ -468,18 +272,23 @@ lemma less_eq_comm_subexprsD:
   \<open>(c1 \<^bold>+ c2) \<le> c \<Longrightarrow> c2 \<le> c\<close>
   \<open>(c1 \<parallel> c2) \<le> c \<Longrightarrow> c1 \<le> c\<close>
   \<open>(c1 \<parallel> c2) \<le> c \<Longrightarrow> c2 \<le> c\<close>
-  \<open>(cb\<^sup>\<star>) \<le> c \<Longrightarrow> cb \<le> c\<close>
-  by (meson less_eq_comm.simps less_eq_comm_refl less_eq_comm_trans; fail)+
+  \<open>(\<mu> cb) \<le> c \<Longrightarrow> cb \<le> c\<close>
+  (* by (meson less_eq_comm.simps less_eq_comm_refl less_eq_comm_trans; fail)+ *)
+  oops
 
-lemma less_eq_comm_antisym: \<open>(x::('l,'s) comm) \<le> y \<Longrightarrow> y \<le> x \<Longrightarrow> x = y\<close>
+lemma less_eq_comm_antisym: \<open>(x::'a comm) \<le> y \<Longrightarrow> y \<le> x \<Longrightarrow> x = y\<close>
   apply (induct y arbitrary: x)
-       apply (simp; fail)+
-      apply (metis RGLogic.less_eq_comm_subexprsD(1,2) less_eq_comm.simps(2))
-     apply (metis RGLogic.less_eq_comm_subexprsD(5,6) less_eq_comm.simps(3))
-    apply (metis RGLogic.less_eq_comm_subexprsD(3,4) less_eq_comm.simps(4))
+        apply (simp; fail)+
+(*
+       apply (metis RGLogic.less_eq_comm_subexprsD(1,2) less_eq_comm.simps(2))
+      apply (metis RGLogic.less_eq_comm_subexprsD(5,6) less_eq_comm.simps(3))
+     apply (metis RGLogic.less_eq_comm_subexprsD(3,4) less_eq_comm.simps(4))
+    apply (simp; fail)
    apply (metis RGLogic.less_eq_comm_subexprsD(7) less_eq_comm.simps(5))
   apply (simp; fail)
   done
+*)
+  oops
 
 instance
   by standard
@@ -495,33 +304,41 @@ lemma less_eq_comm_no_constructorsD:
   \<open>(c1 \<^bold>+ c2) \<le> c \<Longrightarrow> c \<le> c2 \<Longrightarrow> False\<close>
   \<open>(c1 \<parallel> c2) \<le> c \<Longrightarrow> c \<le> c1 \<Longrightarrow> False\<close>
   \<open>(c1 \<parallel> c2) \<le> c \<Longrightarrow> c \<le> c2 \<Longrightarrow> False\<close>
-  \<open>(cb\<^sup>\<star>) \<le> c \<Longrightarrow> c \<le> cb \<Longrightarrow> False\<close>
+  \<open>(\<mu> cb) \<le> c \<Longrightarrow> c \<le> cb \<Longrightarrow> False\<close>
   by (fastforce dest: order.antisym)+
 
+lemma subst_not_subexpr_iff:
+  \<open>\<not> c[x \<leftarrow> cx] \<le> c \<longleftrightarrow> FixVar x \<le> c\<close>
+  apply (induct c)
+        apply force
+       apply clarsimp
+*)
 
-paragraph \<open> Predicate to ensure atomic actions have a given property \<close>
+subsection \<open> All atom commands predicate \<close>
 
-inductive all_atom_comm :: \<open>(('l \<times> 's \<Rightarrow> 'l \<times> 's \<Rightarrow> bool) \<Rightarrow> bool) \<Rightarrow> ('l,'s) comm \<Rightarrow> bool\<close> where
+text \<open> Predicate to ensure atomic actions have a given property \<close>
+
+inductive all_atom_comm :: \<open>(('a \<Rightarrow> 'a \<Rightarrow> bool) \<Rightarrow> bool) \<Rightarrow> 'a comm \<Rightarrow> bool\<close> where
   skip[iff]: \<open>all_atom_comm p Skip\<close>
 | seq[intro!]: \<open>all_atom_comm p c1 \<Longrightarrow> all_atom_comm p c2 \<Longrightarrow> all_atom_comm p (c1 ;; c2)\<close>
 | par[intro!]: \<open>all_atom_comm p c1 \<Longrightarrow> all_atom_comm p c2 \<Longrightarrow> all_atom_comm p (c1 \<parallel> c2)\<close>
 | ndet[intro!]: \<open>all_atom_comm p c1 \<Longrightarrow> all_atom_comm p c2 \<Longrightarrow> all_atom_comm p (c1 \<^bold>+ c2)\<close>
-| iter[intro!]: \<open>all_atom_comm p c \<Longrightarrow> all_atom_comm p (c\<^sup>\<star>)\<close>
+| fixpt[intro!]: \<open>all_atom_comm p c \<Longrightarrow> all_atom_comm p (\<mu> c)\<close>
+| fixvar[iff]: \<open>all_atom_comm p (FixVar x)\<close>
 | atom[intro!]: \<open>p b \<Longrightarrow> all_atom_comm p (Atomic b)\<close>
 
-inductive_cases all_atom_comm_doneE[elim!]: \<open>all_atom_comm p Skip\<close>
 inductive_cases all_atom_comm_seqE[elim!]: \<open>all_atom_comm p (c1 ;; c2)\<close>
 inductive_cases all_atom_comm_ndetE[elim!]: \<open>all_atom_comm p (c1 \<^bold>+ c2)\<close>
 inductive_cases all_atom_comm_parE[elim!]: \<open>all_atom_comm p (c1 \<parallel> c2)\<close>
-inductive_cases all_atom_comm_iterE[elim!]: \<open>all_atom_comm p (c\<^sup>\<star>)\<close>
+inductive_cases all_atom_comm_fixptE[elim!]: \<open>all_atom_comm p (\<mu> c)\<close>
+inductive_cases all_atom_comm_fixvarE[elim!]: \<open>all_atom_comm p (FixVar x)\<close>
 inductive_cases all_atom_comm_atomE[elim!]: \<open>all_atom_comm p (Atomic b)\<close>
 
 lemma all_atom_comm_simps[simp]:
-  \<open>all_atom_comm p Skip \<longleftrightarrow> True\<close>
   \<open>all_atom_comm p (c1 ;; c2) \<longleftrightarrow> all_atom_comm p c1 \<and> all_atom_comm p c2\<close>
   \<open>all_atom_comm p (c1 \<^bold>+ c2) \<longleftrightarrow> all_atom_comm p c1 \<and> all_atom_comm p c2\<close>
   \<open>all_atom_comm p (c1 \<parallel> c2) \<longleftrightarrow> all_atom_comm p c1 \<and> all_atom_comm p c2\<close>
-  \<open>all_atom_comm p (c\<^sup>\<star>) \<longleftrightarrow> all_atom_comm p c\<close>
+  \<open>all_atom_comm p (\<mu> c) \<longleftrightarrow> all_atom_comm p c\<close>
   \<open>all_atom_comm p (Atomic b) \<longleftrightarrow> p b\<close>
   by fastforce+
 
@@ -551,107 +368,21 @@ lemma all_atom_comm_pTrue_eq[simp]:
   \<open>all_atom_comm (\<lambda>x. True) c\<close>
   by (induct c) force+
 
-abbreviation \<open>atoms_subrel_guarantee g \<equiv> all_atom_comm (\<lambda>b. b \<le> g)\<close>
-abbreviation \<open>atoms_preserve_guarantee g \<equiv> all_atom_comm (\<lambda>b. \<forall>s. Ex (g s) \<longrightarrow> Ex (b s))\<close>
-abbreviation \<open>atoms_guarantee g c \<equiv> atoms_subrel_guarantee g c \<and> atoms_preserve_guarantee g c\<close>
+lemma all_atom_comm_subst[simp]:
+  \<open>all_atom_comm p c' \<Longrightarrow> all_atom_comm p (c[x \<leftarrow> c']) \<longleftrightarrow> all_atom_comm p c\<close>
+  by (induct c arbitrary: x) force+
 
-abbreviation \<open>atoms_frame_closed \<equiv> all_atom_comm frame_closed\<close>
+lemma all_atom_comm_subst_strong:
+  \<open>all_atom_comm p c' - all_atom_comm p c \<Longrightarrow> all_atom_comm p (c[x \<leftarrow> c']) \<longleftrightarrow> all_atom_comm p c\<close>
+  by (induct c arbitrary: x) force+
 
-
-subsection \<open> Unframing \<close>
-
-definition
-  \<open>unframe_prop f r \<equiv>
-    \<forall>x z xz'.
-      r (x+z) xz' \<longrightarrow>
-      x ## z \<longrightarrow>
-      f z \<longrightarrow>
-      (\<exists>x' z'. f z' \<and> x' ## z' \<and> xz' = x' + z' \<and> r x x')\<close>
-
-lemma unframe_propD:
-  \<open>unframe_prop f r \<Longrightarrow>
-    x ## z \<Longrightarrow>
-    r (x + z) xz' \<Longrightarrow>
-    f z \<Longrightarrow>
-    \<exists>x' z'. f z' \<and> x' ## z' \<and> xz' = x' + z' \<and> r x x'\<close>
-  by (simp add: unframe_prop_def)
-
-definition
-  \<open>weak_unframe_prop f r \<equiv>
-    \<forall>x z xz'. r (x+z) xz' \<longrightarrow> x ## z \<longrightarrow> f z \<longrightarrow> (\<exists>x' z'. f z' \<and> x' ## z' \<and> xz' = x' + z')\<close>
-
-lemma weak_unframe_propD:
-  \<open>weak_unframe_prop f r \<Longrightarrow> x ## z \<Longrightarrow> r (x + z) xz' \<Longrightarrow> f z \<Longrightarrow>
-    \<exists>x' z'. f z' \<and> x' ## z' \<and> xz' = x' + z'\<close>
-  by (simp add: weak_unframe_prop_def)
-
-lemma weak_unframe_prop_rel_antimono:
-  \<open>r1 \<le> r2 \<Longrightarrow> weak_unframe_prop \<ff> r2 \<Longrightarrow> weak_unframe_prop \<ff> r1\<close>
-  by (fastforce simp add: weak_unframe_prop_def)
-
-subsection \<open> Left unframing \<close>
-
-definition
-  \<open>left_unframe_prop f r \<equiv>
-    \<forall>x xf x'xf' y y'.
-      r (x+xf, y) (x'xf', y') \<longrightarrow>
-      x ## xf \<longrightarrow>
-      f (xf, y) \<longrightarrow>
-      (\<exists>x' xf'. f (xf', y') \<and> x' ## xf' \<and> x'xf' = x' + xf' \<and> r (x, y) (x', y'))\<close>
-
-lemma left_unframe_propD:
-  \<open>left_unframe_prop f r \<Longrightarrow>
-    r (x+xf, y) (x'xf', y') \<Longrightarrow>
-    x ## xf \<Longrightarrow>
-    f (xf, y) \<Longrightarrow>
-    (\<exists>x' xf'. f (xf', y') \<and> x' ## xf' \<and> x'xf' = x' + xf' \<and> r (x, y) (x', y'))\<close>
-  by (simp add: left_unframe_prop_def)
-
-subsection \<open> Left unframing \<close>
-
-definition
-  \<open>weak_left_unframe_prop f r \<equiv>
-    \<forall>x xf x'xf' y y'.
-      r (x+xf, y) (x'xf', y') \<longrightarrow>
-      x ## xf \<longrightarrow>
-      f (xf, y) \<longrightarrow>
-      (\<exists>x' xf'. f (xf', y') \<and> x' ## xf' \<and> x'xf' = x' + xf')\<close>
-
-lemma weak_left_unframe_propD:
-  \<open>weak_left_unframe_prop f r \<Longrightarrow>
-    r (x+xf, y) (x'xf', y') \<Longrightarrow>
-    x ## xf \<Longrightarrow>
-    f (xf, y) \<Longrightarrow>
-    (\<exists>x' xf'. f (xf', y') \<and> x' ## xf' \<and> x'xf' = x' + xf')\<close>
-  by (force simp add: weak_left_unframe_prop_def)
-
-
-subsection \<open> Atomic unframing \<close>
-
-definition
-  \<open>atom_unframe_prop b xy \<equiv>
-    (\<forall>xf xy'xf.
-      b (xy +\<^sub>L xf) xy'xf \<longrightarrow> fst xy ## xf \<longrightarrow>
-      (\<exists>xy'. fst xy' ## xf \<and> xy'xf = xy' +\<^sub>L xf \<and> b xy xy'))
-    \<comment> \<open> \<and> (\<forall>yf xyyf'.
-      b (xy +R yf) xyyf' \<longrightarrow> snd xy ## yf \<longrightarrow>
-      (\<exists>xy'. snd xy' ## yf \<and> xyyf' = xy' +R yf \<and> b xy xy')) \<and>
-    (\<forall>xyf xyxyf'.
-      b (xy + xyf) xyxyf' \<longrightarrow> xy ## xyf \<longrightarrow>
-      (\<exists>xy'. xy' ## xyf \<and> xyxyf' = xy' + xyf \<and> b xy xy')) \<close>\<close>
-
-lemma atom_unframe_propD:
-  \<open>atom_unframe_prop b xy \<Longrightarrow>
-    b (xy +\<^sub>L xf) xy'xf \<Longrightarrow>
-    fst xy ## xf \<Longrightarrow>
-    (\<exists>xy'. fst xy' ## xf \<and> xy'xf = xy' +\<^sub>L xf \<and> b xy xy')\<close>
-  by (cases xy'xf, clarsimp simp add: atom_unframe_prop_def)
+abbreviation \<open>atoms_subrel_of r \<equiv> all_atom_comm (\<lambda>b. b \<le> r)\<close>
 
 
 section \<open> Rely-Guarantee Separation Logic \<close>
 
 inductive rgsat ::
-  \<open>('l::perm_alg, 's::perm_alg) comm \<Rightarrow>
+  \<open>('l::perm_alg \<times> 's::perm_alg) comm \<Rightarrow>
     ('s \<Rightarrow> 's \<Rightarrow> bool) \<Rightarrow> ('s \<Rightarrow> 's \<Rightarrow> bool) \<Rightarrow>
     ('l \<times> 's \<Rightarrow> bool) \<Rightarrow> ('l \<times> 's \<Rightarrow> bool) \<Rightarrow>
     bool\<close>
@@ -661,7 +392,7 @@ inductive rgsat ::
 | rgsat_iter:
   \<open>rgsat c r g p' q' \<Longrightarrow>
       p \<le> i \<Longrightarrow> sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) i \<le> p' \<Longrightarrow> q' \<le> i \<Longrightarrow> sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) i \<le> q \<Longrightarrow>
-      rgsat (c\<^sup>\<star>) r g p q\<close>
+      rgsat (\<mu> c) r g p q\<close>
 | rgsat_seq:
   \<open>rgsat c1 r g p1 p2 \<Longrightarrow>
     rgsat c2 r g p2 p3 \<Longrightarrow>
@@ -696,12 +427,12 @@ inductive rgsat ::
     rgsat c r g p q\<close>
 
 inductive_cases rgsep_doneE[elim]: \<open>rgsat Skip r g p q\<close>
-inductive_cases rgsep_iterE[elim]: \<open>rgsat (c\<^sup>\<star>) r g p q\<close>
+inductive_cases rgsep_iterE[elim]: \<open>rgsat (\<mu> c) r g p q\<close>
 inductive_cases rgsep_parE[elim]: \<open>rgsat (s1 \<parallel> s2) r g p q\<close>
 inductive_cases rgsep_atomE[elim]: \<open>rgsat (Atomic c) r g p q\<close>
 
 lemma rgsat_iter':
-  \<open>rgsat c r g (sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) i) i \<Longrightarrow> rgsat (c\<^sup>\<star>) r g i (sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) i)\<close>
+  \<open>rgsat c r g (sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) i) i \<Longrightarrow> rgsat (\<mu> c) r g i (sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) i)\<close>
   using rgsat_iter[OF _ order.refl order.refl order.refl order.refl]
   by blast
 

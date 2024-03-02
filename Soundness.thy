@@ -92,7 +92,7 @@ lemma act_not_eq_iff[simp]:
 
 subsection \<open> Operational semantics steps \<close>
 
-inductive opstep :: \<open>act \<Rightarrow> ('l \<times> 's) \<times> ('l,'s) comm \<Rightarrow> (('l \<times> 's) \<times> ('l,'s) comm) \<Rightarrow> bool\<close> where
+inductive opstep :: \<open>act \<Rightarrow> ('l \<times> 's) \<times> ('l \<times> 's) comm \<Rightarrow> (('l \<times> 's) \<times> ('l \<times> 's) comm) \<Rightarrow> bool\<close> where
   seq_left[intro!]: \<open>opstep a (h, c1) (h', c1') \<Longrightarrow> opstep a (h, c1 ;; c2) (h', c1' ;; c2)\<close>
 | seq_right[intro!]: \<open>opstep Tau (h, Skip ;; c2) (h, c2)\<close>
 | ndet_tau_left[intro]:  \<open>opstep Tau (h, c1) (h', c1') \<Longrightarrow> opstep Tau (h, c1 \<^bold>+ c2) (h', c1' \<^bold>+ c2)\<close>
@@ -104,9 +104,7 @@ inductive opstep :: \<open>act \<Rightarrow> ('l \<times> 's) \<times> ('l,'s) c
 | par_left[intro]: \<open>opstep a (h, s) (h', s') \<Longrightarrow> opstep a (h, s \<parallel> t) (h', s' \<parallel> t)\<close>
 | par_right[intro]: \<open>opstep a (h, t) (h', t') \<Longrightarrow> opstep a (h, s \<parallel> t) (h', s \<parallel> t')\<close>
 | par_skip[intro!]: \<open>opstep Tau (h, Skip \<parallel> Skip) (h, Skip)\<close>
-| iter_skip[intro]: \<open>opstep Tau (h, c\<^sup>\<star>) (h, Skip)\<close>
-  \<comment> \<open> TODO: not quite right... c has to not be able to take a move? \<close>
-| iter_step[intro]: \<open>opstep Tau (h, c\<^sup>\<star>) (h, c ;; c\<^sup>\<star>)\<close>
+| fixpt_skip[intro!]: \<open>c' = c[0 \<leftarrow> \<mu> c] \<Longrightarrow> opstep Tau (h, \<mu> c) (h, c')\<close>
 | atomic[intro!]: \<open>a = Local \<Longrightarrow> snd s' = Skip \<Longrightarrow> b h (fst s') \<Longrightarrow> opstep a (h, Atomic b) s'\<close>
 
 inductive_cases opstep_tauE[elim]: \<open>opstep Tau s s'\<close>
@@ -116,7 +114,7 @@ inductive_cases opstep_skipE[elim!]: \<open>opstep a (h, Skip) s'\<close>
 inductive_cases opstep_seqE[elim]: \<open>opstep a (h, c1 ;; c2) s'\<close>
 inductive_cases opstep_ndetE[elim]: \<open>opstep a (h, c1 \<^bold>+ c2) s'\<close>
 inductive_cases opstep_parE[elim]: \<open>opstep a (h, c1 \<parallel> c2) s'\<close>
-inductive_cases opstep_iterE[elim]: \<open>opstep a (h, c\<^sup>\<star>) s'\<close>
+inductive_cases opstep_fixptE[elim]: \<open>opstep a (h, \<mu> c) s'\<close>
 inductive_cases opstep_atomicE[elim!]: \<open>opstep a (h, Atomic b) s'\<close>
 
 paragraph \<open> Pretty operational semantics \<close>
@@ -145,17 +143,15 @@ lemma opstep_iff_standard[opstep_iff]:
     a = Tau \<and> c1 = Skip \<and> c2 = Skip \<and> s' = (h, Skip) \<or>
     (\<exists>h' c1'. opstep a (h,c1) (h',c1') \<and> s' = (h', c1' \<parallel> c2)) \<or>
     (\<exists>h' c2'. opstep a (h,c2) (h',c2') \<and> s' = (h', c1 \<parallel> c2'))\<close>
-  \<open>opstep a (h, c\<^sup>\<star>) s' \<longleftrightarrow>
-    a = Tau \<and> s' = (h, Skip) \<or>
-    a = Tau \<and> s' = (h, c ;; c\<^sup>\<star>)\<close>
+  \<open>opstep a (h, \<mu> c) s' \<longleftrightarrow> a = Tau \<and> s' = (h, c[0 \<leftarrow> \<mu> c])\<close>
   \<open>opstep a (h, Atomic b) s' \<longleftrightarrow>
     a = Local \<and> snd s' = Skip \<and> b h (fst s')\<close>
-       apply force
-      apply force
+       apply blast
+      apply blast
      apply (rule iffI, (erule opstep_ndetE; force), force)
-    apply (rule iffI, (erule opstep_parE; force), force)
-   apply (rule iffI, (erule opstep_iterE; force), force)
-  apply (rule iffI, (erule opstep_atomicE; force), force)
+    apply blast
+   apply blast
+  apply blast
   done
 
 lemma opstep_tau_preserves_heap:
@@ -176,56 +172,6 @@ lemma opstep_act_cases:
     (a = Local \<Longrightarrow> s \<midarrow>Local\<rightarrow> s' \<Longrightarrow> P) \<Longrightarrow>
     P\<close>
   by (metis (full_types) act.exhaust opstep_tau_preserves_heap)
-
-lemma opstep_to_ndet_originally_ndet_subexpr:
-  \<open>opstep a s s' \<Longrightarrow> snd s' = c1' \<^bold>+ c2' \<Longrightarrow>
-    (\<exists>c1. c1 \<^bold>+ c2' \<le> snd s) \<or> (\<exists>c2. c1' \<^bold>+ c2 \<le> snd s)\<close>
-  by (induct arbitrary: c1' c2' rule: opstep.inducts) force+
-
-lemma opstep_step_to_under_left_ndet_impossible:
-  \<open>opstep a s s' \<Longrightarrow> c1' \<^bold>+ c2' \<le> snd s' \<Longrightarrow> snd s \<le> c1' \<Longrightarrow> False\<close>
-  apply (induct arbitrary: c1' c2' rule: opstep.inducts; clarsimp)
-            apply (metis less_eq_comm_no_constructorsD(3) less_eq_comm_subexprsD(1,2))
-           apply (metis less_eq_comm_no_constructorsD(3) less_eq_comm_subexprsD(2))
-          apply (metis order.refl less_eq_comm_no_constructorsD(3) less_eq_comm_subexprsD(3,4))
-         apply (metis order.refl less_eq_comm_no_constructorsD(3) less_eq_comm_subexprsD(3,4))
-        apply (metis less_eq_comm_no_constructorsD(3) less_eq_comm_subexprsD(4))
-       apply (metis less_eq_comm_no_constructorsD(3) less_eq_comm_subexprsD(3))
-      apply (metis less_eq_comm_subexprsD(3))
-     apply (metis less_eq_comm_subexprsD(4))
-    apply (metis less_eq_comm_no_constructorsD(3) less_eq_comm_subexprsD(5,6))
-   apply (metis less_eq_comm_no_constructorsD(3) less_eq_comm_subexprsD(5,6))
-  apply (metis less_eq_comm_no_constructorsD(3) less_eq_comm_subexprsD(7))
-  done
-
-lemma opstep_step_to_left_ndet_impossible:
-  \<open>opstep a (h, c1) (h', c1 \<^bold>+ c2) \<Longrightarrow> False\<close>
-  by (metis order.refl opstep_step_to_under_left_ndet_impossible snd_conv)
-
-lemma opstep_step_to_under_right_ndet_impossible:
-  \<open>opstep a s s' \<Longrightarrow> c1' \<^bold>+ c2' \<le> snd s' \<Longrightarrow> snd s \<le> c2' \<Longrightarrow> False\<close>
-  apply (induct arbitrary: c1' c2' rule: opstep.inducts; clarsimp)
-            apply (metis less_eq_comm_no_constructorsD(4) less_eq_comm_subexprsD(1,2))
-           apply (metis less_eq_comm_no_constructorsD(4) less_eq_comm_subexprsD(2))
-          apply (metis order.refl less_eq_comm_no_constructorsD(4) less_eq_comm_subexprsD(3,4))
-         apply (metis order.refl less_eq_comm_no_constructorsD(4) less_eq_comm_subexprsD(3,4))
-        apply (metis less_eq_comm_no_constructorsD(4) less_eq_comm_subexprsD(4))
-       apply (metis less_eq_comm_no_constructorsD(4) less_eq_comm_subexprsD(3))
-      apply (metis less_eq_comm_subexprsD(3))
-     apply (metis less_eq_comm_subexprsD(4))
-    apply (metis less_eq_comm_no_constructorsD(4) less_eq_comm_subexprsD(5,6))
-   apply (metis less_eq_comm_no_constructorsD(4) less_eq_comm_subexprsD(5,6))
-  apply (metis less_eq_comm_no_constructorsD(4) less_eq_comm_subexprsD(7))
-  done
-
-lemma opstep_step_to_right_ndet_impossible:
-  \<open>opstep a (h, c2) (h', c1 \<^bold>+ c2) \<Longrightarrow> False\<close>
-  by (metis order.refl opstep_step_to_under_right_ndet_impossible snd_conv)
-
-lemma opstep_always_changes_comm:
-  \<open>opstep a s s' \<Longrightarrow> snd s' \<noteq> snd s\<close>
-  by (induct rule: opstep.inducts)
-    (force dest: opstep_step_to_left_ndet_impossible opstep_step_to_right_ndet_impossible)+
 
 lemma all_atom_comm_opstep:
   assumes
@@ -279,61 +225,6 @@ qed
 
 lemmas rev_opstep_preserves_all_atom_comm = opstep_preserves_all_atom_comm[rotated]
 
-subsection \<open> opstep unframing \<close>
-
-lemma opstep_local_unframe':
-  \<open>opstep a s s' \<Longrightarrow>
-    s = ((h + hf, y), c) \<Longrightarrow>
-    s' = ((h'hf', y'), c') \<Longrightarrow>
-    all_atom_comm (left_unframe_prop f) c \<Longrightarrow>
-    h ## hf \<Longrightarrow>
-    f (hf, y) \<Longrightarrow>
-    \<exists>h' hf'.
-      f (hf', y') \<and> h' ## hf' \<and> h'hf' = h' + hf' \<and>
-      opstep a ((h, y), c) ((h', y'), c')\<close>
-proof (induct arbitrary: h hf h'hf' y y' c c' rule: opstep.inducts)
-  case (seq_left a h c1 h' c1' c2)
-  then show ?case
-    by (force simp add: opstep_iff)
-next
-  case (atomic a s' b h)
-  then show ?case
-    by (clarsimp simp add: opstep_iff left_unframe_prop_def)
-qed (simp add: opstep_iff, metis)+
-
-lemma opstep_local_unframeD:
-  \<open>opstep a ((h + hf, y), c) ((h'hf', y'), c') \<Longrightarrow>
-    all_atom_comm (left_unframe_prop f) c \<Longrightarrow>
-    h ## hf \<Longrightarrow>
-    f (hf, y) \<Longrightarrow>
-    \<exists>h' hf'.
-      f (hf', y') \<and> h' ## hf' \<and> h'hf' = h' + hf' \<and>
-      opstep a ((h, y), c) ((h', y'), c')\<close>
-  by (simp add: opstep_local_unframe')
-
-subsection \<open> opstep weak unframing \<close>
-
-lemma opstep_local_weak_unframe':
-  \<open>opstep a s s' \<Longrightarrow>
-    s = ((h + hf, y), c) \<Longrightarrow>
-    s' = ((h'hf', y'), c') \<Longrightarrow>
-    all_atom_comm (weak_left_unframe_prop f) c \<Longrightarrow>
-    h ## hf \<Longrightarrow>
-    f (hf, y) \<Longrightarrow>
-    (\<exists>h' hf'. f (hf', y') \<and> h' ## hf' \<and> h'hf' = h' + hf')\<close>
-  apply (induct arbitrary: h hf h'hf' y y' c c' rule: opstep.inducts)
-               apply (force simp add: opstep_iff)+
-  apply (clarsimp simp add: opstep_iff weak_left_unframe_prop_def sp_def imp_ex_conjL imp_conjL)
-  done
-
-lemma opstep_local_weak_unframeD:
-  \<open>opstep a ((h + hf, y), c) ((h'hf', y'), c') \<Longrightarrow>
-    all_atom_comm (weak_left_unframe_prop f) c \<Longrightarrow>
-    h ## hf \<Longrightarrow>
-    f (hf, y) \<Longrightarrow>
-    (\<exists>h' hf'. f (hf', y') \<and> h' ## hf' \<and> h'hf' = h' + hf')\<close>
-  by (simp add: opstep_local_weak_unframe')
-
 
 subsection \<open> Sugared atomic programs \<close>
 
@@ -357,27 +248,26 @@ lemma opstep_assume[intro!]: \<open>q h' \<Longrightarrow> opstep Local (h, Assu
 subsection \<open> If-then-else and While Loops \<close>
 
 definition \<open>IfThenElse p ct cf \<equiv> Assert p ;; ct \<^bold>+ Assert (-p) ;; cf\<close>
-definition \<open>WhileLoop p c \<equiv> (Assert p ;; c)\<^sup>\<star> ;; Assert (-p)\<close>
+definition \<open>WhileLoop p c \<equiv> \<mu> (Assert p ;; map_fixvar Suc c ;; FixVar 0 \<^bold>+ Assert (-p))\<close>
 
 lemma IfThenElse_inject[simp]:
   \<open>IfThenElse p1 ct1 cf1 = IfThenElse p2 ct2 cf2 \<longleftrightarrow> p1 = p2 \<and> ct1 = ct2 \<and> cf1 = cf2\<close>
-  by (simp add: IfThenElse_def,
-      metis less_le_not_le order_neq_less_conv(2) passert_simps predicate1I)
+  by (simp add: IfThenElse_def passert_def fun_eq_iff, blast)
 
 lemma WhileLoop_inject[simp]:
   \<open>WhileLoop p1 c1 = WhileLoop p2 c2 \<longleftrightarrow> p1 = p2 \<and> c1 = c2\<close>
-  by (simp add: WhileLoop_def, metis IfThenElse_def IfThenElse_inject)
+  by (simp add: WhileLoop_def map_fixvar_inj_inject passert_def fun_eq_iff, blast)
 
 lemma IfThenElse_distinct[simp]:
   \<open>IfThenElse p ct cf \<noteq> Skip\<close>
   \<open>IfThenElse p ct cf \<noteq> c1 ;; c2\<close>
   \<open>IfThenElse p ct cf \<noteq> c1 \<parallel> c2\<close>
-  \<open>IfThenElse p ct cf \<noteq> c\<^sup>\<star>\<close>
+  \<open>IfThenElse p ct cf \<noteq> \<mu> c\<close>
   \<open>IfThenElse p ct cf \<noteq> Atomic b\<close>
   \<open>Skip \<noteq> IfThenElse p ct cf\<close>
   \<open>c1 ;; c2 \<noteq> IfThenElse p ct cf\<close>
   \<open>c1 \<parallel> c2 \<noteq> IfThenElse p ct cf\<close>
-  \<open>c\<^sup>\<star> \<noteq> IfThenElse p ct cf\<close>
+  \<open>\<mu> c \<noteq> IfThenElse p ct cf\<close>
   \<open>Atomic b \<noteq> IfThenElse p ct cf\<close>
   by (simp add: IfThenElse_def)+
 
@@ -385,14 +275,16 @@ lemma WhileLoop_distinct[simp]:
   \<open>WhileLoop p c \<noteq> Skip\<close>
   \<open>WhileLoop p c \<noteq> c1 \<^bold>+ c2\<close>
   \<open>WhileLoop p c \<noteq> c1 \<parallel> c2\<close>
-  \<open>WhileLoop p c \<noteq> c\<^sup>\<star>\<close>
   \<open>WhileLoop p c \<noteq> Atomic b\<close>
   \<open>Skip \<noteq> WhileLoop p c\<close>
   \<open>c1 \<^bold>+ c2 \<noteq> WhileLoop p c\<close>
   \<open>c1 \<parallel> c2 \<noteq> WhileLoop p c\<close>
-  \<open>c\<^sup>\<star> \<noteq> WhileLoop p c\<close>
   \<open>Atomic b \<noteq> WhileLoop p c\<close>
-  by (simp add: WhileLoop_def)+
+  \<open>WhileLoop p c \<noteq> \<mu> c\<close>
+  \<open>\<mu> c \<noteq> WhileLoop p c\<close>
+           apply (simp add: WhileLoop_def; fail)+
+   apply (rule size_neq_size_imp_neq, simp add: WhileLoop_def)+
+  done
 
 
 lemma opstep_IfThenElse_iff[opstep_iff]:
@@ -410,23 +302,14 @@ lemma opstep_IfThenElse_false[intro]:
 
 lemma opstep_WhileLoop_iff[opstep_iff]:
   \<open>opstep a (h, WhileLoop p c) s' \<longleftrightarrow>
-    (a = Tau \<and> s' = (h, Skip ;; Assert (- p)) \<or>
-      a = Tau \<and> s' = (h, ((Assert p ;; c) ;; (Assert p ;; c)\<^sup>\<star>) ;; Assert (- p)))\<close>
-  by (simp add: WhileLoop_def opstep_iff, metis surj_pair)
-
-lemma opstep_WhileLoop_true[intro]:
-  \<open>p h \<Longrightarrow> opstep Tau (h, WhileLoop p c) (h, (((Assert p ;; c) ;; (Assert p ;; c)\<^sup>\<star>) ;; Assert (-p)))\<close>
-  by (simp add: opstep_iff)
-
-lemma opstep_WhileLoop_false[intro]:
-  \<open>\<not> p h \<Longrightarrow> opstep Tau (h, WhileLoop p c) (h, (((Assert p ;; c) ;; (Assert p ;; c)\<^sup>\<star>) ;; Assert (-p)))\<close>
-  by (simp add: opstep_iff)
+    a = Tau \<and> s' = (h, Assert p ;; map_fixvar Suc c ;; WhileLoop p c \<^bold>+ Assert (- p))\<close>
+  by (simp add: WhileLoop_def opstep_iff fixvar_subst_over_map_avoid)
 
 
 section \<open> Safe \<close>
 
 inductive safe
-  :: \<open>nat \<Rightarrow> ('l::perm_alg, 's::perm_alg) comm \<Rightarrow>
+  :: \<open>nat \<Rightarrow> ('l::perm_alg \<times> 's::perm_alg) comm \<Rightarrow>
       'l \<Rightarrow> 's \<Rightarrow> ('s \<Rightarrow> 's \<Rightarrow> bool) \<Rightarrow> ('s \<Rightarrow> 's \<Rightarrow> bool) \<Rightarrow> ('l \<times> 's \<Rightarrow> bool) \<Rightarrow> bool\<close>
   where
   safe_nil[intro!]: \<open>safe 0 c hl hs r g q\<close>
@@ -697,7 +580,7 @@ subsection \<open> Safety of Iteration \<close>
 lemma safe_iter':
   \<open>(\<forall>m\<le>n. \<forall>hl' hs'. sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) i (hl', hs') \<longrightarrow> safe m c hl' hs' r g (sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) i)) \<Longrightarrow>
     sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) i (hl, hs) \<Longrightarrow>
-    safe n (c\<^sup>\<star>) hl hs r g (sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) i)\<close>
+    safe n (\<mu> c) hl hs r g (sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) i)\<close>
   apply (induct n arbitrary: i hl hs)
    apply force
   apply (rule safe_suc)
@@ -714,7 +597,7 @@ lemma safe_iter:
     q' \<le> i \<Longrightarrow>
     sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) i \<le> q \<Longrightarrow>
     p (hl, hs) \<Longrightarrow>
-    safe n (c\<^sup>\<star>) hl hs r g q\<close>
+    safe n (\<mu> c) hl hs r g q\<close>
   apply (rule safe_postpred_mono, assumption)
   apply (rule safe_iter')
    apply (metis (mono_tags) predicate1D safe_postpred_monoD sp_rely_stronger)
