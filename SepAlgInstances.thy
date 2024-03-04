@@ -17,20 +17,23 @@ definition disjoint_prod :: \<open>'a \<times> 'b \<Rightarrow> 'a \<times> 'b \
   \<open>disjoint_prod a b \<equiv> (fst a ## fst b \<and> snd a ## snd b)\<close>
 declare disjoint_prod_def[simp]
 
-(* these definitions are horrible because we don't have a 0, and thus can't prove the addition
-    property with a pointwise definition. *)
-definition less_eq_prod :: \<open>'a \<times> 'b \<Rightarrow> 'a \<times> 'b \<Rightarrow> bool\<close> where
-  \<open>less_eq_prod a b \<equiv>
-    a = b \<or>
-      ((fst a \<noteq> fst b \<or> snd a \<noteq> snd b) \<and>
-        (\<exists>c. fst a ## c \<and> fst b = fst a + c) \<and>
-        (\<exists>c. snd a ## c \<and> snd b = snd a + c))\<close>
-
+(* this definition is horrible because we don't have a 0,
+    and thus can't prove the relation between addition and < with a pointwise definition. *)
 definition less_prod :: \<open>'a \<times> 'b \<Rightarrow> 'a \<times> 'b \<Rightarrow> bool\<close> where
   \<open>less_prod a b \<equiv>
     (fst a \<noteq> fst b \<or> snd a \<noteq> snd b) \<and>
       (\<exists>c. fst a ## c \<and> fst b = fst a + c) \<and>
       (\<exists>c. snd a ## c \<and> snd b = snd a + c)\<close>
+
+definition less_eq_prod :: \<open>'a \<times> 'b \<Rightarrow> 'a \<times> 'b \<Rightarrow> bool\<close> where
+  \<open>less_eq_prod a b \<equiv> a = b \<or> a < b\<close>
+
+lemma less_eq_prod_def2:
+  \<open>a \<le> b \<longleftrightarrow> a = b \<or>
+    ((fst a \<noteq> fst b \<or> snd a \<noteq> snd b) \<and>
+      (\<exists>c. fst a ## c \<and> fst b = fst a + c) \<and>
+      (\<exists>c. snd a ## c \<and> snd b = snd a + c))\<close>
+  unfolding less_prod_def less_eq_prod_def by force
 
 instance
   apply standard
@@ -38,7 +41,7 @@ instance
             apply (metis order_antisym_conv partial_le_plus)
            apply (force simp add: less_prod_def less_eq_prod_def)
           apply (simp add: less_prod_def less_eq_prod_def, metis disjoint_add_swap_lr partial_add_assoc2 prod.expand)
-         apply (metis less_eq_prod_def order_antisym_conv partial_le_plus)
+         apply (metis less_eq_prod_def2 order_antisym_conv partial_le_plus)
         apply (force simp add: partial_add_assoc)
        apply (force dest: partial_add_commute)
       apply (force simp add: disjoint_sym_iff)
@@ -74,7 +77,7 @@ instance
 lemma mu_less_eq_prod_def[simp]:
   fixes a b :: \<open>_::multiunit_sep_alg \<times> _::multiunit_sep_alg\<close>
   shows \<open>a \<le> b \<longleftrightarrow> fst a \<le> fst b \<and> snd a \<le> snd b\<close>
-  apply (simp add: less_eq_prod_def le_iff_sepadd_weak)
+  apply (simp add: less_eq_prod_def2 le_iff_sepadd_weak less_iff_sepadd)
   apply (metis prod.expand unitof_disjoint2 unitof_is_unitR2)
   done
 
@@ -99,7 +102,7 @@ definition bot_prod :: \<open>'a \<times> 'b\<close> where
 declare bot_prod_def[simp]
 
 instance
-  by standard force+
+  by standard (simp add: fun_eq_iff zero_is_bot)+
 
 end
 
@@ -145,8 +148,7 @@ lemma sepconj_conj_monoR:
   \<open>q \<le> q' \<Longrightarrow> p \<^emph>\<and> q \<le> p \<^emph>\<and> q'\<close>
   by (force simp add: sepconj_conj_def)
 
-
-section \<open> Unit \<close>
+section \<open> (additive) unit \<close>
 
 instantiation unit :: perm_alg
 begin
@@ -193,6 +195,53 @@ instance
 end
 
 
+section \<open> (multiplicative) unit \<close>
+
+typedef munit = \<open>{()}\<close>
+  by blast
+
+abbreviation munit :: munit (\<open>\<one>\<close>) where
+  \<open>\<one> \<equiv> Abs_munit ()\<close>
+
+lemma eq_munit_iff[iff]:
+  \<open>a = (b::munit)\<close>
+  using Rep_munit_inject by auto
+
+instantiation munit :: order
+begin
+
+definition less_eq_munit :: \<open>munit \<Rightarrow> munit \<Rightarrow> bool\<close> where
+  \<open>less_eq_munit a b \<equiv> True\<close>
+declare less_eq_munit_def[simp]
+
+definition less_munit :: \<open>munit \<Rightarrow> munit \<Rightarrow> bool\<close> where
+  \<open>less_munit a b \<equiv> False\<close>
+declare less_munit_def[simp]
+
+instance
+  by standard simp+
+
+end
+
+instantiation munit :: perm_alg
+begin
+
+definition plus_munit :: \<open>munit \<Rightarrow> munit \<Rightarrow> munit\<close> where
+  \<open>plus_munit a b \<equiv> undefined\<close>
+declare plus_munit_def[simp]
+
+definition disjoint_munit :: \<open>munit \<Rightarrow> munit \<Rightarrow> bool\<close> where
+  \<open>disjoint_munit a b \<equiv> False\<close>
+declare disjoint_munit_def[simp]
+
+instance
+  by standard simp+
+
+end
+
+
+section \<open> option \<close>
+
 instantiation option :: (perm_alg) sep_alg
 begin
 
@@ -206,6 +255,11 @@ lemma less_eq_option_simps[simp]:
   \<open>Some x \<le> Some y \<longleftrightarrow> x \<le> y\<close>
   by (simp add: less_eq_option_def)+
 
+lemma less_eq_option_def2:
+  \<open>a \<le> b \<longleftrightarrow> a = None \<or> b \<noteq> None \<and> the a \<le> the b\<close>
+  by (cases a; cases b; simp)
+
+
 definition less_option :: \<open>'a option \<Rightarrow> 'a option \<Rightarrow> bool\<close> where
   \<open>less_option a b \<equiv>
     case a of None \<Rightarrow> b \<noteq> None | Some x \<Rightarrow> (case b of None \<Rightarrow> False | Some y \<Rightarrow> x < y)\<close>
@@ -216,6 +270,10 @@ lemma less_option_simps[simp]:
   \<open>Some x < None \<longleftrightarrow> False\<close>
   \<open>Some x < Some y \<longleftrightarrow> x < y\<close>
   by (simp add: less_option_def)+
+
+lemma less_option_def2:
+  \<open>a < b \<longleftrightarrow> b \<noteq> None \<and> (a = None \<or> the a < the b)\<close>
+  by (cases a; cases b; simp)
 
 definition plus_option :: \<open>'a option \<Rightarrow> 'a option \<Rightarrow> 'a option\<close> where
   \<open>plus_option a b \<equiv>
@@ -231,6 +289,7 @@ lemma plus_None_iff[simp]:
   \<open>a + b = None \<longleftrightarrow> a = None \<and> b = None\<close>
   by (simp add: plus_option_def split: option.splits)
 
+
 definition disjoint_option :: \<open>'a option \<Rightarrow> 'a option \<Rightarrow> bool\<close> where
   \<open>disjoint_option a b \<equiv>
     case a of None \<Rightarrow> True | Some x \<Rightarrow> (case b of None \<Rightarrow> True | Some y \<Rightarrow> x ## y)\<close>
@@ -240,6 +299,11 @@ lemma disjoint_option_simps[simp]:
   \<open>None ## b\<close>
   \<open>a ## None\<close>
   by (simp add: disjoint_option_def split: option.splits)+
+
+lemma disjoint_option_def2:
+  \<open>a ## b \<longleftrightarrow> a = None \<or> b = None \<or> the a ## the b\<close>
+  by (cases a; cases b; simp)
+
 
 definition unitof_option :: \<open>'a option \<Rightarrow> 'a option\<close> where
   \<open>unitof_option x \<equiv> None\<close>
@@ -272,6 +336,8 @@ instance
 
 end
 
+
+section \<open> functions \<close>
 
 instantiation "fun" :: (type, multiunit_sep_alg) multiunit_sep_alg
 begin
@@ -328,11 +394,10 @@ definition bot_fun :: \<open>('a \<Rightarrow> 'b)\<close> where
 declare bot_fun_def[simp]
 
 instance
-  apply standard
-    apply force+
-  done
+  by standard (simp add: fun_eq_iff zero_is_bot)
 
 end
+
 
 section \<open> Discrete Algebra \<close>
 
@@ -348,64 +413,26 @@ begin
 
 definition less_eq_discr :: \<open>'a discr \<Rightarrow> 'a discr \<Rightarrow> bool\<close> where
   \<open>less_eq_discr a b \<equiv> the_discr a = the_discr b\<close>
+declare less_eq_discr_def[simp]
 
 lemma less_eq_discr_iff[simp]:
   \<open>Discr x \<le> Discr y \<longleftrightarrow> x = y\<close>
-  by (simp add: less_eq_discr_def)
+  by simp
 
 definition less_discr :: \<open>'a discr \<Rightarrow> 'a discr \<Rightarrow> bool\<close> where
   \<open>less_discr a b \<equiv> False\<close>
-
 declare less_discr_def[simp]
 
 definition plus_discr :: \<open>'a discr \<Rightarrow> 'a discr \<Rightarrow> 'a discr\<close> where
-  \<open>plus_discr a b \<equiv> undefined\<close>
+  \<open>plus_discr a b \<equiv> a\<close>
+declare plus_discr_def[simp]
 
 definition disjoint_discr :: \<open>'a discr \<Rightarrow> 'a discr \<Rightarrow> bool\<close> where
-  \<open>disjoint_discr a b \<equiv> False\<close>
+  \<open>disjoint_discr a b \<equiv> a = b\<close>
 declare disjoint_discr_def[simp]
 
 instance
-  apply standard
-            apply (force simp add: less_eq_discr_def the_discr_inject)+
-  done
-
-end
-
-
-section \<open> Self-additive discrete Algebra \<close>
-
-typedef 'a add_discr = \<open>UNIV :: 'a set\<close>
-  morphisms the_add_discr AddDiscr
-  by blast
-
-lemmas AddDiscr_inverse_iff[simp] = AddDiscr_inverse[simplified]
-lemmas AddDiscr_inject_iff[simp] = AddDiscr_inject[simplified]
-
-instantiation add_discr :: (type) perm_alg
-begin
-
-definition less_eq_add_discr :: \<open>'a add_discr \<Rightarrow> 'a add_discr \<Rightarrow> bool\<close> where
-  \<open>less_eq_add_discr a b \<equiv> the_add_discr a = the_add_discr b\<close>
-
-lemma less_eq_add_discr_iff[simp]:
-  \<open>Discr x \<le> Discr y \<longleftrightarrow> x = y\<close>
-  by (simp add: less_eq_add_discr_def)
-
-definition less_add_discr :: \<open>'a add_discr \<Rightarrow> 'a add_discr \<Rightarrow> bool\<close> where
-  \<open>less_add_discr a b \<equiv> False\<close>
-
-declare less_add_discr_def[simp]
-
-definition plus_add_discr :: \<open>'a add_discr \<Rightarrow> 'a add_discr \<Rightarrow> 'a add_discr\<close> where
-  \<open>plus_add_discr a b \<equiv> a\<close>
-
-definition disjoint_add_discr :: \<open>'a add_discr \<Rightarrow> 'a add_discr \<Rightarrow> bool\<close> where
-  \<open>disjoint_add_discr a b \<equiv> a = b\<close>
-declare disjoint_add_discr_def[simp]
-
-instance
-  by (standard; force simp add: less_eq_add_discr_def plus_add_discr_def the_add_discr_inject)
+  by standard (force simp add: the_discr_inject)+
 
 end
 
@@ -508,9 +535,9 @@ end
 
 section \<open> Useful Sepalgebra Constructions \<close>
 
-type_synonym ('i,'v) heap = \<open>'i \<rightharpoonup> 'v discr\<close>
+type_synonym ('i,'v) heap = \<open>'i \<rightharpoonup> (munit \<times> 'v discr)\<close>
 
-type_synonym ('i,'v) perm_heap = \<open>'i \<rightharpoonup> (rat fperm \<times> 'v add_discr)\<close>
+type_synonym ('i,'v) perm_heap = \<open>'i \<rightharpoonup> (rat fperm \<times> 'v discr)\<close>
 
 
 section \<open> Results \<close>
@@ -523,7 +550,8 @@ lemma sepdomeq_fun:
   apply (rule iffI)
    apply (frule_tac x=\<open>\<lambda>x. if x \<notin> dom f then Some undefined else None\<close> in spec)
    apply (drule_tac x=\<open>\<lambda>x. if x \<notin> dom g then Some undefined else None\<close> in spec)
-   apply (clarsimp simp add: if_splits dom_def set_eq_iff, metis not_Some_eq)
+   apply (clarsimp simp add: dom_def set_eq_iff not_Some_prod_eq[symmetric]
+      simp del: not_Some_prod_eq split: if_splits, metis)
   apply blast
   done
 

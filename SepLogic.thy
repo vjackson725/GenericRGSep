@@ -129,10 +129,6 @@ subsection \<open> Common Notions \<close>
 class disjoint =
   fixes disjoint :: \<open>'a \<Rightarrow> 'a \<Rightarrow> bool\<close> (infix \<open>##\<close> 60)
 
-class disjoint_zero = disjoint + zero +
-  assumes zero_disjointL[simp]: \<open>0 ## a\<close>
-  assumes zero_disjointR[simp]: \<open>a ## 0\<close>
-
 subsection \<open> Permission Algebras \<close>
 
 class perm_alg = disjoint + plus + order +
@@ -224,15 +220,6 @@ lemma disjoint_middle_swap2:
   \<open>b ## c \<Longrightarrow> b + c ## d \<Longrightarrow> a ## b + c + d \<Longrightarrow> a + c ## b + d\<close>
   by (metis disjoint_add_rightR disjoint_add_right_commute2 disjoint_add_rightL partial_add_assoc
       partial_add_commute)
-
-lemma weak_positivity: \<open>a ## b \<Longrightarrow> a + b = c \<Longrightarrow> c ## c \<Longrightarrow> a ## a\<close>
-  by (meson disjoint_add_rightL disjoint_sym)
-
-lemma weak_positivityR: \<open>a ## b \<Longrightarrow> a + b = c \<Longrightarrow> c ## c \<Longrightarrow> b ## b\<close>
-  using disjoint_sym partial_add_commute weak_positivity by blast
-
-lemma positivityR: \<open>a ## b \<Longrightarrow> a + b = c \<Longrightarrow> c ## c \<Longrightarrow> c + c = c \<Longrightarrow> b + b = b\<close>
-  using disjoint_sym partial_add_commute positivity by blast
 
 lemma partial_add_left_commute:
   \<open>a ## b \<Longrightarrow> a ## c \<Longrightarrow> b ## c \<Longrightarrow> b + (a + c) = a + (b + c)\<close>
@@ -356,6 +343,17 @@ lemma zeros_add_to_zero: \<open>x ## y \<Longrightarrow> sepadd_zero x \<Longrig
 
 subsection \<open> duplicable \<close>
 
+text \<open> Positivity ensures that all elements less than a duplicable element are also duplicable. \<close>
+
+lemma add_to_selfsep_preserves_selfsep: \<open>a ## b \<Longrightarrow> a + b = c \<Longrightarrow> c ## c \<Longrightarrow> a ## a\<close>
+  by (meson disjoint_add_rightL disjoint_sym)
+
+lemma add_to_selfsep_preserves_selfsepR: \<open>a ## b \<Longrightarrow> a + b = c \<Longrightarrow> c ## c \<Longrightarrow> b ## b\<close>
+  using disjoint_sym partial_add_commute add_to_selfsep_preserves_selfsep by blast
+
+lemma positivityR: \<open>a ## b \<Longrightarrow> a + b = c \<Longrightarrow> c ## c \<Longrightarrow> c + c = c \<Longrightarrow> b + b = b\<close>
+  using disjoint_sym partial_add_commute positivity by blast
+
 text \<open>
   Duplicable elements. These are related to the logical content of a separation algebra (as
   contrasted with the resource content.)
@@ -376,6 +374,13 @@ lemma sepadd_dup_antimono:
    apply (force dest: common_subresource_selfsep)
   apply (metis le_iff_sepadd_weak positivity)
   done
+
+text \<open> note we don't use positivity in this lemma \<close>
+lemma sepadd_dup_antimono_is_positivity:
+  \<open>(\<forall>a b. a \<le> b \<longrightarrow> sepadd_dup b \<longrightarrow> sepadd_dup a) \<longleftrightarrow>
+    (\<forall>a b c. a ## b \<longrightarrow> a + b = c \<longrightarrow> c ## c \<longrightarrow> c + c = c \<longrightarrow> a + a = a)\<close>
+  unfolding sepadd_dup_def le_iff_sepadd_weak
+  by (metis add_to_selfsep_preserves_selfsep)
 
 
 subsection \<open> core \<close>
@@ -854,9 +859,25 @@ end
 
 subsection \<open> Separation Algebras (with a single unit) \<close>
 
-class sep_alg = multiunit_sep_alg + disjoint_zero + order_bot +
-  assumes sepadd_0[simp]: \<open>0 + a = a\<close>
+class sep_alg = multiunit_sep_alg + order_bot + zero +
+  assumes zero_is_bot: \<open>0 = \<bottom>\<close>
 begin
+
+lemma bot_unit:
+  \<open>sepadd_unit \<bottom>\<close>
+  by (metis bot_least le_unitof_eq unitof_is_sepadd_unit)
+
+lemma sepadd_bot[simp]: \<open>\<bottom> + a = a\<close>
+  by (metis bot_unit bot_least le_iff_sepadd sepadd_unit_def)
+
+lemma sepadd_0[simp]: \<open>0 + a = a\<close>
+  by (metis sepadd_bot zero_is_bot)
+
+lemma zero_disjointL[simp]: \<open>0 ## a\<close>
+  using bot_least disjoint_preservation zero_is_bot by blast
+
+lemma zero_disjointR[simp]: \<open>a ## 0\<close>
+  by (simp add: disjoint_sym)
 
 lemma sepadd_0_right[simp]: "a + 0 = a"
   by (metis zero_disjointR sepadd_0 partial_add_commute)
@@ -1096,11 +1117,10 @@ lemma the_unit_is_a_unit:
   by (rule theI', simp add: exactly_one_unit)
 
 lemma is_sep_alg:
-  \<open>class.sep_alg the_unit (\<le>) (<) the_unit (##) (+) (\<lambda>_. the_unit)\<close>
+  \<open>class.sep_alg the_unit the_unit (\<le>) (<) (+) (##) (\<lambda>_. the_unit)\<close>
   apply standard
-      apply (metis exactly_one_unit unitof_is_sepadd_unit unitof_le the_unit_is_a_unit)
-     apply (metis exactly_one_unit unitof_disjoint unitof_is_sepadd_unit the_unit_is_a_unit)
-    apply (metis exactly_one_unit unitof_disjoint2 unitof_is_sepadd_unit the_unit_is_a_unit)
+     apply (metis exactly_one_unit unitof_is_sepadd_unit unitof_le the_unit_is_a_unit)
+    apply (metis exactly_one_unit unitof_disjoint unitof_is_sepadd_unit the_unit_is_a_unit)
    apply (metis exactly_one_unit unitof_disjoint2 unitof_is_unit2 unitof_is_sepadd_unit
       the_unit_is_a_unit)
   apply (metis exactly_one_unit unitof_disjoint2 unitof_is_unit2 unitof_is_sepadd_unit
@@ -1749,8 +1769,8 @@ lemma selfsep_selfadd_iff_unit:
 
 lemma strong_positivity:
   \<open>a ## b \<Longrightarrow> c ## c \<Longrightarrow> a + b = c \<Longrightarrow> c + c = c \<Longrightarrow> a = b \<and> b = c\<close>
-  by (metis partial_right_cancelD positivity sepadd_unit_def weak_positivity
-      selfsep_selfadd_iff_unit)
+  by (metis add_sepadd_unit_add_iff_parts_sepadd_unit cancel_right_to_unit disjoint_units_identical
+      sepadd_unit_right)
 
 lemma \<open>(a \<^emph> \<top>) \<sqinter> (b \<^emph> \<top>) \<le> ((a \<^emph> b) \<squnion> (a \<sqinter> b)) \<^emph> \<top>\<close>
   nitpick[card=4]
