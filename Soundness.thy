@@ -556,7 +556,7 @@ lemma safe_seq_assoc_right:
 
 lemma safe_seq':
   \<open>safe n c1 hl hs r g q \<Longrightarrow>
-    (\<forall>m hl' hs'. m \<le> n \<longrightarrow> q (hl', hs') \<longrightarrow> safe m c2 hl' hs' r g q') \<Longrightarrow>
+    (\<forall>m\<le>n. \<forall>hl' hs'. q (hl', hs') \<longrightarrow> safe m c2 hl' hs' r g q') \<Longrightarrow>
     safe n (c1 ;; c2) hl hs r g q'\<close>
 proof (induct arbitrary: c2 q' rule: safe.inducts)
   case (safe_suc c q hl hs r n g)
@@ -638,10 +638,11 @@ lemma safe_fixpt:
 
 subsubsection \<open> Safety of Nondeterminism \<close>
 
-lemma safe_ndet:
-  \<open>\<forall>m\<le>n. safe m c1 hl hs r g q \<Longrightarrow>
-    \<forall>m\<le>n. safe m c2 hl hs r g q \<Longrightarrow>
-    safe n (c1 \<^bold>+ c2) hl hs r g q\<close>
+lemma safe_ndet_cancellative:
+    \<open>safe n c1 hl hs r g q \<Longrightarrow>
+      safe n c2 hl hs r g q \<Longrightarrow>
+      \<forall>hf hl'. hl + hf = hl' + hf \<longrightarrow> hl' = hl \<Longrightarrow>
+      safe n (c1 \<^bold>+ c2) hl hs r g q\<close>
 proof (induct n arbitrary: c1 c2 hl hs)
   case 0
   then show ?case by blast
@@ -660,51 +661,58 @@ next
     \<open>\<forall>m\<le>n. safe m c1 hl hs r g q\<close>
     \<open>\<forall>m\<le>n. safe m c2 hl hs r g q\<close>
     using Suc.prems
-    by simp+
+    by (meson le_SucI safe_step_monoD)+
   then show ?case
+    using Suc.prems(3)
     apply -
     apply (rule safe_suc)
        apply blast
       (* subgoal: rely *)
-      apply (rule Suc.hyps)
-       apply (metis safe_step_monoD safe_suc1(2))
-      apply (metis safe_step_monoD safe_suc2(2))
+      apply (metis Suc.hyps safe_suc1(2) safe_suc2(2))
       (* subgoal: plain opstep *)
      apply (clarsimp simp add: opstep_iff simp del: sup_apply)
      apply (elim disjE conjE exE)
           apply (force dest: safe_suc1(3,4))
          apply (force dest: safe_suc2(3,4))
-        apply (frule opstep_tau_preserves_heap)
-        apply (clarsimp, metis (full_types) Suc.hyps safe_step_monoD safe_suc1(3) fst_conv snd_conv)
-       apply (frule opstep_tau_preserves_heap)
-       apply (clarsimp, metis (full_types) Suc.hyps safe_step_monoD safe_suc2(3) fst_conv snd_conv)
-      apply force
-     apply force
+        apply (frule opstep_tau_preserves_heap, clarsimp)
+        apply (fastforce intro: Suc.hyps dest: safe_suc1(3))
+       apply (frule opstep_tau_preserves_heap, clarsimp)
+       apply (fastforce intro: Suc.hyps dest: safe_suc2(3))
+      apply blast
+     apply blast
       (* subgoal: local frame opstep *)
     apply (clarsimp simp add: opstep_iff simp del: sup_apply)
     apply (elim disjE conjE exE)
          apply (force dest: safe_suc1(5))
         apply (force dest: safe_suc2(5))
+      (* subsubgoal: left tau passthrough *)
+       apply (frule safe_suc1(5), blast)
+       apply clarsimp
        apply (frule opstep_tau_preserves_heap)
        apply (clarsimp simp del: sup_apply)
-       apply (frule safe_suc1(5), fast)
-       apply (clarsimp simp del: sup_apply)
-       apply (rule_tac x=hl' in exI)
-       apply clarsimp
+       apply (intro exI conjI)
+         apply assumption
+        apply fast
        apply (rule Suc.hyps)
-        apply (metis safe_step_monoD)
-    subgoal sorry
+         apply metis (* uses cancellativity here *)
+        apply blast
+       apply blast
+      (* subsubgoal: right tau passthrough *)
+      apply (frule safe_suc2(5), blast)
+       apply clarsimp
        apply (frule opstep_tau_preserves_heap)
-       apply clarsimp
-       apply (frule safe_suc2(5), fast)
        apply (clarsimp simp del: sup_apply)
-       apply (rule_tac x=hl' in exI)
-       apply clarsimp
+       apply (intro exI conjI)
+         apply assumption
+        apply fast
       apply (rule Suc.hyps)
-    subgoal sorry
-      apply (metis safe_step_monoD)
+        apply blast
+       apply metis (* uses cancellativity here *)
+      apply blast
+      (* subsubgoal: right skip tau *)
      apply blast
-    apply force
+      (* subsubgoal: left skip tau *)
+    apply blast
     done
 qed
 
