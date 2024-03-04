@@ -747,7 +747,7 @@ text \<open> emp is not really useful until every element has a unit. \<close>
 
 lemma emp_sepconj_unit[simp]: \<open>emp \<^emph> P = P\<close>
   apply (simp add: emp_def sepconj_def fun_eq_iff)
-  apply (metis unitof_disjoint unitof_is_unit unitof_idem)
+  apply (metis sepadd_unit_left unitof_disjoint unitof_is_sepadd_unit)
   done
 
 lemma emp_sepconj_unit_right[simp]: \<open>P \<^emph> emp = P\<close>
@@ -756,8 +756,7 @@ lemma emp_sepconj_unit_right[simp]: \<open>P \<^emph> emp = P\<close>
 lemma secoimp_imp_sepconj:
   \<open>P \<sqinter> (P \<sim>\<^emph> Q) \<le> P \<^emph> (Q \<sqinter> emp)\<close>
   apply (simp add: sepcoimp_def sepconj_def le_fun_def emp_def)
-  sledgehammer
-  apply (metis sepadd_unit_def unitof_disjoint2 unitof_is_unitR2 unitof_is_sepadd_unit)
+  apply (metis unitof_disjoint2 unitof_is_unitR2 unitof_is_sepadd_unit)
   done
 
 lemma not_coimp_emp:
