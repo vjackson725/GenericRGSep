@@ -533,6 +533,125 @@ instance
 end
 
 
+section \<open> mfault \<close>
+
+text \<open> TODO: turn this into error \<close>
+
+datatype 'a mfault =
+  Success (the_success: 'a)
+  | Fault
+
+instantiation mfault :: (ord) ord
+begin
+
+fun less_eq_mfault :: \<open>'a mfault \<Rightarrow> 'a mfault \<Rightarrow> bool\<close> where
+  \<open>less_eq_mfault _ Fault = True\<close>
+| \<open>less_eq_mfault Fault (Success b) = False\<close>
+| \<open>less_eq_mfault (Success a) (Success b) = (a \<le> b)\<close>
+
+lemma less_eq_mfault_def:
+  \<open>a \<le> b =
+    (case b of
+      Fault \<Rightarrow> True
+    | Success b \<Rightarrow>
+      (case a of
+        Fault \<Rightarrow> False
+      | Success a \<Rightarrow> a \<le> b))\<close>
+  by (cases a; cases b; force)
+
+fun less_mfault :: \<open>'a mfault \<Rightarrow> 'a mfault \<Rightarrow> bool\<close> where
+  \<open>less_mfault Fault _ = False\<close>
+| \<open>less_mfault (Success a) Fault = True\<close>
+| \<open>less_mfault (Success a) (Success b) = (a < b)\<close>
+
+lemma less_mfault_def:
+  \<open>a < b =
+    (case a of
+      Fault \<Rightarrow> False
+    | Success a \<Rightarrow>
+      (case b of
+        Fault \<Rightarrow> True
+      | Success b \<Rightarrow> a < b))\<close>
+  by (cases a; cases b; force)
+
+instance proof qed
+
+end
+
+instantiation mfault :: (preorder) preorder
+begin
+
+instance proof
+  fix x y z :: \<open>'a :: preorder mfault\<close>
+  show \<open>(x < y) = (x \<le> y \<and> \<not> y \<le> x)\<close>
+    by (simp add: less_eq_mfault_def less_mfault_def mfault.case_eq_if less_le_not_le)
+  show \<open>x \<le> x\<close>
+    by (simp add: less_eq_mfault_def mfault.case_eq_if)
+  show \<open>x \<le> y \<Longrightarrow> y \<le> z \<Longrightarrow> x \<le> z\<close>
+    by (force dest: order_trans simp add: less_eq_mfault_def split: mfault.splits)
+qed
+
+end
+
+
+instantiation mfault :: (order) order_top
+begin
+
+definition \<open>top_mfault \<equiv> Fault\<close>
+
+instance proof
+  fix x y z :: \<open>'a :: order mfault\<close>
+  show \<open>x \<le> y \<Longrightarrow> y \<le> x \<Longrightarrow> x = y\<close>
+    by (simp add: less_eq_mfault_def split: mfault.splits)
+  show \<open>x \<le> top\<close>
+    by (simp add: top_mfault_def)
+qed
+
+end
+
+instantiation mfault :: (linorder) linorder
+begin
+
+instance proof
+  fix x y z :: \<open>'a :: linorder mfault\<close>
+  show \<open>x \<le> y \<or> y \<le> x\<close>
+    by (cases x; cases y; force)
+qed
+
+end
+
+instantiation mfault :: (order_bot) order_bot
+begin
+
+definition \<open>bot_mfault = Success bot\<close>
+
+instance proof
+  fix a :: \<open>'a :: order_bot mfault\<close>
+  show \<open>\<bottom> \<le> a\<close>
+    by (simp add: bot_mfault_def less_eq_mfault_def mfault.case_eq_if)
+qed
+
+end
+
+context perm_alg
+begin
+
+definition sepconj_mfault ::
+  \<open>('a \<Rightarrow> bool) mfault \<Rightarrow> ('a \<Rightarrow> bool) mfault \<Rightarrow> ('a \<Rightarrow> bool) mfault\<close> (infixl \<open>\<^emph>\<^sub>f\<close> 88)
+  where
+    \<open>P \<^emph>\<^sub>f Q \<equiv>
+      case P of
+        Fault \<Rightarrow> Fault
+      | Success P \<Rightarrow>
+        (case Q of
+          Fault \<Rightarrow> Fault
+        | Success Q \<Rightarrow> Success (\<lambda>h. \<exists>h1 h2. h1 ## h2 \<and> h = h1 + h2 \<and> P h1 \<and> Q h2))\<close>
+
+definition emp_mfault :: \<open>('a \<Rightarrow> bool) mfault\<close> ("emp\<^sub>f") where
+  \<open>emp\<^sub>f \<equiv> Success emp\<close>
+
+end
+
 section \<open> Useful Sepalgebra Constructions \<close>
 
 type_synonym ('i,'v) heap = \<open>'i \<rightharpoonup> (munit \<times> 'v discr)\<close>

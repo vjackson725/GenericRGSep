@@ -23,103 +23,6 @@ lemma pred_abac_eq_abc:
   shows \<open>(A \<sqinter> B) \<sqinter> A \<sqinter> C = A \<sqinter> B \<sqinter> C\<close>
   by (simp add: inf.absorb1)
 
-section \<open> mfault \<close>
-
-datatype 'a mfault =
-  Success (the_success: 'a)
-  | Fault
-
-instantiation mfault :: (ord) ord
-begin
-
-fun less_eq_mfault :: \<open>'a mfault \<Rightarrow> 'a mfault \<Rightarrow> bool\<close> where
-  \<open>less_eq_mfault _ Fault = True\<close>
-| \<open>less_eq_mfault Fault (Success b) = False\<close>
-| \<open>less_eq_mfault (Success a) (Success b) = (a \<le> b)\<close>
-
-lemma less_eq_mfault_def:
-  \<open>a \<le> b =
-    (case b of
-      Fault \<Rightarrow> True
-    | Success b \<Rightarrow>
-      (case a of
-        Fault \<Rightarrow> False
-      | Success a \<Rightarrow> a \<le> b))\<close>
-  by (cases a; cases b; force)
-
-fun less_mfault :: \<open>'a mfault \<Rightarrow> 'a mfault \<Rightarrow> bool\<close> where
-  \<open>less_mfault Fault _ = False\<close>
-| \<open>less_mfault (Success a) Fault = True\<close>
-| \<open>less_mfault (Success a) (Success b) = (a < b)\<close>
-
-lemma less_mfault_def:
-  \<open>a < b =
-    (case a of
-      Fault \<Rightarrow> False
-    | Success a \<Rightarrow>
-      (case b of
-        Fault \<Rightarrow> True
-      | Success b \<Rightarrow> a < b))\<close>
-  by (cases a; cases b; force)
-
-instance proof qed
-
-end
-
-instantiation mfault :: (preorder) preorder
-begin
-
-instance proof
-  fix x y z :: \<open>'a :: preorder mfault\<close>
-  show \<open>(x < y) = (x \<le> y \<and> \<not> y \<le> x)\<close>
-    by (simp add: less_eq_mfault_def less_mfault_def mfault.case_eq_if less_le_not_le)
-  show \<open>x \<le> x\<close>
-    by (simp add: less_eq_mfault_def mfault.case_eq_if)
-  show \<open>x \<le> y \<Longrightarrow> y \<le> z \<Longrightarrow> x \<le> z\<close>
-    by (force dest: order_trans simp add: less_eq_mfault_def split: mfault.splits)
-qed
-
-end
-
-
-instantiation mfault :: (order) order_top
-begin
-
-definition \<open>top_mfault \<equiv> Fault\<close>
-
-instance proof
-  fix x y z :: \<open>'a :: order mfault\<close>
-  show \<open>x \<le> y \<Longrightarrow> y \<le> x \<Longrightarrow> x = y\<close>
-    by (simp add: less_eq_mfault_def split: mfault.splits)
-  show \<open>x \<le> top\<close>
-    by (simp add: top_mfault_def)
-qed
-
-end
-
-instantiation mfault :: (linorder) linorder
-begin
-
-instance proof
-  fix x y z :: \<open>'a :: linorder mfault\<close>
-  show \<open>x \<le> y \<or> y \<le> x\<close>
-    by (cases x; cases y; force)
-qed
-
-end
-
-instantiation mfault :: (order_bot) order_bot
-begin
-
-definition \<open>bot_mfault = Success bot\<close>
-
-instance proof
-  fix a :: \<open>'a :: order_bot mfault\<close>
-  show \<open>\<bottom> \<le> a\<close>
-    by (simp add: bot_mfault_def less_eq_mfault_def mfault.case_eq_if)
-qed
-
-end
 
 section \<open> Separation Logic \<close>
 
@@ -528,11 +431,16 @@ definition septract_rev :: \<open>('a \<Rightarrow> bool) \<Rightarrow> ('a \<Ri
 definition subheapexist :: \<open>('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool)\<close> where
   \<open>subheapexist P \<equiv> \<lambda>h. \<exists>h1. h1 \<le> h \<and> P h1\<close>
 
+definition emp :: \<open>'a \<Rightarrow> bool\<close> where
+  \<open>emp \<equiv> \<lambda>x. sepadd_unit x\<close>
+
+fun iterated_sepconj :: \<open>('a \<Rightarrow> bool) list \<Rightarrow> ('a \<Rightarrow> bool)\<close> where
+  \<open>iterated_sepconj (P # Ps) = P \<^emph> iterated_sepconj Ps\<close>
+| \<open>iterated_sepconj [] = emp\<close>
 
 subsection \<open> Seplogic connective properties \<close>
 
-lemma septract_reverse: \<open>P \<midarrow>\<odot> Q = Q \<odot>\<midarrow> P\<close>
-  by (force simp add: septract_def septract_rev_def)
+subsubsection \<open> Sepconj \<close>
 
 lemma sepconj_assoc: \<open>(P \<^emph> Q) \<^emph> R = P \<^emph> (Q \<^emph> R)\<close>
   apply (clarsimp simp add: sepconj_def ex_simps[symmetric] partial_add_assoc simp del: ex_simps)
@@ -553,7 +461,6 @@ lemma sepconj_left_comm: \<open>Q \<^emph> (P \<^emph> R) = P \<^emph> (Q \<^emp
   done
 
 lemmas sepconj_ac = sepconj_assoc sepconj_comm sepconj_left_comm
-
 
 lemma sepconj_mono[intro]:
   \<open>P \<le> P' \<Longrightarrow> Q \<le> Q' \<Longrightarrow> P \<^emph> Q \<le> P' \<^emph> Q'\<close>
@@ -594,6 +501,30 @@ lemma sepconj_middle_monotone_rhsR2: \<open>A \<le> B1 \<^emph> B2 \<Longrightar
 
 lemma sepconj_middle_monotone_rhsL2: \<open>A \<le> B1 \<^emph> B2 \<Longrightarrow> C \<^emph> A \<le> B1 \<^emph> C \<^emph> B2\<close>
   by (simp add: sepconj_middle_monotone_rhsL)
+
+lemma sepconj_eq_eq:
+  \<open>((=) h1 \<^emph> (=) h2) = (\<lambda>x. h1 ## h2 \<and> x = h1 + h2)\<close>
+  by (simp add: sepconj_def fun_eq_iff)
+
+lemma sepconj_eq_eq2:
+  \<open>h1 ## h2 \<Longrightarrow> ((=) h1 \<^emph> (=) h2) = ((=) (h1 + h2))\<close>
+  by (force simp add: sepconj_eq_eq)
+
+subsubsection \<open> emp \<close>
+
+lemma weak_emp_sepconj: \<open>\<top> \<le> emp \<midarrow>\<odot> p \<Longrightarrow> emp \<^emph> p = p\<close>
+  by (simp add: emp_def sepadd_unit_def septract_def sepconj_def le_fun_def fun_eq_iff)
+    (metis disjoint_sym_iff)
+
+lemma weak_emp_sepconj2: \<open>emp \<midarrow>\<odot> p \<le> \<bottom> \<Longrightarrow> emp \<^emph> p = \<bottom>\<close>
+  by (simp add: emp_def sepadd_unit_def septract_def sepconj_def le_fun_def fun_eq_iff)
+    (metis disjoint_sym_iff partial_add_commute)
+
+subsubsection \<open> everything else \<close>
+
+lemma septract_reverse: \<open>P \<midarrow>\<odot> Q = Q \<odot>\<midarrow> P\<close>
+  by (force simp add: septract_def septract_rev_def)
+
 
 (*
 
@@ -810,31 +741,13 @@ lemma common_disjoint_same_unit:
 
 lemmas unitof_order = unitof_le le_unitof_eq not_less_unitof unitof_less_iff_neq_unitof not_gr_unitof
 
-definition sepconj_mfault ::
-  \<open>('a \<Rightarrow> bool) mfault \<Rightarrow> ('a \<Rightarrow> bool) mfault \<Rightarrow> ('a \<Rightarrow> bool) mfault\<close> (infixl \<open>\<^emph>\<^sub>f\<close> 88)
-  where
-    \<open>P \<^emph>\<^sub>f Q \<equiv>
-      case P of
-        Fault \<Rightarrow> Fault
-      | Success P \<Rightarrow>
-        (case Q of
-          Fault \<Rightarrow> Fault
-        | Success Q \<Rightarrow> Success (\<lambda>h. \<exists>h1 h2. h1 ## h2 \<and> h = h1 + h2 \<and> P h1 \<and> Q h2))\<close>
+subsection \<open> emp \<close>
 
-
-definition emp :: \<open>'a \<Rightarrow> bool\<close> where
-  \<open>emp \<equiv> sepadd_unit\<close>
-
-definition emp_mfault :: \<open>('a \<Rightarrow> bool) mfault\<close> ("emp\<^sub>f") where
-  \<open>emp\<^sub>f \<equiv> Success emp\<close>
-
-fun iterated_sepconj :: \<open>('a \<Rightarrow> bool) list \<Rightarrow> ('a \<Rightarrow> bool)\<close> where
-  \<open>iterated_sepconj (P # Ps) = P \<^emph> iterated_sepconj Ps\<close>
-| \<open>iterated_sepconj [] = emp\<close>
+text \<open> emp is not really useful until every element has a unit. \<close>
 
 lemma emp_sepconj_unit[simp]: \<open>emp \<^emph> P = P\<close>
-  apply (simp add: emp_def sepconj_def sepadd_unit_def fun_eq_iff)
-  apply (metis disjoint_sym partial_add_commute unitof_disjoint unitof_is_unitR2)
+  apply (simp add: emp_def sepconj_def fun_eq_iff)
+  apply (metis unitof_disjoint unitof_is_unit unitof_idem)
   done
 
 lemma emp_sepconj_unit_right[simp]: \<open>P \<^emph> emp = P\<close>
@@ -842,7 +755,8 @@ lemma emp_sepconj_unit_right[simp]: \<open>P \<^emph> emp = P\<close>
 
 lemma secoimp_imp_sepconj:
   \<open>P \<sqinter> (P \<sim>\<^emph> Q) \<le> P \<^emph> (Q \<sqinter> emp)\<close>
-  apply (simp add: sepcoimp_def sepconj_def le_fun_def emp_def sepadd_unit_def)
+  apply (simp add: sepcoimp_def sepconj_def le_fun_def emp_def)
+  sledgehammer
   apply (metis sepadd_unit_def unitof_disjoint2 unitof_is_unitR2 unitof_is_sepadd_unit)
   done
 
