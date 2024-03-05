@@ -598,7 +598,10 @@ lemma safe_seq:
 subsection \<open> Safety of Fixpoint \<close>
 
 lemma safe_fixpt':
-  \<open>(\<forall>m\<le>n. \<forall>hl' hs'. sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) i (hl', hs') \<longrightarrow> safe m c[0 \<leftarrow> \<mu> c] hl' hs' r g (sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) i)) \<Longrightarrow>
+  \<open>(\<forall>m<n. \<forall>hl' hs'.
+      safe m (\<mu> c) hl hs r g (sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) i (hl', hs')) \<longrightarrow>
+      sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) i (hl', hs') \<longrightarrow>
+      safe n c[0 \<leftarrow> \<mu> c] hl' hs' r g (sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) i)) \<Longrightarrow>
     sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) i (hl, hs) \<Longrightarrow>
     safe n (\<mu> c) hl hs r g (sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) i)\<close>
 proof (induct n arbitrary: i hl hs)

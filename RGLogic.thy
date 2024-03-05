@@ -73,6 +73,12 @@ lemma framed_subresource_rel_top_same_sub_iff[simp]:
   \<open>framed_subresource_rel f a a b b' \<longleftrightarrow> b = b' \<and> (\<exists>xf. a ## xf \<and> b = a + xf \<and> f xf)\<close>
   by (force simp add: framed_subresource_rel_def le_iff_sepadd_weak)
 
+definition \<open>framecl r \<equiv> (\<lambda>a b. (\<exists>x y. r x y \<and> framed_subresource_rel \<top> x y a b))\<close>
+
+lemma framecl_frame_closed:
+  \<open>(x ## hf) \<Longrightarrow> (y ## hf) \<Longrightarrow> b x y \<Longrightarrow> framecl b (x + hf) (y + hf)\<close>
+  by (force simp add: framecl_def framed_subresource_rel_def)
+
 end
 
 context multiunit_sep_alg
@@ -389,8 +395,8 @@ inductive rgsat ::
   where
   rgsat_skip:
   \<open>sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) p \<le> q \<Longrightarrow> rgsat Skip r g p q\<close>
-| rgsat_iter:
-  \<open>rgsat c r g p' q' \<Longrightarrow>
+| rgsat_fixpt:
+  \<open>rgsat c[x \<leftarrow> Atomic (framecl (rel_liftL i \<sqinter> rel_liftR (sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) i)))] r g p' q' \<Longrightarrow>
       p \<le> i \<Longrightarrow> sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) i \<le> p' \<Longrightarrow> q' \<le> i \<Longrightarrow> sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) i \<le> q \<Longrightarrow>
       rgsat (\<mu> c) r g p q\<close>
 | rgsat_seq:
@@ -431,10 +437,12 @@ inductive_cases rgsep_iterE[elim]: \<open>rgsat (\<mu> c) r g p q\<close>
 inductive_cases rgsep_parE[elim]: \<open>rgsat (s1 \<parallel> s2) r g p q\<close>
 inductive_cases rgsep_atomE[elim]: \<open>rgsat (Atomic c) r g p q\<close>
 
-lemma rgsat_iter':
-  \<open>rgsat c r g (sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) i) i \<Longrightarrow> rgsat (\<mu> c) r g i (sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) i)\<close>
-  using rgsat_iter[OF _ order.refl order.refl order.refl order.refl]
-  by blast
+lemma rgsat_fixpt2:
+  \<open>rgsat c[x \<leftarrow> Atomic (framecl (rel_lift i))] r g (sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) i) (sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) i) \<Longrightarrow> rgsat (\<mu> c) r g i (sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) i)\<close>
+  using rgsat_fixpt[OF _ order.refl order.refl order.refl order.refl,
+          where i=\<open>sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) i\<close> and r=r]
+  apply (simp add: sp_comp_rel)
+  oops
 
 lemma backwards_done:
   \<open>rgsat Skip r g (wlp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) p) p\<close>
