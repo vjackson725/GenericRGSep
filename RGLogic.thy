@@ -113,7 +113,8 @@ datatype 'a comm =
   Skip
   | Seq \<open>'a comm\<close> \<open>'a comm\<close> (infixr \<open>;;\<close> 75)
   | Par \<open>'a comm\<close> \<open>'a comm\<close> (infixr \<open>\<parallel>\<close> 65)
-  | Ndet \<open>'a comm\<close> \<open>'a comm\<close> (infixr \<open>\<^bold>+\<close> 65)
+  | Indet \<open>'a comm\<close> \<open>'a comm\<close> (infixr \<open>\<^bold>+\<close> 65)
+  | Endet \<open>'a comm\<close> \<open>'a comm\<close> (infixr \<open>\<box>\<close> 65)
   | Atomic \<open>'a \<Rightarrow> 'a \<Rightarrow> bool\<close>
 \<comment> \<open> loops are represented by (least) fixed points. Fixed point variables are done in de Brijn
 style. \<close>
@@ -127,6 +128,7 @@ primrec map_fixvar :: \<open>(nat \<Rightarrow> nat) \<Rightarrow> 'a comm \<Rig
 | \<open>map_fixvar f (c1 ;; c2) = map_fixvar f c1 ;; map_fixvar f c2\<close>
 | \<open>map_fixvar f (c1 \<parallel> c2) = map_fixvar f c1 \<parallel> map_fixvar f c2\<close>
 | \<open>map_fixvar f (c1 \<^bold>+ c2) = map_fixvar f c1 \<^bold>+ map_fixvar f c2\<close>
+| \<open>map_fixvar f (c1 \<box> c2) = map_fixvar f c1 \<box> map_fixvar f c2\<close>
 | \<open>map_fixvar f (\<mu> c) = \<mu> (map_fixvar (case_nat 0 (Suc \<circ> f)) c)\<close>
 | \<open>map_fixvar f (FixVar x) = FixVar (f x)\<close>
 | \<open>map_fixvar f (Atomic b) = Atomic b\<close>
@@ -148,16 +150,19 @@ lemma map_fixvar_rev_iff:
       (\<exists>c1 c2. c = c1 \<parallel> c2 \<and> c1' = map_fixvar f c1 \<and> c2' = map_fixvar f c2)\<close>
   \<open>map_fixvar f c = c1' \<^bold>+ c2' \<longleftrightarrow>
       (\<exists>c1 c2. c = c1 \<^bold>+ c2 \<and> c1' = map_fixvar f c1 \<and> c2' = map_fixvar f c2)\<close>
+  \<open>map_fixvar f c = c1' \<box> c2' \<longleftrightarrow>
+      (\<exists>c1 c2. c = c1 \<box> c2 \<and> c1' = map_fixvar f c1 \<and> c2' = map_fixvar f c2)\<close>
   \<open>map_fixvar f c = \<mu> c' \<longleftrightarrow>
       (\<exists>ca. c = \<mu> ca \<and> c' = map_fixvar (case_nat 0 (Suc \<circ> f)) ca)\<close>
   \<open>map_fixvar f c = Skip \<longleftrightarrow> c = Skip\<close>
   \<open>map_fixvar f c = FixVar y \<longleftrightarrow> (\<exists>x. c = FixVar x \<and> f x = y)\<close>
   \<open>map_fixvar f c = Atomic b \<longleftrightarrow> c = Atomic b\<close>
+         apply ((induct c; simp), metis)
+        apply ((induct c; simp), metis)
        apply ((induct c; simp), metis)
       apply ((induct c; simp), metis)
-     apply ((induct c; simp), metis)
-    apply ((induct c; simp), blast)
-   apply (induct c; simp; fail)+
+     apply ((induct c; simp), blast)
+    apply (induct c; simp; fail)+
   done
 
 lemmas map_fixvar_sym_rev_iff = map_fixvar_rev_iff[THEN trans[OF eq_commute]]
@@ -176,7 +181,7 @@ proof (induct c1 arbitrary: c2 f)
 next
   case (FixVar x)
   then show ?case
-    by (metis injD map_fixvar_rev_iff(6))
+    by (metis injD map_fixvar_rev_iff(7))
 qed (force simp add: map_fixvar_sym_rev_iff)+
 
 
@@ -185,6 +190,7 @@ primrec fixvar_subst :: \<open>'a comm \<Rightarrow> nat \<Rightarrow> 'a comm \
 | \<open>(c1 ;; c2)[x \<leftarrow> c'] = (c1[x \<leftarrow> c'] ;; c2[x \<leftarrow> c'])\<close>
 | \<open>(c1 \<parallel> c2)[x \<leftarrow> c'] = (c1[x \<leftarrow> c'] \<parallel> c2[x \<leftarrow> c'])\<close>
 | \<open>(c1 \<^bold>+ c2)[x \<leftarrow> c'] = (c1[x \<leftarrow> c'] \<^bold>+ c2[x \<leftarrow> c'])\<close>
+| \<open>(c1 \<box> c2)[x \<leftarrow> c'] = (c1[x \<leftarrow> c'] \<box> c2[x \<leftarrow> c'])\<close>
 | \<open>(\<mu> c)[x \<leftarrow> c'] = \<mu> (c[Suc x \<leftarrow> c'])\<close>
 | \<open>(FixVar y)[x \<leftarrow> c'] = (if x = y then c' else FixVar y)\<close>
 | \<open>(Atomic b)[_ \<leftarrow> _] = Atomic b\<close>
@@ -200,18 +206,22 @@ lemma fixvar_subst_rev_iff:
   \<open>c[x \<leftarrow> cx] = c1' \<^bold>+ c2' \<longleftrightarrow>
       (\<exists>c1 c2. c = c1 \<^bold>+ c2 \<and> c1' = c1[x \<leftarrow> cx] \<and> c2' = c2[x \<leftarrow> cx]) \<or>
       c = FixVar x \<and> cx = c1' \<^bold>+ c2'\<close>
+  \<open>c[x \<leftarrow> cx] = c1' \<box> c2' \<longleftrightarrow>
+      (\<exists>c1 c2. c = c1 \<box> c2 \<and> c1' = c1[x \<leftarrow> cx] \<and> c2' = c2[x \<leftarrow> cx]) \<or>
+      c = FixVar x \<and> cx = c1' \<box> c2'\<close>
   \<open>c[x \<leftarrow> cx] = \<mu> c' \<longleftrightarrow>
       (\<exists>ca. c = \<mu> ca \<and> c' = ca[Suc x \<leftarrow> cx]) \<or>
       c = FixVar x \<and> cx = \<mu> c'\<close>
   \<open>c[x \<leftarrow> cx] = FixVar y \<longleftrightarrow> c = FixVar x \<and> cx = FixVar y \<or> x \<noteq> y \<and> c = FixVar y\<close>
   \<open>c[x \<leftarrow> cx] = Atomic b \<longleftrightarrow> c = Atomic b \<or> c = FixVar x \<and> cx = Atomic b\<close>
-        apply (induct c; simp; fail)
+         apply (induct c; simp; fail)
+        apply ((induct c; simp), metis)
        apply ((induct c; simp), metis)
       apply ((induct c; simp), metis)
      apply ((induct c; simp), metis)
-    apply ((induct c; simp), blast)
-   apply ((induct c; simp), blast)
-  apply ((induct c; simp))
+    apply ((induct c; simp), metis)
+   apply ((induct c; simp), metis)
+  apply (induct c; simp; fail)
   done
 
 lemma fixvar_subst_over_map_avoid:
@@ -328,13 +338,15 @@ inductive all_atom_comm :: \<open>(('a \<Rightarrow> 'a \<Rightarrow> bool) \<Ri
   skip[iff]: \<open>all_atom_comm p Skip\<close>
 | seq[intro!]: \<open>all_atom_comm p c1 \<Longrightarrow> all_atom_comm p c2 \<Longrightarrow> all_atom_comm p (c1 ;; c2)\<close>
 | par[intro!]: \<open>all_atom_comm p c1 \<Longrightarrow> all_atom_comm p c2 \<Longrightarrow> all_atom_comm p (c1 \<parallel> c2)\<close>
-| ndet[intro!]: \<open>all_atom_comm p c1 \<Longrightarrow> all_atom_comm p c2 \<Longrightarrow> all_atom_comm p (c1 \<^bold>+ c2)\<close>
+| indet[intro!]: \<open>all_atom_comm p c1 \<Longrightarrow> all_atom_comm p c2 \<Longrightarrow> all_atom_comm p (c1 \<^bold>+ c2)\<close>
+| endet[intro!]: \<open>all_atom_comm p c1 \<Longrightarrow> all_atom_comm p c2 \<Longrightarrow> all_atom_comm p (c1 \<box> c2)\<close>
 | fixpt[intro!]: \<open>all_atom_comm p c \<Longrightarrow> all_atom_comm p (\<mu> c)\<close>
 | fixvar[iff]: \<open>all_atom_comm p (FixVar x)\<close>
 | atom[intro!]: \<open>p b \<Longrightarrow> all_atom_comm p (Atomic b)\<close>
 
 inductive_cases all_atom_comm_seqE[elim!]: \<open>all_atom_comm p (c1 ;; c2)\<close>
-inductive_cases all_atom_comm_ndetE[elim!]: \<open>all_atom_comm p (c1 \<^bold>+ c2)\<close>
+inductive_cases all_atom_comm_indetE[elim!]: \<open>all_atom_comm p (c1 \<^bold>+ c2)\<close>
+inductive_cases all_atom_comm_endetE[elim!]: \<open>all_atom_comm p (c1 \<box> c2)\<close>
 inductive_cases all_atom_comm_parE[elim!]: \<open>all_atom_comm p (c1 \<parallel> c2)\<close>
 inductive_cases all_atom_comm_fixptE[elim!]: \<open>all_atom_comm p (\<mu> c)\<close>
 inductive_cases all_atom_comm_fixvarE[elim!]: \<open>all_atom_comm p (FixVar x)\<close>
@@ -343,6 +355,7 @@ inductive_cases all_atom_comm_atomE[elim!]: \<open>all_atom_comm p (Atomic b)\<c
 lemma all_atom_comm_simps[simp]:
   \<open>all_atom_comm p (c1 ;; c2) \<longleftrightarrow> all_atom_comm p c1 \<and> all_atom_comm p c2\<close>
   \<open>all_atom_comm p (c1 \<^bold>+ c2) \<longleftrightarrow> all_atom_comm p c1 \<and> all_atom_comm p c2\<close>
+  \<open>all_atom_comm p (c1 \<box> c2) \<longleftrightarrow> all_atom_comm p c1 \<and> all_atom_comm p c2\<close>
   \<open>all_atom_comm p (c1 \<parallel> c2) \<longleftrightarrow> all_atom_comm p c1 \<and> all_atom_comm p c2\<close>
   \<open>all_atom_comm p (\<mu> c) \<longleftrightarrow> all_atom_comm p c\<close>
   \<open>all_atom_comm p (Atomic b) \<longleftrightarrow> p b\<close>
@@ -403,12 +416,18 @@ inductive rgsat ::
   \<open>rgsat c1 r g p1 p2 \<Longrightarrow>
     rgsat c2 r g p2 p3 \<Longrightarrow>
     rgsat (c1 ;; c2) r g p1 p3\<close>
-| rgsat_ndet:
+| rgsat_indet:
   \<open>rgsat c1 r g1 p q1 \<Longrightarrow>
     rgsat c2 r g2 p q2 \<Longrightarrow>
     g1 \<le> g \<Longrightarrow> g2 \<le> g \<Longrightarrow>
     q1 \<le> q \<Longrightarrow> q2 \<le> q \<Longrightarrow>
     rgsat (c1 \<^bold>+ c2) r g p q\<close>
+| rgsat_endet:
+  \<open>rgsat c1 r g1 p q1 \<Longrightarrow>
+    rgsat c2 r g2 p q2 \<Longrightarrow>
+    g1 \<le> g \<Longrightarrow> g2 \<le> g \<Longrightarrow>
+    q1 \<le> q \<Longrightarrow> q2 \<le> q \<Longrightarrow>
+    rgsat (c1 \<box> c2) r g p q\<close>
 | rgsat_parallel:
   \<open>rgsat s1 (r \<squnion> g2) g1 p1 q1 \<Longrightarrow>
     rgsat s2 (r \<squnion> g1) g2 p2 q2 \<Longrightarrow>
