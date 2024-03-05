@@ -116,6 +116,7 @@ datatype 'a comm =
   | Indet \<open>'a comm\<close> \<open>'a comm\<close> (infixr \<open>\<^bold>+\<close> 65)
   | Endet \<open>'a comm\<close> \<open>'a comm\<close> (infixr \<open>\<box>\<close> 65)
   | Atomic \<open>'a \<Rightarrow> 'a \<Rightarrow> bool\<close>
+  | Iter \<open>'a comm\<close> (\<open>(_\<^sup>\<star>)\<close> [1000] 999)
 \<comment> \<open> loops are represented by (least) fixed points. Fixed point variables are done in de Brijn
 style. \<close>
   | Fix \<open>'a comm\<close> (\<open>\<mu>\<close>)
@@ -129,6 +130,7 @@ primrec map_fixvar :: \<open>(nat \<Rightarrow> nat) \<Rightarrow> 'a comm \<Rig
 | \<open>map_fixvar f (c1 \<parallel> c2) = map_fixvar f c1 \<parallel> map_fixvar f c2\<close>
 | \<open>map_fixvar f (c1 \<^bold>+ c2) = map_fixvar f c1 \<^bold>+ map_fixvar f c2\<close>
 | \<open>map_fixvar f (c1 \<box> c2) = map_fixvar f c1 \<box> map_fixvar f c2\<close>
+| \<open>map_fixvar f (c\<^sup>\<star>) = (map_fixvar f c)\<^sup>\<star>\<close>
 | \<open>map_fixvar f (\<mu> c) = \<mu> (map_fixvar (case_nat 0 (Suc \<circ> f)) c)\<close>
 | \<open>map_fixvar f (FixVar x) = FixVar (f x)\<close>
 | \<open>map_fixvar f (Atomic b) = Atomic b\<close>
@@ -152,11 +154,14 @@ lemma map_fixvar_rev_iff:
       (\<exists>c1 c2. c = c1 \<^bold>+ c2 \<and> c1' = map_fixvar f c1 \<and> c2' = map_fixvar f c2)\<close>
   \<open>map_fixvar f c = c1' \<box> c2' \<longleftrightarrow>
       (\<exists>c1 c2. c = c1 \<box> c2 \<and> c1' = map_fixvar f c1 \<and> c2' = map_fixvar f c2)\<close>
+  \<open>map_fixvar f c = c'\<^sup>\<star> \<longleftrightarrow>
+      (\<exists>ca. c = ca\<^sup>\<star> \<and> c' = map_fixvar f ca)\<close>
   \<open>map_fixvar f c = \<mu> c' \<longleftrightarrow>
       (\<exists>ca. c = \<mu> ca \<and> c' = map_fixvar (case_nat 0 (Suc \<circ> f)) ca)\<close>
   \<open>map_fixvar f c = Skip \<longleftrightarrow> c = Skip\<close>
   \<open>map_fixvar f c = FixVar y \<longleftrightarrow> (\<exists>x. c = FixVar x \<and> f x = y)\<close>
   \<open>map_fixvar f c = Atomic b \<longleftrightarrow> c = Atomic b\<close>
+         apply ((induct c; simp), metis)
          apply ((induct c; simp), metis)
         apply ((induct c; simp), metis)
        apply ((induct c; simp), metis)
@@ -181,7 +186,7 @@ proof (induct c1 arbitrary: c2 f)
 next
   case (FixVar x)
   then show ?case
-    by (metis injD map_fixvar_rev_iff(7))
+    by (metis injD map_fixvar_rev_iff(8))
 qed (force simp add: map_fixvar_sym_rev_iff)+
 
 
@@ -191,6 +196,7 @@ primrec fixvar_subst :: \<open>'a comm \<Rightarrow> nat \<Rightarrow> 'a comm \
 | \<open>(c1 \<parallel> c2)[x \<leftarrow> c'] = (c1[x \<leftarrow> c'] \<parallel> c2[x \<leftarrow> c'])\<close>
 | \<open>(c1 \<^bold>+ c2)[x \<leftarrow> c'] = (c1[x \<leftarrow> c'] \<^bold>+ c2[x \<leftarrow> c'])\<close>
 | \<open>(c1 \<box> c2)[x \<leftarrow> c'] = (c1[x \<leftarrow> c'] \<box> c2[x \<leftarrow> c'])\<close>
+| \<open>(c\<^sup>\<star>)[x \<leftarrow> c'] = (c[x \<leftarrow> c'])\<^sup>\<star>\<close>
 | \<open>(\<mu> c)[x \<leftarrow> c'] = \<mu> (c[Suc x \<leftarrow> c'])\<close>
 | \<open>(FixVar y)[x \<leftarrow> c'] = (if x = y then c' else FixVar y)\<close>
 | \<open>(Atomic b)[_ \<leftarrow> _] = Atomic b\<close>
@@ -209,18 +215,16 @@ lemma fixvar_subst_rev_iff:
   \<open>c[x \<leftarrow> cx] = c1' \<box> c2' \<longleftrightarrow>
       (\<exists>c1 c2. c = c1 \<box> c2 \<and> c1' = c1[x \<leftarrow> cx] \<and> c2' = c2[x \<leftarrow> cx]) \<or>
       c = FixVar x \<and> cx = c1' \<box> c2'\<close>
+  \<open>c[x \<leftarrow> cx] = c'\<^sup>\<star> \<longleftrightarrow>
+      (\<exists>ca. c = ca\<^sup>\<star> \<and> c' = ca[x \<leftarrow> cx]) \<or>
+      c = FixVar x \<and> cx = c'\<^sup>\<star>\<close>
   \<open>c[x \<leftarrow> cx] = \<mu> c' \<longleftrightarrow>
       (\<exists>ca. c = \<mu> ca \<and> c' = ca[Suc x \<leftarrow> cx]) \<or>
       c = FixVar x \<and> cx = \<mu> c'\<close>
   \<open>c[x \<leftarrow> cx] = FixVar y \<longleftrightarrow> c = FixVar x \<and> cx = FixVar y \<or> x \<noteq> y \<and> c = FixVar y\<close>
   \<open>c[x \<leftarrow> cx] = Atomic b \<longleftrightarrow> c = Atomic b \<or> c = FixVar x \<and> cx = Atomic b\<close>
-         apply (induct c; simp; fail)
-        apply ((induct c; simp), metis)
-       apply ((induct c; simp), metis)
-      apply ((induct c; simp), metis)
-     apply ((induct c; simp), metis)
-    apply ((induct c; simp), metis)
-   apply ((induct c; simp), metis)
+          apply (induct c; simp; fail)
+         apply ((induct c; simp), metis)+
   apply (induct c; simp; fail)
   done
 
@@ -340,6 +344,7 @@ inductive all_atom_comm :: \<open>(('a \<Rightarrow> 'a \<Rightarrow> bool) \<Ri
 | par[intro!]: \<open>all_atom_comm p c1 \<Longrightarrow> all_atom_comm p c2 \<Longrightarrow> all_atom_comm p (c1 \<parallel> c2)\<close>
 | indet[intro!]: \<open>all_atom_comm p c1 \<Longrightarrow> all_atom_comm p c2 \<Longrightarrow> all_atom_comm p (c1 \<^bold>+ c2)\<close>
 | endet[intro!]: \<open>all_atom_comm p c1 \<Longrightarrow> all_atom_comm p c2 \<Longrightarrow> all_atom_comm p (c1 \<box> c2)\<close>
+| iter[intro!]: \<open>all_atom_comm p c \<Longrightarrow> all_atom_comm p (c\<^sup>\<star>)\<close>
 | fixpt[intro!]: \<open>all_atom_comm p c \<Longrightarrow> all_atom_comm p (\<mu> c)\<close>
 | fixvar[iff]: \<open>all_atom_comm p (FixVar x)\<close>
 | atom[intro!]: \<open>p b \<Longrightarrow> all_atom_comm p (Atomic b)\<close>
@@ -348,6 +353,7 @@ inductive_cases all_atom_comm_seqE[elim!]: \<open>all_atom_comm p (c1 ;; c2)\<cl
 inductive_cases all_atom_comm_indetE[elim!]: \<open>all_atom_comm p (c1 \<^bold>+ c2)\<close>
 inductive_cases all_atom_comm_endetE[elim!]: \<open>all_atom_comm p (c1 \<box> c2)\<close>
 inductive_cases all_atom_comm_parE[elim!]: \<open>all_atom_comm p (c1 \<parallel> c2)\<close>
+inductive_cases all_atom_comm_iterE[elim!]: \<open>all_atom_comm p (c\<^sup>\<star>)\<close>
 inductive_cases all_atom_comm_fixptE[elim!]: \<open>all_atom_comm p (\<mu> c)\<close>
 inductive_cases all_atom_comm_fixvarE[elim!]: \<open>all_atom_comm p (FixVar x)\<close>
 inductive_cases all_atom_comm_atomE[elim!]: \<open>all_atom_comm p (Atomic b)\<close>
@@ -357,6 +363,7 @@ lemma all_atom_comm_simps[simp]:
   \<open>all_atom_comm p (c1 \<^bold>+ c2) \<longleftrightarrow> all_atom_comm p c1 \<and> all_atom_comm p c2\<close>
   \<open>all_atom_comm p (c1 \<box> c2) \<longleftrightarrow> all_atom_comm p c1 \<and> all_atom_comm p c2\<close>
   \<open>all_atom_comm p (c1 \<parallel> c2) \<longleftrightarrow> all_atom_comm p c1 \<and> all_atom_comm p c2\<close>
+  \<open>all_atom_comm p (c\<^sup>\<star>) \<longleftrightarrow> all_atom_comm p c\<close>
   \<open>all_atom_comm p (\<mu> c) \<longleftrightarrow> all_atom_comm p c\<close>
   \<open>all_atom_comm p (Atomic b) \<longleftrightarrow> p b\<close>
   by fastforce+
