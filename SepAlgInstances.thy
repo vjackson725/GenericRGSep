@@ -106,7 +106,7 @@ instance
 
 end
 
-subsubsection \<open> add_fst & add_snd for tuple perm_alg \<close>
+subsection \<open> add_fst & add_snd for tuple perm_alg \<close>
 
 lemma perm_alg_plus_fst_accum[simp]:
   fixes x :: \<open>'a :: perm_alg\<close>
@@ -125,7 +125,7 @@ lemma perm_alg_plus_fst_plus_snd_eq[simp]:
     \<open>xy +\<^sub>R y +\<^sub>L x = xy + (x, y)\<close>
   by simp+
 
-subsubsection \<open> Sepconj-conj \<close>
+subsection \<open> Sepconj-conj \<close>
 
 definition sepconj_conj
   :: \<open>('a::perm_alg \<times> 'b::perm_alg \<Rightarrow> bool) \<Rightarrow> ('a \<times> 'b \<Rightarrow> bool) \<Rightarrow> ('a \<times> 'b \<Rightarrow> bool)\<close>
@@ -147,6 +147,25 @@ lemma sepconj_conj_assoc:
 lemma sepconj_conj_monoR:
   \<open>q \<le> q' \<Longrightarrow> p \<^emph>\<and> q \<le> p \<^emph>\<and> q'\<close>
   by (force simp add: sepconj_conj_def)
+
+lemma wlp_rely_sepconj_conj_semidistrib_mono:
+  \<open>p' \<le> wlp ((=) \<times>\<^sub>R r) p \<Longrightarrow>
+    q' \<le> wlp ((=) \<times>\<^sub>R r) q \<Longrightarrow>
+    p' \<^emph>\<and> q' \<le> wlp ((=) \<times>\<^sub>R r) (p \<^emph>\<and> q)\<close>
+  by (fastforce simp add: wlp_def sepconj_conj_def le_fun_def)
+
+lemmas wlp_rely_sepconj_conj_semidistrib =
+  wlp_rely_sepconj_conj_semidistrib_mono[OF order.refl order.refl]
+
+lemma sp_rely_sepconj_conj_semidistrib_mono:
+  \<open>sp ((=) \<times>\<^sub>R r) p \<le> p' \<Longrightarrow>
+    sp ((=) \<times>\<^sub>R r) q \<le> q' \<Longrightarrow>
+    sp ((=) \<times>\<^sub>R r) (p \<^emph>\<and> q) \<le> p' \<^emph>\<and> q'\<close>
+  by (fastforce simp add: sp_def sepconj_conj_def le_fun_def)
+
+lemmas sp_rely_sepconj_conj_semidistrib =
+  sp_rely_sepconj_conj_semidistrib_mono[OF order.refl order.refl]
+
 
 section \<open> (additive) unit \<close>
 

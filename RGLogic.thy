@@ -73,7 +73,7 @@ lemma framed_subresource_rel_top_same_sub_iff[simp]:
   \<open>framed_subresource_rel f a a b b' \<longleftrightarrow> b = b' \<and> (\<exists>xf. a ## xf \<and> b = a + xf \<and> f xf)\<close>
   by (force simp add: framed_subresource_rel_def le_iff_sepadd_weak)
 
-definition \<open>framecl r \<equiv> (\<lambda>a b. (\<exists>x y. r x y \<and> framed_subresource_rel \<top> x y a b))\<close>
+definition \<open>framecl r \<equiv> (\<lambda>a b. (\<exists>x y. r x y \<and> weak_framed_subresource_rel \<top> x y a b))\<close>
 
 lemma framecl_frame_closed:
   \<open>(x ## hf) \<Longrightarrow> (y ## hf) \<Longrightarrow> b x y \<Longrightarrow> framecl b (x + hf) (y + hf)\<close>
@@ -398,7 +398,39 @@ lemma all_atom_comm_subst_strong:
 abbreviation \<open>atoms_subrel_of r \<equiv> all_atom_comm (\<lambda>b. b \<le> r)\<close>
 
 
+subsection \<open> Atoms \<close>
+
+text \<open> set of atomic instructions in a program \<close>
+
+fun atoms :: \<open>'a comm \<Rightarrow> ('a \<Rightarrow> 'a \<Rightarrow> bool) set\<close> where
+  \<open>atoms Skip = {}\<close>
+| \<open>atoms (c1 ;; c2) = (atoms c1 \<union> atoms c2)\<close>
+| \<open>atoms (c1 \<parallel> c2) = (atoms c1 \<union> atoms c2)\<close>
+| \<open>atoms (c1 \<^bold>+ c2) = (atoms c1 \<union> atoms c2)\<close>
+| \<open>atoms (c1 \<box> c2) = (atoms c1 \<union> atoms c2)\<close>
+| \<open>atoms (\<mu> c) = (atoms c)\<close>
+| \<open>atoms (FixVar x) = {}\<close>
+| \<open>atoms (Atomic b) = {b}\<close>
+
+lemma Ball_atoms_iff:
+  \<open>all_atom_comm p c \<longleftrightarrow> Ball (atoms c) p\<close>
+  by (induct c) fastforce+
+
+
 section \<open> Rely-Guarantee Separation Logic \<close>
+
+definition
+  \<open>rel_spec r p q \<equiv> framecl (rel_liftL p \<sqinter> rel_liftR (sswa r q))\<close>
+
+lemma rel_spec_simpleI:
+  \<open>p x \<Longrightarrow> sswa r q y \<Longrightarrow> (rel_spec r p q) x y\<close>
+  unfolding rel_spec_def framecl_def
+  by (clarsimp, metis eq_snd_iff framed_subresource_rel_refl)
+
+lemma rel_spec_framedI:
+  \<open>p x \<Longrightarrow> sswa r q y \<Longrightarrow> framed_subresource_rel \<top> x y x' y'  \<Longrightarrow> (rel_spec r p q) x' y'\<close>
+  unfolding rel_spec_def framecl_def
+  by (metis framed_subresource_rel_impl_weak inf2I rel_liftL_unfold rel_liftR_unfold)
 
 inductive rgsat ::
   \<open>('l::perm_alg \<times> 's::perm_alg) comm \<Rightarrow>
@@ -409,7 +441,7 @@ inductive rgsat ::
   rgsat_skip:
   \<open>sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) p \<le> q \<Longrightarrow> rgsat Skip r g p q\<close>
 | rgsat_fixpt:
-  \<open>rgsat c[x \<leftarrow> Atomic (framecl (rel_liftL i \<sqinter> rel_liftR (sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) i)))] r g p' q' \<Longrightarrow>
+  \<open>rgsat c[x \<leftarrow> Atomic (rel_spec r p q)] r g p' q' \<Longrightarrow>
       p \<le> i \<Longrightarrow> sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) i \<le> p' \<Longrightarrow> q' \<le> i \<Longrightarrow> sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) i \<le> q \<Longrightarrow>
       rgsat (\<mu> c) r g p q\<close>
 | rgsat_seq:

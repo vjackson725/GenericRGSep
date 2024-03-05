@@ -2,102 +2,6 @@ theory Soundness
   imports RGLogic
 begin
 
-section \<open> Misc Lemmas \<close>
-
-declare eq_OO[simp] OO_eq[simp]
-
-lemma rtranclp_tuple_rel_semidistrib:
-  \<open>(\<lambda>(a, c) (b, d). r1 a b \<and> r2 c d)\<^sup>*\<^sup>* ac bd
-    \<Longrightarrow> r1\<^sup>*\<^sup>* (fst ac) (fst bd) \<and> r2\<^sup>*\<^sup>* (snd ac) (snd bd)\<close>
-  by (induct rule: rtranclp_induct; force)
-
-lemma rel_Times_rtranclp_semidistrib:
-  \<open>(r1 \<times>\<^sub>R r2)\<^sup>*\<^sup>* \<le> r1\<^sup>*\<^sup>* \<times>\<^sub>R r2\<^sup>*\<^sup>*\<close>
-  apply (clarsimp simp add: le_fun_def rel_Times_def)
-  apply (force dest: rtranclp_tuple_rel_semidistrib)
-  done
-
-lemma rtranclp_tuple_lift_eq_left:
-  \<open>r2\<^sup>*\<^sup>* c d \<Longrightarrow> (\<lambda>(a, c) (b, d). a = b \<and> r2 c d)\<^sup>*\<^sup>* (a,c) (a,d)\<close>
-  by (induct rule: rtranclp_induct, fast, simp add: rtranclp.rtrancl_into_rtrancl)
-
-lemma rtranclp_eq_eq[simp]:
-  \<open>(=)\<^sup>*\<^sup>* = (=)\<close>
-  by (simp add: rtransp_rel_is_rtransclp)
-
-lemma rel_Times_left_eq_rtranclp_distrib[simp]:
-  \<open>((=) \<times>\<^sub>R r2)\<^sup>*\<^sup>* = (=) \<times>\<^sub>R r2\<^sup>*\<^sup>*\<close>
-  apply (rule order.antisym)
-   apply (force dest: rtranclp_tuple_rel_semidistrib simp add: le_fun_def rel_Times_def)
-  apply (force dest: rtranclp_tuple_lift_eq_left simp add: le_fun_def rel_Times_def)
-  done
-
-lemma rel_Times_comp[simp]:
-  \<open>(a \<times>\<^sub>R b) OO (c \<times>\<^sub>R d) = (a OO c) \<times>\<^sub>R (b OO d)\<close>
-  by (force simp add: fun_eq_iff OO_def)
-
-section \<open> rely/guarantee helpers \<close>
-
-abbreviation \<open>sswa r \<equiv> sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*)\<close>
-abbreviation \<open>wssa r \<equiv> wlp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*)\<close>
-
-lemma sp_rely_step:
-  \<open>r y y' \<Longrightarrow>
-    sp ((=) \<times>\<^sub>R rx) p (x, y) \<Longrightarrow>
-    sp ((=) \<times>\<^sub>R (rx OO r)) p (x, y')\<close>
-  by (force simp add: sp_def)
-
-lemma sp_rely_step_rtranclp:
-  \<open>r y y' \<Longrightarrow>
-    sswa r p (x, y) \<Longrightarrow>
-    sswa r p (x, y')\<close>
-  by (simp add: sp_def, meson rtranclp.rtrancl_into_rtrancl)
-
-lemma wlp_rely_step_rtranclp:
-  \<open>r y y' \<Longrightarrow>
-    wlp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) p (x, y) \<Longrightarrow>
-    wlp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) p (x, y')\<close>
-  by (simp add: wlp_def converse_rtranclp_into_rtranclp)
-
-lemmas sp_rely_stronger = sp_refl_rel_le[where r=\<open>(=) \<times>\<^sub>R r\<^sup>*\<^sup>*\<close> for r, simplified]
-lemmas sp_rely_absorb =
-  sp_comp_rel[where ?r1.0=\<open>(=) \<times>\<^sub>R ra\<^sup>*\<^sup>*\<close> and ?r2.0=\<open>(=) \<times>\<^sub>R rb\<^sup>*\<^sup>*\<close> for ra rb, simplified]
-
-lemma trivial_sp_rely_step[intro]:
-  \<open>p x \<Longrightarrow> sswa r p x\<close>
-  by (simp add: sp_refl_relI)
-
-lemmas rely_rel_wlp_impl_sp =
-  refl_rel_wlp_impl_sp[of \<open>(=) \<times>\<^sub>R r\<^sup>*\<^sup>*\<close> \<open>(=) \<times>\<^sub>R r\<^sup>*\<^sup>*\<close> for r, simplified]
-
-
-lemma wlp_rely_sepconj_conj_semidistrib_mono:
-  \<open>p' \<le> wlp ((=) \<times>\<^sub>R r) p \<Longrightarrow>
-    q' \<le> wlp ((=) \<times>\<^sub>R r) q \<Longrightarrow>
-    p' \<^emph>\<and> q' \<le> wlp ((=) \<times>\<^sub>R r) (p \<^emph>\<and> q)\<close>
-  by (fastforce simp add: wlp_def sepconj_conj_def le_fun_def)
-
-lemmas wlp_rely_sepconj_conj_semidistrib =
-  wlp_rely_sepconj_conj_semidistrib_mono[OF order.refl order.refl]
-
-lemma sp_rely_sepconj_conj_semidistrib_mono:
-  \<open>sp ((=) \<times>\<^sub>R r) p \<le> p' \<Longrightarrow>
-    sp ((=) \<times>\<^sub>R r) q \<le> q' \<Longrightarrow>
-    sp ((=) \<times>\<^sub>R r) (p \<^emph>\<and> q) \<le> p' \<^emph>\<and> q'\<close>
-  by (fastforce simp add: sp_def sepconj_conj_def le_fun_def)
-
-lemmas sp_rely_sepconj_conj_semidistrib =
-  sp_rely_sepconj_conj_semidistrib_mono[OF order.refl order.refl]
-
-lemma wlp_rely_of_pred_Times_eq[simp]:
-  \<open>wlp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) (p \<times>\<^sub>P q) = (p \<times>\<^sub>P wlp r\<^sup>*\<^sup>* q)\<close>
-  by (force simp add: rel_Times_def pred_Times_def wlp_def split: prod.splits)
-
-lemma sp_rely_of_pred_Times_eq[simp]:
-  \<open>sswa r (p \<times>\<^sub>P q) = (p \<times>\<^sub>P sp r\<^sup>*\<^sup>* q)\<close>
-  by (force simp add: rel_Times_def pred_Times_def sp_def split: prod.splits)
-
-
 section \<open> Operational Semantics \<close>
 
 subsection \<open> Actions \<close>
@@ -595,26 +499,39 @@ lemma safe_seq:
 
 subsection \<open> Safety of Fixpoint \<close>
 
-(*
 lemma safe_fixpt':
-  \<open>(\<forall>m<n. \<forall>hl' hs'.
-      safe m (\<mu> c) hl hs r g (sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>* ) i (hl', hs')) \<longrightarrow>
-      sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>* ) i (hl', hs') \<longrightarrow>
-      safe n c[0 \<leftarrow> \<mu> c] hl' hs' r g (sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>* ) i)) \<Longrightarrow>
-    sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>* ) i (hl, hs) \<Longrightarrow>
-    safe n (\<mu> c) hl hs r g (sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>* ) i)\<close>
-proof (induct n arbitrary: i hl hs)
+  \<open>(\<forall>hl' hs'.
+      wssa r p (hl', hs') \<longrightarrow>
+      safe n c[0 \<leftarrow> Atomic (rel_spec (r \<squnion> g)\<^sup>*\<^sup>* p q)] hl' hs' r g (sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>* ) q) \<longrightarrow>
+      safe n c[0 \<leftarrow> \<mu> c] hl' hs' r g (sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>* ) q)) \<Longrightarrow>
+    wssa r p (hl, hs) \<Longrightarrow>
+    safe n (\<mu> c) hl hs r g (sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>* ) q)\<close>
+proof (induct n arbitrary: q hl hs)
   case (Suc n)
-  show ?case
+  have all_le_recur:
+    \<open>\<forall>m\<le>Suc n.
+      (\<forall>hl' hs'.
+        wssa r p (hl', hs') \<longrightarrow>
+        safe (Suc n) c[0 \<leftarrow> Atomic (rel_spec (r \<squnion> g)\<^sup>*\<^sup>* p q)] hl' hs' r g (sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>* ) q) \<longrightarrow>
+        safe m c[0 \<leftarrow> \<mu> c] hl' hs' r g (sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>* ) q))\<close>
+    using Suc.prems(1)
+    apply (clarsimp simp del: sup_apply)
+    apply (drule spec2, drule mp, blast, drule mp, blast)
+    apply (meson safe_step_monoD)
+    done
+  then show ?case
     using Suc.prems
     apply -
     apply (rule safe.safe_suc)
        apply blast
       (* subgoal: rely *)
       apply (rule Suc.hyps)
-       apply force
-      apply (force intro: sp_rely_step_rtranclp)
+       apply blast
+      apply (metis wlp_rely_step_rtranclp)
       (* subgoal: plain opstep *)
+     apply (rule conjI, force)
+     apply (clarsimp simp add: opstep_iff simp del: sup_apply)
+    sledgehammer
      apply (clarsimp simp add: le_Suc_eq all_conj_distrib opstep_iff reflp_onD; fail)
       (* subgoal: locally framed opstep *)
     apply (clarsimp simp add: le_Suc_eq all_conj_distrib opstep_iff reflp_onD simp del: sup_apply)
