@@ -11,20 +11,38 @@ class pre_semi_sep_alg = disjoint + plus +
   assumes disjoint_add_rightL: \<open>b ## c \<Longrightarrow> a ## b + c \<Longrightarrow> a ## b\<close>
   assumes disjoint_add_right_commute: \<open>b ## c \<Longrightarrow> a ## b + c \<Longrightarrow> b ## a + c\<close>
   assumes positivity: \<open>a ## b \<Longrightarrow> a + b = c \<Longrightarrow> c ## c \<Longrightarrow> c + c = c \<Longrightarrow> a + a = a\<close>
+  assumes unit_sub_closure:
+    \<open>a ## b \<Longrightarrow> a + b ## c \<Longrightarrow> b ## b \<Longrightarrow> c ## c \<Longrightarrow> a + (b + c) = a \<Longrightarrow> a + b = a\<close>
 begin
 
 definition subadd :: \<open>'a \<Rightarrow> 'a \<Rightarrow> bool\<close> (infix \<open>\<prec>\<^sub>+\<close> 50) where
   \<open>a \<prec>\<^sub>+ b \<equiv> a \<noteq> b \<and> (\<exists>c. a ## c \<and> b = a + c)\<close>
 
 definition subaddeq :: \<open>'a \<Rightarrow> 'a \<Rightarrow> bool\<close> (infix \<open>\<preceq>\<^sub>+\<close> 50) where
-  \<open>a \<preceq>\<^sub>+ b \<equiv> a = b \<and> (\<forall>c. a ## c \<longrightarrow> b \<noteq> a + c) \<or> (\<exists>c. a ## c \<and> b = a + c)\<close>
+  \<open>a \<preceq>\<^sub>+ b \<equiv> a = b \<or> (\<exists>c. a ## c \<and> b = a + c)\<close>
 
 lemma subadd_order:
-  \<open>class.order (\<prec>\<^sub>+) (\<preceq>\<^sub>+)\<close>
+  \<open>class.order (\<preceq>\<^sub>+) (\<prec>\<^sub>+)\<close>
+  apply (unfold subadd_def subaddeq_def)
   apply standard
-     apply (simp add: subadd_def subaddeq_def)
      apply (rule iffI conjI impI; elim conjE exE disjE)
-  oops
+       apply clarsimp
+       apply (rule conjI, force)
+       apply clarsimp
+       apply (metis disjoint_add_rightL disjoint_sym partial_add_assoc partial_add_commute unit_sub_closure)
+      apply blast
+     apply blast
+    apply blast
+   apply clarsimp
+   apply (elim disjE)
+      apply blast
+     apply blast
+    apply blast
+   apply clarsimp
+   apply (metis disjoint_add_rightL disjoint_add_right_commute disjoint_sym partial_add_assoc
+      partial_add_commute)
+  apply (metis disjoint_add_rightL disjoint_sym partial_add_assoc partial_add_commute unit_sub_closure)
+  done
 
 end
 
@@ -44,14 +62,6 @@ definition sepadd_irr :: \<open>'a \<Rightarrow> bool\<close> where
   \<open>sepadd_irr x \<equiv> (\<not> sepadd_unit x) \<and> (\<forall>a b. a < x \<longrightarrow> b < x \<longrightarrow> a ## b \<longrightarrow> a + b < x)\<close>
 
 definition \<open>foundation a \<equiv> {j. j \<le> a \<and> sepadd_irr j}\<close>
-
-definition \<open>framecl r \<equiv> (\<lambda>a b. (\<exists>x y. r x y \<and> framed_subresource_rel \<top> x y a b))\<close>
-
-lemma framecl_frame_closed:
-  \<open>frame_closed (framecl b)\<close>
-  apply (clarsimp simp add: frame_pred_closed_def framecl_def framed_subresource_rel_def)
-  apply (metis partial_add_assoc2 disjoint_add_swap_lr)
-  done
 
 end
 

@@ -43,6 +43,8 @@ class perm_alg = disjoint + plus + order +
   assumes disjoint_add_rightL: \<open>b ## c \<Longrightarrow> a ## b + c \<Longrightarrow> a ## b\<close>
   assumes disjoint_add_right_commute: \<open>b ## c \<Longrightarrow> a ## b + c \<Longrightarrow> b ## a + c\<close>
   assumes positivity: \<open>a ## b \<Longrightarrow> a + b = c \<Longrightarrow> c ## c \<Longrightarrow> c + c = c \<Longrightarrow> a + a = a\<close>
+  assumes unit_sub_closure:
+    \<open>a ## ux \<Longrightarrow> a + ux ## uy \<Longrightarrow> ux ## ux \<Longrightarrow> uy ## uy \<Longrightarrow> a + (ux + uy) = a \<Longrightarrow> a + ux = a\<close>
   assumes less_iff_sepadd: \<open>a < b \<longleftrightarrow> a \<noteq> b \<and> (\<exists>c. a ## c \<and> b = a + c)\<close>
 begin
 

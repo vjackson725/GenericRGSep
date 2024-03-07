@@ -37,19 +37,19 @@ lemma less_eq_prod_def2:
 
 instance
   apply standard
-            apply (simp add: less_prod_def less_eq_prod_def)
-            apply (metis order_antisym_conv partial_le_plus)
-           apply (force simp add: less_prod_def less_eq_prod_def)
-          apply (simp add: less_prod_def less_eq_prod_def, metis disjoint_add_swap_lr partial_add_assoc2 prod.expand)
-         apply (metis less_eq_prod_def2 order_antisym_conv partial_le_plus)
-        apply (force simp add: partial_add_assoc)
-       apply (force dest: partial_add_commute)
-      apply (force simp add: disjoint_sym_iff)
-     apply (force dest: disjoint_add_rightL)
-    apply (force dest: disjoint_add_right_commute)
-   apply (force dest: positivity)
-  apply (clarsimp simp add: less_iff_sepadd)
-  apply (simp add: less_prod_def less_eq_prod_def, blast)
+             apply (simp add: less_prod_def less_eq_prod_def)
+             apply (metis order_antisym_conv partial_le_plus)
+            apply (force simp add: less_prod_def less_eq_prod_def)
+           apply (simp add: less_prod_def less_eq_prod_def, metis disjoint_add_swap_lr partial_add_assoc2 prod.expand)
+          apply (metis less_eq_prod_def2 order_antisym_conv partial_le_plus)
+         apply (force simp add: partial_add_assoc)
+        apply (force dest: partial_add_commute)
+       apply (force simp add: disjoint_sym_iff)
+      apply (force dest: disjoint_add_rightL)
+     apply (force dest: disjoint_add_right_commute)
+    apply (force dest: positivity)
+   apply (force dest: unit_sub_closure)
+  apply (force simp add: less_prod_def less_eq_prod_def)
   done
 
 lemma less_eq_prod1:
@@ -328,7 +328,9 @@ instance
         apply (force simp add: disjoint_option_def dest: disjoint_add_rightL split: option.splits)
        apply (simp add: disjoint_option_def split: option.splits,
       metis disjoint_sym, metis disjoint_add_right_commute)
-      apply (simp add: disjoint_option_def plus_option_def split: option.splits, metis positivity)
+       apply (simp add: disjoint_option_def plus_option_def split: option.splits, metis positivity)
+      apply (force simp add: disjoint_option_def plus_option_def split: option.splits
+      dest: unit_sub_closure)
      apply (simp add: less_option_def disjoint_option_def less_iff_sepadd split: option.splits,
       blast)
     apply simp+
@@ -368,6 +370,7 @@ instance
         apply (simp add: disjoint_fun_def plus_fun_def, metis disjoint_add_rightL)
        apply (simp add: disjoint_fun_def plus_fun_def, metis disjoint_add_right_commute)
       apply (simp add: disjoint_fun_def plus_fun_def fun_eq_iff, metis positivity)
+     apply (simp add: disjoint_fun_def plus_fun_def fun_eq_iff, metis unit_sub_closure)
   subgoal
     apply (simp add: less_fun_def plus_fun_def le_fun_def disjoint_fun_def le_iff_sepadd)
     apply (intro iffI conjI)
@@ -511,16 +514,19 @@ lemma plus_fperm_eq:
 
 instance
   apply standard
-            apply (simp add: less_eq_fperm_def less_fperm_def fperm_val_inject; force)+ 
-        apply (force simp add: fperm_eq_iff_fperm_val_eq add.assoc disjoint_fperm_def plus_fperm.rep_eq)
-       apply (force simp add: fperm_eq_iff_fperm_val_eq add.commute disjoint_fperm_def plus_fperm.rep_eq)
-      apply (simp add: disjoint_fperm_def add.commute; fail)
-     apply (simp add: disjoint_fperm_def plus_fperm.rep_eq add.assoc[symmetric])
-     apply (metis fperm_val_conditions(1) ge0_plus_le_then_left_le add_pos_pos order_less_imp_le)
-    apply (simp add: disjoint_fperm_def plus_fperm.rep_eq add.left_commute min.coboundedI2
+             apply (simp add: less_eq_fperm_def less_fperm_def fperm_val_inject; force)+ 
+         apply (force simp add: fperm_eq_iff_fperm_val_eq add.assoc disjoint_fperm_def plus_fperm.rep_eq)
+        apply (force simp add: fperm_eq_iff_fperm_val_eq add.commute disjoint_fperm_def plus_fperm.rep_eq)
+       apply (simp add: disjoint_fperm_def add.commute; fail)
+      apply (simp add: disjoint_fperm_def plus_fperm.rep_eq add.assoc[symmetric])
+      apply (metis fperm_val_conditions(1) ge0_plus_le_then_left_le add_pos_pos order_less_imp_le)
+     apply (simp add: disjoint_fperm_def plus_fperm.rep_eq add.left_commute min.coboundedI2
       min_add_distrib_right; fail)
-   apply (simp add: disjoint_fperm_def plus_fperm_eq FPerm_eq_iff fperm_val_conditions)
-   apply (metis FPerm_inverse_iff add_cancel_right_right fperm_val_add_gt0 fperm_val_never_zero)
+    apply (simp add: disjoint_fperm_def plus_fperm_eq FPerm_eq_iff fperm_val_conditions)
+    apply (metis FPerm_inverse_iff add_cancel_right_right fperm_val_add_gt0 fperm_val_never_zero)
+   apply (simp add: disjoint_fperm_def FPerm_eq_iff fperm_val_conditions)
+   apply (metis plus_fperm.rep_eq  fperm_val_conditions(1) fperm_val_never_zero
+      leD add_cancel_right_right less_add_same_cancel1 min_def)
   apply (rule iffI)
    apply (clarsimp simp add: less_fperm_def disjoint_fperm_def plus_fperm_eq)
    apply (rule conjI, blast)
