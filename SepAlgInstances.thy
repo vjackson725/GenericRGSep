@@ -144,9 +144,18 @@ lemma sepconj_conj_assoc:
   apply (metis disjoint_add_rightL disjoint_add_swap_rl partial_add_assoc3)
   done
 
+lemma sepconj_conj_mono:
+  \<open>p \<le> p' \<Longrightarrow> q \<le> q' \<Longrightarrow> p \<^emph>\<and> q \<le> p' \<^emph>\<and> q'\<close>
+  by (force simp add: sepconj_conj_def)
+
+lemma sepconj_conj_monoL:
+  \<open>p \<le> p' \<Longrightarrow> p \<^emph>\<and> q \<le> p' \<^emph>\<and> q\<close>
+  by (force simp add: sepconj_conj_def)
+
 lemma sepconj_conj_monoR:
   \<open>q \<le> q' \<Longrightarrow> p \<^emph>\<and> q \<le> p \<^emph>\<and> q'\<close>
   by (force simp add: sepconj_conj_def)
+
 
 section \<open> (additive) unit \<close>
 

@@ -2,6 +2,68 @@ theory RGLogic
   imports SepAlgInstances
 begin
 
+section \<open> rely/guarantee helpers \<close>
+
+abbreviation \<open>sswa r \<equiv> sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*)\<close>
+abbreviation \<open>wssa r \<equiv> wlp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*)\<close>
+
+lemma sp_rely_step:
+  \<open>r y y' \<Longrightarrow>
+    sp ((=) \<times>\<^sub>R rx) p (x, y) \<Longrightarrow>
+    sp ((=) \<times>\<^sub>R (rx OO r)) p (x, y')\<close>
+  by (force simp add: sp_def)
+
+lemma sp_rely_step_rtranclp:
+  \<open>r y y' \<Longrightarrow>
+    sswa r p (x, y) \<Longrightarrow>
+    sswa r p (x, y')\<close>
+  by (simp add: sp_def, meson rtranclp.rtrancl_into_rtrancl)
+
+lemma wlp_rely_step_rtranclp:
+  \<open>r y y' \<Longrightarrow>
+    wlp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) p (x, y) \<Longrightarrow>
+    wlp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) p (x, y')\<close>
+  by (simp add: wlp_def converse_rtranclp_into_rtranclp)
+
+lemmas sp_rely_stronger = sp_refl_rel_le[where r=\<open>(=) \<times>\<^sub>R r\<^sup>*\<^sup>*\<close> for r, simplified]
+lemmas sp_rely_absorb =
+  sp_comp_rel[where ?r1.0=\<open>(=) \<times>\<^sub>R ra\<^sup>*\<^sup>*\<close> and ?r2.0=\<open>(=) \<times>\<^sub>R rb\<^sup>*\<^sup>*\<close> for ra rb, simplified]
+
+lemma trivial_sp_rely_step[intro]:
+  \<open>p x \<Longrightarrow> sswa r p x\<close>
+  by (simp add: sp_refl_relI)
+
+lemmas rely_rel_wlp_impl_sp =
+  refl_rel_wlp_impl_sp[of \<open>(=) \<times>\<^sub>R r\<^sup>*\<^sup>*\<close> \<open>(=) \<times>\<^sub>R r\<^sup>*\<^sup>*\<close> for r, simplified]
+
+
+lemma wlp_rely_sepconj_conj_semidistrib_mono:
+  \<open>p' \<le> wlp ((=) \<times>\<^sub>R r) p \<Longrightarrow>
+    q' \<le> wlp ((=) \<times>\<^sub>R r) q \<Longrightarrow>
+    p' \<^emph>\<and> q' \<le> wlp ((=) \<times>\<^sub>R r) (p \<^emph>\<and> q)\<close>
+  by (fastforce simp add: wlp_def sepconj_conj_def le_fun_def)
+
+lemmas wlp_rely_sepconj_conj_semidistrib =
+  wlp_rely_sepconj_conj_semidistrib_mono[OF order.refl order.refl]
+
+lemma sp_rely_sepconj_conj_semidistrib_mono:
+  \<open>sp ((=) \<times>\<^sub>R r) p \<le> p' \<Longrightarrow>
+    sp ((=) \<times>\<^sub>R r) q \<le> q' \<Longrightarrow>
+    sp ((=) \<times>\<^sub>R r) (p \<^emph>\<and> q) \<le> p' \<^emph>\<and> q'\<close>
+  by (fastforce simp add: sp_def sepconj_conj_def le_fun_def)
+
+lemmas sp_rely_sepconj_conj_semidistrib =
+  sp_rely_sepconj_conj_semidistrib_mono[OF order.refl order.refl]
+
+lemma wlp_rely_of_pred_Times_eq[simp]:
+  \<open>wlp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) (p \<times>\<^sub>P q) = (p \<times>\<^sub>P wlp r\<^sup>*\<^sup>* q)\<close>
+  by (force simp add: rel_Times_def pred_Times_def wlp_def split: prod.splits)
+
+lemma sp_rely_of_pred_Times_eq[simp]:
+  \<open>sswa r (p \<times>\<^sub>P q) = (p \<times>\<^sub>P sp r\<^sup>*\<^sup>* q)\<close>
+  by (force simp add: rel_Times_def pred_Times_def sp_def split: prod.splits)
+
+
 subsection \<open> Framed step relation \<close>
 
 context perm_alg
@@ -116,7 +178,7 @@ datatype 'a comm =
   | Indet \<open>'a comm\<close> \<open>'a comm\<close> (infixr \<open>\<^bold>+\<close> 65)
   | Endet \<open>'a comm\<close> \<open>'a comm\<close> (infixr \<open>\<box>\<close> 65)
   | Atomic \<open>'a \<Rightarrow> 'a \<Rightarrow> bool\<close>
-  | Iter \<open>'a comm\<close> (\<open>(_\<^sup>\<star>)\<close> [1000] 999)
+  | Iter \<open>'a comm\<close> (\<open>DO (_) OD\<close> [0] 999)
 \<comment> \<open> loops are represented by (least) fixed points. Fixed point variables are done in de Brijn
 style. \<close>
   | Fix \<open>'a comm\<close> (\<open>\<mu>\<close>)
@@ -130,7 +192,7 @@ primrec map_fixvar :: \<open>(nat \<Rightarrow> nat) \<Rightarrow> 'a comm \<Rig
 | \<open>map_fixvar f (c1 \<parallel> c2) = map_fixvar f c1 \<parallel> map_fixvar f c2\<close>
 | \<open>map_fixvar f (c1 \<^bold>+ c2) = map_fixvar f c1 \<^bold>+ map_fixvar f c2\<close>
 | \<open>map_fixvar f (c1 \<box> c2) = map_fixvar f c1 \<box> map_fixvar f c2\<close>
-| \<open>map_fixvar f (c\<^sup>\<star>) = (map_fixvar f c)\<^sup>\<star>\<close>
+| \<open>map_fixvar f (DO c OD) = DO (map_fixvar f c) OD\<close>
 | \<open>map_fixvar f (\<mu> c) = \<mu> (map_fixvar (case_nat 0 (Suc \<circ> f)) c)\<close>
 | \<open>map_fixvar f (FixVar x) = FixVar (f x)\<close>
 | \<open>map_fixvar f (Atomic b) = Atomic b\<close>
@@ -154,8 +216,8 @@ lemma map_fixvar_rev_iff:
       (\<exists>c1 c2. c = c1 \<^bold>+ c2 \<and> c1' = map_fixvar f c1 \<and> c2' = map_fixvar f c2)\<close>
   \<open>map_fixvar f c = c1' \<box> c2' \<longleftrightarrow>
       (\<exists>c1 c2. c = c1 \<box> c2 \<and> c1' = map_fixvar f c1 \<and> c2' = map_fixvar f c2)\<close>
-  \<open>map_fixvar f c = c'\<^sup>\<star> \<longleftrightarrow>
-      (\<exists>ca. c = ca\<^sup>\<star> \<and> c' = map_fixvar f ca)\<close>
+  \<open>map_fixvar f c = DO c' OD \<longleftrightarrow>
+      (\<exists>ca. c = DO ca OD \<and> c' = map_fixvar f ca)\<close>
   \<open>map_fixvar f c = \<mu> c' \<longleftrightarrow>
       (\<exists>ca. c = \<mu> ca \<and> c' = map_fixvar (case_nat 0 (Suc \<circ> f)) ca)\<close>
   \<open>map_fixvar f c = Skip \<longleftrightarrow> c = Skip\<close>
@@ -196,7 +258,7 @@ primrec fixvar_subst :: \<open>'a comm \<Rightarrow> nat \<Rightarrow> 'a comm \
 | \<open>(c1 \<parallel> c2)[x \<leftarrow> c'] = (c1[x \<leftarrow> c'] \<parallel> c2[x \<leftarrow> c'])\<close>
 | \<open>(c1 \<^bold>+ c2)[x \<leftarrow> c'] = (c1[x \<leftarrow> c'] \<^bold>+ c2[x \<leftarrow> c'])\<close>
 | \<open>(c1 \<box> c2)[x \<leftarrow> c'] = (c1[x \<leftarrow> c'] \<box> c2[x \<leftarrow> c'])\<close>
-| \<open>(c\<^sup>\<star>)[x \<leftarrow> c'] = (c[x \<leftarrow> c'])\<^sup>\<star>\<close>
+| \<open>(DO c OD)[x \<leftarrow> c'] = (DO c[x \<leftarrow> c'] OD)\<close>
 | \<open>(\<mu> c)[x \<leftarrow> c'] = \<mu> (c[Suc x \<leftarrow> c'])\<close>
 | \<open>(FixVar y)[x \<leftarrow> c'] = (if x = y then c' else FixVar y)\<close>
 | \<open>(Atomic b)[_ \<leftarrow> _] = Atomic b\<close>
@@ -215,9 +277,9 @@ lemma fixvar_subst_rev_iff:
   \<open>c[x \<leftarrow> cx] = c1' \<box> c2' \<longleftrightarrow>
       (\<exists>c1 c2. c = c1 \<box> c2 \<and> c1' = c1[x \<leftarrow> cx] \<and> c2' = c2[x \<leftarrow> cx]) \<or>
       c = FixVar x \<and> cx = c1' \<box> c2'\<close>
-  \<open>c[x \<leftarrow> cx] = c'\<^sup>\<star> \<longleftrightarrow>
-      (\<exists>ca. c = ca\<^sup>\<star> \<and> c' = ca[x \<leftarrow> cx]) \<or>
-      c = FixVar x \<and> cx = c'\<^sup>\<star>\<close>
+  \<open>c[x \<leftarrow> cx] = DO c' OD \<longleftrightarrow>
+      (\<exists>ca. c = DO ca OD \<and> c' = ca[x \<leftarrow> cx]) \<or>
+      c = FixVar x \<and> cx = DO c' OD\<close>
   \<open>c[x \<leftarrow> cx] = \<mu> c' \<longleftrightarrow>
       (\<exists>ca. c = \<mu> ca \<and> c' = ca[Suc x \<leftarrow> cx]) \<or>
       c = FixVar x \<and> cx = \<mu> c'\<close>
@@ -344,7 +406,7 @@ inductive all_atom_comm :: \<open>(('a \<Rightarrow> 'a \<Rightarrow> bool) \<Ri
 | par[intro!]: \<open>all_atom_comm p c1 \<Longrightarrow> all_atom_comm p c2 \<Longrightarrow> all_atom_comm p (c1 \<parallel> c2)\<close>
 | indet[intro!]: \<open>all_atom_comm p c1 \<Longrightarrow> all_atom_comm p c2 \<Longrightarrow> all_atom_comm p (c1 \<^bold>+ c2)\<close>
 | endet[intro!]: \<open>all_atom_comm p c1 \<Longrightarrow> all_atom_comm p c2 \<Longrightarrow> all_atom_comm p (c1 \<box> c2)\<close>
-| iter[intro!]: \<open>all_atom_comm p c \<Longrightarrow> all_atom_comm p (c\<^sup>\<star>)\<close>
+| iter[intro!]: \<open>all_atom_comm p c \<Longrightarrow> all_atom_comm p (DO c OD)\<close>
 | fixpt[intro!]: \<open>all_atom_comm p c \<Longrightarrow> all_atom_comm p (\<mu> c)\<close>
 | fixvar[iff]: \<open>all_atom_comm p (FixVar x)\<close>
 | atom[intro!]: \<open>p b \<Longrightarrow> all_atom_comm p (Atomic b)\<close>
@@ -353,7 +415,7 @@ inductive_cases all_atom_comm_seqE[elim!]: \<open>all_atom_comm p (c1 ;; c2)\<cl
 inductive_cases all_atom_comm_indetE[elim!]: \<open>all_atom_comm p (c1 \<^bold>+ c2)\<close>
 inductive_cases all_atom_comm_endetE[elim!]: \<open>all_atom_comm p (c1 \<box> c2)\<close>
 inductive_cases all_atom_comm_parE[elim!]: \<open>all_atom_comm p (c1 \<parallel> c2)\<close>
-inductive_cases all_atom_comm_iterE[elim!]: \<open>all_atom_comm p (c\<^sup>\<star>)\<close>
+inductive_cases all_atom_comm_iterE[elim!]: \<open>all_atom_comm p (DO c OD)\<close>
 inductive_cases all_atom_comm_fixptE[elim!]: \<open>all_atom_comm p (\<mu> c)\<close>
 inductive_cases all_atom_comm_fixvarE[elim!]: \<open>all_atom_comm p (FixVar x)\<close>
 inductive_cases all_atom_comm_atomE[elim!]: \<open>all_atom_comm p (Atomic b)\<close>
@@ -363,7 +425,7 @@ lemma all_atom_comm_simps[simp]:
   \<open>all_atom_comm p (c1 \<^bold>+ c2) \<longleftrightarrow> all_atom_comm p c1 \<and> all_atom_comm p c2\<close>
   \<open>all_atom_comm p (c1 \<box> c2) \<longleftrightarrow> all_atom_comm p c1 \<and> all_atom_comm p c2\<close>
   \<open>all_atom_comm p (c1 \<parallel> c2) \<longleftrightarrow> all_atom_comm p c1 \<and> all_atom_comm p c2\<close>
-  \<open>all_atom_comm p (c\<^sup>\<star>) \<longleftrightarrow> all_atom_comm p c\<close>
+  \<open>all_atom_comm p (DO c OD) \<longleftrightarrow> all_atom_comm p c\<close>
   \<open>all_atom_comm p (\<mu> c) \<longleftrightarrow> all_atom_comm p c\<close>
   \<open>all_atom_comm p (Atomic b) \<longleftrightarrow> p b\<close>
   by fastforce+
@@ -415,10 +477,10 @@ inductive rgsat ::
   where
   rgsat_skip:
   \<open>sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) p \<le> q \<Longrightarrow> rgsat Skip r g p q\<close>
-| rgsat_fixpt:
-  \<open>rgsat c[x \<leftarrow> Atomic (framecl (rel_liftL i \<sqinter> rel_liftR (sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) i)))] r g p' q' \<Longrightarrow>
-      p \<le> i \<Longrightarrow> sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) i \<le> p' \<Longrightarrow> q' \<le> i \<Longrightarrow> sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) i \<le> q \<Longrightarrow>
-      rgsat (\<mu> c) r g p q\<close>
+| rgsat_iter:
+  \<open>rgsat c r g (sswa r i) (sswa r i) \<Longrightarrow>
+    p \<le> i \<Longrightarrow> sswa r i \<le> q \<Longrightarrow>
+    rgsat (Iter c) r g p q\<close>
 | rgsat_seq:
   \<open>rgsat c1 r g p1 p2 \<Longrightarrow>
     rgsat c2 r g p2 p3 \<Longrightarrow>
@@ -439,19 +501,19 @@ inductive rgsat ::
   \<open>rgsat s1 (r \<squnion> g2) g1 p1 q1 \<Longrightarrow>
     rgsat s2 (r \<squnion> g1) g2 p2 q2 \<Longrightarrow>
     g1 \<le> g \<Longrightarrow> g2 \<le> g \<Longrightarrow>
-    p \<le> p1 \<^emph>\<and> p2 \<Longrightarrow>
-    sp ((=) \<times>\<^sub>R (r \<squnion> g2)\<^sup>*\<^sup>*) q1 \<^emph>\<and> sp ((=) \<times>\<^sub>R (r \<squnion> g1)\<^sup>*\<^sup>*) q2 \<le> q \<Longrightarrow>
-    rgsat (s1 \<parallel> s2) r g p q\<close>
+    sswa (r \<squnion> g2) q1 \<le> q1' \<Longrightarrow>
+    sswa (r \<squnion> g1) q2 \<le> q2' \<Longrightarrow>
+    rgsat (s1 \<parallel> s2) r g (p1 \<^emph>\<and> p2) (q1' \<^emph>\<and> q2')\<close>
 | rgsat_atom:
-  \<open>sp b (wlp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) p) \<le> sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) q \<Longrightarrow>
-    \<forall>f. sp b (wlp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) (p \<^emph>\<and> f)) \<le> sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) (q \<^emph>\<and> f) \<Longrightarrow>
+  \<open>sp b (wlp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) p) \<le> sswa r q \<Longrightarrow>
+    \<forall>f. sp b (wssa r (p \<^emph>\<and> f)) \<le> sswa r (q \<^emph>\<and> f) \<Longrightarrow>
     b \<le> \<top> \<times>\<^sub>R g \<Longrightarrow>
-    p' \<le> wlp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) p \<Longrightarrow>
-    sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) q \<le> q' \<Longrightarrow>
+    p' \<le> wssa r p \<Longrightarrow>
+    sswa r q \<le> q' \<Longrightarrow>
     rgsat (Atomic b) r g p' q'\<close>
 | rgsat_frame:
   \<open>rgsat c r g p q \<Longrightarrow>
-    sp ((=) \<times>\<^sub>R (r \<squnion> g)\<^sup>*\<^sup>*) f \<le> f' \<Longrightarrow>
+    sswa (r \<squnion> g) f \<le> f' \<Longrightarrow>
     rgsat c r g (p \<^emph>\<and> f) (q \<^emph>\<and> f')\<close>
 | rgsat_weaken:
   \<open>rgsat c r' g' p' q' \<Longrightarrow>
@@ -459,16 +521,10 @@ inductive rgsat ::
     rgsat c r g p q\<close>
 
 inductive_cases rgsep_doneE[elim]: \<open>rgsat Skip r g p q\<close>
-inductive_cases rgsep_iterE[elim]: \<open>rgsat (\<mu> c) r g p q\<close>
+inductive_cases rgsep_iterE[elim]: \<open>rgsat (DO c OD) r g p q\<close>
+\<comment> \<open> inductive_cases rgsep_fixptE[elim]: \<open>rgsat (\<mu> c) r g p q\<close> \<close>
 inductive_cases rgsep_parE[elim]: \<open>rgsat (s1 \<parallel> s2) r g p q\<close>
 inductive_cases rgsep_atomE[elim]: \<open>rgsat (Atomic c) r g p q\<close>
-
-lemma rgsat_fixpt2:
-  \<open>rgsat c[x \<leftarrow> Atomic (framecl (rel_lift i))] r g (sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) i) (sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) i) \<Longrightarrow> rgsat (\<mu> c) r g i (sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) i)\<close>
-  using rgsat_fixpt[OF _ order.refl order.refl order.refl order.refl,
-          where i=\<open>sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) i\<close> and r=r]
-  apply (simp add: sp_comp_rel)
-  oops
 
 lemma backwards_done:
   \<open>rgsat Skip r g (wlp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) p) p\<close>

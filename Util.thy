@@ -84,7 +84,7 @@ lemma pred_Times_iff[simp]: \<open>(p1 \<times>\<^sub>P p2) (a, b) \<longleftrig
 
 lemma pred_Times_almost_assoc:
   \<open>((p1 \<times>\<^sub>P p2) \<times>\<^sub>P p3) ((a,b),c) = (p1 \<times>\<^sub>P p2 \<times>\<^sub>P p3) (a,b,c)\<close>
-  by (simp add: pred_Times_iff)
+  by simp
 
 subsubsection \<open> Tuples \<close>
 
@@ -264,25 +264,6 @@ lemma change_state_mono[dest]:
   \<open>r1 \<le> r2 \<Longrightarrow> change_state r1 x \<Longrightarrow> change_state r2 x\<close>
   by (force simp add: change_state_def)
 
-subsubsection \<open> relation tuples \<close>
-
-definition rel_Times :: \<open>('a \<Rightarrow> 'b \<Rightarrow> bool) \<Rightarrow> ('c \<Rightarrow> 'd \<Rightarrow> bool) \<Rightarrow> ('a \<times> 'c \<Rightarrow> 'b \<times> 'd \<Rightarrow> bool)\<close>
-  (infixr \<open>\<times>\<^sub>R\<close> 80) where
-  \<open>r1 \<times>\<^sub>R r2 \<equiv> \<lambda>(a,c) (b, d). r1 a b \<and> r2 c d\<close>
-
-lemma rel_Times_iff[simp]: \<open>(r1 \<times>\<^sub>R r2) (x1, x2) (y1, y2) \<longleftrightarrow> r1 x1 y1 \<and> r2 x2 y2\<close>
-  by (force simp add: rel_Times_def)
-
-lemma rel_Times_almost_assoc:
-  \<open>((r1 \<times>\<^sub>R r2) \<times>\<^sub>R r3) ((a,b),c) ((a',b'),c') = (r1 \<times>\<^sub>R r2 \<times>\<^sub>R r3) (a,b,c) (a',b',c')\<close>
-  by simp
-
-lemma rel_Times_reflp_iff[simp]:
-  \<open>reflp (r1 \<times>\<^sub>R r2) \<longleftrightarrow> reflp r1 \<and> reflp r2\<close>
-  by (simp add: rel_Times_def reflp_def)
-
-subsubsection \<open> relation misc \<close>
-
 lemma implies_rel_then_rtranscl_implies_rel:
   assumes assms_induct:
     \<open>r\<^sup>*\<^sup>* x y\<close>
@@ -352,6 +333,56 @@ lemma rtransp_relcompp_absorb_rl[simp]: \<open>r2\<^sup>*\<^sup>* OO (r1 \<squni
 
 lemma rtransp_relcompp_absorb_ll[simp]: \<open>r1\<^sup>*\<^sup>*  OO (r1 \<squnion> r2)\<^sup>*\<^sup>* = (r1 \<squnion> r2)\<^sup>*\<^sup>*\<close>
   by (simp add: rel_le_rtranscp_relcompp_absorb(2))
+
+declare eq_OO[simp] OO_eq[simp]
+
+lemma rtranclp_tuple_rel_semidistrib:
+  \<open>(\<lambda>(a, c) (b, d). r1 a b \<and> r2 c d)\<^sup>*\<^sup>* ac bd
+    \<Longrightarrow> r1\<^sup>*\<^sup>* (fst ac) (fst bd) \<and> r2\<^sup>*\<^sup>* (snd ac) (snd bd)\<close>
+  by (induct rule: rtranclp_induct; force)
+
+lemma rtranclp_tuple_lift_eq_left:
+  \<open>r2\<^sup>*\<^sup>* c d \<Longrightarrow> (\<lambda>(a, c) (b, d). a = b \<and> r2 c d)\<^sup>*\<^sup>* (a,c) (a,d)\<close>
+  by (induct rule: rtranclp_induct, fast, simp add: rtranclp.rtrancl_into_rtrancl)
+
+lemma rtranclp_eq_eq[simp]:
+  \<open>(=)\<^sup>*\<^sup>* = (=)\<close>
+  by (simp add: rtransp_rel_is_rtransclp)
+
+
+subsubsection \<open> relation tuples \<close>
+
+definition rel_Times :: \<open>('a \<Rightarrow> 'b \<Rightarrow> bool) \<Rightarrow> ('c \<Rightarrow> 'd \<Rightarrow> bool) \<Rightarrow> ('a \<times> 'c \<Rightarrow> 'b \<times> 'd \<Rightarrow> bool)\<close>
+  (infixr \<open>\<times>\<^sub>R\<close> 80) where
+  \<open>r1 \<times>\<^sub>R r2 \<equiv> \<lambda>(a,c) (b, d). r1 a b \<and> r2 c d\<close>
+
+lemma rel_Times_iff[simp]: \<open>(r1 \<times>\<^sub>R r2) (x1, x2) (y1, y2) \<longleftrightarrow> r1 x1 y1 \<and> r2 x2 y2\<close>
+  by (force simp add: rel_Times_def)
+
+lemma rel_Times_almost_assoc:
+  \<open>((r1 \<times>\<^sub>R r2) \<times>\<^sub>R r3) ((a,b),c) ((a',b'),c') = (r1 \<times>\<^sub>R r2 \<times>\<^sub>R r3) (a,b,c) (a',b',c')\<close>
+  by simp
+
+lemma rel_Times_reflp_iff[simp]:
+  \<open>reflp (r1 \<times>\<^sub>R r2) \<longleftrightarrow> reflp r1 \<and> reflp r2\<close>
+  by (simp add: rel_Times_def reflp_def)
+
+lemma rel_Times_rtranclp_semidistrib:
+  \<open>(r1 \<times>\<^sub>R r2)\<^sup>*\<^sup>* \<le> r1\<^sup>*\<^sup>* \<times>\<^sub>R r2\<^sup>*\<^sup>*\<close>
+  apply (clarsimp simp add: le_fun_def rel_Times_def)
+  apply (metis rtranclp_tuple_rel_semidistrib fst_conv snd_conv)
+  done
+
+lemma rel_Times_left_eq_rtranclp_distrib[simp]:
+  \<open>((=) \<times>\<^sub>R r2)\<^sup>*\<^sup>* = (=) \<times>\<^sub>R r2\<^sup>*\<^sup>*\<close>
+  apply (rule order.antisym)
+   apply (force dest: rtranclp_tuple_rel_semidistrib simp add: le_fun_def rel_Times_def)
+  apply (force dest: rtranclp_tuple_lift_eq_left simp add: le_fun_def rel_Times_def)
+  done
+
+lemma rel_Times_comp[simp]:
+  \<open>(a \<times>\<^sub>R b) OO (c \<times>\<^sub>R d) = (a OO c) \<times>\<^sub>R (b OO d)\<close>
+  by (force simp add: fun_eq_iff OO_def)
 
 
 subsection \<open> Function Properties \<close>
