@@ -2,6 +2,40 @@ theory Experimental
   imports Soundness
 begin
 
+class pre_semi_sep_alg = disjoint + plus +
+  (* ordered partial commutative monoid *)
+  assumes partial_add_assoc: \<open>a ## b \<Longrightarrow> b ## c \<Longrightarrow> a ## c \<Longrightarrow> (a + b) + c = a + (b + c)\<close>
+  assumes partial_add_commute: \<open>a ## b \<Longrightarrow> a + b = b + a\<close>
+  (* separation laws *)
+  assumes disjoint_sym: \<open>a ## b \<Longrightarrow> b ## a\<close>
+  assumes disjoint_add_rightL: \<open>b ## c \<Longrightarrow> a ## b + c \<Longrightarrow> a ## b\<close>
+  assumes disjoint_add_right_commute: \<open>b ## c \<Longrightarrow> a ## b + c \<Longrightarrow> b ## a + c\<close>
+  assumes positivity: \<open>a ## b \<Longrightarrow> a + b = c \<Longrightarrow> c ## c \<Longrightarrow> c + c = c \<Longrightarrow> a + a = a\<close>
+begin
+
+definition subadd :: \<open>'a \<Rightarrow> 'a \<Rightarrow> bool\<close> (infix \<open>\<prec>\<^sub>+\<close> 50) where
+  \<open>a \<prec>\<^sub>+ b \<equiv> a \<noteq> b \<and> (\<exists>c. a ## c \<and> b = a + c)\<close>
+
+definition subaddeq :: \<open>'a \<Rightarrow> 'a \<Rightarrow> bool\<close> (infix \<open>\<preceq>\<^sub>+\<close> 50) where
+  \<open>a \<preceq>\<^sub>+ b \<equiv> a = b \<and> (\<forall>c. a ## c \<longrightarrow> b \<noteq> a + c) \<or> (\<exists>c. a ## c \<and> b = a + c)\<close>
+
+lemma subadd_order:
+  \<open>class.order (\<prec>\<^sub>+) (\<preceq>\<^sub>+)\<close>
+  apply standard
+     apply (simp add: subadd_def subaddeq_def)
+     apply (rule iffI conjI impI; elim conjE exE disjE)
+  oops
+
+end
+
+context order
+begin
+
+definition covered_by :: \<open>'a \<Rightarrow> 'a \<Rightarrow> bool\<close> (infix \<open>\<prec>\<^sub>c\<close> 50) where
+  \<open>x \<prec>\<^sub>c y \<equiv> x < y \<and> (\<forall>z. x \<le> z \<longrightarrow> z < y \<longrightarrow> z = x)\<close>
+
+end
+
 context perm_alg
 begin
 

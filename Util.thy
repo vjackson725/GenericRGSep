@@ -510,14 +510,6 @@ lemmas preordering_refl =
 lemmas preordering_trans =
   preordering.axioms(1)[THEN partial_preordering.trans]
 
-context order
-begin
-
-definition covered_by :: \<open>'a \<Rightarrow> 'a \<Rightarrow> bool\<close> (infix \<open>\<prec>\<close> 50) where
-  \<open>x \<prec> y \<equiv> x < y \<and> (\<forall>z. x \<le> z \<longrightarrow> z < y \<longrightarrow> z = x)\<close>
-
-end
-
 subsection \<open> Groups \<close>
 
 lemmas eq_diff_eq_comm =
