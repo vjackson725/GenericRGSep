@@ -10,16 +10,16 @@ class pre_semi_sep_alg = disjoint + plus +
   assumes disjoint_sym: \<open>a ## b \<Longrightarrow> b ## a\<close>
   assumes disjoint_add_rightL: \<open>b ## c \<Longrightarrow> a ## b + c \<Longrightarrow> a ## b\<close>
   assumes disjoint_add_right_commute: \<open>b ## c \<Longrightarrow> a ## b + c \<Longrightarrow> b ## a + c\<close>
-  assumes positivity: \<open>a ## b \<Longrightarrow> a + b = c \<Longrightarrow> c ## c \<Longrightarrow> c + c = c \<Longrightarrow> a + a = a\<close>
+  (* assumes positivity: \<open>a ## b \<Longrightarrow> a + b = c \<Longrightarrow> c ## c \<Longrightarrow> c + c = c \<Longrightarrow> a + a = a\<close> *)
   assumes unit_sub_closure:
     \<open>a ## b \<Longrightarrow> a + b ## c \<Longrightarrow> b ## b \<Longrightarrow> c ## c \<Longrightarrow> a + (b + c) = a \<Longrightarrow> a + b = a\<close>
 begin
 
 definition subadd :: \<open>'a \<Rightarrow> 'a \<Rightarrow> bool\<close> (infix \<open>\<prec>\<^sub>+\<close> 50) where
-  \<open>a \<prec>\<^sub>+ b \<equiv> a \<noteq> b \<and> (\<exists>c. a ## c \<and> b = a + c)\<close>
+  \<open>a \<prec>\<^sub>+ b \<equiv> a \<noteq> b \<and> (\<exists>c. a ## c \<and> a + c = b)\<close>
 
 definition subaddeq :: \<open>'a \<Rightarrow> 'a \<Rightarrow> bool\<close> (infix \<open>\<preceq>\<^sub>+\<close> 50) where
-  \<open>a \<preceq>\<^sub>+ b \<equiv> a = b \<or> (\<exists>c. a ## c \<and> b = a + c)\<close>
+  \<open>a \<preceq>\<^sub>+ b \<equiv> a = b \<or> (\<exists>c. a ## c \<and> a + c = b)\<close>
 
 lemma subadd_order:
   \<open>class.order (\<preceq>\<^sub>+) (\<prec>\<^sub>+)\<close>
@@ -43,6 +43,53 @@ lemma subadd_order:
       partial_add_commute)
   apply (metis disjoint_add_rightL disjoint_sym partial_add_assoc partial_add_commute unit_sub_closure)
   done
+
+definition \<open>is_sepunit u \<equiv> u ## u \<and> (\<forall>a. u ## a \<longrightarrow> a + u = a)\<close>
+
+lemma \<open>is_sepunit u \<Longrightarrow> u \<preceq>\<^sub>+ a \<Longrightarrow> a ## b \<Longrightarrow> u \<preceq>\<^sub>+ a + b\<close>
+  unfolding is_sepunit_def subaddeq_def
+  by (metis disjoint_add_right_commute disjoint_sym partial_add_commute)
+
+lemma \<open>is_sepunit u \<Longrightarrow> u \<preceq>\<^sub>+ a \<Longrightarrow> a ## b \<Longrightarrow> u \<preceq>\<^sub>+ b\<close>
+  unfolding is_sepunit_def subaddeq_def
+  by (metis disjoint_add_rightL disjoint_sym partial_add_commute)
+
+lemma \<open>is_sepunit u \<Longrightarrow> u \<preceq>\<^sub>+ a \<Longrightarrow> a ## b \<Longrightarrow> u \<preceq>\<^sub>+ a + b\<close>
+  unfolding is_sepunit_def subaddeq_def
+  by (metis disjoint_add_right_commute disjoint_sym partial_add_commute)
+
+lemma \<open>is_sepunit u \<Longrightarrow> u \<preceq>\<^sub>+ a \<Longrightarrow> a ## b \<Longrightarrow> u \<preceq>\<^sub>+ b\<close>
+  unfolding is_sepunit_def subaddeq_def
+  by (metis disjoint_add_rightL disjoint_sym partial_add_commute)
+
+lemma 
+    \<open>\<forall>u a. a \<preceq>\<^sub>+ u \<longrightarrow> is_sepunit u \<longrightarrow> is_sepunit a\<close>
+   by (clarsimp simp add: is_sepunit_def subaddeq_def,
+      metis unit_sub_closure disjoint_add_rightL disjoint_sym partial_add_commute)
+
+lemma \<open>is_sepunit u \<Longrightarrow> a ## b \<Longrightarrow> a + b = u \<Longrightarrow> is_sepunit a\<close>
+  unfolding is_sepunit_def subaddeq_def
+  by (metis disjoint_add_rightL disjoint_sym partial_add_commute unit_sub_closure[of _ a b])
+
+
+definition \<open>is_sepdup a \<equiv> a ## a \<and> a + a = a\<close>
+
+lemma \<open>is_sepunit u \<Longrightarrow> is_sepdup u\<close>
+  by (simp add: is_sepdup_def is_sepunit_def)
+
+lemma sepdup_antimono_iff_positivity:
+  \<open>(\<forall>a b. a \<preceq>\<^sub>+ b \<longrightarrow> is_sepdup b \<longrightarrow> is_sepdup a) \<longleftrightarrow>
+    (\<forall>a b c. a ## b \<longrightarrow> a + b = c \<longrightarrow> c ## c \<longrightarrow> c + c = c \<longrightarrow> a + a = a)\<close>
+  apply (rule iffI)
+   apply (meson is_sepdup_def subaddeq_def; fail)
+  apply (simp add: is_sepdup_def subaddeq_def, clarify)
+  apply (meson disjoint_add_rightL disjoint_sym)
+  done
+  
+
+lemma \<open>a \<preceq>\<^sub>+ b \<Longrightarrow> is_sepdup b \<Longrightarrow> is_sepdup a\<close>
+  nitpick
+  oops
 
 end
 
