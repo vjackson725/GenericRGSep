@@ -2,6 +2,34 @@ theory Experimental
   imports Soundness
 begin
 
+class pre_semi_sep_alg = ord +
+  fixes R :: \<open>'a \<Rightarrow> 'a \<Rightarrow> 'a \<Rightarrow> bool\<close>
+  assumes less_eq_eqn: \<open>a \<le> b \<longleftrightarrow> (\<exists>c. R a c b)\<close>
+  assumes less_eqn: \<open>a < b \<longleftrightarrow> a \<noteq> b \<and> (\<exists>c. R a c b)\<close>
+  assumes join_assoc: \<open>R a b d \<Longrightarrow> R d c e \<Longrightarrow> \<exists>f. R b c f \<and> R a f e\<close>
+  assumes join_comm: \<open>R a b c \<Longrightarrow> R b a c\<close>
+  assumes join_positivity: \<open>a \<le> b \<Longrightarrow> b \<le> a \<Longrightarrow> a = b\<close>
+begin
+
+lemma is_order:
+  assumes join_units: \<open>\<forall>a. \<exists>u. R a u a\<close>
+  shows \<open>class.order (\<le>) ((<) :: 'a \<Rightarrow> 'a \<Rightarrow> bool)\<close>
+  apply standard
+     apply (metis join_positivity less_eqn less_eq_eqn)
+    apply (metis join_units less_eq_eqn)
+   apply (metis less_eq_eqn join_assoc)
+  apply (metis join_positivity)
+  done
+
+lemma ex_units:
+  \<open>\<forall>a. \<exists>u. R a u a\<close>
+  nitpick
+  oops
+
+end
+
+
+
 class pre_semi_sep_alg = disjoint + plus +
   (* ordered partial commutative monoid *)
   assumes partial_add_assoc: \<open>a ## b \<Longrightarrow> b ## c \<Longrightarrow> a ## c \<Longrightarrow> (a + b) + c = a + (b + c)\<close>
