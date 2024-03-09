@@ -34,7 +34,7 @@ class disjoint =
 
 subsection \<open> Permission Algebras \<close>
 
-class perm_alg = disjoint + plus + order +
+class perm_alg = disjoint + plus + ord +
   (* ordered partial commutative monoid *)
   assumes partial_add_assoc: \<open>a ## b \<Longrightarrow> b ## c \<Longrightarrow> a ## c \<Longrightarrow> (a + b) + c = a + (b + c)\<close>
   assumes partial_add_commute: \<open>a ## b \<Longrightarrow> a + b = b + a\<close>
@@ -42,14 +42,28 @@ class perm_alg = disjoint + plus + order +
   assumes disjoint_sym: \<open>a ## b \<Longrightarrow> b ## a\<close>
   assumes disjoint_add_rightL: \<open>b ## c \<Longrightarrow> a ## b + c \<Longrightarrow> a ## b\<close>
   assumes disjoint_add_right_commute: \<open>b ## c \<Longrightarrow> a ## b + c \<Longrightarrow> b ## a + c\<close>
-  assumes positivity: \<open>a ## b \<Longrightarrow> a + b = c \<Longrightarrow> c ## c \<Longrightarrow> c + c = c \<Longrightarrow> a + a = a\<close>
-  assumes unit_sub_closure:
-    \<open>a ## ux \<Longrightarrow> a + ux ## uy \<Longrightarrow> ux ## ux \<Longrightarrow> uy ## uy \<Longrightarrow> a + (ux + uy) = a \<Longrightarrow> a + ux = a\<close>
-  assumes less_iff_sepadd: \<open>a < b \<longleftrightarrow> a \<noteq> b \<and> (\<exists>c. a ## c \<and> b = a + c)\<close>
+  assumes dup_sub_closure: \<open>a ## b \<Longrightarrow> a + b = c \<Longrightarrow> c ## c \<Longrightarrow> c + c = c \<Longrightarrow> a + a = a\<close>
+  assumes positivity:
+    \<open>a ## c1 \<Longrightarrow> a + c1 = b \<Longrightarrow> b ## c2 \<Longrightarrow> b + c2 = a \<Longrightarrow> a = b\<close>
+  assumes less_sepadd_def: \<open>a < b \<longleftrightarrow> a \<noteq> b \<and> (\<exists>c. a ## c \<and> b = a + c)\<close>
+  assumes less_eq_sepadd_def: \<open>a \<le> b \<longleftrightarrow> a = b \<or> (\<exists>c. a ## c \<and> b = a + c)\<close>
 begin
 
-lemma le_iff_sepadd_weak: \<open>a \<le> b \<longleftrightarrow> a = b \<or> (\<exists>c. a ## c \<and> b = a + c)\<close>
-  using le_less less_iff_sepadd by auto
+lemma trans_helper:
+  \<open>a ## b \<Longrightarrow> a + b ## c \<Longrightarrow> \<exists>d. a ## d \<and> a + b + c = a + d\<close>
+  by (metis disjoint_add_rightL disjoint_add_right_commute disjoint_sym partial_add_assoc
+      partial_add_commute)
+
+subclass order
+  apply standard
+     apply (metis less_eq_sepadd_def less_sepadd_def positivity)
+    apply (metis less_eq_sepadd_def)
+   apply (metis less_eq_sepadd_def trans_helper)
+  apply (metis less_eq_sepadd_def positivity)
+  done
+
+lemmas less_iff_sepadd = less_sepadd_def
+lemmas le_iff_sepadd_weak = less_eq_sepadd_def
 
 lemma disjoint_sym_iff: \<open>a ## b \<longleftrightarrow> b ## a\<close>
   using disjoint_sym by blast
@@ -182,6 +196,7 @@ definition \<open>sepadd_unit a \<equiv> a ## a \<and> (\<forall>b. a ## b \<lon
 abbreviation \<open>sepadd_units \<equiv> Collect sepadd_unit\<close>
 
 text \<open> sepadd_unit antimono \<close>
+
 lemma below_unit_impl_unit:
   \<open>a \<le> b \<Longrightarrow> sepadd_unit b \<Longrightarrow> sepadd_unit a\<close>
   unfolding sepadd_unit_def
@@ -222,14 +237,25 @@ lemma disjoint_units_identical:
   \<open>a ## b \<Longrightarrow> sepadd_unit a \<Longrightarrow> sepadd_unit b \<Longrightarrow> a = b\<close>
   by (metis disjoint_sym partial_add_commute sepadd_unit_def)
 
+lemma related_units_disjoint:
+  \<open>sepadd_unit u1 \<Longrightarrow> sepadd_unit u2 \<Longrightarrow> a ## u1 \<Longrightarrow> a ## u2 \<Longrightarrow> u1 ## u2\<close>
+  by (metis disjoint_add_leftL disjoint_sym sepadd_unit_def)
+
+lemma related_units_identical:
+  \<open>sepadd_unit u1 \<Longrightarrow> sepadd_unit u2 \<Longrightarrow> a ## u1 \<Longrightarrow> a ## u2 \<Longrightarrow> u2 = u1\<close>
+  using related_units_disjoint disjoint_units_identical by blast
+
 lemma trans_disjoint_units_identical:
   \<open>a ## b \<Longrightarrow> b ## c \<Longrightarrow> sepadd_unit a \<Longrightarrow> sepadd_unit c \<Longrightarrow> a = c\<close>
-  by (metis disjoint_units_identical disjoint_add_leftL sepadd_unit_def)
+  by (metis disjoint_sym related_units_identical)
 
-lemma sepadd_unit_disjoint_trans[dest]:
+lemma sepadd_unit_disjoint_trans:
   \<open>sepadd_unit a \<Longrightarrow> a ## b \<Longrightarrow> b ## c \<Longrightarrow> a ## c\<close>
-  by (metis disjoint_add_leftL sepadd_unit_def)
+  using disjoint_preservation units_least by blast
 
+lemma sometimes_unit_sub_closure:
+  \<open>a ## x \<Longrightarrow> a + x ## y \<Longrightarrow> x ## x \<Longrightarrow> y ## y \<Longrightarrow> a + (x + y) = a \<Longrightarrow> a + x = a\<close>
+  by (simp add: positivity partial_add_assoc2)
 
 subsection \<open> zero_sepadd \<close>
 
@@ -248,7 +274,9 @@ lemma zeros_add_to_zero: \<open>x ## y \<Longrightarrow> sepadd_zero x \<Longrig
 
 subsection \<open> duplicable \<close>
 
-text \<open> Positivity ensures that all elements less than a duplicable element are also duplicable. \<close>
+text \<open>
+  Dup sub-closure ensures that all elements less than a duplicable element are also duplicable.
+\<close>
 
 lemma add_to_selfsep_preserves_selfsep: \<open>a ## b \<Longrightarrow> a + b = c \<Longrightarrow> c ## c \<Longrightarrow> a ## a\<close>
   by (meson disjoint_add_rightL disjoint_sym)
@@ -257,7 +285,7 @@ lemma add_to_selfsep_preserves_selfsepR: \<open>a ## b \<Longrightarrow> a + b =
   using disjoint_sym partial_add_commute add_to_selfsep_preserves_selfsep by blast
 
 lemma positivityR: \<open>a ## b \<Longrightarrow> a + b = c \<Longrightarrow> c ## c \<Longrightarrow> c + c = c \<Longrightarrow> b + b = b\<close>
-  using disjoint_sym partial_add_commute positivity by blast
+  using disjoint_sym partial_add_commute dup_sub_closure by blast
 
 text \<open>
   Duplicable elements. These are related to the logical content of a separation algebra (as
@@ -277,11 +305,11 @@ lemma sepadd_dup_antimono:
   apply (clarsimp simp add: sepadd_dup_def)
   apply (rule conjI)
    apply (force dest: common_subresource_selfsep)
-  apply (metis le_iff_sepadd_weak positivity)
+  apply (metis le_iff_sepadd_weak dup_sub_closure)
   done
 
-text \<open> note we don't use positivity in this lemma \<close>
-lemma sepadd_dup_antimono_is_positivity:
+text \<open> note we don't use dup_sub_closure in this lemma \<close>
+lemma sepadd_dup_antimono_is_dup_sub_closure:
   \<open>(\<forall>a b. a \<le> b \<longrightarrow> sepadd_dup b \<longrightarrow> sepadd_dup a) \<longleftrightarrow>
     (\<forall>a b c. a ## b \<longrightarrow> a + b = c \<longrightarrow> c ## c \<longrightarrow> c + c = c \<longrightarrow> a + a = a)\<close>
   unfolding sepadd_dup_def le_iff_sepadd_weak
@@ -298,6 +326,9 @@ text \<open>
   there can be several non-comparible duplicable elements sitting below a or b.
   When all non-empty subsets of duplicable elements have a lub which is itself duplicable,
   \<open>has_core\<close> is monotone. (See glb/lub section.)
+
+  Note this is different to Pottier and Appel's versions of core, which are actually \<open>unitof\<close>
+  from a multiunit_sep_alg.
 \<close>
 
 definition \<open>core_rel a ca \<equiv> ca \<le> a \<and> sepadd_dup ca \<and> (\<forall>y\<le>a. sepadd_dup y \<longrightarrow> y \<le> ca)\<close>
@@ -774,9 +805,16 @@ end
 
 subsection \<open> Separation Algebras (with a single unit) \<close>
 
-class sep_alg = multiunit_sep_alg + order_bot + zero +
-  assumes zero_is_bot: \<open>0 = \<bottom>\<close>
+class sep_alg = multiunit_sep_alg + zero + bot +
+  assumes zero_least: \<open>0 \<le> x\<close>
+  assumes bot_least': \<open>\<bottom> \<le> x\<close>
 begin
+
+lemma zero_is_bot: \<open>0 = \<bottom>\<close>
+  by (simp add: bot_least' zero_least order.antisym)
+
+subclass order_bot
+  by standard (simp add: bot_least')
 
 lemma bot_unit:
   \<open>sepadd_unit \<bottom>\<close>
@@ -1032,13 +1070,12 @@ lemma the_unit_is_a_unit:
   by (rule theI', simp add: exactly_one_unit)
 
 lemma is_sep_alg:
-  \<open>class.sep_alg the_unit the_unit (\<le>) (<) (+) (##) (\<lambda>_. the_unit)\<close>
+  \<open>class.sep_alg the_unit the_unit (+) (\<le>) (<) (##) (\<lambda>_. the_unit)\<close>
   apply standard
-     apply (metis exactly_one_unit unitof_is_sepadd_unit unitof_le the_unit_is_a_unit)
     apply (metis exactly_one_unit unitof_disjoint unitof_is_sepadd_unit the_unit_is_a_unit)
    apply (metis exactly_one_unit unitof_disjoint2 unitof_is_unit2 unitof_is_sepadd_unit
       the_unit_is_a_unit)
-  apply (metis exactly_one_unit unitof_disjoint2 unitof_is_unit2 unitof_is_sepadd_unit
+  apply (simp add: all_compatible compatible_unit_disjoint2 disjoint_sym units_least
       the_unit_is_a_unit)
   done
 

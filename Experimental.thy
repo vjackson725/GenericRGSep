@@ -2,29 +2,84 @@ theory Experimental
   imports Soundness
 begin
 
-class pre_semi_sep_alg = ord +
+class appel_perm_alg = ord +
   fixes R :: \<open>'a \<Rightarrow> 'a \<Rightarrow> 'a \<Rightarrow> bool\<close>
-  assumes less_eq_eqn: \<open>a \<le> b \<longleftrightarrow> (\<exists>c. R a c b)\<close>
-  assumes less_eqn: \<open>a < b \<longleftrightarrow> a \<noteq> b \<and> (\<exists>c. R a c b)\<close>
+  fixes add_leq :: \<open>'a \<Rightarrow> 'a \<Rightarrow> bool\<close> (infix \<open>\<lesssim>\<close> 50)
+  assumes add_leq_def: \<open>a \<lesssim> b \<longleftrightarrow> (\<exists>c. R a c b)\<close>
+  assumes join_eq: \<open>R a b z1 \<Longrightarrow> R a b z2 \<Longrightarrow> z1 = z2\<close>
   assumes join_assoc: \<open>R a b d \<Longrightarrow> R d c e \<Longrightarrow> \<exists>f. R b c f \<and> R a f e\<close>
   assumes join_comm: \<open>R a b c \<Longrightarrow> R b a c\<close>
-  assumes join_positivity: \<open>a \<le> b \<Longrightarrow> b \<le> a \<Longrightarrow> a = b\<close>
+  assumes join_positivity: \<open>a \<lesssim> b \<Longrightarrow> b \<lesssim> a \<Longrightarrow> a = b\<close>
 begin
 
 lemma is_order:
-  assumes join_units: \<open>\<forall>a. \<exists>u. R a u a\<close>
-  shows \<open>class.order (\<le>) ((<) :: 'a \<Rightarrow> 'a \<Rightarrow> bool)\<close>
+  \<open>class.order ((=) \<squnion> (\<lesssim>)) ((\<noteq>) \<sqinter> (\<lesssim>))\<close>
   apply standard
-     apply (metis join_positivity less_eqn less_eq_eqn)
-    apply (metis join_units less_eq_eqn)
-   apply (metis less_eq_eqn join_assoc)
-  apply (metis join_positivity)
+     apply (simp, metis join_positivity)
+    apply fast
+   apply (simp, metis add_leq_def join_assoc)
+  apply (simp, metis join_positivity)
   done
 
-lemma ex_units:
+lemma ex_pseudo_unit:
   \<open>\<forall>a. \<exists>u. R a u a\<close>
   nitpick
   oops
+
+lemma related_pseudo_units_identical_failure:
+  \<open>R u1 a a \<Longrightarrow> R u2 a a \<Longrightarrow> u1 = u2\<close>
+  nitpick
+  oops
+
+lemma related_units_identical_failure:
+  \<open>(\<forall>a z. R u1 a z \<longrightarrow> z = a) \<Longrightarrow> (\<forall>a z. R u2 a z \<longrightarrow> z = a) \<Longrightarrow>
+    R u1 a a \<Longrightarrow> R u2 a a \<Longrightarrow> u1 = u2\<close>
+  by (metis join_assoc join_comm)
+
+definition
+  \<open>disjoint2 a b \<equiv> Ex (R a b)\<close>
+
+definition
+  \<open>plus2 a b \<equiv> (THE c. R a b c)\<close>
+
+lemma plus2_eq[simp]:
+  \<open>R a b x \<Longrightarrow> plus2 a b = x\<close>
+  by (metis plus2_def the_equality join_eq)
+
+lemma plus2_eq2[simp]:
+  \<open>R b a x \<Longrightarrow> plus2 a b = x\<close>
+  using join_comm plus2_eq by blast
+
+lemma partial_add_commute:
+  \<open>disjoint2 a b \<Longrightarrow> plus2 a b = plus2 b a\<close>
+  by (clarsimp simp add: disjoint2_def)
+
+lemma join_assoc2:
+  \<open>R a b ab \<Longrightarrow> R b c bc \<Longrightarrow> R ab c abc \<Longrightarrow> R a bc abc\<close>
+  using join_assoc join_eq by blast
+
+lemma partial_add_assoc:
+  \<open>disjoint2 a b \<Longrightarrow> disjoint2 b c \<Longrightarrow> disjoint2 a c \<Longrightarrow>
+    plus2 (plus2 a b) c = plus2 a (plus2 b c)\<close>
+  apply (clarsimp simp add: disjoint2_def)
+  apply (simp add: plus2_def)
+  apply (meson join_assoc2 join_comm)
+  done
+
+lemma disjoint_sym: \<open>disjoint2 a b \<Longrightarrow> disjoint2 b a\<close>
+  using disjoint2_def join_comm by blast
+
+lemma disjoint_add_rightL: \<open>disjoint2 b c \<Longrightarrow> disjoint2 a (plus2 b c) \<Longrightarrow> disjoint2 a b\<close>
+  apply (clarsimp simp add: disjoint2_def)
+  apply (metis join_assoc join_comm)
+  done
+
+lemma disjoint_add_right_commute:
+  \<open>disjoint2 b c \<Longrightarrow> disjoint2 a (plus2 b c) \<Longrightarrow> disjoint2 b (plus2 a c)\<close>
+  apply (clarsimp simp add: disjoint2_def)
+  apply (frule join_assoc, rule join_comm, assumption)
+  apply force
+  done
 
 end
 
@@ -38,10 +93,23 @@ class pre_semi_sep_alg = disjoint + plus +
   assumes disjoint_sym: \<open>a ## b \<Longrightarrow> b ## a\<close>
   assumes disjoint_add_rightL: \<open>b ## c \<Longrightarrow> a ## b + c \<Longrightarrow> a ## b\<close>
   assumes disjoint_add_right_commute: \<open>b ## c \<Longrightarrow> a ## b + c \<Longrightarrow> b ## a + c\<close>
-  (* assumes positivity: \<open>a ## b \<Longrightarrow> a + b = c \<Longrightarrow> c ## c \<Longrightarrow> c + c = c \<Longrightarrow> a + a = a\<close> *)
   assumes unit_sub_closure:
     \<open>a ## b \<Longrightarrow> a + b ## c \<Longrightarrow> b ## b \<Longrightarrow> c ## c \<Longrightarrow> a + (b + c) = a \<Longrightarrow> a + b = a\<close>
+(* assumes dup_sub_closure: \<open>a ## b \<Longrightarrow> a + b = c \<Longrightarrow> c ## c \<Longrightarrow> c + c = c \<Longrightarrow> a + a = a\<close> *)
 begin
+
+lemma positive_impl_unit_sub_closure:
+  \<open>(\<And>a b c1 c2. a ## c1 \<Longrightarrow> a + c1 = b \<Longrightarrow> b ## c2 \<Longrightarrow> b + c2 = a \<Longrightarrow> a = b) \<Longrightarrow>
+    (\<And>a b c. a ## b \<Longrightarrow> a + b ## c \<Longrightarrow> b ## b \<Longrightarrow> c ## c \<Longrightarrow> a + (b + c) = a \<Longrightarrow> a + b = a)\<close>
+  by (metis disjoint_add_rightL disjoint_sym partial_add_assoc partial_add_commute)
+
+lemma unit_sub_closure_impl_positive:
+  \<open>(\<And>a b c. a ## b \<Longrightarrow> a + b ## c \<Longrightarrow> b ## b \<Longrightarrow> c ## c \<Longrightarrow> a + (b + c) = a \<Longrightarrow> a + b = a) \<Longrightarrow>
+    (\<And>a b c1 c2. a ## c1 \<Longrightarrow> a + c1 = b \<Longrightarrow> b ## c2 \<Longrightarrow> b + c2 = a \<Longrightarrow> a = b)\<close>
+  by (metis disjoint_add_rightL disjoint_sym partial_add_assoc partial_add_commute)
+
+lemma \<open>a ## c1 \<Longrightarrow> a + c1 = b \<Longrightarrow> b ## c2 \<Longrightarrow> b + c2 = a \<Longrightarrow> a = b\<close>
+  by (metis disjoint_add_rightL disjoint_sym partial_add_assoc partial_add_commute unit_sub_closure)
 
 definition subadd :: \<open>'a \<Rightarrow> 'a \<Rightarrow> bool\<close> (infix \<open>\<prec>\<^sub>+\<close> 50) where
   \<open>a \<prec>\<^sub>+ b \<equiv> a \<noteq> b \<and> (\<exists>c. a ## c \<and> a + c = b)\<close>
@@ -72,38 +140,38 @@ lemma subadd_order:
   apply (metis disjoint_add_rightL disjoint_sym partial_add_assoc partial_add_commute unit_sub_closure)
   done
 
-definition \<open>is_sepunit u \<equiv> u ## u \<and> (\<forall>a. u ## a \<longrightarrow> a + u = a)\<close>
+definition \<open>sepadd_unit2 u \<equiv> u ## u \<and> (\<forall>a. u ## a \<longrightarrow> a + u = a)\<close>
 
-lemma \<open>is_sepunit u \<Longrightarrow> u \<preceq>\<^sub>+ a \<Longrightarrow> a ## b \<Longrightarrow> u \<preceq>\<^sub>+ a + b\<close>
-  unfolding is_sepunit_def subaddeq_def
+lemma \<open>sepadd_unit2 u \<Longrightarrow> u \<preceq>\<^sub>+ a \<Longrightarrow> a ## b \<Longrightarrow> u \<preceq>\<^sub>+ a + b\<close>
+  unfolding sepadd_unit2_def subaddeq_def
   by (metis disjoint_add_right_commute disjoint_sym partial_add_commute)
 
-lemma \<open>is_sepunit u \<Longrightarrow> u \<preceq>\<^sub>+ a \<Longrightarrow> a ## b \<Longrightarrow> u \<preceq>\<^sub>+ b\<close>
-  unfolding is_sepunit_def subaddeq_def
+lemma \<open>sepadd_unit2 u \<Longrightarrow> u \<preceq>\<^sub>+ a \<Longrightarrow> a ## b \<Longrightarrow> u \<preceq>\<^sub>+ b\<close>
+  unfolding sepadd_unit2_def subaddeq_def
   by (metis disjoint_add_rightL disjoint_sym partial_add_commute)
 
-lemma \<open>is_sepunit u \<Longrightarrow> u \<preceq>\<^sub>+ a \<Longrightarrow> a ## b \<Longrightarrow> u \<preceq>\<^sub>+ a + b\<close>
-  unfolding is_sepunit_def subaddeq_def
+lemma \<open>sepadd_unit2 u \<Longrightarrow> u \<preceq>\<^sub>+ a \<Longrightarrow> a ## b \<Longrightarrow> u \<preceq>\<^sub>+ a + b\<close>
+  unfolding sepadd_unit2_def subaddeq_def
   by (metis disjoint_add_right_commute disjoint_sym partial_add_commute)
 
-lemma \<open>is_sepunit u \<Longrightarrow> u \<preceq>\<^sub>+ a \<Longrightarrow> a ## b \<Longrightarrow> u \<preceq>\<^sub>+ b\<close>
-  unfolding is_sepunit_def subaddeq_def
+lemma \<open>sepadd_unit2 u \<Longrightarrow> u \<preceq>\<^sub>+ a \<Longrightarrow> a ## b \<Longrightarrow> u \<preceq>\<^sub>+ b\<close>
+  unfolding sepadd_unit2_def subaddeq_def
   by (metis disjoint_add_rightL disjoint_sym partial_add_commute)
 
 lemma 
-    \<open>\<forall>u a. a \<preceq>\<^sub>+ u \<longrightarrow> is_sepunit u \<longrightarrow> is_sepunit a\<close>
-   by (clarsimp simp add: is_sepunit_def subaddeq_def,
+    \<open>\<forall>u a. a \<preceq>\<^sub>+ u \<longrightarrow> sepadd_unit2 u \<longrightarrow> sepadd_unit2 a\<close>
+   by (clarsimp simp add: sepadd_unit2_def subaddeq_def,
       metis unit_sub_closure disjoint_add_rightL disjoint_sym partial_add_commute)
 
-lemma \<open>is_sepunit u \<Longrightarrow> a ## b \<Longrightarrow> a + b = u \<Longrightarrow> is_sepunit a\<close>
-  unfolding is_sepunit_def subaddeq_def
+lemma \<open>sepadd_unit2 u \<Longrightarrow> a ## b \<Longrightarrow> a + b = u \<Longrightarrow> sepadd_unit2 a\<close>
+  unfolding sepadd_unit2_def subaddeq_def
   by (metis disjoint_add_rightL disjoint_sym partial_add_commute unit_sub_closure[of _ a b])
 
 
 definition \<open>is_sepdup a \<equiv> a ## a \<and> a + a = a\<close>
 
-lemma \<open>is_sepunit u \<Longrightarrow> is_sepdup u\<close>
-  by (simp add: is_sepdup_def is_sepunit_def)
+lemma \<open>sepadd_unit2 u \<Longrightarrow> is_sepdup u\<close>
+  by (simp add: is_sepdup_def sepadd_unit2_def)
 
 lemma sepdup_antimono_iff_positivity:
   \<open>(\<forall>a b. a \<preceq>\<^sub>+ b \<longrightarrow> is_sepdup b \<longrightarrow> is_sepdup a) \<longleftrightarrow>
@@ -276,7 +344,7 @@ lemma False
   nitpick
   oops
 
-
+(*
 definition
   \<open>good_prog b \<equiv>
       (\<forall>j. sepadd_irr j \<longrightarrow>
@@ -295,7 +363,6 @@ definition
       ) \<and>
       (\<forall>x y f. b x y \<longrightarrow> x ## f \<longrightarrow> y ## f \<longrightarrow> b (x + f) (y + f))\<close>
 
-(*
 lemma wsstable_sepconj_semidistrib_backwards:
   \<open>r = rgsep_rely S \<Longrightarrow>
     S = {a} \<Longrightarrow>
