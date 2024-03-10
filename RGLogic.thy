@@ -396,6 +396,40 @@ lemma subst_not_subexpr_iff:
        apply clarsimp
 *)
 
+
+subsection \<open> Map atoms \<close>
+
+fun map_comm :: \<open>('b \<Rightarrow> 'a) \<Rightarrow> 'a comm \<Rightarrow> 'b comm\<close> where
+  \<open>map_comm f Skip = Skip\<close>
+| \<open>map_comm f (a ;; b) = map_comm f a ;; map_comm f b\<close>
+| \<open>map_comm f (a \<parallel> b) = map_comm f a \<parallel> map_comm f b\<close>
+| \<open>map_comm f (a \<^bold>+ b) = map_comm f a \<^bold>+ map_comm f b\<close>
+| \<open>map_comm f (a \<box> b) = map_comm f a \<box> map_comm f b\<close>
+| \<open>map_comm f (Atomic b) = Atomic (\<lambda>x y. b (f x) (f y))\<close>
+| \<open>map_comm f (DO a OD) = DO map_comm f a OD\<close>
+| \<open>map_comm f (\<mu> c) = \<mu> (map_comm f c)\<close>
+| \<open>map_comm f (FixVar x) = FixVar x\<close>
+
+lemma map_comm_rev_iff:
+  \<open>map_comm f c = Skip \<longleftrightarrow> c = Skip\<close>
+  \<open>map_comm f c = c1' ;; c2' \<longleftrightarrow>
+    (\<exists>c1 c2. c = c1 ;; c2 \<and> c1' = map_comm f c1 \<and> c2' = map_comm f c2)\<close>
+  \<open>map_comm f c = c1' \<parallel> c2' \<longleftrightarrow>
+      (\<exists>c1 c2. c = c1 \<parallel> c2 \<and> c1' = map_comm f c1 \<and> c2' = map_comm f c2)\<close>
+  \<open>map_comm f c = c1' \<^bold>+ c2' \<longleftrightarrow>
+      (\<exists>c1 c2. c = c1 \<^bold>+ c2 \<and> c1' = map_comm f c1 \<and> c2' = map_comm f c2)\<close>
+  \<open>map_comm f c = c1' \<box> c2' \<longleftrightarrow>
+      (\<exists>c1 c2. c = c1 \<box> c2 \<and> c1' = map_comm f c1 \<and> c2' = map_comm f c2)\<close>
+  \<open>map_comm f c = DO c' OD \<longleftrightarrow>
+      (\<exists>ca. c = DO ca OD \<and> c' = map_comm f ca)\<close>
+  \<open>map_comm f c = \<mu> c' \<longleftrightarrow>
+      (\<exists>ca. c = \<mu> ca \<and> c' = map_comm f ca)\<close>
+  \<open>map_comm f c = FixVar x \<longleftrightarrow> c = FixVar x\<close>
+  \<open>map_comm f c = Atomic b \<longleftrightarrow> (\<exists>b'. c = Atomic b' \<and> b = (\<lambda>x y. b' (f x) (f y)))\<close>
+  by (induct c; simp; argo)+
+
+lemmas map_comm_rev_iff2 = map_comm_rev_iff[THEN trans[OF eq_commute]]
+
 subsection \<open> All atom commands predicate \<close>
 
 text \<open> Predicate to ensure atomic actions have a given property \<close>
@@ -476,7 +510,7 @@ inductive rgsat ::
     bool\<close>
   where
   rgsat_skip:
-  \<open>sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) p \<le> q \<Longrightarrow> rgsat Skip r g p q\<close>
+  \<open>sswa r p \<le> q \<Longrightarrow> rgsat Skip r g p q\<close>
 | rgsat_iter:
   \<open>rgsat c r g (sswa r i) (sswa r i) \<Longrightarrow>
     p \<le> i \<Longrightarrow> sswa r i \<le> q \<Longrightarrow>

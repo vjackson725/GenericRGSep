@@ -2,6 +2,254 @@ theory Experimental
   imports Soundness
 begin
 
+
+definition perm_alg_homomorphism :: \<open>('a :: perm_alg \<Rightarrow> 'b :: perm_alg) \<Rightarrow> bool\<close> where
+  \<open>perm_alg_homomorphism f \<equiv>
+    (\<forall>x y. x ## y \<longrightarrow> f x ## f y) \<and>
+    (\<forall>x y. x ## y \<longrightarrow> f (x + y) = f x + f y) \<and>
+    (\<forall>x y. x ## y \<longrightarrow> x \<noteq> y \<longrightarrow> f x \<noteq> f y)\<close>
+
+
+lemma perm_alg_homomorphism_mono:
+  \<open>perm_alg_homomorphism f \<Longrightarrow> x \<le> y \<Longrightarrow> f x \<le> f y\<close>
+  by (metis (no_types, lifting) less_eq_sepadd_def perm_alg_homomorphism_def)
+
+lemma perm_alg_homomorphism_tuple:
+  \<open>perm_alg_homomorphism f \<Longrightarrow>
+    perm_alg_homomorphism g \<Longrightarrow>
+    perm_alg_homomorphism (map_prod f g)\<close>
+  by (clarsimp simp add: perm_alg_homomorphism_def, metis)
+
+lemma function_rel_subsetD:
+  \<open>(\<lambda>x y. r (f x) (f y))\<^sup>*\<^sup>* x y \<Longrightarrow> (\<lambda>x y. r\<^sup>*\<^sup>* (f x) (f y)) x y\<close>
+  by (induct rule: rtranclp_induct) force+
+
+lemma function_rel_subset:
+  \<open>(\<lambda>x y. r (f x) (f y))\<^sup>*\<^sup>* \<le> (\<lambda>x y. r\<^sup>*\<^sup>* (f x) (f y))\<close>
+  by (simp add: function_rel_subsetD predicate2I)
+
+lemma helper:
+  \<open>sswa (\<lambda>a b. r (fs a) (fs b)) (i \<circ> map_prod fl fs) \<le> (\<lambda>a. sswa r i (map_prod fl fs a))\<close>
+  apply (clarsimp simp add: sp_def fun_eq_iff)
+  apply (rename_tac a y x)
+  apply (rule_tac x=\<open>fs x\<close> in exI)
+  apply (rule conjI)
+   apply (simp add: function_rel_subsetD; fail)
+  apply blast
+  done
+
+definition rel_precomp :: \<open>('a \<Rightarrow> 'a \<Rightarrow> 'z) \<Rightarrow> ('b \<Rightarrow> 'a) \<Rightarrow> ('b \<Rightarrow> 'b \<Rightarrow> 'z)\<close> (infixl \<open>\<circ>\<^sub>R\<close> 55) where
+  \<open>r \<circ>\<^sub>R f \<equiv> \<lambda>x y. r (f x) (f y)\<close>
+
+lemma helper_rewrite:
+  \<open>\<forall>x y. (\<lambda>x y. r (fs x) (fs y))\<^sup>*\<^sup>* = (\<lambda>x y. r\<^sup>*\<^sup>* (fs x) (fs y)) \<Longrightarrow>
+    range fs = UNIV \<Longrightarrow>
+    sswa r p \<circ> map_prod fl fs = sswa (r \<circ>\<^sub>R fs) (p \<circ> map_prod fl fs)\<close>
+  apply (clarsimp simp add: sp_def comp_def rel_precomp_def fun_eq_iff)
+  apply (rule iffI)
+   apply (metis surjD)
+  apply blast
+  done
+
+lemma rel_precomp_mono:
+  \<open>r \<le> r' \<Longrightarrow> r \<circ>\<^sub>R fs \<le> r' \<circ>\<^sub>R fs\<close>
+  by (simp add: le_fun_def rel_precomp_def)
+
+lemma sepconj_conj_map_prod_impl1:
+  \<open>perm_alg_homomorphism fl \<Longrightarrow>
+    ((q1' \<circ> map_prod fl fs) \<^emph>\<and> (q2' \<circ> map_prod fl fs)) x \<Longrightarrow>
+    (q1' \<^emph>\<and> q2') (map_prod fl fs x)\<close>
+  apply (clarsimp simp add: sepconj_conj_def perm_alg_homomorphism_def)
+  apply blast
+  done
+
+lemma sepconj_conj_map_prod_eq:
+  \<open>perm_alg_homomorphism fl \<Longrightarrow>
+    \<forall>x y z. y ## z \<longrightarrow> fl x = y + z \<longrightarrow> (\<exists>y' z'. x = y' + z' \<and> y' ## z' \<and> y = fl y' \<and> z = fl z') \<Longrightarrow>
+    (q1' \<^emph>\<and> q2') (map_prod fl fs a) = ((q1' \<circ> map_prod fl fs) \<^emph>\<and> (q2' \<circ> map_prod fl fs)) a\<close>
+  apply (cases a)
+  apply (clarsimp simp add: sepconj_conj_def)
+  apply (rule iffI)
+  apply force
+  apply (clarsimp simp add: perm_alg_homomorphism_def)
+  apply blast
+  done
+
+lemma rgsat_preserved_under_homomorphism:
+  fixes p :: \<open>'a::perm_alg \<times> 'b::perm_alg \<Rightarrow> bool\<close>
+    and q :: \<open>'a \<times> 'b \<Rightarrow> bool\<close>
+    and fl :: \<open>'c::perm_alg \<Rightarrow> 'a\<close>
+    and fs :: \<open>'d::perm_alg \<Rightarrow> 'b\<close>
+  shows
+  \<open>rgsat c r g p q \<Longrightarrow>
+    perm_alg_homomorphism fl \<Longrightarrow>
+    perm_alg_homomorphism fs \<Longrightarrow>
+    \<forall>x y z. y ## z \<longrightarrow> fl x = y + z \<longrightarrow> (\<exists>y' z'. x = y' + z' \<and> y' ## z' \<and> y = fl y' \<and> z = fl z') \<Longrightarrow>
+    (\<And>p rx. r \<le> rx \<Longrightarrow> sswa rx p \<circ> map_prod fl fs = sswa (rx \<circ>\<^sub>R fs) (p \<circ> map_prod fl fs)) \<Longrightarrow>
+    c' = map_comm (map_prod fl fs) c \<Longrightarrow>
+    p' = (p \<circ> map_prod fl fs) \<Longrightarrow>
+    q' = (q \<circ> map_prod fl fs) \<Longrightarrow>
+    r' = r \<circ>\<^sub>R fs \<Longrightarrow>
+    g' = g \<circ>\<^sub>R fs \<Longrightarrow>
+    rgsat c' r' g' p' q'\<close>
+proof (induct arbitrary: c' p' q' r' g' rule: rgsat.inducts)
+  case (rgsat_skip r p q g)
+  then show ?case
+    apply (clarsimp simp add: map_comm_rev_iff2)
+    apply (rule rgsat.rgsat_skip)
+    apply (clarsimp simp add: le_fun_def sp_def imp_ex_conjL rel_precomp_def)
+    apply (frule function_rel_subsetD)
+    apply blast
+    done
+next
+  case (rgsat_iter c r g i p q)
+  show ?case
+    using rgsat_iter.prems rgsat_iter.hyps(1,3-)
+    apply (clarsimp simp add: map_comm_rev_iff2)
+    apply (rule rgsat.rgsat_iter[where i=\<open>i \<circ> map_prod fl fs\<close>])
+      apply (rule rgsat_iter.hyps(2); simp add: comp_def sp_comp_rel; fail)
+     apply fastforce
+    apply (metis (mono_tags, lifting) comp_apply order.refl predicate1I rev_predicate1D
+        rgsat_iter.prems(4))
+    done
+next
+  case (rgsat_seq c1 r g p1 p2 c2 p3)
+  show ?case
+    using rgsat_seq.prems
+    apply (clarsimp simp add: map_comm_rev_iff2)
+    apply (rule rgsat.rgsat_seq)
+     apply (rule rgsat_seq.hyps(2); force simp add: comp_def sp_comp_rel)
+    apply (rule rgsat_seq.hyps(4); simp add: comp_def sp_comp_rel; fail)
+    done
+next
+  case (rgsat_indet c1 r g1 p q1 c2 g2 q2 g q)
+  show ?case
+    using rgsat_indet.prems rgsat_indet.hyps(5-)
+    apply (clarsimp simp add: map_comm_rev_iff2)
+    apply (rule rgsat.rgsat_indet)
+         apply (rule rgsat_indet.hyps(2); simp add: comp_def sp_comp_rel; fail)
+        apply (rule rgsat_indet.hyps(4); simp add: comp_def sp_comp_rel; fail)
+       apply (metis rel_precomp_mono)
+      apply (metis rel_precomp_mono)
+     apply (simp add: le_fun_def)
+    apply (simp add: le_fun_def)
+    done
+next
+  case (rgsat_endet c1 r g1 p q1 c2 g2 q2 g q)
+  show ?case
+    using rgsat_endet.prems rgsat_endet.hyps(5-)
+    apply (clarsimp simp add: map_comm_rev_iff2)
+    apply (rule rgsat.rgsat_endet)
+         apply (rule rgsat_endet.hyps(2); simp add: comp_def sp_comp_rel; fail)
+        apply (rule rgsat_endet.hyps(4); simp add: comp_def sp_comp_rel; fail)
+       apply (metis rel_precomp_mono)
+      apply (metis rel_precomp_mono)
+     apply (simp add: le_fun_def)
+    apply (simp add: le_fun_def)
+    done
+next
+  case (rgsat_parallel s1 r g2 g1 p1 q1 s2 p2 q2 g q1' q2')
+  show ?case
+    using rgsat_parallel.prems rgsat_parallel.hyps(5-)
+    apply (clarsimp simp add: map_comm_rev_iff2)
+    apply (simp add: sepconj_conj_map_prod_eq)
+    apply (rule rgsat.rgsat_parallel[of
+          _ \<open>r \<circ>\<^sub>R fs\<close> \<open>g2 \<circ>\<^sub>R fs\<close> \<open>g1 \<circ>\<^sub>R fs\<close> \<open>p1 \<circ> map_prod fl fs\<close> \<open>q1 \<circ> map_prod fl fs\<close>
+          _ \<open>p2 \<circ> map_prod fl fs\<close> \<open>q2 \<circ> map_prod fl fs\<close>])
+    sorry
+next
+  case (rgsat_atom b r p q g p' q')
+  then show ?case sorry
+next
+  case (rgsat_frame c r g p q f f')
+  then show ?case sorry
+next
+  case (rgsat_weaken c rx gx px qx p q r g)
+  show ?case
+    using rgsat_weaken.prems rgsat_weaken.hyps(3-)
+    apply -
+    apply (rule rgsat.rgsat_weaken[of _
+          \<open>rx \<circ>\<^sub>R fs\<close> \<open>gx \<circ>\<^sub>R fs\<close> \<open>px \<circ> map_prod fl fs\<close> \<open>qx \<circ> map_prod fl fs\<close>])
+        apply (rule rgsat_weaken.hyps(2); simp; fail)
+       apply fastforce
+      apply fastforce
+     apply (simp add: rel_precomp_mono; fail)
+    apply (simp add: rel_precomp_mono; fail)
+    done
+qed
+
+
+lemma rgsat_preserved_under_homomorphism2:
+  fixes p :: \<open>'a::perm_alg \<times> 'b::perm_alg \<Rightarrow> bool\<close>
+    and q :: \<open>'a \<times> 'b \<Rightarrow> bool\<close>
+    and fl :: \<open>'c::perm_alg \<Rightarrow> 'a\<close>
+    and fs :: \<open>'d::perm_alg \<Rightarrow> 'b\<close>
+  shows
+  \<open>rgsat c' r' g' p' q' \<Longrightarrow>
+    perm_alg_homomorphism fl \<Longrightarrow>
+    perm_alg_homomorphism fs \<Longrightarrow>
+    (\<And>p. sswa r p \<circ> map_prod fl fs = sswa (r \<circ>\<^sub>R fs) (p \<circ> map_prod fl fs)) \<Longrightarrow>
+    surj fl \<Longrightarrow>
+    surj fs \<Longrightarrow>
+    c' = map_comm (map_prod fl fs) c \<Longrightarrow>
+    p' = (p \<circ> map_prod fl fs) \<Longrightarrow>
+    q' = (q \<circ> map_prod fl fs) \<Longrightarrow>
+    r' = r \<circ>\<^sub>R fs \<Longrightarrow>
+    g' = g \<circ>\<^sub>R fs \<Longrightarrow>
+    rgsat c r g p q\<close>
+proof (induct arbitrary: c p q r g rule: rgsat.inducts)
+  case (rgsat_skip r p q g)
+  then show ?case
+    apply (clarsimp simp add: map_comm_rev_iff2)
+    apply (rule rgsat.rgsat_skip)
+    apply (clarsimp simp add: le_fun_def)
+    apply (subgoal_tac \<open>(\<exists>a'. a = fl a') \<and> (\<exists>b'. b = fs b')\<close>)
+     prefer 2
+     apply (metis surjD)
+    apply clarsimp
+    apply (metis map_prod_simp)
+    done
+next
+  case (rgsat_iter c r g i p q)
+  then show ?case
+    apply (clarsimp simp add: map_comm_rev_iff2)
+    apply (rule rgsat.rgsat_iter)
+    thm rgsat.rgsat_iter rgsat_iter.hyps(2)
+      apply (rule rgsat_iter.hyps(2))
+               apply force
+              apply force
+             apply force
+            apply force
+           apply force
+          apply (simp; fail)
+
+    sorry
+next
+  case (rgsat_seq c1 r g p1 p2 c2 p3)
+  then show ?case
+    sorry
+next
+  case (rgsat_indet c1 r g1 p q1 c2 g2 q2 g q)
+  then show ?case
+    sorry
+next
+  case (rgsat_endet c1 r g1 p q1 c2 g2 q2 g q)
+  then show ?case sorry
+next
+  case (rgsat_parallel s1 r g2 g1 p1 q1 s2 p2 q2 g q1' q2')
+  then show ?case sorry
+next
+  case (rgsat_atom b r p q g p' q')
+  then show ?case sorry
+next
+  case (rgsat_frame c r g p q f f')
+  then show ?case sorry
+next
+  case (rgsat_weaken c r' g' p' q' p q r g)
+  then show ?case sorry
+qed
+
+
 class appel_perm_alg = ord +
   fixes R :: \<open>'a \<Rightarrow> 'a \<Rightarrow> 'a \<Rightarrow> bool\<close>
   fixes add_leq :: \<open>'a \<Rightarrow> 'a \<Rightarrow> bool\<close> (infix \<open>\<lesssim>\<close> 50)
