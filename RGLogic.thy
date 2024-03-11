@@ -13,16 +13,18 @@ lemma sp_rely_step:
     sp ((=) \<times>\<^sub>R (rx OO r)) p (x, y')\<close>
   by (force simp add: sp_def)
 
-lemma sp_rely_step_rtranclp:
+lemma sswa_step:
   \<open>r y y' \<Longrightarrow>
     sswa r p (x, y) \<Longrightarrow>
     sswa r p (x, y')\<close>
   by (simp add: sp_def, meson rtranclp.rtrancl_into_rtrancl)
 
+lemmas sswa_stepD = sswa_step[rotated]
+
 lemma wlp_rely_step_rtranclp:
   \<open>r y y' \<Longrightarrow>
-    wlp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) p (x, y) \<Longrightarrow>
-    wlp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) p (x, y')\<close>
+    wssa r p (x, y) \<Longrightarrow>
+    wssa r p (x, y')\<close>
   by (simp add: wlp_def converse_rtranclp_into_rtranclp)
 
 lemmas sp_rely_stronger = sp_refl_rel_le[where r=\<open>(=) \<times>\<^sub>R r\<^sup>*\<^sup>*\<close> for r, simplified]
