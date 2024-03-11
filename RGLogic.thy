@@ -553,6 +553,15 @@ inductive rgsat ::
   \<open>rgsat c r' g' p' q' \<Longrightarrow>
     p \<le> p' \<Longrightarrow> q' \<le> q \<Longrightarrow> r \<le> r' \<Longrightarrow> g' \<le> g \<Longrightarrow>
     rgsat c r g p q\<close>
+| rgsat_disj:
+  \<open>rgsat c r g p1 q1 \<Longrightarrow>
+    rgsat c r g p2 q2 \<Longrightarrow>
+    rgsat c r g (p1 \<squnion> p2) (q1 \<squnion> q2)\<close>
+| rgsat_conj:
+  \<open>rgsat c r g p1 q1 \<Longrightarrow>
+    rgsat c r g p2 q2 \<Longrightarrow>
+    \<forall>a b c::'l. a ## c \<longrightarrow> b ## c \<longrightarrow> a + c = b + c \<longrightarrow> a = b \<Longrightarrow>
+    rgsat c r g (p1 \<sqinter> p2) (q1 \<sqinter> q2)\<close>
 
 inductive_cases rgsep_doneE[elim]: \<open>rgsat Skip r g p q\<close>
 inductive_cases rgsep_iterE[elim]: \<open>rgsat (DO c OD) r g p q\<close>

@@ -871,6 +871,46 @@ lemma safe_parallel:
   by (meson safe_guarantee_monoD safe_parallel' safe_postpred_mono)
 
 
+subsection \<open> Safety of conj \<close>
+
+lemma safe_conj:
+  fixes hl :: \<open>'a :: perm_alg\<close>
+  shows
+  \<open>safe n c hl hs r g q1 \<Longrightarrow>
+    safe n c hl hs r g q2 \<Longrightarrow>
+    \<forall>a b c::'a. a ## c \<longrightarrow> b ## c \<longrightarrow> a + c = b + c \<longrightarrow> a = b \<Longrightarrow>
+    safe n c hl hs r g (q1 \<sqinter> q2)\<close>
+proof (induct n arbitrary: c hl hs r g q1 q2)
+  case 0
+  then show ?case by blast
+next
+  case (Suc n)
+
+  show ?case
+    using Suc.prems
+    apply -
+    apply (intro safe_suc conjI impI allI)
+         apply blast
+        apply (rule Suc.hyps; meson safe_sucD; fail)
+       apply (meson safe_sucD; fail)
+      apply (rule Suc.hyps; meson safe_sucD; fail)
+     apply (meson safe_sucD; fail)
+
+    apply (drule safe_sucD(5), blast, blast)
+    apply (drule safe_sucD(5), blast, blast)
+    apply (case_tac a)
+     apply (clarsimp simp del: inf_apply)
+     apply (rule Suc.hyps; blast)
+    apply (clarsimp simp del: inf_apply)
+    apply (rename_tac hs' hl'1 hl'2)
+    apply (rule exI, rule conjI, assumption, rule conjI, rule refl)
+    apply (drule spec2, drule mp, assumption, drule spec, drule mp, assumption,
+        drule mp, assumption)
+    apply (simp add: Suc.hyps Suc.prems(3))
+    done
+qed
+
+
 section \<open> Soundness \<close>
 
 lemma soundness:
@@ -924,6 +964,14 @@ next
     apply (clarsimp simp add: sepconj_conj_def[of p] simp del: sup_apply)
     apply (blast intro: safe_frame)
     done
+next
+  case (rgsat_disj c r' g' p' q' p q r g)
+  then show ?case
+    by (metis safe_postpred_mono sup.cobounded2 sup1E sup_ge1)
+next
+  case (rgsat_conj c r g p1 q1 p2 q2 n hl)
+  then show ?case
+    by (metis safe_conj inf1E)
 next
   case (rgsat_weaken c r' g' p' q' p q r g)
   moreover have \<open>p' (hl, hs)\<close>
