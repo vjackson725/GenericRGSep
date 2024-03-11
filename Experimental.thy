@@ -6,8 +6,14 @@ begin
 definition perm_alg_homomorphism :: \<open>('a :: perm_alg \<Rightarrow> 'b :: perm_alg) \<Rightarrow> bool\<close> where
   \<open>perm_alg_homomorphism f \<equiv>
     (\<forall>x y. x ## y \<longrightarrow> f x ## f y) \<and>
+    (\<forall>x y. x ## y \<longrightarrow> f (x + y) = f x + f y)\<close>
+
+definition sep_alg_homomorphism :: \<open>('a :: sep_alg \<Rightarrow> 'b :: sep_alg) \<Rightarrow> bool\<close> where
+  \<open>sep_alg_homomorphism f \<equiv>
+    (\<forall>x y. x ## y \<longrightarrow> f x ## f y) \<and>
     (\<forall>x y. x ## y \<longrightarrow> f (x + y) = f x + f y) \<and>
-    (\<forall>x y. x ## y \<longrightarrow> x \<noteq> y \<longrightarrow> f x \<noteq> f y)\<close>
+    (\<forall>x. f (unitof x) = unitof (f x)) \<and>
+    (f 0 = 0)\<close>
 
 
 lemma perm_alg_homomorphism_mono:
@@ -18,7 +24,11 @@ lemma perm_alg_homomorphism_tuple:
   \<open>perm_alg_homomorphism f \<Longrightarrow>
     perm_alg_homomorphism g \<Longrightarrow>
     perm_alg_homomorphism (map_prod f g)\<close>
-  by (clarsimp simp add: perm_alg_homomorphism_def, metis)
+  by (clarsimp simp add: perm_alg_homomorphism_def)
+
+definition
+  \<open>split_preserving_morphism (f :: ('a::perm_alg \<Rightarrow> 'b::perm_alg)) \<equiv>
+    \<forall>x y' z'. y' ## z' \<longrightarrow> f x = y' + z' \<longrightarrow> (\<exists>y z. x = y + z \<and> y ## z \<and> y' = f y \<and> z' = f z)\<close>
 
 lemma function_rel_subsetD:
   \<open>(\<lambda>x y. r (f x) (f y))\<^sup>*\<^sup>* x y \<Longrightarrow> (\<lambda>x y. r\<^sup>*\<^sup>* (f x) (f y)) x y\<close>
@@ -40,6 +50,10 @@ lemma helper:
 
 definition rel_precomp :: \<open>('a \<Rightarrow> 'a \<Rightarrow> 'z) \<Rightarrow> ('b \<Rightarrow> 'a) \<Rightarrow> ('b \<Rightarrow> 'b \<Rightarrow> 'z)\<close> (infixl \<open>\<circ>\<^sub>R\<close> 55) where
   \<open>r \<circ>\<^sub>R f \<equiv> \<lambda>x y. r (f x) (f y)\<close>
+
+lemma rel_precomp_sup_eq:
+  \<open>(r1 \<squnion> r2) \<circ>\<^sub>R f = (r1 \<circ>\<^sub>R f) \<squnion> (r2 \<circ>\<^sub>R f)\<close>
+  by (fastforce simp add: rel_precomp_def)
 
 lemma helper_rewrite:
   \<open>\<forall>x y. (\<lambda>x y. r (fs x) (fs y))\<^sup>*\<^sup>* = (\<lambda>x y. r\<^sup>*\<^sup>* (fs x) (fs y)) \<Longrightarrow>
@@ -63,17 +77,37 @@ lemma sepconj_conj_map_prod_impl1:
   apply blast
   done
 
+lemma
+  \<open>perm_alg_homomorphism (f :: ('a::perm_alg \<Rightarrow> 'b::perm_alg)) \<Longrightarrow>
+    \<forall>x. f x ## f x \<longrightarrow> x ## x \<Longrightarrow>
+    \<forall>x. sepadd_unit (f x) \<longrightarrow> sepadd_unit x \<Longrightarrow>
+    \<forall>x y. (x ## y \<longrightarrow> pa x y = Some (x + (y::'a))) \<and> (\<not>x ## y \<longrightarrow> pa x y = None) \<Longrightarrow>
+    \<forall>x y. (x ## y \<longrightarrow> pb x y = Some (x + (y::'b))) \<and> (\<not>x ## y \<longrightarrow> pb x y = None) \<Longrightarrow>
+    \<forall>x y' z'. y' ## z' \<longrightarrow> f x = y' + z' \<longrightarrow> (\<exists>y z. x = y + z \<and> y ## z \<and> y' = f y \<and> z' = f z)\<close>
+  apply (clarsimp simp add: sep_alg_homomorphism_def)
+  oops
+
 lemma sepconj_conj_map_prod_eq:
   \<open>perm_alg_homomorphism fl \<Longrightarrow>
-    \<forall>x y z. y ## z \<longrightarrow> fl x = y + z \<longrightarrow> (\<exists>y' z'. x = y' + z' \<and> y' ## z' \<and> y = fl y' \<and> z = fl z') \<Longrightarrow>
+    split_preserving_morphism fl \<Longrightarrow>
     (q1' \<^emph>\<and> q2') (map_prod fl fs a) = ((q1' \<circ> map_prod fl fs) \<^emph>\<and> (q2' \<circ> map_prod fl fs)) a\<close>
   apply (cases a)
-  apply (clarsimp simp add: sepconj_conj_def)
-  apply (rule iffI)
-  apply force
-  apply (clarsimp simp add: perm_alg_homomorphism_def)
-  apply blast
+  apply (clarsimp simp add: sepconj_conj_def perm_alg_homomorphism_def
+      split_preserving_morphism_def)
+  apply (rule iffI, blast, metis)
   done
+
+
+lemma semilattice_sup_helper1:
+  fixes ra :: \<open>'a :: semilattice_sup\<close>
+  shows
+  \<open>rb1 \<le> rb \<Longrightarrow>
+    rb2 \<le> rb \<Longrightarrow>
+    ra \<le> rab' \<Longrightarrow>
+    rb2 \<le> rab' \<Longrightarrow>
+    rab' \<le> ra \<squnion> rb2 \<squnion> rb1 \<Longrightarrow>
+    rab' \<le> ra \<squnion> rb\<close>
+  by (metis sup.absorb_iff2 sup_assoc)
 
 lemma rgsat_preserved_under_homomorphism:
   fixes p :: \<open>'a::perm_alg \<times> 'b::perm_alg \<Rightarrow> bool\<close>
@@ -84,8 +118,9 @@ lemma rgsat_preserved_under_homomorphism:
   \<open>rgsat c r g p q \<Longrightarrow>
     perm_alg_homomorphism fl \<Longrightarrow>
     perm_alg_homomorphism fs \<Longrightarrow>
-    \<forall>x y z. y ## z \<longrightarrow> fl x = y + z \<longrightarrow> (\<exists>y' z'. x = y' + z' \<and> y' ## z' \<and> y = fl y' \<and> z = fl z') \<Longrightarrow>
-    (\<And>p rx. r \<le> rx \<Longrightarrow> sswa rx p \<circ> map_prod fl fs = sswa (rx \<circ>\<^sub>R fs) (p \<circ> map_prod fl fs)) \<Longrightarrow>
+    split_preserving_morphism fl \<Longrightarrow>
+    (\<And>p rx. r \<le> rx \<Longrightarrow> rx \<le> r \<squnion> g \<Longrightarrow>
+        sswa rx p \<circ> map_prod fl fs = sswa (rx \<circ>\<^sub>R fs) (p \<circ> map_prod fl fs)) \<Longrightarrow>
     c' = map_comm (map_prod fl fs) c \<Longrightarrow>
     p' = (p \<circ> map_prod fl fs) \<Longrightarrow>
     q' = (q \<circ> map_prod fl fs) \<Longrightarrow>
@@ -105,12 +140,13 @@ next
   case (rgsat_iter c r g i p q)
   show ?case
     using rgsat_iter.prems rgsat_iter.hyps(1,3-)
-    apply (clarsimp simp add: map_comm_rev_iff2)
+    apply (clarsimp simp add: map_comm_rev_iff2 simp del: sup_apply)
     apply (rule rgsat.rgsat_iter[where i=\<open>i \<circ> map_prod fl fs\<close>])
-      apply (rule rgsat_iter.hyps(2); simp add: comp_def sp_comp_rel; fail)
+      apply (rule rgsat_iter.hyps(2); simp add: comp_def sp_comp_rel del: sup_apply; fail)
      apply fastforce
-    apply (metis (mono_tags, lifting) comp_apply order.refl predicate1I rev_predicate1D
-        rgsat_iter.prems(4))
+    apply (drule meta_spec[of _ r])
+    apply (clarsimp simp add: le_fun_def comp_def)
+    apply (metis map_prod_simp)
     done
 next
   case (rgsat_seq c1 r g p1 p2 c2 p3)
@@ -125,10 +161,14 @@ next
   case (rgsat_indet c1 r g1 p q1 c2 g2 q2 g q)
   show ?case
     using rgsat_indet.prems rgsat_indet.hyps(5-)
-    apply (clarsimp simp add: map_comm_rev_iff2)
+    apply (clarsimp simp add: map_comm_rev_iff2 simp del: sup_apply)
     apply (rule rgsat.rgsat_indet)
-         apply (rule rgsat_indet.hyps(2); simp add: comp_def sp_comp_rel; fail)
-        apply (rule rgsat_indet.hyps(4); simp add: comp_def sp_comp_rel; fail)
+         apply (rule rgsat_indet.hyps(2); simp add: comp_def sp_comp_rel del: sup_apply)
+         apply (drule_tac x=rx in meta_spec)
+         apply (simp del: sup_apply, blast)
+        apply (rule rgsat_indet.hyps(4); simp add: comp_def sp_comp_rel)
+        apply (drule_tac x=rx in meta_spec)
+        apply (simp del: sup_apply, blast)
        apply (metis rel_precomp_mono)
       apply (metis rel_precomp_mono)
      apply (simp add: le_fun_def)
@@ -140,8 +180,12 @@ next
     using rgsat_endet.prems rgsat_endet.hyps(5-)
     apply (clarsimp simp add: map_comm_rev_iff2)
     apply (rule rgsat.rgsat_endet)
-         apply (rule rgsat_endet.hyps(2); simp add: comp_def sp_comp_rel; fail)
-        apply (rule rgsat_endet.hyps(4); simp add: comp_def sp_comp_rel; fail)
+         apply (rule rgsat_endet.hyps(2); simp add: comp_def sp_comp_rel)
+         apply (drule_tac x=rx in meta_spec)
+         apply (simp del: sup_apply, blast)
+        apply (rule rgsat_endet.hyps(4); simp add: comp_def sp_comp_rel)
+        apply (drule_tac x=rx in meta_spec)
+        apply (simp del: sup_apply, blast)
        apply (metis rel_precomp_mono)
       apply (metis rel_precomp_mono)
      apply (simp add: le_fun_def)
@@ -151,15 +195,34 @@ next
   case (rgsat_parallel s1 r g2 g1 p1 q1 s2 p2 q2 g q1' q2')
   show ?case
     using rgsat_parallel.prems rgsat_parallel.hyps(5-)
-    apply (clarsimp simp add: map_comm_rev_iff2)
-    apply (simp add: sepconj_conj_map_prod_eq)
+    apply (clarsimp simp add: map_comm_rev_iff2 sepconj_conj_map_prod_eq simp del: sup_apply)
     apply (rule rgsat.rgsat_parallel[of
           _ \<open>r \<circ>\<^sub>R fs\<close> \<open>g2 \<circ>\<^sub>R fs\<close> \<open>g1 \<circ>\<^sub>R fs\<close> \<open>p1 \<circ> map_prod fl fs\<close> \<open>q1 \<circ> map_prod fl fs\<close>
           _ \<open>p2 \<circ> map_prod fl fs\<close> \<open>q2 \<circ> map_prod fl fs\<close>])
-    sorry
+         apply (rule rgsat_parallel.hyps(2); (simp del: sup_apply)?) (* 6 \<rightarrow> 7 *)
+          apply (metis semilattice_sup_helper1)
+         apply (metis rel_precomp_sup_eq)
+        apply (rule rgsat_parallel.hyps(4); (simp del: sup_apply)?) (* 6 \<rightarrow> 7 *)
+         apply (metis semilattice_sup_helper1)
+        apply (metis rel_precomp_sup_eq)
+       apply (simp add: rel_precomp_mono; fail)
+      apply (simp add: rel_precomp_mono; fail)
+     apply (drule_tac x=\<open>r \<squnion> g2\<close> and y=q1 in meta_spec2)
+     apply (clarsimp simp add: rel_precomp_sup_eq[symmetric] le_supI2 comp_def simp del: sup_apply)
+     apply (clarsimp simp add: le_fun_def)
+     apply (metis map_prod_simp)
+    apply (drule_tac x=\<open>r \<squnion> g1\<close> and y=q2 in meta_spec2)
+    apply (clarsimp simp add: rel_precomp_sup_eq[symmetric] le_supI2 comp_def simp del: sup_apply)
+    apply (clarsimp simp add: le_fun_def)
+    apply (metis map_prod_simp)
+    done
 next
   case (rgsat_atom b r p q g p' q')
-  then show ?case sorry
+  then show ?case
+    apply (clarsimp simp add: map_comm_rev_iff2 sepconj_conj_map_prod_eq)
+    apply (rule rgsat.rgsat_atom)
+        apply blast
+    sorry
 next
   case (rgsat_frame c r g p q f f')
   then show ?case sorry
@@ -170,7 +233,8 @@ next
     apply -
     apply (rule rgsat.rgsat_weaken[of _
           \<open>rx \<circ>\<^sub>R fs\<close> \<open>gx \<circ>\<^sub>R fs\<close> \<open>px \<circ> map_prod fl fs\<close> \<open>qx \<circ> map_prod fl fs\<close>])
-        apply (rule rgsat_weaken.hyps(2); simp; fail)
+        apply (rule rgsat_weaken.hyps(2); simp)
+    oops
        apply fastforce
       apply fastforce
      apply (simp add: rel_precomp_mono; fail)
