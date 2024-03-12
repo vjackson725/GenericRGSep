@@ -7,11 +7,11 @@ section \<open> Operational Semantics \<close>
 
 subsection \<open> Actions \<close>
 
-datatype act = Tau | Local
+datatype 'a act = Tau | Vis 'a
 
 lemma act_not_eq_iff[simp]:
-  \<open>a \<noteq> Tau \<longleftrightarrow> a = Local\<close>
-  \<open>a \<noteq> Local \<longleftrightarrow> a = Tau\<close>
+  \<open>a \<noteq> Tau \<longleftrightarrow> (\<exists>x. a = Vis x)\<close>
+  \<open>(\<forall>x. a \<noteq> Vis x) \<longleftrightarrow> a = Tau\<close>
   by (meson act.distinct act.exhaust)+
 
 subsection \<open> Operational semantics steps \<close>
@@ -28,7 +28,11 @@ fun head_atoms :: \<open>'a comm \<Rightarrow> ('a \<Rightarrow> 'a \<Rightarrow
 | \<open>head_atoms (\<mu> c) = head_atoms c\<close>
 | \<open>head_atoms (FixVar x) = \<bottom>\<close>
 
-inductive opstep :: \<open>act \<Rightarrow> ('l \<times> 's) \<times> ('l \<times> 's) comm \<Rightarrow> (('l \<times> 's) \<times> ('l \<times> 's) comm) \<Rightarrow> bool\<close> where
+inductive opstep
+  :: \<open>('s::perm_alg \<times> 's) act \<Rightarrow>
+        ('l \<times> 's) \<times> ('l \<times> 's) comm \<Rightarrow>
+        ('l \<times> 's) \<times> ('l \<times> 's) comm \<Rightarrow> bool\<close>
+  where
   seq_left[intro!]: \<open>opstep a (h, c1) (h', c1') \<Longrightarrow> opstep a (h, c1 ;; c2) (h', c1' ;; c2)\<close>
 | seq_right[intro!]: \<open>opstep Tau (h, Skip ;; c2) (h, c2)\<close>
 | indet_left[intro]:  \<open>opstep a (h, c1) s' \<Longrightarrow> opstep a (h, c1 \<^bold>+ c2) s'\<close>
@@ -49,7 +53,12 @@ inductive opstep :: \<open>act \<Rightarrow> ('l \<times> 's) \<times> ('l \<tim
 | iter_step[intro]: \<open>opstep Tau (h, DO c OD) (h, c ;; DO c OD)\<close>
 | iter_end[intro]: \<open>\<not> pre_state (\<Squnion>(head_atoms c)) h \<Longrightarrow> opstep Tau (h, DO c OD) (h, Skip)\<close>
 | fixpt_skip[intro!]: \<open>c' = c[0 \<leftarrow> \<mu> c] \<Longrightarrow> opstep Tau (h, \<mu> c) (h, c')\<close>
-| atomic[intro!]: \<open>a = Local \<Longrightarrow> snd s' = Skip \<Longrightarrow> b h (fst s') \<Longrightarrow> opstep a (h, Atomic b) s'\<close>
+| atomic[intro!]:
+  \<open>a = Vis (hsx, hsy) \<Longrightarrow>
+    weak_framed_subresource_rel \<top> hsx hsy (snd h) (snd h') \<Longrightarrow>
+    c' = Skip \<Longrightarrow>
+    b h h' \<Longrightarrow>
+    opstep a (h, Atomic b) (h', c')\<close>
 
 inductive_cases opstep_tauE[elim]: \<open>opstep Tau s s'\<close>
 inductive_cases opstep_localE[elim]: \<open>opstep Local s s'\<close>
@@ -81,8 +90,8 @@ lemma opstep_iff_standard[opstep_iff]:
   \<open>opstep a (h, c1 \<^bold>+ c2) s' \<longleftrightarrow>
     opstep a (h, c1) s' \<or> opstep a (h, c2) s'\<close>
   \<open>opstep a (h, c1 \<box> c2) s' \<longleftrightarrow>
-    a = Local \<and> opstep Local (h, c1) s' \<or>
-    a = Local \<and> opstep Local (h, c2) s' \<or>
+    a \<noteq> Tau \<and> opstep a (h, c1) s' \<or>
+    a \<noteq> Tau \<and> opstep a (h, c2) s' \<or>
     a = Tau \<and> (\<exists>h' c1'. s' = (h', c1' \<box> c2) \<and> opstep Tau (h, c1) (h', c1')) \<or>
     a = Tau \<and> (\<exists>h' c2'. s' = (h', c1 \<box> c2') \<and> opstep Tau (h, c2) (h', c2')) \<or>
     a = Tau \<and> c1 = Skip \<and> s' = (h, c2) \<or>
@@ -96,12 +105,20 @@ lemma opstep_iff_standard[opstep_iff]:
     a = Tau \<and> s' = (h, c ;; DO c OD)\<close>
   \<open>opstep a (h, \<mu> c) s' \<longleftrightarrow> a = Tau \<and> s' = (h, c[0 \<leftarrow> \<mu> c])\<close>
   \<open>opstep a (h, Atomic b) s' \<longleftrightarrow>
-    a = Local \<and> snd s' = Skip \<and> b h (fst s')\<close>
+    (\<exists>hsx hsy.
+      a = Vis (hsx, hsy) \<and>
+      weak_framed_subresource_rel \<top> hsx hsy (snd h) (snd (fst s')) \<and>
+      snd s' = Skip \<and>
+      b h (fst s'))\<close>
          apply blast
         apply blast
        apply blast
       apply (rule iffI, (erule opstep_endetE; force), force)
-     apply blast+
+     apply blast
+    apply blast
+   apply blast
+  apply (rule iffI, (erule opstep_atomicE; force))
+  apply (metis atomic prod.collapse)
   done
 
 lemma opstep_tau_preserves_heap:
@@ -119,7 +136,7 @@ qed
 lemma opstep_act_cases:
   \<open>s \<midarrow>a\<rightarrow> s' \<Longrightarrow>
     (a = Tau \<Longrightarrow> s \<midarrow>Tau\<rightarrow> s' \<Longrightarrow> fst s' = fst s \<Longrightarrow> P) \<Longrightarrow>
-    (a = Local \<Longrightarrow> s \<midarrow>Local\<rightarrow> s' \<Longrightarrow> P) \<Longrightarrow>
+    (\<And>x. a = Vis x \<Longrightarrow> s \<midarrow>Vis x\<rightarrow> s' \<Longrightarrow> P) \<Longrightarrow>
     P\<close>
   by (metis (full_types) act.exhaust opstep_tau_preserves_heap)
 
@@ -178,23 +195,38 @@ lemmas rev_opstep_preserves_all_atom_comm = opstep_preserves_all_atom_comm[rotat
 
 subsection \<open> Opstep rules for defined programs \<close>
 
-lemma opstep_assert[intro!]: \<open>p h \<Longrightarrow> opstep Local (h, Assert p) (h, Skip)\<close>
-  by (force simp add: opstep.atomic passert_def)
+lemma opstep_assert[intro!]:
+  \<open>p h \<Longrightarrow> s' = snd h \<Longrightarrow> s = snd h \<Longrightarrow> opstep (Vis (s, s')) (h, Assert p) (h, Skip)\<close>
+  by (force simp add: Assert_def)
 
-lemma opstep_assume[intro!]: \<open>q h' \<Longrightarrow> opstep Local (h, Assume q) (h', Skip)\<close>
-  by (force simp add: opstep.atomic rel_liftR_def)
+lemma opstep_assume[intro!]:
+  \<open>q h' \<Longrightarrow> s = snd h \<Longrightarrow> s' = snd h' \<Longrightarrow> opstep (Vis (s, s')) (h, Assume q) (h', Skip)\<close>
+  by force
+
 
 lemma opstep_IfThenElse_iff[opstep_iff]:
   \<open>opstep a (h, IfThenElse p ct cf) s' \<longleftrightarrow>
-    a = Local \<and> p h \<and> s' = (h, Skip ;; ct) \<or> a = Local \<and> \<not> p h \<and> s' = (h, Skip ;; cf)\<close>
-  by (simp add: IfThenElse_def opstep_iff)
+    (\<exists>hsx hsy.
+      a = Vis (hsx, hsy) \<and>
+      weak_framed_subresource_rel \<top> hsx hsy (snd h) (snd h)) \<and>
+    (p h \<and> s' = (h, Skip ;; ct) \<or>
+      \<not> p h \<and> s' = (h, Skip ;; cf))\<close>
+  by (cases a; cases \<open>p h\<close>; cases h; simp add: IfThenElse_def opstep_iff)
 
 lemma opstep_IfThenElse_true[intro]:
-  \<open>p h \<Longrightarrow> opstep Local (h, IfThenElse p a b) (h, Skip ;; a)\<close>
+  \<open>p h \<Longrightarrow>
+    xy = (hsx, hsy) \<Longrightarrow>
+    c' = Skip ;; ct \<Longrightarrow>
+    weak_framed_subresource_rel \<top> hsx hsy (snd h) (snd h) \<Longrightarrow>
+    opstep (Vis xy) (h, IfThenElse p ct cf) (h, c')\<close>
   by (simp add: opstep_iff)
 
 lemma opstep_IfThenElse_false[intro]:
-  \<open>\<not> p h \<Longrightarrow> opstep Local (h, IfThenElse p a b) (h, Skip ;; b)\<close>
+  \<open>\<not> p h \<Longrightarrow>
+    xy = (hsx, hsy) \<Longrightarrow>
+    c' = Skip ;; cf \<Longrightarrow>
+    weak_framed_subresource_rel \<top> hsx hsy (snd h) (snd h) \<Longrightarrow>
+    opstep (Vis xy) (h, IfThenElse p ct cf) (h, c')\<close>
   by (simp add: opstep_iff)
 
 lemma pre_state_passert_eq[simp]:
@@ -330,7 +362,7 @@ next
        apply (blast intro: safe_suc.hyps)
       apply (metis predicate2D safe_suc.hyps(4))
      apply (simp add: safe_suc.hyps(6); fail)
-    apply (fast dest: safe_suc.hyps(7))
+    apply (frule safe_suc.hyps(7); blast)
     done
 qed
 
@@ -501,10 +533,8 @@ next
       apply (simp add: opstep_iff del: top_apply sup_apply)
       apply (metis predicate2D prod.collapse rel_Times_iff)
       (* subgoal: plain opstep *)
-     apply (simp add: opstep_iff del: top_apply sup_apply)
-     apply (rule safe_skip[where p=\<open>sswa r q\<close>])
-      apply (simp del: sup_apply, blast)
-     apply force
+     apply (clarsimp simp add: opstep_iff simp del: top_apply sup_apply)
+     apply (rule safe_skip[where p=\<open>sswa r q\<close>], blast, force)
       (* subgoal: local framed opstep *)
     apply (clarsimp simp add: opstep_iff sp_def[of b] imp_ex_conjL le_fun_def simp del: sup_apply)
     apply (drule_tac x=\<open>(=) hlf \<times>\<^sub>P \<top>\<close> in spec)
