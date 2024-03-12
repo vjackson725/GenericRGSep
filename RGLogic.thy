@@ -21,7 +21,7 @@ lemma sswa_step:
 
 lemmas sswa_stepD = sswa_step[rotated]
 
-lemma wlp_rely_step_rtranclp:
+lemma wssa_step:
   \<open>r y y' \<Longrightarrow>
     wssa r p (x, y) \<Longrightarrow>
     wssa r p (x, y')\<close>
