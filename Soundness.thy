@@ -2,20 +2,55 @@ theory Soundness
   imports RGLogic
 begin
 
+lemma Cons_neq_iff:
+  \<open>a # as \<noteq> bs' \<longleftrightarrow> bs' = [] \<or> (\<exists>b bs. bs' = b # bs \<and> (a \<noteq> b \<or> as \<noteq> bs))\<close>
+  by (induct bs' arbitrary: a as) force+
+
+
+text \<open> list inclusion \<close>
+
+inductive sublisteq :: \<open>'a list \<Rightarrow> 'a list \<Rightarrow> bool\<close> (infix \<open>\<le>\<^sub>l\<close> 50) where
+  nil[intro, simp]: \<open>[] \<le>\<^sub>l ys\<close>
+| same[intro]: \<open>xs \<le>\<^sub>l ys \<Longrightarrow> x # xs \<le>\<^sub>l x # ys\<close>
+
+inductive_cases sublisteq_right_NilE[elim]: \<open>xs \<le>\<^sub>l []\<close>
+inductive_cases sublisteq_right_ConsE[elim]: \<open>xs' \<le>\<^sub>l y # ys\<close>
+inductive_cases sublisteq_left_ConsE[elim]: \<open>x # xs \<le>\<^sub>l ys'\<close>
+
+lemma sublisteq_iff_append:
+  \<open>xs \<le>\<^sub>l ys \<longleftrightarrow> (\<exists>zs. ys = xs @ zs)\<close>
+  by (induct ys arbitrary: xs) 
+    (force simp add: Cons_eq_append_conv)+
+
+lemma sublisteq_Nil_iff[simp]:
+  \<open>xs \<le>\<^sub>l [] \<longleftrightarrow> xs = []\<close>
+  by blast
+
+lemma Cons_sublisteq_iff:
+  \<open>x # xs \<le>\<^sub>l ys' \<longleftrightarrow> (\<exists>ys. ys' = x # ys \<and> xs \<le>\<^sub>l ys)\<close>
+  by blast
+
+lemma sublisteq_Cons_iff:
+  \<open>xs' \<le>\<^sub>l y # ys \<longleftrightarrow> xs' = [] \<or> (\<exists>xs. xs' = y # xs \<and> xs \<le>\<^sub>l ys)\<close>
+  by blast
+
+lemma sublisteq_order:
+  \<open>class.order (\<le>\<^sub>l) ((\<noteq>) \<sqinter> (\<le>\<^sub>l))\<close>
+  by standard
+    (force simp add: sublisteq_iff_append)+
+
+
 text \<open> reverse list inclusion \<close>
 
-lemma Cons_neq_iff:
-  \<open>x # xs \<noteq> ys' \<longleftrightarrow> ys' = [] \<or> (\<exists>y ys. ys' = y # ys \<and> (x \<noteq> y \<or> xs \<noteq> ys))\<close>
-  by (induct ys' arbitrary: x xs) blast+
-
 inductive rev_sublisteq :: \<open>'a list \<Rightarrow> 'a list \<Rightarrow> bool\<close> (infix \<open>\<le>\<^sub>r\<close> 50) where
-  Nil[intro!, simp]: \<open>[] \<le>\<^sub>r ys\<close>
-| Cons_decr[intro]: \<open>xs \<le>\<^sub>r ys \<Longrightarrow> xs \<le>\<^sub>r y # ys\<close>
-| Cons_match[intro]: \<open>xs \<le>\<^sub>r ys \<Longrightarrow> x # xs \<le>\<^sub>r x # ys\<close>
+  same[intro, simp]: \<open>xs \<le>\<^sub>r xs\<close>
+| cons[intro]: \<open>xs \<le>\<^sub>r ys \<Longrightarrow> xs \<le>\<^sub>r y # ys\<close>
 
+inductive_cases rev_sublisteq_sameE[elim]: \<open>xs \<le>\<^sub>r xs\<close>
+inductive_cases rev_sublisteq_left_NilE[elim]: \<open>[] \<le>\<^sub>r ys\<close>
 inductive_cases rev_sublisteq_right_NilE[elim]: \<open>xs \<le>\<^sub>r []\<close>
-inductive_cases rev_sublisteq_left_ConsE[elim]: \<open>x # xs \<le>\<^sub>r ys'\<close>
 inductive_cases rev_sublisteq_right_ConsE[elim]: \<open>xs' \<le>\<^sub>r y # ys\<close>
+inductive_cases rev_sublisteq_left_ConsE[elim]: \<open>x # xs \<le>\<^sub>r ys'\<close>
 
 lemma rev_sublisteq_impl_le_length:
   \<open>xs \<le>\<^sub>r ys \<Longrightarrow> length xs \<le> length ys\<close>
@@ -23,55 +58,47 @@ lemma rev_sublisteq_impl_le_length:
 
 lemma rev_sublisteq_Nil_iff[simp]:
   \<open>xs \<le>\<^sub>r [] \<longleftrightarrow> xs = []\<close>
-  by (induct xs)
-    (force dest: rev_sublisteq_impl_le_length)+
+  by blast
+
+lemma Nil_rev_sublisteq_True[simp]:
+  \<open>[] \<le>\<^sub>r ys\<close>
+  by (induct ys; force)
+
+lemma Cons_rev_sublisteq_Cons_iff:
+  \<open>x # xs \<le>\<^sub>r y # ys \<longleftrightarrow> x # xs \<le>\<^sub>r ys \<or> x = y \<and> xs = ys\<close>
+  by blast
 
 (* beware, loops the simplifier *)
 lemma Cons_rev_sublisteq_iff:
-  \<open>x # xs \<le>\<^sub>r ys' \<longleftrightarrow> x # xs \<le>\<^sub>r ys' \<or> (\<exists>ys. ys' = x # ys \<and> xs \<le>\<^sub>r ys)\<close>
-  by blast
+  \<open>x # xs \<le>\<^sub>r ys' \<longleftrightarrow> ys' = x # xs \<or> (\<exists>y ys. ys' = y # ys \<and> x # xs \<le>\<^sub>r ys)\<close>
+  by (induct ys' arbitrary: x xs) blast+
 
 lemma rev_sublisteq_Cons_iff:
-  \<open>xs' \<le>\<^sub>r y # ys \<longleftrightarrow> xs' \<le>\<^sub>r ys \<or> (\<exists>xs. xs' = y # xs \<and> xs \<le>\<^sub>r ys)\<close>
+  \<open>xs' \<le>\<^sub>r y # ys \<longleftrightarrow> xs' \<le>\<^sub>r ys \<or> xs' = y # ys\<close>
   by blast
 
-lemma Cons_rev_sublisteq_Cons_iff:
-  \<open>x # xs \<le>\<^sub>r y # ys \<longleftrightarrow> x # xs \<le>\<^sub>r ys \<or> x = y \<and> xs \<le>\<^sub>r ys\<close>
-  by blast
+lemma rev_sublisteq_iff_append:
+  \<open>xs \<le>\<^sub>r ys \<longleftrightarrow> (\<exists>zs. ys = zs @ xs)\<close>
+  by (induct ys arbitrary: xs)
+    (force simp add: rev_sublisteq_Cons_iff Cons_eq_append_conv ex_disj_distrib)+
 
-lemma sublist_less_le_not_le:
-  \<open>(xs \<noteq> ys \<and> xs \<le>\<^sub>r ys) = (xs \<le>\<^sub>r ys \<and> \<not> ys \<le>\<^sub>r xs)\<close>
-  apply (induct xs ys rule: list_induct2', fast, fast, fast)
-  apply (simp add: Cons_rev_sublisteq_Cons_iff)
-  apply (metis impossible_Cons nle_le order_trans rev_sublisteq_impl_le_length)
-  done
-
-lemma sublist_eq_trans:
-  \<open>x \<le>\<^sub>r y \<Longrightarrow> y \<le>\<^sub>r z \<Longrightarrow> x \<le>\<^sub>r z\<close>
-  by (rotate_tac, induct arbitrary: x rule: rev_sublisteq.inducts) blast+
-  
-lemma sublist_eq_antisym:
-  \<open>x \<le>\<^sub>r y \<Longrightarrow> y \<le>\<^sub>r x \<Longrightarrow> y = x\<close>
-  apply (induct rule: rev_sublisteq.inducts)
-    apply fast
-   apply (meson Cons_decr sublist_less_le_not_le)
-  apply (meson Cons_match sublist_less_le_not_le)
-  done
-
-lemma sublist_eq_order:
+lemma rev_sublisteq_order:
   \<open>class.order (\<le>\<^sub>r) ((\<noteq>) \<sqinter> (\<le>\<^sub>r))\<close>
-  apply standard
-     apply (clarsimp simp add: sublist_less_le_not_le)
-    apply (induct_tac x; force)
-   apply (metis sublist_eq_trans)
-  apply (metis sublist_eq_antisym)
+  by standard
+    (force simp add: rev_sublisteq_iff_append)+
+
+lemma rev_sublisteq_less_induct[case_names less]:
+  \<open>(\<And>xs. (\<And>xs'. xs' \<le>\<^sub>r xs \<Longrightarrow> xs' \<noteq> xs \<Longrightarrow> P xs') \<Longrightarrow> P xs) \<Longrightarrow> P zs\<close>
+  apply (induct zs rule: length_induct)
+  apply clarsimp
+  apply (drule_tac x=xs in meta_spec)
+  apply (force simp add: rev_sublisteq_iff_append)
   done
 
-(*
-lemma sublist_eq_iff_ex_cons:
-  \<open>a \<le>\<^sub>r b \<longleftrightarrow> (\<exists>c. a @ c = b)\<close>
-  by (induct a arbitrary: b) force+
-*)
+lemma rev_sublisteq_bounded_linearity:
+  \<open>a \<le>\<^sub>r c \<Longrightarrow> b \<le>\<^sub>r c \<Longrightarrow> a \<le>\<^sub>r b \<or> b \<le>\<^sub>r a\<close>
+  by (induct arbitrary: b rule: rev_sublisteq.inducts) blast+
+
 
 section \<open> Operational Semantics \<close>
 
@@ -462,23 +489,19 @@ lemma safe_rely_antimonoD:
 lemmas safe_rely_antimono = safe_rely_antimonoD[rotated]
 
 lemma safe_step_monoD:
-  \<open>safe as c hl hs r g q F \<Longrightarrow> as' \<le>\<^sub>r as \<Longrightarrow> safe as' c hl hs r g q F\<close>
-  apply (induct arbitrary: as' rule: safe.inducts)
-   apply force
-  apply clarsimp
-  apply (clarsimp simp add: rev_sublisteq_Cons_iff)
-  apply (erule disjE)
-  oops
-(*
-  apply clarsimp
-  apply (rule safe_suc)
-      apply (clarsimp; metis)+
-  done
-
-lemma safe_step_SucD:
-  \<open>safe (Suc n) c hl hs r g q F \<Longrightarrow> safe n c hl hs r g q F\<close>
-  by (metis le_add2 plus_1_eq_Suc safe_step_monoD)
-*)
+  \<open>safe as c hl hs r g q F \<Longrightarrow> as' \<le>\<^sub>l as \<Longrightarrow> safe as' c hl hs r g q F\<close>
+proof (rotate_tac, induct arbitrary: c hl hs q rule: sublisteq.inducts)
+  case (same xs ys x)
+  then show ?case
+    apply -
+    apply (rule safe_suc)
+        apply blast
+       apply (frule(2) safe_sucD; blast)
+      apply (frule(4) safe_sucD; blast)
+     apply (frule(2) safe_sucD; blast)
+    apply (frule(3) safe_sucD; blast)
+    done
+qed blast
 
 lemma safe_frameset_antimonoD:
   \<open>safe n c hl hs r g q F \<Longrightarrow> F' \<le> F \<Longrightarrow> safe n c hl hs r g q F'\<close>
@@ -658,24 +681,28 @@ lemma safe_seq_assoc_right:
 
 lemma safe_seq':
   \<open>safe as c1 hl hs r g q F \<Longrightarrow>
-    (\<forall>as' hl' hs'. as' \<le>\<^sub>r as \<longrightarrow> q (hl', hs') \<longrightarrow> safe m c2 hl' hs' r g q' F) \<Longrightarrow>
+    (\<forall>as' hl' hs'. as' \<le>\<^sub>l as \<longrightarrow> q (hl', hs') \<longrightarrow> safe m c2 hl' hs' r g q' F) \<Longrightarrow>
     safe as (c1 ;; c2) hl hs r g q' F\<close>
 proof (induct arbitrary: c2 q' rule: safe.inducts)
   case (safe_suc c q hl hs ma r as g F)
 
-  have safe_c2:
-    \<open>\<And>m hl' hs'. m \<le>\<^sub>r as \<Longrightarrow> q (hl', hs') \<Longrightarrow> safe m c2 hl' hs' r g q' F\<close>
-    \<open>\<And>hl' hs'. q (hl', hs') \<Longrightarrow> safe (ma # as) c2 hl' hs' r g q' F\<close>
+  have c2_safe:
+    \<open>\<And>as' hl' hs'. as' \<le>\<^sub>l as \<Longrightarrow> wssa r q (hl', hs') \<Longrightarrow> safe (ma # as') c2 hl' hs' r g q' F\<close>
     using safe_suc.prems
     sorry
-  then show ?case
-    using safe_suc.prems(1) safe_suc.hyps(1)
+    (* sublisteq_Cons_iff imp_ex_conjL *)
+  note c2_safe_sucD = safe_sucD[OF c2_safe]
+
+  show ?case
+    using safe_suc.hyps(1)
     apply -
     apply (rule safe.safe_suc)
         apply force
       (* subgoal: rely *)
-       apply (frule(1) safe_suc.hyps(3), fast, fast)
-      (* subgoal: opstep guarantee *)
+       apply (rule safe_suc.hyps(3), assumption, assumption)
+       apply clarsimp
+    subgoal sorry
+        (* subgoal: opstep guarantee *)
       apply (simp add: opstep_iff del: top_apply sup_apply)
     subgoal sorry
         (* subgoal: plain opstep *)
@@ -684,10 +711,11 @@ proof (induct arbitrary: c2 q' rule: safe.inducts)
     subgoal sorry
      apply (frule safe_suc.hyps(6))
        apply (fastforce simp add: le_Suc_eq)
-      apply force
-      (* subgoal: local framed opstep *)
-       apply (clarsimp simp add: opstep_iff simp del: sup_apply)
-      subgoal sorry
+    subgoal sorry
+    subgoal sorry
+        (* subgoal: local framed opstep *)
+    apply (clarsimp simp add: opstep_iff simp del: sup_apply)
+    subgoal sorry
     done
 qed force
 
