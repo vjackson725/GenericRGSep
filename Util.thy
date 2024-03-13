@@ -46,6 +46,7 @@ lemma imp_ex_conjL:
   \<open>\<And>P Q. ((\<exists>x. P x \<and> Q x) \<longrightarrow> R) \<longleftrightarrow> (\<forall>x. P x \<longrightarrow> Q x \<longrightarrow> R)\<close>
   \<open>\<And>P Q. ((\<exists>x y. P x y \<and> Q x y) \<longrightarrow> R) \<longleftrightarrow> (\<forall>x y. P x y \<longrightarrow> Q x y \<longrightarrow> R)\<close>
   \<open>\<And>P Q. ((\<exists>x y z. P x y z \<and> Q x y z) \<longrightarrow> R) \<longleftrightarrow> (\<forall>x y z. P x y z \<longrightarrow> Q x y z \<longrightarrow> R)\<close>
+  \<open>\<And>P Q. ((\<exists>x y z w. P x y z w \<and> Q x y z w) \<longrightarrow> R) \<longleftrightarrow> (\<forall>x y z w. P x y z w \<longrightarrow> Q x y z w \<longrightarrow> R)\<close>
   by blast+
 
 lemma imp_conj_common:

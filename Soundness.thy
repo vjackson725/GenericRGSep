@@ -284,10 +284,11 @@ inductive safe
     (\<And>a c' hlf hx'.
         ((hl + hlf, hs), c) \<midarrow>a\<rightarrow> (hx', c') \<Longrightarrow>
         hl ## hlf \<Longrightarrow>
-        (\<exists>hl'.
-          hl' ## hlf \<and> fst hx' = hl' + hlf \<and>
+        \<exists>hl'.
+          hl' ## hlf \<and>
+          fst hx' = hl' + hlf \<and>
           (a = Tau \<longrightarrow> hl' = hl) \<and>
-          safe n c' hl' (snd hx') r g q)) \<Longrightarrow>
+          safe n c' hl' (snd hx') r g q) \<Longrightarrow>
     \<comment> \<open> conclude a step can be made \<close>
     safe (Suc n) c hl hs r g q\<close>
 
@@ -316,7 +317,8 @@ lemma safe_suc_iff:
         ((hl + hlf, hs), c) \<midarrow>a\<rightarrow> (hx', c') \<longrightarrow>
         hl ## hlf \<longrightarrow>
         (\<exists>hl'.
-          hl' ## hlf \<and> fst hx' = hl' + hlf \<and>
+          hl' ## hlf \<and>
+          fst hx' = hl' + hlf \<and>
           (a = Tau \<longrightarrow> hl' = hl) \<and>
           safe n c' hl' (snd hx') r g q))\<close>
   apply (rule iffI)
@@ -337,10 +339,11 @@ lemma safe_sucD:
   \<open>safe (Suc n) c hl hs r g q \<Longrightarrow>
       ((hl + hlf, hs), c) \<midarrow>a\<rightarrow> (hx', c') \<Longrightarrow>
       hl ## hlf \<Longrightarrow>
-      (\<exists>hl'.
-        hl' ## hlf \<and> fst hx' = hl' + hlf \<and>
+      \<exists>hl'.
+        hl' ## hlf \<and>
+        fst hx' = hl' + hlf \<and>
         (a = Tau \<longrightarrow> hl' = hl) \<and>
-        safe n c' hl' (snd hx') r g q)\<close>
+        safe n c' hl' (snd hx') r g q\<close>
   by (erule safe_sucE, simp; fail)+
 
 
@@ -383,8 +386,8 @@ lemma safe_rely_antimonoD:
   apply (induct rule: safe.induct)
    apply force
   apply (rule safe_suc)
-        apply presburger
-       apply (metis predicate2D)
+      apply presburger
+     apply (metis predicate2D)
     apply presburger+
   apply metis
   done
@@ -458,7 +461,8 @@ next
         rule predicate1D[OF wlp_rely_sepconj_conj_semidistrib])
      apply (rule sepconj_conjI; force)
     apply (drule predicate1D[OF sp_rely_sepconj_conj_semidistrib])
-    apply (clarsimp simp add: sepconj_conj_def)
+    apply (erule sepconj_conjE)
+    apply clarsimp
     apply (metis safe_skip')
     done
 qed
@@ -944,6 +948,7 @@ next
        apply (rule Suc.hyps; meson safe_sucD; fail)
       apply (meson safe_sucD; fail)
      apply (rule Suc.hyps; meson safe_sucD; fail)
+    (* subgoal: frame safety *)
     apply (drule safe_sucD(5), blast, blast)
     apply (drule safe_sucD(5), blast, blast)
     apply (case_tac a)
@@ -1028,5 +1033,136 @@ next
   ultimately show ?case
     by (meson safe_guarantee_mono safe_postpred_monoD safe_rely_antimonoD)
 qed
+
+
+
+
+
+inductive weak_safe
+  :: \<open>nat \<Rightarrow> ('l::perm_alg \<times> 's::perm_alg) comm \<Rightarrow>
+      'l \<Rightarrow> 's \<Rightarrow> ('s \<Rightarrow> 's \<Rightarrow> bool) \<Rightarrow> ('s \<Rightarrow> 's \<Rightarrow> bool) \<Rightarrow> ('l \<times> 's \<Rightarrow> bool) \<Rightarrow> bool\<close>
+  where
+  weak_safe_nil[intro!]: \<open>weak_safe 0 c hl hs r g q\<close>
+| weak_safe_suc[intro]:
+  \<open>\<comment> \<open> if the command is Skip, the postcondition is established \<close>
+    \<comment> \<open> TODO: This requires termination is represented as infinite stuttering past the end.
+               We may want a different model, but that would be more complicated. \<close>
+    (c = Skip \<longrightarrow> q (hl, hs)) \<Longrightarrow>
+    \<comment> \<open> rely steps are safe \<close>
+    (\<And>hs'. r hs hs' \<Longrightarrow> weak_safe n c hl hs' r g q) \<Longrightarrow>
+    \<comment> \<open> non-\<tau> opsteps establish the guarantee \<close>
+    (\<And>a c' hlx hx'.
+        hl \<le> hlx \<Longrightarrow>
+        ((hlx, hs), c) \<midarrow>a\<rightarrow> (hx', c') \<Longrightarrow>
+        a \<noteq> Tau \<Longrightarrow>
+        g hs (snd hx')) \<Longrightarrow>
+    \<comment> \<open> opsteps are safe \<close>
+    (\<And>a c' hx'.
+        ((hl, hs), c) \<midarrow>a\<rightarrow> (hx', c') \<Longrightarrow>
+        weak_safe n c' (fst hx') (snd hx') r g q) \<Longrightarrow>
+    \<comment> \<open> conclude a step can be made \<close>
+    weak_safe (Suc n) c hl hs r g q\<close>
+
+subsubsection \<open> weak safe \<close>
+
+inductive_cases weak_safe_zeroE[elim!]: \<open>weak_safe 0 c hl hs r g q\<close>
+inductive_cases weak_safe_sucE[elim]: \<open>weak_safe (Suc n) c hl hs r g q\<close>
+
+lemma weak_safe_nil_iff[simp]:
+  \<open>weak_safe 0 c hl hs r g q \<longleftrightarrow> True\<close>
+  by force
+
+lemma weak_safe_suc_iff:
+  \<open>weak_safe (Suc n) c hl hs r g q \<longleftrightarrow>
+    (c = Skip \<longrightarrow> q (hl, hs)) \<and>
+    (\<forall>hs'. r hs hs' \<longrightarrow> weak_safe n c hl hs' r g q) \<and>
+    (\<forall>a c' hlx hx'.
+        hl \<le> hlx \<longrightarrow>
+        ((hlx, hs), c) \<midarrow>a\<rightarrow> (hx', c') \<longrightarrow>
+        a \<noteq> Tau \<longrightarrow>
+        g hs (snd hx')) \<and>
+    (\<forall>a c' hx'.
+        ((hl, hs), c) \<midarrow>a\<rightarrow> (hx', c') \<longrightarrow>
+        weak_safe n c' (fst hx') (snd hx') r g q)\<close>
+  apply (rule iffI)
+   apply (erule weak_safe_sucE, force)
+  apply (rule weak_safe_suc; presburger)
+  done
+
+lemma weak_safe_sucD:
+  \<open>weak_safe (Suc n) c hl hs r g q \<Longrightarrow> c = Skip \<Longrightarrow> q (hl, hs)\<close>
+  \<open>weak_safe (Suc n) c hl hs r g q \<Longrightarrow> r hs hs' \<Longrightarrow> weak_safe n c hl hs' r g q\<close>
+  \<open>weak_safe (Suc n) c hl hs r g q \<Longrightarrow>
+    hl \<le> hlx \<Longrightarrow>
+    a \<noteq> Tau \<Longrightarrow>
+    ((hlx, hs), c) \<midarrow>a\<rightarrow> (hx', c') \<Longrightarrow>
+    g hs (snd hx')\<close>
+  \<open>weak_safe (Suc n) c hl hs r g q \<Longrightarrow> ((hl, hs), c) \<midarrow>a\<rightarrow> (hx', c') \<Longrightarrow>
+    weak_safe n c' (fst hx') (snd hx') r g q\<close>
+  by (erule weak_safe_sucE, simp; fail)+
+
+definition
+  \<open>atom_weak_frame_cond hlf b \<equiv>
+    \<forall>x y x'y'f. x ## hlf \<longrightarrow> b (x + hlf, y) x'y'f \<longrightarrow> (\<exists>x' y'. x' ## hlf \<and> x'y'f = (x' + hlf, y'))\<close>
+
+lemma weak_frame_condition:
+  \<open>opstep a x x' \<Longrightarrow>
+    x = ((hl + hlf, hs), c) \<Longrightarrow>
+    x' = ((hl'hlf, hs'), c') \<Longrightarrow>
+    all_atom_comm (atom_weak_frame_cond hlf) c \<Longrightarrow>
+    hl ## hlf \<Longrightarrow>
+    \<exists>hl'. hl' ## hlf \<and> hl'hlf = hl' + hlf \<and> (a = Tau \<longrightarrow> hl' = hl)\<close>
+  apply (induct arbitrary: hl hlf hs c hl'hlf hs' c' rule: opstep.inducts)
+                  apply fast+
+  apply (clarsimp simp add: framecl_def le_fun_def imp_ex_conjL atom_weak_frame_cond_def)
+  apply blast
+  done
+
+lemma
+  \<open>weak_safe n c hl hs r g q \<Longrightarrow>
+    \<forall>hlf. hl ## hlf \<longrightarrow> all_atom_comm (atom_weak_frame_cond hlf) c \<Longrightarrow>
+    safe n c hl hs r g q\<close>
+proof (induct rule: weak_safe.inducts)
+  case (weak_safe_suc c q hl hs r n g)
+  show ?case
+    using weak_safe_suc.prems weak_safe_suc.hyps(1)
+    apply -
+    apply (rule safe_suc)
+        apply blast
+       apply (drule weak_safe_suc.hyps(3), blast, blast)
+      apply (drule weak_safe_suc.hyps(4), blast, blast, blast)
+     apply (frule weak_safe_suc.hyps(6))
+    subgoal sorry
+     apply blast
+    apply clarsimp
+    apply (drule weak_frame_condition[OF _ refl refl])
+      apply blast
+     apply blast
+    apply clarsimp
+    sorry
+qed blast
+
+lemma safe_conj2:
+  fixes hl :: \<open>'a :: perm_alg\<close>
+  shows
+  \<open>weak_safe n c hl hs r g q1 \<Longrightarrow>
+    weak_safe n c hl hs r g q2 \<Longrightarrow>
+    weak_safe n c hl hs r g (q1 \<sqinter> q2)\<close>
+proof (induct n arbitrary: c hl hs r g q1 q2)
+  case 0
+  then show ?case by blast
+next
+  case (Suc n)
+  show ?case
+    using Suc.prems
+    apply -
+    apply (intro weak_safe_suc conjI impI allI)
+       apply blast
+      apply (rule Suc.hyps; meson weak_safe_sucD; fail)
+     apply (meson weak_safe_sucD; fail)
+    apply (rule Suc.hyps; meson weak_safe_sucD; fail)
+    done
+qed
+
 
 end

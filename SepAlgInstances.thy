@@ -132,12 +132,22 @@ lemma sepconj_conjI:
   \<open>p (a, y) \<Longrightarrow> q (b, y) \<Longrightarrow> a ## b \<Longrightarrow> x = a + b \<Longrightarrow> (p \<^emph>\<and> q) (x, y)\<close>
   by (force simp add: sepconj_conj_def)
 
+lemma sepconj_conjE:
+  \<open>(p \<^emph>\<and> q) (x, y) \<Longrightarrow> (\<And>a b. p (a, y) \<Longrightarrow> q (b, y) \<Longrightarrow> a ## b \<Longrightarrow> x = a + b \<Longrightarrow> P) \<Longrightarrow> P\<close>
+  by (force simp add: sepconj_conj_def)
+
 lemma sepconj_conj_assoc:
   \<open>(p \<^emph>\<and> q) \<^emph>\<and> r = p \<^emph>\<and> (q \<^emph>\<and> r)\<close>
   apply (clarsimp simp add: sepconj_conj_def fun_eq_iff)
   apply (rule iffI)
    apply (metis disjoint_add_leftR disjoint_add_swap_lr partial_add_assoc2)
   apply (metis disjoint_add_rightL disjoint_add_swap_rl partial_add_assoc3)
+  done
+
+lemma sepconj_conj_commute:
+  \<open>q \<^emph>\<and> p = p \<^emph>\<and> q\<close>
+  apply (simp add: sepconj_conj_def fun_eq_iff)
+  apply (meson disjoint_sym partial_add_commute)
   done
 
 lemma sepconj_conj_mono:

@@ -65,6 +65,16 @@ lemma sp_rely_of_pred_Times_eq[simp]:
   \<open>sswa r (p \<times>\<^sub>P q) = (p \<times>\<^sub>P sp r\<^sup>*\<^sup>* q)\<close>
   by (force simp add: rel_Times_def pred_Times_def sp_def split: prod.splits)
 
+lemma pre_state_rtranclp_eq[simp]:
+  \<open>pre_state r\<^sup>*\<^sup>* = \<top>\<close>
+  unfolding pre_state_def fun_eq_iff
+  by blast
+
+lemma post_state_rtranclp_eq[simp]:
+  \<open>post_state r\<^sup>*\<^sup>* = \<top>\<close>
+  unfolding post_state_def fun_eq_iff
+  by blast
+
 
 subsection \<open> Framed step relation \<close>
 
