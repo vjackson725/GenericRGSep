@@ -2,6 +2,32 @@ theory SepAlgInstances
   imports SepLogic HOL.Rat
 begin
 
+context perm_alg
+begin
+
+text \<open>
+  The resource 'order' is almost an order, except that it doesn't satisfy reflexivity.
+\<close>
+
+definition (in perm_alg) le_res :: \<open>'a \<Rightarrow> 'a \<Rightarrow> bool\<close> (infix \<open>\<lesssim>\<close> 50) where
+  \<open>a \<lesssim> b \<equiv> \<exists>c. a ## c \<and> a + c = b\<close>
+
+lemma le_res_trans:
+  \<open>a \<lesssim> b \<Longrightarrow> b \<lesssim> c \<Longrightarrow> a \<lesssim> c\<close>
+  by (metis disjoint_add_swap_lr le_res_def partial_add_assoc2)
+
+text \<open> This lemma is just positivity stated another way. \<close>
+lemma le_res_antisym:
+  \<open>a \<lesssim> b \<Longrightarrow> b \<lesssim> a \<Longrightarrow> a = b\<close>
+  using le_res_def positivity by auto
+
+lemma le_res_less_le_not_le:
+  \<open>a < b \<longleftrightarrow> a \<lesssim> b \<and> \<not> b \<lesssim> a\<close>
+  using le_res_def less_sepadd_def positivity by auto
+
+end
+
+
 section \<open> Product \<close>
 
 subsection \<open> perm_alg \<close>
@@ -25,6 +51,10 @@ definition less_prod :: \<open>'a \<times> 'b \<Rightarrow> 'a \<times> 'b \<Rig
       (\<exists>c. fst a ## c \<and> fst b = fst a + c) \<and>
       (\<exists>c. snd a ## c \<and> snd b = snd a + c)\<close>
 
+lemma less_prod_by_leq_res:
+  \<open>a < b \<longleftrightarrow> a \<noteq> b \<and> fst a \<lesssim> fst b \<and> snd a \<lesssim> snd b\<close>
+  by (simp add: less_prod_def le_res_def, metis prod_eq_iff)
+
 definition less_eq_prod :: \<open>'a \<times> 'b \<Rightarrow> 'a \<times> 'b \<Rightarrow> bool\<close> where
   \<open>less_eq_prod a b \<equiv> a = b \<or> a < b\<close>
 
@@ -34,6 +64,12 @@ lemma less_eq_prod_def2:
       (\<exists>c. fst a ## c \<and> fst b = fst a + c) \<and>
       (\<exists>c. snd a ## c \<and> snd b = snd a + c))\<close>
   unfolding less_prod_def less_eq_prod_def by force
+
+lemma less_eq_prod_def3:
+  \<open>a \<le> b \<longleftrightarrow> a = b \<or>
+    ((\<exists>c. fst a ## c \<and> fst b = fst a + c) \<and>
+      (\<exists>c. snd a ## c \<and> snd b = snd a + c))\<close>
+  by (metis less_eq_prod_def2 prod_eq_iff)
 
 instance
   apply standard
@@ -64,7 +100,7 @@ instantiation prod :: (multiunit_sep_alg,multiunit_sep_alg) multiunit_sep_alg
 begin
 
 definition unitof_prod :: \<open>'a \<times> 'b \<Rightarrow> 'a \<times> 'b\<close> where
-  \<open>unitof a \<equiv> (unitof (fst a), unitof (snd a))\<close>
+  \<open>unitof \<equiv> map_prod unitof unitof\<close>
 declare unitof_prod_def[simp]
 
 instance
@@ -196,6 +232,92 @@ declare bot_unit_def[simp]
 
 instance
   by standard simp+
+
+end
+
+
+section \<open> Sum \<close>
+
+subsection \<open> perm_alg \<close>
+
+instantiation sum :: (perm_alg,perm_alg) perm_alg
+begin
+
+definition disjoint_sum :: \<open>'a + 'b \<Rightarrow> 'a + 'b \<Rightarrow> bool\<close> where
+  \<open>disjoint_sum a b \<equiv>
+    (\<exists>x y. a = Inl x \<and> b = Inl y \<and> x ## y) \<or>
+    (\<exists>x y. a = Inr x \<and> b = Inr y \<and> x ## y)\<close>
+
+lemma disjoint_sum_simps[simp]:
+  \<open>\<And>x y. Inl x ## Inl y = x ## y\<close>
+  \<open>\<And>x y. Inr x ## Inr y = x ## y\<close>
+  \<open>\<And>x y. Inl x ## Inr y = False\<close>
+  \<open>\<And>x y. Inr x ## Inl y = False\<close>
+  by (simp add: disjoint_sum_def)+
+
+definition plus_sum :: \<open>'a + 'b \<Rightarrow> 'a + 'b \<Rightarrow> 'a + 'b\<close> where
+  \<open>plus_sum a b \<equiv>
+      case a of
+        Inl x \<Rightarrow>
+          (case b of
+            Inl y \<Rightarrow> Inl (x + y)
+          | Inr y \<Rightarrow> undefined)
+      | Inr x \<Rightarrow>
+          (case b of
+            Inl y \<Rightarrow> undefined
+          | Inr y \<Rightarrow> Inr (x + y))\<close>
+
+lemma plus_sum_simps[simp]:
+  \<open>\<And>x y. Inl x + Inl y = Inl (x + y)\<close>
+  \<open>\<And>x y. Inr x + Inr y = Inr (x + y)\<close>
+  by (simp add: plus_sum_def)+
+
+definition less_sum :: \<open>'a + 'b \<Rightarrow> 'a + 'b \<Rightarrow> bool\<close> where
+  \<open>less_sum a b \<equiv> (a \<noteq> b \<and> (\<exists>c. a ## c \<and> b = a + c))\<close>
+
+definition less_eq_sum :: \<open>'a + 'b \<Rightarrow> 'a + 'b \<Rightarrow> bool\<close> where
+  \<open>less_eq_sum a b \<equiv> (a = b \<or> (\<exists>c. a ## c \<and> b = a + c))\<close>
+
+instance
+  apply standard
+          apply (simp add: disjoint_sum_def)
+          apply (elim disjE; force simp add: partial_add_assoc)
+         apply (simp add: disjoint_sum_def)
+         apply (elim disjE; force dest: partial_add_commute)
+        apply (simp add: disjoint_sum_def)
+        apply (elim disjE exE conjE; force dest: disjoint_sym)
+       apply (simp add: disjoint_sum_def)
+       apply (elim disjE exE conjE; force dest: disjoint_add_rightL)
+      apply (simp add: disjoint_sum_def)
+      apply (elim disjE exE conjE; force dest: disjoint_add_right_commute)
+     apply (simp add: disjoint_sum_def)
+     apply (elim disjE exE conjE; force dest: dup_sub_closure)
+    apply (simp add: disjoint_sum_def)
+    apply (elim disjE exE conjE; force dest: positivity)
+   apply (simp add: less_sum_def)
+  apply (simp add: less_eq_sum_def)
+  done
+
+end
+
+subsection \<open> mu_sep_alg \<close>
+
+instantiation sum :: (multiunit_sep_alg,multiunit_sep_alg) multiunit_sep_alg
+begin
+
+definition unitof_sum :: \<open>'a + 'b \<Rightarrow> 'a + 'b\<close> where
+  \<open>unitof_sum \<equiv> map_sum unitof unitof\<close>
+
+lemmas unitof_simps[simp] =
+  map_sum.simps[
+    of \<open>unitof :: 'a \<Rightarrow> _\<close> \<open>unitof :: 'b \<Rightarrow> _\<close>,
+    unfolded unitof_sum_def[symmetric]]
+
+instance
+  apply standard
+   apply (case_tac a; simp)
+  apply (case_tac a; case_tac b; simp)
+  done
 
 end
 
@@ -725,5 +847,25 @@ lemma sepdomeq_fun:
       simp del: not_Some_prod_eq split: if_splits, metis)
   apply blast
   done
+
+
+section \<open> Locked resources \<close>
+
+type_synonym 'a locked = \<open>munit + 'a\<close>
+
+definition \<open>Locked \<equiv> Inl \<one> :: 'a locked\<close>
+definition \<open>Unlocked x \<equiv> Inr x :: 'a locked\<close>
+
+lemma disjoint_locked_simps[simp]:
+  \<open>\<And>b. Locked ## b \<longleftrightarrow> False\<close>
+  \<open>\<And>a. a ## Locked \<longleftrightarrow> False\<close>
+  \<open>\<And>a b. Unlocked a ## Unlocked b \<longleftrightarrow> a ## b\<close>
+  unfolding Locked_def Unlocked_def
+    apply (case_tac b; simp)
+   apply (case_tac a; simp)
+  apply simp
+  done
+
+type_synonym 'a resources = \<open>nat \<Rightarrow> 'a locked\<close>
 
 end

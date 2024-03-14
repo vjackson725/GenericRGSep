@@ -4,7 +4,7 @@ begin
 
 thm less_induct
 
-section \<open>Predicate Logic\<close>
+section \<open> Predicate Logic \<close>
 
 lemma pred_conj_simp:
   \<open>(p \<sqinter> q) x \<longleftrightarrow> p x \<and> q x\<close>
@@ -1864,14 +1864,10 @@ begin
 lemma trivial_half[simp]: \<open>half a = a\<close>
   by (simp add: selfdisjoint_same half_additive_split half_self_disjoint)
 
-end
-
-context sep_alg
-begin
-
-lemma \<open>sepconj_conj_distrib P \<Longrightarrow> (P \<midarrow>\<odot> P \<^emph> Q) \<le> Q\<close>
-  by (simp add: sepcoimp_septract_galois sepconj_conj_distrib_then_sepconj_imp_sepcoimp septract_reverse)
-  
+lemma all_duplicable:
+  \<open>sepadd_dup x\<close>
+  using local.all_selfdisjoint_dup local.half_self_disjoint
+  by auto
 
 end
 

@@ -2,11 +2,12 @@ theory Util
   imports Main
 begin
 
+text \<open> We extensively use lattice syntax for separation logic \<close>
 unbundle lattice_syntax
 
-section \<open>Helper Lemmas\<close>
+text \<open> Helper Lemmas \<close>
 
-subsection \<open> Functional Programming \<close>
+section \<open> Functional Programming \<close>
 
 definition flip :: \<open>('a \<Rightarrow> 'b \<Rightarrow> 'c) \<Rightarrow> ('b \<Rightarrow> 'a \<Rightarrow> 'c)\<close> where
   \<open>flip f a b \<equiv> f b a\<close>
@@ -15,7 +16,7 @@ declare flip_def[simp]
 lemma le_fun_eta[simp]: \<open>(\<lambda>x. a) \<le> (\<lambda>x. b) \<longleftrightarrow> a \<le> b\<close>
   by (simp add: le_fun_def)
 
-subsection \<open> Logic \<close>
+section \<open> Logic \<close>
 
 lemmas conj_left_mp[simp] =
   SMT.verit_bool_simplify(7)
@@ -73,30 +74,8 @@ lemma ex_eq_pair_iff[simp]:
 
 lemmas disjCI2 = disjCI[THEN Meson.disj_comm]
 
-subsection \<open> Predicates \<close>
 
-definition pred_Times :: \<open>('a \<Rightarrow> bool) \<Rightarrow> ('b \<Rightarrow> bool) \<Rightarrow> ('a \<times> 'b \<Rightarrow> bool)\<close>
-  (infixr \<open>\<times>\<^sub>P\<close> 80) where
-  \<open>p \<times>\<^sub>P q \<equiv> \<lambda>(a,b). p a \<and> q b\<close>
-
-lemma pred_Times_iff[simp]: \<open>(p1 \<times>\<^sub>P p2) (a, b) \<longleftrightarrow> p1 a \<and> p2 b\<close>
-  by (force simp add: pred_Times_def)
-
-lemma pred_Times_almost_assoc:
-  \<open>((p1 \<times>\<^sub>P p2) \<times>\<^sub>P p3) ((a,b),c) = (p1 \<times>\<^sub>P p2 \<times>\<^sub>P p3) (a,b,c)\<close>
-  by simp
-
-lemma top_pred_Times_top_eq[simp]: \<open>\<top> \<times>\<^sub>P \<top> = \<top>\<close>
-  by (simp add: pred_Times_def fun_eq_iff)
-
-lemma bot_pred_Times_eq[simp]: \<open>\<bottom> \<times>\<^sub>P b = \<bottom>\<close>
-  by (simp add: pred_Times_def fun_eq_iff)
-
-lemma pred_Times_bot_eq[simp]: \<open>a \<times>\<^sub>P \<bottom> = \<bottom>\<close>
-  by (simp add: pred_Times_def fun_eq_iff)
-
-
-subsubsection \<open> Tuples \<close>
+section \<open> Tuples \<close>
 
 abbreviation plus_right_fst :: \<open>'a::plus \<times> 'b \<Rightarrow> 'a \<Rightarrow> 'a \<times> 'b\<close> (infixl \<open>+\<^sub>L\<close> 65) where
   \<open>plus_right_fst xy a \<equiv> apfst (\<lambda>z. z + a) xy\<close>
@@ -115,7 +94,7 @@ lemma plus_right_snd_accum[simp]:
   by (cases xy, simp add: add.assoc)
 
 
-subsection \<open> datatypes \<close>
+section \<open> TODO: move \<close>
 
 lemma prod_eq_decompose:
   \<open>a = (b,c) \<longleftrightarrow> fst a = b \<and> snd a = c\<close>
@@ -125,6 +104,8 @@ lemma prod_eq_decompose:
 lemma common_if_prod[simp]:
   \<open>(if P then a1 else a2, if P then b1 else b2) = (if P then (a1,b1) else (a2,b2))\<close>
   by simp
+
+section \<open> Lists \<close>
 
 lemma upt_add_eq_append:
   assumes \<open>i \<le> j\<close> \<open>j \<le> k\<close>
@@ -155,7 +136,7 @@ next
   qed
 qed
 
-subsection \<open> Relations \<close>
+section \<open> Relations \<close>
 
 definition \<open>rel_liftL p \<equiv> \<lambda>a b. p a\<close>
 definition \<open>rel_liftR p \<equiv> \<lambda>a b. p b\<close>
@@ -360,42 +341,7 @@ lemma rtranclp_eq_eq[simp]:
   by (simp add: rtransp_rel_is_rtransclp)
 
 
-subsubsection \<open> relation tuples \<close>
-
-definition rel_Times :: \<open>('a \<Rightarrow> 'b \<Rightarrow> bool) \<Rightarrow> ('c \<Rightarrow> 'd \<Rightarrow> bool) \<Rightarrow> ('a \<times> 'c \<Rightarrow> 'b \<times> 'd \<Rightarrow> bool)\<close>
-  (infixr \<open>\<times>\<^sub>R\<close> 80) where
-  \<open>r1 \<times>\<^sub>R r2 \<equiv> \<lambda>(a,c) (b, d). r1 a b \<and> r2 c d\<close>
-
-lemma rel_Times_iff[simp]: \<open>(r1 \<times>\<^sub>R r2) (x1, x2) (y1, y2) \<longleftrightarrow> r1 x1 y1 \<and> r2 x2 y2\<close>
-  by (force simp add: rel_Times_def)
-
-lemma rel_Times_almost_assoc:
-  \<open>((r1 \<times>\<^sub>R r2) \<times>\<^sub>R r3) ((a,b),c) ((a',b'),c') = (r1 \<times>\<^sub>R r2 \<times>\<^sub>R r3) (a,b,c) (a',b',c')\<close>
-  by simp
-
-lemma rel_Times_reflp_iff[simp]:
-  \<open>reflp (r1 \<times>\<^sub>R r2) \<longleftrightarrow> reflp r1 \<and> reflp r2\<close>
-  by (simp add: rel_Times_def reflp_def)
-
-lemma rel_Times_rtranclp_semidistrib:
-  \<open>(r1 \<times>\<^sub>R r2)\<^sup>*\<^sup>* \<le> r1\<^sup>*\<^sup>* \<times>\<^sub>R r2\<^sup>*\<^sup>*\<close>
-  apply (clarsimp simp add: le_fun_def rel_Times_def)
-  apply (metis rtranclp_tuple_rel_semidistrib fst_conv snd_conv)
-  done
-
-lemma rel_Times_left_eq_rtranclp_distrib[simp]:
-  \<open>((=) \<times>\<^sub>R r2)\<^sup>*\<^sup>* = (=) \<times>\<^sub>R r2\<^sup>*\<^sup>*\<close>
-  apply (rule order.antisym)
-   apply (force dest: rtranclp_tuple_rel_semidistrib simp add: le_fun_def rel_Times_def)
-  apply (force dest: rtranclp_tuple_lift_eq_left simp add: le_fun_def rel_Times_def)
-  done
-
-lemma rel_Times_comp[simp]:
-  \<open>(a \<times>\<^sub>R b) OO (c \<times>\<^sub>R d) = (a OO c) \<times>\<^sub>R (b OO d)\<close>
-  by (force simp add: fun_eq_iff OO_def)
-
-
-subsection \<open> Function Properties \<close>
+section \<open> Function Properties \<close>
 
 lemmas bij_betw_disjoint_insert =
   bij_betw_disjoint_Un[where A=\<open>{b}\<close> and C=\<open>{d}\<close> for b d, simplified]
@@ -411,7 +357,7 @@ lemma bij_betw_singleton:
 lemmas bij_betw_combine_insert =
   bij_betw_combine[where A=\<open>{b}\<close> and B=\<open>{d}\<close> for b d, simplified]
 
-subsection \<open> Options \<close>
+section \<open> Options \<close>
 
 lemma not_eq_None[simp]: \<open>None \<noteq> x \<longleftrightarrow> (\<exists>z. x = Some z)\<close>
   using option.exhaust_sel by auto
@@ -423,7 +369,7 @@ lemma option_eq_iff:
               | Some x' \<Rightarrow> (case y of None \<Rightarrow> False | Some y' \<Rightarrow> x' = y'))\<close>
   by (force split: option.splits)
 
-subsection \<open> Partial Maps \<close>
+section \<open> Partial Maps \<close>
 
 lemma map_le_restrict_eq: \<open>ma \<subseteq>\<^sub>m mb \<Longrightarrow> mb |` dom ma = ma\<close>
   by (rule ext, metis domIff map_le_def restrict_map_def)
@@ -473,7 +419,7 @@ lemma dom_subset_restrict_eq:
 lemmas dom_disjoint_restrict_eq =
   dom_subset_restrict_eq[OF iffD1[OF disjoint_eq_subset_Compl]]
 
-subsection \<open>Sets\<close>
+section \<open> Sets \<close>
 
 lemma disjoint_equiv_iff_eq:
   \<open>(\<forall>C. A \<inter> C = {} \<longleftrightarrow> B \<inter> C = {}) \<longleftrightarrow> A = B\<close>
@@ -482,11 +428,6 @@ lemma disjoint_equiv_iff_eq:
 lemma surj_disjoint_equiv_iff_eq:
   \<open>surj f \<Longrightarrow> (\<forall>x. A \<inter> f x = {} \<longleftrightarrow> B \<inter> f x = {}) \<longleftrightarrow> A = B\<close>
   by (metis disjoint_equiv_iff_eq surjD)
-
-lemma Times_singleton[simp]:
-  \<open>{x} \<times> B = Pair x ` B\<close>
-  \<open>A \<times> {y} = flip Pair y ` A\<close>
-  by force+
 
 section \<open> Options \<close>
 
@@ -528,7 +469,7 @@ lemma finite_map_choice_iff:
     done
   done
 
-subsection \<open> Orders \<close>
+section \<open> Orders \<close>
 
 lemma order_neq_less_conv:
   \<open>x \<le> y \<Longrightarrow> (x :: ('a :: order)) \<noteq> y \<longleftrightarrow> x < y\<close>
@@ -551,13 +492,16 @@ lemmas preordering_refl =
 lemmas preordering_trans =
   preordering.axioms(1)[THEN partial_preordering.trans]
 
-subsection \<open> Groups \<close>
+definition (in order) \<open>downset x \<equiv> {y. y\<le>x}\<close>
+
+
+section \<open> Groups \<close>
 
 lemmas eq_diff_eq_comm =
   HOL.trans[OF eq_diff_eq, OF arg_cong[where f=\<open>\<lambda>x. x = y\<close> for y], OF add.commute]
 thm eq_diff_eq
 
-subsection \<open> Arithmetic \<close>
+section \<open> Arithmetic \<close>
 
 (* It feels like Isabelle/HOL is missing a theory of non-abelian ordered monoids.
    An example of an instance of such a thing is traces.
@@ -701,6 +645,7 @@ sublocale monoid seq skip
 
 end
 
+(*
 section \<open>Top Extension\<close>
 
 datatype 'a top_ext =
@@ -842,8 +787,9 @@ instance
   apply (simp, metis bot_ext.inject group_cancel.rule0 not_BEVal_eq)
   done
 end
+*)
 
-section \<open> Extending Lattices \<close>
+section \<open> Lattices \<close>
 
 context lattice
 begin
@@ -905,11 +851,68 @@ lemma bequiv_iff2: \<open>a \<sim> b = (a \<sqinter> b) \<squnion> (-a \<sqinter
 
 end
 
-section \<open> orders \<close>
+section \<open> Times \<close>
 
-definition (in order) \<open>downset x \<equiv> {y. y\<le>x}\<close>
+definition pred_Times :: \<open>('a \<Rightarrow> bool) \<Rightarrow> ('b \<Rightarrow> bool) \<Rightarrow> ('a \<times> 'b \<Rightarrow> bool)\<close>
+  (infixr \<open>\<times>\<^sub>P\<close> 80) where
+  \<open>p \<times>\<^sub>P q \<equiv> \<lambda>(a,b). p a \<and> q b\<close>
 
-section \<open> programs as relations \<close>
+lemma pred_Times_iff[simp]: \<open>(p1 \<times>\<^sub>P p2) (a, b) \<longleftrightarrow> p1 a \<and> p2 b\<close>
+  by (force simp add: pred_Times_def)
+
+lemma pred_Times_almost_assoc:
+  \<open>((p1 \<times>\<^sub>P p2) \<times>\<^sub>P p3) ((a,b),c) = (p1 \<times>\<^sub>P p2 \<times>\<^sub>P p3) (a,b,c)\<close>
+  by simp
+
+lemma top_pred_Times_top_eq[simp]: \<open>\<top> \<times>\<^sub>P \<top> = \<top>\<close>
+  by (simp add: pred_Times_def fun_eq_iff)
+
+lemma bot_pred_Times_eq[simp]: \<open>\<bottom> \<times>\<^sub>P b = \<bottom>\<close>
+  by (simp add: pred_Times_def fun_eq_iff)
+
+lemma pred_Times_bot_eq[simp]: \<open>a \<times>\<^sub>P \<bottom> = \<bottom>\<close>
+  by (simp add: pred_Times_def fun_eq_iff)
+
+definition rel_Times :: \<open>('a \<Rightarrow> 'b \<Rightarrow> bool) \<Rightarrow> ('c \<Rightarrow> 'd \<Rightarrow> bool) \<Rightarrow> ('a \<times> 'c \<Rightarrow> 'b \<times> 'd \<Rightarrow> bool)\<close>
+  (infixr \<open>\<times>\<^sub>R\<close> 80) where
+  \<open>r1 \<times>\<^sub>R r2 \<equiv> \<lambda>(a,c) (b, d). r1 a b \<and> r2 c d\<close>
+
+lemma rel_Times_iff[simp]: \<open>(r1 \<times>\<^sub>R r2) (x1, x2) (y1, y2) \<longleftrightarrow> r1 x1 y1 \<and> r2 x2 y2\<close>
+  by (force simp add: rel_Times_def)
+
+lemma rel_Times_almost_assoc:
+  \<open>((r1 \<times>\<^sub>R r2) \<times>\<^sub>R r3) ((a,b),c) ((a',b'),c') = (r1 \<times>\<^sub>R r2 \<times>\<^sub>R r3) (a,b,c) (a',b',c')\<close>
+  by simp
+
+lemma rel_Times_reflp_iff[simp]:
+  \<open>reflp (r1 \<times>\<^sub>R r2) \<longleftrightarrow> reflp r1 \<and> reflp r2\<close>
+  by (simp add: rel_Times_def reflp_def)
+
+lemma rel_Times_rtranclp_semidistrib:
+  \<open>(r1 \<times>\<^sub>R r2)\<^sup>*\<^sup>* \<le> r1\<^sup>*\<^sup>* \<times>\<^sub>R r2\<^sup>*\<^sup>*\<close>
+  apply (clarsimp simp add: le_fun_def rel_Times_def)
+  apply (metis rtranclp_tuple_rel_semidistrib fst_conv snd_conv)
+  done
+
+lemma rel_Times_left_eq_rtranclp_distrib[simp]:
+  \<open>((=) \<times>\<^sub>R r2)\<^sup>*\<^sup>* = (=) \<times>\<^sub>R r2\<^sup>*\<^sup>*\<close>
+  apply (rule order.antisym)
+   apply (force dest: rtranclp_tuple_rel_semidistrib simp add: le_fun_def rel_Times_def)
+  apply (force dest: rtranclp_tuple_lift_eq_left simp add: le_fun_def rel_Times_def)
+  done
+
+lemma rel_Times_comp[simp]:
+  \<open>(a \<times>\<^sub>R b) OO (c \<times>\<^sub>R d) = (a OO c) \<times>\<^sub>R (b OO d)\<close>
+  by (force simp add: fun_eq_iff OO_def)
+
+
+lemma Times_singleton[simp]:
+  \<open>{x} \<times> B = Pair x ` B\<close>
+  \<open>A \<times> {y} = flip Pair y ` A\<close>
+  by force+
+
+
+section \<open> Relations + Relations as Programs \<close>
 
 definition \<open>deterministic r \<equiv> (\<forall>x y1 y2. r x y1 \<longrightarrow> r x y2 \<longrightarrow> y1 = y2)\<close>
 
