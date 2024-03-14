@@ -86,6 +86,16 @@ lemma pred_Times_almost_assoc:
   \<open>((p1 \<times>\<^sub>P p2) \<times>\<^sub>P p3) ((a,b),c) = (p1 \<times>\<^sub>P p2 \<times>\<^sub>P p3) (a,b,c)\<close>
   by simp
 
+lemma top_pred_Times_top_eq[simp]: \<open>\<top> \<times>\<^sub>P \<top> = \<top>\<close>
+  by (simp add: pred_Times_def fun_eq_iff)
+
+lemma bot_pred_Times_eq[simp]: \<open>\<bottom> \<times>\<^sub>P b = \<bottom>\<close>
+  by (simp add: pred_Times_def fun_eq_iff)
+
+lemma pred_Times_bot_eq[simp]: \<open>a \<times>\<^sub>P \<bottom> = \<bottom>\<close>
+  by (simp add: pred_Times_def fun_eq_iff)
+
+
 subsubsection \<open> Tuples \<close>
 
 abbreviation plus_right_fst :: \<open>'a::plus \<times> 'b \<Rightarrow> 'a \<Rightarrow> 'a \<times> 'b\<close> (infixl \<open>+\<^sub>L\<close> 65) where

@@ -560,6 +560,25 @@ lemma weak_emp_sepconj2: \<open>emp \<midarrow>\<odot> p \<le> \<bottom> \<Longr
   by (simp add: emp_def sepadd_unit_def septract_def sepconj_def le_fun_def fun_eq_iff)
     (metis disjoint_sym_iff partial_add_commute)
 
+subsubsection \<open> Sepimp \<close>
+
+lemma sepimp_sepconjL:
+  \<open>P \<^emph> Q \<midarrow>\<^emph> R = P \<midarrow>\<^emph> Q \<midarrow>\<^emph> R\<close>
+  apply (clarsimp simp add: sepconj_def sepimp_def fun_eq_iff)
+  apply (rule iffI)
+   apply (metis disjoint_add_rightR disjoint_add_right_commute disjoint_sym partial_add_assoc
+      partial_add_commute)+
+  done
+
+lemma sepimp_conjR:
+  \<open>P \<midarrow>\<^emph> Q \<sqinter> R = (P \<midarrow>\<^emph> Q) \<sqinter> (P \<midarrow>\<^emph> R)\<close>
+  by (force simp add: sepimp_def fun_eq_iff)
+
+lemma sepimp_top_eq[simp]:
+  \<open>P \<midarrow>\<^emph> \<top> = \<top>\<close>
+  by (simp add: sepimp_def fun_eq_iff)
+
+
 subsubsection \<open> everything else \<close>
 
 lemma septract_reverse: \<open>P \<midarrow>\<odot> Q = Q \<odot>\<midarrow> P\<close>
@@ -600,18 +619,6 @@ lemma sepcoimp_curry: \<open>P \<sim>\<^emph> Q \<sim>\<^emph> R = P \<^emph> Q 
    apply (metis disjoint_add_leftR disjoint_add_right_commute disjoint_sym partial_add_assoc
       partial_add_commute)+
   done
-
-lemma sepimp_sepconjL:
-  \<open>P \<^emph> Q \<midarrow>\<^emph> R = P \<midarrow>\<^emph> Q \<midarrow>\<^emph> R\<close>
-  apply (clarsimp simp add: sepconj_def sepimp_def fun_eq_iff)
-  apply (rule iffI)
-   apply (metis disjoint_add_rightR disjoint_add_right_commute disjoint_sym partial_add_assoc
-      partial_add_commute)+
-  done
-
-lemma sepimp_conjR:
-  \<open>P \<midarrow>\<^emph> Q \<sqinter> R = (P \<midarrow>\<^emph> Q) \<sqinter> (P \<midarrow>\<^emph> R)\<close>
-  by (force simp add: sepimp_def fun_eq_iff)
 
 section \<open> Precision \<close>
 
