@@ -7,6 +7,8 @@ section \<open> rely/guarantee helpers \<close>
 abbreviation \<open>sswa r \<equiv> sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*)\<close>
 abbreviation \<open>wssa r \<equiv> wlp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*)\<close>
 
+subsection \<open> step properties \<close>
+
 lemma sp_rely_step:
   \<open>r y y' \<Longrightarrow>
     sp ((=) \<times>\<^sub>R rx) p (x, y) \<Longrightarrow>
@@ -21,23 +23,44 @@ lemma sswa_step:
 
 lemmas sswa_stepD = sswa_step[rotated]
 
-lemma wlp_rely_step_rtranclp:
+lemma wssa_step:
   \<open>r y y' \<Longrightarrow>
     wssa r p (x, y) \<Longrightarrow>
     wssa r p (x, y')\<close>
   by (simp add: wlp_def converse_rtranclp_into_rtranclp)
 
-lemmas sp_rely_stronger = sp_refl_rel_le[where r=\<open>(=) \<times>\<^sub>R r\<^sup>*\<^sup>*\<close> for r, simplified]
-lemmas sp_rely_absorb =
-  sp_comp_rel[where ?r1.0=\<open>(=) \<times>\<^sub>R ra\<^sup>*\<^sup>*\<close> and ?r2.0=\<open>(=) \<times>\<^sub>R rb\<^sup>*\<^sup>*\<close> for ra rb, simplified]
+lemmas wssa_stepD = wssa_step[rotated]
 
-lemma trivial_sp_rely_step[intro]:
+subsection \<open> closure operator properties \<close>
+
+lemmas sswa_stronger = sp_refl_rel_le[where r=\<open>(=) \<times>\<^sub>R r\<^sup>*\<^sup>*\<close> for r, simplified]
+
+lemma sswa_trivial[intro]:
   \<open>p x \<Longrightarrow> sswa r p x\<close>
   by (simp add: sp_refl_relI)
+
+lemmas sswa_idem[simp] =
+  sp_comp_rel[where ?r1.0=\<open>(=) \<times>\<^sub>R r\<^sup>*\<^sup>*\<close> and ?r2.0=\<open>(=) \<times>\<^sub>R r\<^sup>*\<^sup>*\<close> for r, simplified]
+
+thm sp_mono
+
+lemmas wssa_weaker = wlp_refl_rel_le[where r=\<open>(=) \<times>\<^sub>R r\<^sup>*\<^sup>*\<close> for r, simplified]
+
+lemma wssa_trivial[dest]:
+  \<open>wssa r p x \<Longrightarrow> p x\<close>
+  by (meson le_boolE le_funE wssa_weaker)
+
+lemmas wssa_idem[simp] =
+  wlp_comp_rel[where ?r1.0=\<open>(=) \<times>\<^sub>R r\<^sup>*\<^sup>*\<close> and ?r2.0=\<open>(=) \<times>\<^sub>R r\<^sup>*\<^sup>*\<close> for r, simplified]
+
+thm wlp_mono
+
 
 lemmas rely_rel_wlp_impl_sp =
   refl_rel_wlp_impl_sp[of \<open>(=) \<times>\<^sub>R r\<^sup>*\<^sup>*\<close> \<open>(=) \<times>\<^sub>R r\<^sup>*\<^sup>*\<close> for r, simplified]
 
+
+subsection \<open> distributivity properties \<close>
 
 lemma wlp_rely_sepconj_conj_semidistrib_mono:
   \<open>p' \<le> wlp ((=) \<times>\<^sub>R r) p \<Longrightarrow>
@@ -66,7 +89,7 @@ lemma sp_rely_of_pred_Times_eq[simp]:
   by (force simp add: rel_Times_def pred_Times_def sp_def split: prod.splits)
 
 
-subsection \<open> Framed step relation \<close>
+section \<open> Framed step relation \<close>
 
 context perm_alg
 begin
