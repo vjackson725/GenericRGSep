@@ -2,33 +2,26 @@ theory SepAlgInstances
   imports SepLogic HOL.Rat
 begin
 
-context perm_alg
-begin
-
-text \<open>
-  The resource 'order' is almost an order, except that it doesn't satisfy reflexivity.
-\<close>
-
-definition (in perm_alg) le_res :: \<open>'a \<Rightarrow> 'a \<Rightarrow> bool\<close> (infix \<open>\<lesssim>\<close> 50) where
-  \<open>a \<lesssim> b \<equiv> \<exists>c. a ## c \<and> a + c = b\<close>
-
-lemma le_res_trans:
-  \<open>a \<lesssim> b \<Longrightarrow> b \<lesssim> c \<Longrightarrow> a \<lesssim> c\<close>
-  by (metis disjoint_add_swap_lr le_res_def partial_add_assoc2)
-
-text \<open> This lemma is just positivity stated another way. \<close>
-lemma le_res_antisym:
-  \<open>a \<lesssim> b \<Longrightarrow> b \<lesssim> a \<Longrightarrow> a = b\<close>
-  using le_res_def positivity by auto
-
-lemma le_res_less_le_not_le:
-  \<open>a < b \<longleftrightarrow> a \<lesssim> b \<and> \<not> b \<lesssim> a\<close>
-  using le_res_def less_sepadd_def positivity by auto
-
-end
-
 
 section \<open> Product \<close>
+
+subsection \<open> order \<close>
+
+instantiation prod :: (order, order) order
+begin
+
+definition less_eq_prod :: \<open>'a \<times> 'b \<Rightarrow> 'a \<times> 'b \<Rightarrow> bool\<close> where
+  \<open>less_eq_prod a b \<equiv> fst a \<le> fst b \<and> snd a \<le> snd b\<close>
+declare less_eq_prod_def[simp]
+
+definition less_prod :: \<open>'a \<times> 'b \<Rightarrow> 'a \<times> 'b \<Rightarrow> bool\<close> where
+  \<open>less_prod a b \<equiv> fst a \<le> fst b \<and> snd a < snd b \<or> fst a < fst b \<and> snd a \<le> snd b\<close>
+
+instance
+  by standard
+    (force simp add: less_prod_def order.strict_iff_not)+
+
+end
 
 subsection \<open> perm_alg \<close>
 
@@ -43,56 +36,30 @@ definition disjoint_prod :: \<open>'a \<times> 'b \<Rightarrow> 'a \<times> 'b \
   \<open>disjoint_prod a b \<equiv> (fst a ## fst b \<and> snd a ## snd b)\<close>
 declare disjoint_prod_def[simp]
 
-(* this definition is horrible because we don't have a 0,
-    and thus can't prove the relation between addition and < with a pointwise definition. *)
-definition less_prod :: \<open>'a \<times> 'b \<Rightarrow> 'a \<times> 'b \<Rightarrow> bool\<close> where
-  \<open>less_prod a b \<equiv>
-    (fst a \<noteq> fst b \<or> snd a \<noteq> snd b) \<and>
-      (\<exists>c. fst a ## c \<and> fst b = fst a + c) \<and>
-      (\<exists>c. snd a ## c \<and> snd b = snd a + c)\<close>
-
-lemma less_prod_by_leq_res:
-  \<open>a < b \<longleftrightarrow> a \<noteq> b \<and> fst a \<lesssim> fst b \<and> snd a \<lesssim> snd b\<close>
-  by (simp add: less_prod_def le_res_def, metis prod_eq_iff)
-
-definition less_eq_prod :: \<open>'a \<times> 'b \<Rightarrow> 'a \<times> 'b \<Rightarrow> bool\<close> where
-  \<open>less_eq_prod a b \<equiv> a = b \<or> a < b\<close>
-
-lemma less_eq_prod_def2:
-  \<open>a \<le> b \<longleftrightarrow> a = b \<or>
-    ((fst a \<noteq> fst b \<or> snd a \<noteq> snd b) \<and>
-      (\<exists>c. fst a ## c \<and> fst b = fst a + c) \<and>
-      (\<exists>c. snd a ## c \<and> snd b = snd a + c))\<close>
-  unfolding less_prod_def less_eq_prod_def by force
-
-lemma less_eq_prod_def3:
-  \<open>a \<le> b \<longleftrightarrow> a = b \<or>
-    ((\<exists>c. fst a ## c \<and> fst b = fst a + c) \<and>
-      (\<exists>c. snd a ## c \<and> snd b = snd a + c))\<close>
-  by (metis less_eq_prod_def2 prod_eq_iff)
-
 instance
   apply standard
-          apply (force simp add: partial_add_assoc)
-         apply (force dest: partial_add_commute)
-        apply (force simp add: disjoint_sym_iff)
-       apply (force dest: disjoint_add_rightL)
-      apply (force dest: disjoint_add_right_commute)
-     apply (force dest: dup_sub_closure)
-    apply (force dest: positivity)
-   apply (force simp add: less_prod_def less_eq_prod_def)
-  apply (force simp add: less_prod_def less_eq_prod_def)
+        apply (force simp add: partial_add_assoc)
+       apply (force dest: partial_add_commute)
+      apply (force simp add: disjoint_sym_iff)
+     apply (force dest: disjoint_add_rightL)
+    apply (force dest: disjoint_add_right_commute)
+   apply (force dest: positivity)
+  apply (force dest: dup_sub_closure)
   done
 
-lemma less_eq_prod1:
-  \<open>fst a < fst b \<Longrightarrow> snd a ## c \<Longrightarrow> snd b = snd a + c \<Longrightarrow> a \<le> b\<close>
-  by (force simp add: less_prod_def less_eq_prod_def less_iff_sepadd le_iff_sepadd_weak)
-
-lemma less_eq_prod2:
-  \<open>fst a ## c \<Longrightarrow> fst b = fst a + c \<Longrightarrow> snd a < snd b \<Longrightarrow> a \<le> b\<close>
-  by (force simp add: less_prod_def less_eq_prod_def less_iff_sepadd le_iff_sepadd_weak)
-
 end
+
+lemma less_sepadd_prod_eq:
+  \<open>a \<prec> b \<longleftrightarrow> (fst a \<noteq> fst b \<or> snd a \<noteq> snd b) \<and> fst a \<lesssim> fst b \<and> snd a \<lesssim> snd b\<close>
+  by (cases a; cases b; force simp add: less_sepadd_def part_of_def)
+
+lemma less_eq_sepadd_prod_eq:
+  \<open>a \<preceq> b \<longleftrightarrow> fst a = fst b \<and> snd a = snd b \<or> fst a \<lesssim> fst b \<and> snd a \<lesssim> snd b\<close>
+  by (cases a; cases b; force simp add: less_eq_sepadd_def part_of_def)
+
+lemma part_of_prod_eq:
+  \<open>a \<lesssim> b \<longleftrightarrow> fst a \<lesssim> fst b \<and> snd a \<lesssim> snd b\<close>
+  by (cases a; cases b; force simp add: part_of_def)
 
 subsection \<open> mu_sep_alg \<close>
 
@@ -104,19 +71,10 @@ definition unitof_prod :: \<open>'a \<times> 'b \<Rightarrow> 'a \<times> 'b\<cl
 declare unitof_prod_def[simp]
 
 instance
-  by standard force+
-
-lemma mu_less_eq_prod_def[simp]:
-  fixes a b :: \<open>_::multiunit_sep_alg \<times> _::multiunit_sep_alg\<close>
-  shows \<open>a \<le> b \<longleftrightarrow> fst a \<le> fst b \<and> snd a \<le> snd b\<close>
-  apply (simp add: less_eq_prod_def2 le_iff_sepadd_weak less_iff_sepadd)
-  apply (metis prod.expand unitof_disjoint2 unitof_is_unitR2)
+  apply standard
+    apply (simp add: less_eq_sepadd_def)+
+  apply (force simp add: le_iff_sepadd)
   done
-
-lemma mu_less_prod_def[simp]:
-  fixes a b :: \<open>_::multiunit_sep_alg \<times> _::multiunit_sep_alg\<close>
-  shows \<open>a < b \<longleftrightarrow> fst a \<le> fst b \<and> snd a < snd b \<or> fst a < fst b \<and> snd a \<le> snd b\<close>
-  by (metis less_le_not_le mu_less_eq_prod_def)
 
 end
 
@@ -215,7 +173,7 @@ definition unitof_unit :: \<open>unit \<Rightarrow> unit\<close> where
 declare unitof_unit_def[simp]
 
 instance
-  by standard simp+
+  by standard force+
 
 end
 
@@ -237,6 +195,45 @@ end
 
 
 section \<open> Sum \<close>
+
+subsection \<open> order \<close>
+
+instantiation sum :: (order, order) order
+begin
+
+definition less_eq_sum :: \<open>'a + 'b \<Rightarrow> 'a + 'b \<Rightarrow> bool\<close> where
+  \<open>less_eq_sum a b \<equiv>
+    (\<exists>x y. a = Inl x \<and> b = Inl y \<and> x \<le> y) \<or>
+    (\<exists>x y. a = Inr x \<and> b = Inr y \<and> x \<le> y)\<close>
+
+lemma less_eq_sum_simps[simp]:
+  \<open>\<And>x y. Inl x \<le> Inl y \<longleftrightarrow> x \<le> y\<close>
+  \<open>\<And>x y. Inr x \<le> Inr y \<longleftrightarrow> x \<le> y\<close>
+  \<open>\<And>x y. Inl x \<le> Inr y \<longleftrightarrow> False\<close>
+  \<open>\<And>x y. Inr x \<le> Inl y \<longleftrightarrow> False\<close>
+  by (simp add: less_eq_sum_def)+
+
+definition less_sum :: \<open>'a + 'b \<Rightarrow> 'a + 'b \<Rightarrow> bool\<close> where
+  \<open>less_sum a b \<equiv>
+    (\<exists>x y. a = Inl x \<and> b = Inl y \<and> x < y) \<or>
+    (\<exists>x y. a = Inr x \<and> b = Inr y \<and> x < y)\<close>
+
+lemma less_sum_simps[simp]:
+  \<open>\<And>x y. Inl x < Inl y \<longleftrightarrow> x < y\<close>
+  \<open>\<And>x y. Inr x < Inr y \<longleftrightarrow> x < y\<close>
+  \<open>\<And>x y. Inl x < Inr y \<longleftrightarrow> False\<close>
+  \<open>\<And>x y. Inr x < Inl y \<longleftrightarrow> False\<close>
+  by (simp add: less_sum_def less_eq_sum_def)+
+
+instance
+  apply standard
+     apply (case_tac x; case_tac y; simp add: less_le_not_le)
+    apply (case_tac x; simp)
+   apply (case_tac x; case_tac y; case_tac z; simp)
+  apply (case_tac x; case_tac y; simp)
+  done
+
+end
 
 subsection \<open> perm_alg \<close>
 
@@ -272,33 +269,52 @@ lemma plus_sum_simps[simp]:
   \<open>\<And>x y. Inr x + Inr y = Inr (x + y)\<close>
   by (simp add: plus_sum_def)+
 
-definition less_sum :: \<open>'a + 'b \<Rightarrow> 'a + 'b \<Rightarrow> bool\<close> where
-  \<open>less_sum a b \<equiv> (a \<noteq> b \<and> (\<exists>c. a ## c \<and> b = a + c))\<close>
-
-definition less_eq_sum :: \<open>'a + 'b \<Rightarrow> 'a + 'b \<Rightarrow> bool\<close> where
-  \<open>less_eq_sum a b \<equiv> (a = b \<or> (\<exists>c. a ## c \<and> b = a + c))\<close>
-
 instance
   apply standard
-          apply (simp add: disjoint_sum_def)
-          apply (elim disjE; force simp add: partial_add_assoc)
-         apply (simp add: disjoint_sum_def)
-         apply (elim disjE; force dest: partial_add_commute)
         apply (simp add: disjoint_sum_def)
-        apply (elim disjE exE conjE; force dest: disjoint_sym)
+        apply (elim disjE; force simp add: partial_add_assoc)
        apply (simp add: disjoint_sum_def)
-       apply (elim disjE exE conjE; force dest: disjoint_add_rightL)
+       apply (elim disjE; force dest: partial_add_commute)
       apply (simp add: disjoint_sum_def)
-      apply (elim disjE exE conjE; force dest: disjoint_add_right_commute)
+      apply (elim disjE exE conjE; force dest: disjoint_sym)
      apply (simp add: disjoint_sum_def)
-     apply (elim disjE exE conjE; force dest: dup_sub_closure)
+     apply (elim disjE exE conjE; force dest: disjoint_add_rightL)
     apply (simp add: disjoint_sum_def)
-    apply (elim disjE exE conjE; force dest: positivity)
-   apply (simp add: less_sum_def)
-  apply (simp add: less_eq_sum_def)
+    apply (elim disjE exE conjE; force dest: disjoint_add_right_commute)
+   apply (simp add: disjoint_sum_def)
+   apply (elim disjE exE conjE; force dest: positivity)
+  apply (simp add: disjoint_sum_def)
+  apply (elim disjE exE conjE; force dest: dup_sub_closure)
   done
 
 end
+
+lemma part_of_sum_simps[simp]:
+  \<open>\<And>x y. Inl x \<lesssim> Inl y \<longleftrightarrow> x \<lesssim> y\<close>
+  \<open>\<And>x y. Inr x \<lesssim> Inr y \<longleftrightarrow> x \<lesssim> y\<close>
+  \<open>\<And>x y. Inl x \<lesssim> Inr y \<longleftrightarrow> False\<close>
+  \<open>\<And>x y. Inr x \<lesssim> Inl y \<longleftrightarrow> False\<close>
+     apply (simp add: part_of_def disjoint_sum_def plus_sum_def split: sum.splits)
+     apply (metis Inl_inject obj_sumE sum.distinct(1))
+    apply (simp add: part_of_def disjoint_sum_def plus_sum_def split: sum.splits)
+    apply (metis Inr_inject obj_sumE sum.distinct(1))
+   apply (simp add: part_of_def disjoint_sum_def plus_sum_def split: sum.splits)
+  apply (simp add: part_of_def disjoint_sum_def plus_sum_def split: sum.splits)
+  done
+
+lemma less_eq_sepadd_sum_simps[simp]:
+  \<open>\<And>x y. Inl x \<preceq> Inl y \<longleftrightarrow> x \<preceq> y\<close>
+  \<open>\<And>x y. Inr x \<preceq> Inr y \<longleftrightarrow> x \<preceq> y\<close>
+  \<open>\<And>x y. Inl x \<preceq> Inr y \<longleftrightarrow> False\<close>
+  \<open>\<And>x y. Inr x \<preceq> Inl y \<longleftrightarrow> False\<close>
+  by (simp add: less_eq_sepadd_def)+
+
+lemma less_sepadd_sum_simps[simp]:
+  \<open>\<And>x y. Inl x \<prec> Inl y \<longleftrightarrow> x \<prec> y\<close>
+  \<open>\<And>x y. Inr x \<prec> Inr y \<longleftrightarrow> x \<prec> y\<close>
+  \<open>\<And>x y. Inl x \<prec> Inr y \<longleftrightarrow> False\<close>
+  \<open>\<And>x y. Inr x \<prec> Inl y \<longleftrightarrow> False\<close>
+  by (simp add: less_sepadd_def)+
 
 subsection \<open> mu_sep_alg \<close>
 
@@ -315,8 +331,9 @@ lemmas unitof_simps[simp] =
 
 instance
   apply standard
-   apply (case_tac a; simp)
-  apply (case_tac a; case_tac b; simp)
+    apply (case_tac a; simp)
+   apply (case_tac a; case_tac b; simp)
+  apply (fastforce simp add: less_eq_sum_def le_iff_sepadd disjoint_sum_def)
   done
 
 end
@@ -374,52 +391,38 @@ begin
 
 definition less_eq_option :: \<open>'a option \<Rightarrow> 'a option \<Rightarrow> bool\<close> where
   \<open>less_eq_option a b \<equiv>
-    case a of None \<Rightarrow> True | Some x \<Rightarrow> (case b of None \<Rightarrow> False | Some y \<Rightarrow> x \<le> y)\<close>
+    case a of None \<Rightarrow> True | Some x \<Rightarrow>
+      (case b of None \<Rightarrow> False | Some y \<Rightarrow> x \<preceq> y)\<close>
 
 lemma less_eq_option_simps[simp]:
   \<open>None \<le> a\<close>
   \<open>Some x \<le> None \<longleftrightarrow> False\<close>
-  \<open>Some x \<le> Some y \<longleftrightarrow> x \<le> y\<close>
+  \<open>Some x \<le> Some y \<longleftrightarrow> x \<preceq> y\<close>
   by (simp add: less_eq_option_def)+
 
 lemma less_eq_option_def2:
-  \<open>a \<le> b \<longleftrightarrow> a = None \<or> b \<noteq> None \<and> the a \<le> the b\<close>
+  \<open>a \<le> b \<longleftrightarrow> a = None \<or> (b \<noteq> None \<and> the a \<preceq> the b)\<close>
   by (cases a; cases b; simp)
-
 
 definition less_option :: \<open>'a option \<Rightarrow> 'a option \<Rightarrow> bool\<close> where
   \<open>less_option a b \<equiv>
-    case a of None \<Rightarrow> b \<noteq> None | Some x \<Rightarrow> (case b of None \<Rightarrow> False | Some y \<Rightarrow> x < y)\<close>
+    case a of None \<Rightarrow> b \<noteq> None | Some x \<Rightarrow>
+      (case b of None \<Rightarrow> False | Some y \<Rightarrow> x \<prec> y)\<close>
 
 lemma less_option_simps[simp]:
-  \<open>None < None \<longleftrightarrow> False\<close>
   \<open>None < Some x\<close>
-  \<open>Some x < None \<longleftrightarrow> False\<close>
-  \<open>Some x < Some y \<longleftrightarrow> x < y\<close>
-  by (simp add: less_option_def)+
+  \<open>a < None \<longleftrightarrow> False\<close>
+  \<open>Some x < Some y \<longleftrightarrow> x \<prec> y\<close>
+  by (simp add: less_option_def split: option.splits)+
 
 lemma less_option_def2:
-  \<open>a < b \<longleftrightarrow> b \<noteq> None \<and> (a = None \<or> the a < the b)\<close>
+  \<open>a < b \<longleftrightarrow> b \<noteq> None \<and> (a = None \<or> the a \<prec> the b)\<close>
   by (cases a; cases b; simp)
-
-definition plus_option :: \<open>'a option \<Rightarrow> 'a option \<Rightarrow> 'a option\<close> where
-  \<open>plus_option a b \<equiv>
-    case a of None \<Rightarrow> b | Some x \<Rightarrow> (case b of None \<Rightarrow> a | Some y \<Rightarrow> Some (x + y))\<close>
-
-lemma plus_option_simps[simp]:
-  \<open>Some x + Some y = Some (x + y)\<close>
-  \<open>None + b = b\<close>
-  \<open>a + None = a\<close>
-  by (simp add: plus_option_def split: option.splits)+
-
-lemma plus_None_iff[simp]:
-  \<open>a + b = None \<longleftrightarrow> a = None \<and> b = None\<close>
-  by (simp add: plus_option_def split: option.splits)
-
 
 definition disjoint_option :: \<open>'a option \<Rightarrow> 'a option \<Rightarrow> bool\<close> where
   \<open>disjoint_option a b \<equiv>
-    case a of None \<Rightarrow> True | Some x \<Rightarrow> (case b of None \<Rightarrow> True | Some y \<Rightarrow> x ## y)\<close>
+    case a of None \<Rightarrow> True | Some x \<Rightarrow>
+      (case b of None \<Rightarrow> True | Some y \<Rightarrow> x ## y)\<close>
 
 lemma disjoint_option_simps[simp]:
   \<open>Some x ## Some y \<longleftrightarrow> x ## y\<close>
@@ -427,10 +430,31 @@ lemma disjoint_option_simps[simp]:
   \<open>a ## None\<close>
   by (simp add: disjoint_option_def split: option.splits)+
 
+lemma disjoint_option_iff:
+  \<open>Some x ## b \<longleftrightarrow> b = None \<or> (\<exists>y. b = Some y \<and> x ## y)\<close>
+  \<open>a ## Some y \<longleftrightarrow> a = None \<or> (\<exists>x. a = Some x \<and> x ## y)\<close>
+  by (simp add: disjoint_option_def split: option.splits)+
+
 lemma disjoint_option_def2:
   \<open>a ## b \<longleftrightarrow> a = None \<or> b = None \<or> the a ## the b\<close>
   by (cases a; cases b; simp)
 
+definition plus_option :: \<open>'a option \<Rightarrow> 'a option \<Rightarrow> 'a option\<close> where
+  \<open>plus_option a b \<equiv>
+    case a of None \<Rightarrow> b | Some x \<Rightarrow>
+      (case b of None \<Rightarrow> a | Some y \<Rightarrow> Some (x + y))\<close>
+
+lemma plus_option_simps[simp]:
+  \<open>Some x + Some y = Some (x + y)\<close>
+  \<open>None + b = b\<close>
+  \<open>a + None = a\<close>
+  by (simp add: plus_option_def split: option.splits)+
+
+lemma plus_option_iff:
+  \<open>Some x + b = Some z \<longleftrightarrow> (b = None \<and> x = z \<or> (\<exists>y. b = Some y \<and> z = x + y))\<close>
+  \<open>a + Some y = Some z \<longleftrightarrow> (a = None \<and> y = z \<or> (\<exists>x. a = Some x \<and> z = x + y))\<close>
+  \<open>a + b = None \<longleftrightarrow> a = None \<and> b = None\<close>
+  by (force simp add: disjoint_option_def plus_option_def split: option.splits)+
 
 definition unitof_option :: \<open>'a option \<Rightarrow> 'a option\<close> where
   \<open>unitof_option x \<equiv> None\<close>
@@ -446,35 +470,47 @@ declare bot_option_def[simp]
 
 instance
   apply standard
-              apply (force simp add: disjoint_option_def plus_option_def partial_add_assoc
-      split: option.splits)
-             apply (force simp add: disjoint_option_def plus_option_def dest: partial_add_commute
-      split: option.splits)
-            apply (metis disjoint_option_def disjoint_sym option.case_eq_if)
-           apply (force simp add: disjoint_option_def dest: disjoint_add_rightL split: option.splits)
-          apply (simp add: disjoint_option_def split: option.splits,
-      metis disjoint_sym, metis disjoint_add_right_commute)
-         apply (simp add: disjoint_option_def plus_option_def split: option.splits,
+                 apply (metis less_eq_option_def2 less_option_def2 resource_order.strict_iff_not)
+                apply (force simp add: less_eq_option_def2)
+               apply (force simp add: less_eq_option_def2)
+              apply (force simp add: less_eq_option_def2)
+             apply (simp add: disjoint_option_def plus_option_def partial_add_assoc
+      split: option.splits; fail)
+            apply (simp add: disjoint_option_def plus_option_def split: option.splits,
+      metis partial_add_commute; fail)
+           apply (metis disjoint_option_def2 disjoint_sym)
+          apply (simp add: less_option_def disjoint_option_def split: option.splits,
+      metis disjoint_add_rightL; fail)
+         apply (simp add: less_option_def disjoint_option_def disjoint_sym_iff
+      disjoint_add_right_commute split: option.splits; fail)
+        apply (simp add: less_option_def disjoint_option_def positivity split: option.splits; fail)
+       apply (simp add: less_option_def disjoint_option_def split: option.splits,
       metis dup_sub_closure)
-        apply (force simp add: disjoint_option_def plus_option_def split: option.splits
-      dest: positivity)
-       apply (simp add: less_option_def disjoint_option_def less_iff_sepadd split: option.splits,
-      blast)
-      apply (clarsimp simp add: less_eq_option_def less_eq_sepadd_def split: option.splits)
-      apply (intro conjI allI impI iffI) (* +2 *)
-        apply (metis not_eq_None plus_None_iff)
-       apply (metis disjoint_option_simps(1) plus_option_simps(1))
-      apply (metis disjoint_option_def2 plus_option_simps(1,3)
-      option.distinct(1) option.exhaust_sel option.sel)
-     apply force+
+      apply (simp; fail)
+     apply (simp; fail)
+    apply (force simp add: less_eq_option_def fun_eq_iff disjoint_option_def less_eq_sepadd_def'
+      split: option.splits)
+   apply (force simp add: less_eq_option_def)+
   done
 
 end
 
+lemma less_eq_sepadd_option_simps[simp]:
+  \<open>None \<preceq> a\<close>
+  \<open>Some x \<preceq> None \<longleftrightarrow> False\<close>
+  \<open>Some x \<preceq> Some y \<longleftrightarrow> x \<preceq> y\<close>
+  by (force simp add: less_eq_sepadd_def' disjoint_option_iff)+
+
+lemma less_sepadd_option_simps[simp]:
+  \<open>a \<prec> None \<longleftrightarrow> False\<close>
+  \<open>None \<prec> Some x\<close>
+  \<open>Some x \<prec> Some y \<longleftrightarrow> x \<prec> y\<close>
+  by (simp add: less_sepadd_def' disjoint_option_iff plus_option_iff; blast?; force)+
+
 
 section \<open> functions \<close>
-                                         
-instantiation "fun" :: (type, multiunit_sep_alg) multiunit_sep_alg
+
+instantiation "fun" :: (type, perm_alg) perm_alg
 begin
 
 definition disjoint_fun :: \<open>('a \<Rightarrow> 'b) \<Rightarrow> ('a \<Rightarrow> 'b) \<Rightarrow> bool\<close> where
@@ -491,38 +527,32 @@ lemma plus_fun_apply[simp]:
   \<open>(f + g) x = (f x + g x)\<close>
   by (simp add: plus_fun_def)
 
+instance
+  apply standard
+        apply (simp add: disjoint_fun_def plus_fun_def fun_eq_iff, metis partial_add_assoc)
+       apply (simp add: disjoint_fun_def plus_fun_def fun_eq_iff, metis partial_add_commute)
+      apply (simp add: disjoint_fun_def, metis disjoint_sym)
+     apply (simp add: disjoint_fun_def plus_fun_def, metis disjoint_add_rightL)
+    apply (simp add: disjoint_fun_def plus_fun_def, metis disjoint_add_right_commute)
+   apply (simp add: disjoint_fun_def plus_fun_def fun_eq_iff, metis positivity)
+  apply (simp add: disjoint_fun_def plus_fun_def fun_eq_iff, metis dup_sub_closure)
+  done
+
+end
+
+instantiation "fun" :: (type, multiunit_sep_alg) multiunit_sep_alg
+begin
+ 
 definition unitof_fun :: \<open>('a \<Rightarrow> 'b) \<Rightarrow> ('a \<Rightarrow> 'b)\<close> where
   \<open>unitof_fun f \<equiv> \<lambda>x. unitof (f x)\<close>
 declare unitof_fun_def[simp]
 
 instance
-  apply standard
-           apply (simp add: disjoint_fun_def plus_fun_def fun_eq_iff, metis partial_add_assoc)
-          apply (simp add: disjoint_fun_def plus_fun_def fun_eq_iff, metis partial_add_commute)
-         apply (simp add: disjoint_fun_def, metis disjoint_sym)
-        apply (simp add: disjoint_fun_def plus_fun_def, metis disjoint_add_rightL)
-       apply (simp add: disjoint_fun_def plus_fun_def, metis disjoint_add_right_commute)
-      apply (simp add: disjoint_fun_def plus_fun_def fun_eq_iff, metis dup_sub_closure)
-     apply (simp add: disjoint_fun_def plus_fun_def fun_eq_iff, metis positivity)
-  subgoal
-    apply (simp add: less_fun_def plus_fun_def le_fun_def disjoint_fun_def le_iff_sepadd)
-    apply (intro iffI conjI)
-       apply blast
-      apply metis (* n.b. uses choice *)
-     apply blast
-    apply (clarsimp, metis less_le less_le_not_le partial_le_plus)
-    done
-  subgoal
-    apply (intro iffI disjCI2)
-     apply (clarsimp simp add: le_fun_def fun_eq_iff disjoint_fun_def le_iff_sepadd)
-     apply metis (* n.b. uses choice *)
-    apply (force simp add: le_fun_def less_eq_sepadd_def disjoint_fun_def)
-    done
-   apply force
-  apply (simp add: disjoint_fun_def plus_fun_def; fail)
-  done
+  by standard
+    (simp add: disjoint_fun_def plus_fun_def le_fun_def fun_eq_iff le_iff_sepadd; metis)+
 
 end
+
 
 instantiation "fun" :: (type, sep_alg) sep_alg
 begin
@@ -550,20 +580,24 @@ typedef 'a discr = \<open>UNIV :: 'a set\<close>
 lemmas Discr_inverse_iff[simp] = Discr_inverse[simplified]
 lemmas Discr_inject_iff[simp] = Discr_inject[simplified]
 
-instantiation discr :: (type) perm_alg
+instantiation discr :: (type) order
 begin
 
 definition less_eq_discr :: \<open>'a discr \<Rightarrow> 'a discr \<Rightarrow> bool\<close> where
   \<open>less_eq_discr a b \<equiv> the_discr a = the_discr b\<close>
 declare less_eq_discr_def[simp]
 
-lemma less_eq_discr_iff[simp]:
-  \<open>Discr x \<le> Discr y \<longleftrightarrow> x = y\<close>
-  by simp
-
 definition less_discr :: \<open>'a discr \<Rightarrow> 'a discr \<Rightarrow> bool\<close> where
   \<open>less_discr a b \<equiv> False\<close>
 declare less_discr_def[simp]
+
+instance
+  by standard (simp add: the_discr_inject)+
+
+end
+
+instantiation discr :: (type) perm_alg
+begin
 
 definition plus_discr :: \<open>'a discr \<Rightarrow> 'a discr \<Rightarrow> 'a discr\<close> where
   \<open>plus_discr a b \<equiv> a\<close>
@@ -578,6 +612,10 @@ instance
 
 end
 
+lemma less_eq_discr_iff[simp]:
+  \<open>Discr x \<preceq> Discr y \<longleftrightarrow> x = y\<close>
+  by (simp add: less_eq_sepadd_def')
+
 instantiation discr :: (type) multiunit_sep_alg
 begin
 
@@ -586,7 +624,8 @@ definition unitof_discr :: \<open>'a discr \<Rightarrow> 'a discr\<close> where
 declare unitof_discr_def[simp]
 
 instance
-  by standard simp+
+  by standard
+    (force simp add: the_discr_inject)+
 
 end
 
@@ -600,7 +639,7 @@ setup_lifting type_definition_fperm
 
 lemmas FPerm_inverse_iff[simp] = FPerm_inverse[simplified]
 lemmas FPerm_inject_iff[simp] = FPerm_inject[simplified]
-lemmas fperm_eq_iff_fperm_val_eq = fperm_val_inject[symmetric]
+lemmas fperm_val_inject_rev = fperm_val_inject[symmetric]
 
 lemma FPerm_eq_iff:
   \<open>0 < a \<Longrightarrow> a \<le> 1 \<Longrightarrow> FPerm a = pa \<longleftrightarrow> fperm_val pa = a\<close>
@@ -637,11 +676,8 @@ lemma fperm_val_add_gt0:
   \<open>0 < fperm_val x + fperm_val y\<close>
   by (simp add: add_pos_pos fperm_val_conditions(1))
 
-instantiation fperm :: (linordered_semidom) perm_alg
+instantiation fperm :: (linordered_semidom) order
 begin
-
-definition disjoint_fperm :: \<open>'a fperm \<Rightarrow> 'a fperm \<Rightarrow> bool\<close> where
-  \<open>disjoint_fperm a b \<equiv> fperm_val a + fperm_val b \<le> 1\<close>
 
 definition less_eq_fperm :: \<open>'a fperm \<Rightarrow> 'a fperm \<Rightarrow> bool\<close> where
   \<open>less_eq_fperm a b \<equiv> fperm_val a \<le> fperm_val b\<close>
@@ -657,6 +693,20 @@ lemma less_fperm_iff[simp]:
   \<open>0 < x \<Longrightarrow> x \<le> 1 \<Longrightarrow> 0 < y \<Longrightarrow> y \<le> 1 \<Longrightarrow> FPerm x < FPerm y \<longleftrightarrow> x < y\<close>
   by (simp add: less_fperm_def)
 
+instance
+  apply standard
+     apply (force simp add: less_eq_fperm_def less_fperm_def)+
+  apply (fastforce simp add: less_eq_fperm_def fperm_val_inject)
+  done
+
+end
+
+instantiation fperm :: (linordered_semidom) perm_alg
+begin
+
+definition disjoint_fperm :: \<open>'a fperm \<Rightarrow> 'a fperm \<Rightarrow> bool\<close> where
+  \<open>disjoint_fperm a b \<equiv> fperm_val a + fperm_val b \<le> 1\<close>
+
 lift_definition plus_fperm :: \<open>'a fperm \<Rightarrow> 'a fperm \<Rightarrow> 'a fperm\<close> is \<open>\<lambda>x y. min 1 (x + y)\<close>
   by (simp add: pos_add_strict)
 
@@ -670,41 +720,39 @@ lemma plus_fperm_eq:
 
 instance
   apply standard
-          apply (force simp add: fperm_eq_iff_fperm_val_eq add.assoc disjoint_fperm_def plus_fperm.rep_eq)
-         apply (force simp add: fperm_eq_iff_fperm_val_eq add.commute disjoint_fperm_def plus_fperm.rep_eq)
+          apply (force simp add: fperm_val_inject_rev add.assoc disjoint_fperm_def plus_fperm.rep_eq)
+         apply (force simp add: fperm_val_inject_rev add.commute disjoint_fperm_def plus_fperm.rep_eq)
         apply (simp add: disjoint_fperm_def add.commute; fail)
        apply (simp add: disjoint_fperm_def plus_fperm.rep_eq add.assoc[symmetric])
        apply (metis fperm_val_conditions(1) ge0_plus_le_then_left_le add_pos_pos order_less_imp_le)
       apply (simp add: disjoint_fperm_def plus_fperm.rep_eq add.left_commute min.coboundedI2
       min_add_distrib_right; fail)
+   apply (metis disjoint_fperm_def plus_fperm.rep_eq fperm_val_conditions(1) less_add_same_cancel1
+      min.absorb2 not_less_iff_gr_or_eq)
      apply (simp add: disjoint_fperm_def plus_fperm_eq FPerm_eq_iff fperm_val_conditions)
-     apply (metis FPerm_inverse_iff add_cancel_right_right fperm_val_add_gt0 fperm_val_never_zero)
-    apply (simp add: disjoint_fperm_def FPerm_eq_iff fperm_val_conditions)
-    apply (metis fperm_val_conditions(1) less_add_same_cancel1 min.absorb_iff2 not_less_iff_gr_or_eq
-      plus_fperm.rep_eq)
-    (* subgoal *)
-   apply (rule iffI)
-    apply (clarsimp simp add: less_fperm_def disjoint_fperm_def plus_fperm_eq)
-    apply (rule conjI, blast)
-    apply (rule_tac x=\<open>FPerm (fperm_val b - fperm_val a)\<close> in exI)
-    apply (simp add: fperm_val_less_then_fperm_conditions_sub fperm_val_conditions(2)
-      fperm_val_inverse; fail)
-   apply (clarsimp simp add: less_fperm_def disjoint_fperm_def plus_fperm_eq
-      fperm_val_add_gt0 fperm_val_conditions; fail)
-    (* done *)
-  (* subgoal *)
-   apply (intro iffI disjCI2)
-   apply (clarsimp simp add: less_fperm_def disjoint_fperm_def plus_fperm_eq)
-   apply (rule_tac x=\<open>FPerm (fperm_val b - fperm_val a)\<close> in exI)
-   apply (metis FPerm_inverse_iff fperm_val_conditions(2) fperm_val_inverse
-      fperm_val_less_then_fperm_conditions_sub2(1) fperm_val_less_then_fperm_conditions_sub2(2)
-      le_add_diff_inverse less_eq_fperm_def min.absorb_iff2)
-  apply (metis disjoint_fperm_def plus_fperm.rep_eq fperm_val_conditions(1) less_add_same_cancel1
-      less_eq_fperm_def min.absorb2 order_eq_iff order_less_imp_le)
-    (* done *)
+  apply (metis FPerm_inverse_iff add_cancel_right_right fperm_val_add_gt0 fperm_val_never_zero)
+  done
+
+
+lemma fprem_leq_is_resource_leq:
+  \<open>((\<le>) :: 'a fperm \<Rightarrow> 'a fperm \<Rightarrow> bool) = (\<preceq>)\<close>
+  apply (clarsimp simp add: fun_eq_iff less_eq_fperm_def less_eq_sepadd_def' plus_fperm_def
+      disjoint_fperm_def fperm_val_add_gt0 fperm_val_inject_rev)
+  apply (metis FPerm_inverse_iff order.refl dual_order.strict_iff_order fperm_val_conditions
+      fperm_val_less_then_fperm_conditions_sub2(2) le_add_diff_inverse less_add_same_cancel1
+      min.absorb2)
+  done
+
+lemma fperm_less_is_resource_less:
+  \<open>((<) :: 'a fperm \<Rightarrow> 'a fperm \<Rightarrow> bool) = (\<prec>)\<close>
+    apply (clarsimp simp add: fun_eq_iff less_fperm_def less_sepadd_def' plus_fperm_def
+      disjoint_fperm_def fperm_val_add_gt0 fperm_val_inject_rev)
+  apply (metis FPerm_inverse_iff order.strict_iff_order fperm_val_conditions less_add_same_cancel1
+      fperm_val_less_then_fperm_conditions_sub(2) le_add_diff_inverse min.absorb2)
   done
 
 end
+
 
 
 section \<open> mfault \<close>

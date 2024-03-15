@@ -80,8 +80,8 @@ lemma sp_rely_sepconj_conj_semidistrib_mono:
 lemmas sp_rely_sepconj_conj_semidistrib =
   sp_rely_sepconj_conj_semidistrib_mono[OF order.refl order.refl]
 
-lemma wlp_rely_of_pred_Times_eq[simp]:
-  \<open>wlp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) (p \<times>\<^sub>P q) = (p \<times>\<^sub>P wlp r\<^sup>*\<^sup>* q)\<close>
+lemma wssa_of_pred_Times_eq[simp]:
+  \<open>wssa r (p \<times>\<^sub>P q) = (p \<times>\<^sub>P wlp r\<^sup>*\<^sup>* q)\<close>
   by (force simp add: rel_Times_def pred_Times_def wlp_def split: prod.splits)
 
 lemma sp_rely_of_pred_Times_eq[simp]:
@@ -141,24 +141,24 @@ lemma framed_subresource_rel_sym:
   using framed_subresource_rel_def by auto
 
 lemma framed_subresource_le_firstD[dest]:
-  \<open>framed_subresource_rel f ha ha' h h' \<Longrightarrow> ha \<le> h\<close>
-  using framed_subresource_rel_def by auto
+  \<open>framed_subresource_rel f ha ha' h h' \<Longrightarrow> ha \<preceq> h\<close>
+  using framed_subresource_rel_def partial_le_plus by force
 
 lemma framed_subresource_le_secondD[dest]:
-  \<open>framed_subresource_rel f ha ha' h h' \<Longrightarrow> ha' \<le> h'\<close>
-  using framed_subresource_rel_def by auto
+  \<open>framed_subresource_rel f ha ha' h h' \<Longrightarrow> ha' \<preceq> h'\<close>
+  using framed_subresource_rel_def partial_le_plus by auto
 
 lemma wframed_subresource_le_firstD[dest]:
-  \<open>weak_framed_subresource_rel f ha ha' h h' \<Longrightarrow> ha \<le> h\<close>
+  \<open>weak_framed_subresource_rel f ha ha' h h' \<Longrightarrow> ha \<preceq> h\<close>
   using weak_framed_subresource_rel_def by auto
 
 lemma wframed_subresource_le_secondD[dest]:
-  \<open>weak_framed_subresource_rel f ha ha' h h' \<Longrightarrow> ha' \<le> h'\<close>
+  \<open>weak_framed_subresource_rel f ha ha' h h' \<Longrightarrow> ha' \<preceq> h'\<close>
   using weak_framed_subresource_rel_def by auto
 
 lemma framed_subresource_rel_top_same_sub_iff[simp]:
   \<open>framed_subresource_rel f a a b b' \<longleftrightarrow> b = b' \<and> (\<exists>xf. a ## xf \<and> b = a + xf \<and> f xf)\<close>
-  by (force simp add: framed_subresource_rel_def le_iff_sepadd_weak)
+  by (force simp add: framed_subresource_rel_def)
 
 definition \<open>framecl r \<equiv> (\<lambda>a b. (\<exists>x y. r x y \<and> framed_subresource_rel \<top> x y a b))\<close>
 

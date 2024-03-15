@@ -34,7 +34,7 @@ class disjoint =
 
 subsection \<open> Permission Algebras \<close>
 
-class perm_alg = disjoint + plus + ord +
+class perm_alg = disjoint + plus +
   (* ordered partial commutative monoid *)
   assumes partial_add_assoc: \<open>a ## b \<Longrightarrow> b ## c \<Longrightarrow> a ## c \<Longrightarrow> (a + b) + c = a + (b + c)\<close>
   assumes partial_add_commute: \<open>a ## b \<Longrightarrow> a + b = b + a\<close>
@@ -42,11 +42,9 @@ class perm_alg = disjoint + plus + ord +
   assumes disjoint_sym: \<open>a ## b \<Longrightarrow> b ## a\<close>
   assumes disjoint_add_rightL: \<open>b ## c \<Longrightarrow> a ## b + c \<Longrightarrow> a ## b\<close>
   assumes disjoint_add_right_commute: \<open>b ## c \<Longrightarrow> a ## b + c \<Longrightarrow> b ## a + c\<close>
-  assumes dup_sub_closure: \<open>a ## b \<Longrightarrow> a + b = c \<Longrightarrow> c ## c \<Longrightarrow> c + c = c \<Longrightarrow> a + a = a\<close>
   assumes positivity:
     \<open>a ## c1 \<Longrightarrow> a + c1 = b \<Longrightarrow> b ## c2 \<Longrightarrow> b + c2 = a \<Longrightarrow> a = b\<close>
-  assumes less_sepadd_def: \<open>a < b \<longleftrightarrow> a \<noteq> b \<and> (\<exists>c. a ## c \<and> b = a + c)\<close>
-  assumes less_eq_sepadd_def: \<open>a \<le> b \<longleftrightarrow> a = b \<or> (\<exists>c. a ## c \<and> b = a + c)\<close>
+  assumes dup_sub_closure: \<open>a ## b \<Longrightarrow> a + b = c \<Longrightarrow> c ## c \<Longrightarrow> c + c = c \<Longrightarrow> a + a = a\<close>
 begin
 
 lemma trans_helper:
@@ -54,44 +52,8 @@ lemma trans_helper:
   by (metis disjoint_add_rightL disjoint_add_right_commute disjoint_sym partial_add_assoc
       partial_add_commute)
 
-subclass order
-  apply standard
-     apply (metis less_eq_sepadd_def less_sepadd_def positivity)
-    apply (metis less_eq_sepadd_def)
-   apply (metis less_eq_sepadd_def trans_helper)
-  apply (metis less_eq_sepadd_def positivity)
-  done
-
-lemmas less_iff_sepadd = less_sepadd_def
-lemmas le_iff_sepadd_weak = less_eq_sepadd_def
-
 lemma disjoint_sym_iff: \<open>a ## b \<longleftrightarrow> b ## a\<close>
   using disjoint_sym by blast
-
-lemma partial_le_plus[simp]: \<open>a ## b \<Longrightarrow> a \<le> a + b\<close>
-  by (metis less_iff_sepadd nless_le order.refl)
-
-lemma partial_le_plus2[simp]: \<open>a ## b \<Longrightarrow> b \<le> a + b\<close>
-  by (metis partial_le_plus disjoint_sym partial_add_commute)
-
-lemma partial_le_part_left: \<open>a ## b \<Longrightarrow> a + b \<le> c \<Longrightarrow> a \<le> c\<close>
-  using order.trans partial_le_plus by blast
-
-lemma partial_le_part_right: \<open>a ## b \<Longrightarrow> a + b \<le> c \<Longrightarrow> b \<le> c\<close>
-  using order.trans partial_le_plus2 by blast
-
-(* TODO: think about decreasing and increasing elements from
-    'Bringing order to the separation logic Jungle'.
-  All our elements are increasing, I think, because of the above two rules.
-*)
-
-lemma common_subresource_selfsep:
-  \<open>a ## b \<Longrightarrow> ab \<le> a \<Longrightarrow> ab \<le> b \<Longrightarrow> ab ## ab\<close>
-  by (metis disjoint_add_rightL disjoint_sym order.order_iff_strict less_iff_sepadd)
-
-lemma selfdisjoint_over_selfdisjoint:
-  \<open>a ## a \<Longrightarrow> \<forall>x\<le>a. x ## x\<close>
-  using common_subresource_selfsep by blast
 
 lemma disjoint_add_rightR: \<open>b ## c \<Longrightarrow> a ## b + c \<Longrightarrow> a ## c\<close>
   by (metis disjoint_add_rightL disjoint_sym partial_add_commute)
@@ -152,14 +114,6 @@ lemma partial_add_right_commute:
   \<open>a ## b \<Longrightarrow> a ## c \<Longrightarrow> b ## c \<Longrightarrow> a + b + c = a + c + b\<close>
   by (simp add: disjoint_sym partial_add_assoc partial_add_commute)
 
-lemma disjoint_preservation:
-  \<open>a' \<le> a \<Longrightarrow> a ## b \<Longrightarrow> a' ## b\<close>
-  by (metis disjoint_add_leftL order.order_iff_strict less_iff_sepadd)
-
-lemma disjoint_preservation2:
-  \<open>b' \<le> b \<Longrightarrow> a ## b \<Longrightarrow> a ## b'\<close>
-  using disjoint_preservation disjoint_sym by blast
-
 lemma partial_add_assoc_commute_left:
   \<open>a ## b \<Longrightarrow> a ## c \<Longrightarrow> b ## c \<Longrightarrow> b + a + c = a + (b + c)\<close>
   by (metis partial_add_assoc partial_add_commute)
@@ -181,13 +135,107 @@ lemma partial_add_double_assoc:
   by (metis disjoint_add_rightR disjoint_add_rightL disjoint_add_right_commute partial_add_assoc
       partial_add_left_commute)
 
-lemma sepadd_left_mono:
-  \<open>a ## b \<Longrightarrow> a ## c \<Longrightarrow> b \<le> c \<Longrightarrow> a + b \<le> a + c\<close>
-  by (simp add: le_iff_sepadd_weak,
-      metis disjoint_add_rightR disjoint_add_swap_rl partial_add_assoc)
+subsection \<open> order \<close>
 
-lemma sepadd_right_mono: \<open>a ## c \<Longrightarrow> b ## c \<Longrightarrow> a \<le> b \<Longrightarrow> a + c \<le> b + c\<close>
+text \<open>
+  Resources give rise to a natural order, but it's not the same as standard
+  order implementations unless all elements have a unit.
+\<close>
+
+text \<open>
+  The 'part_of' relation is almost an order, except that it doesn't satisfy reflexivity.
+\<close>
+
+definition (in perm_alg) part_of :: \<open>'a \<Rightarrow> 'a \<Rightarrow> bool\<close> (infix \<open>\<lesssim>\<close> 50) where
+  \<open>a \<lesssim> b \<equiv> \<exists>c. a ## c \<and> a + c = b\<close>
+
+lemma part_of_trans[trans]:
+  \<open>a \<lesssim> b \<Longrightarrow> b \<lesssim> c \<Longrightarrow> a \<lesssim> c\<close>
+  by (fastforce dest: trans_helper simp add: part_of_def)
+
+text \<open> This lemma is just positivity stated another way. \<close>
+lemma part_of_antisym:
+  \<open>a \<lesssim> b \<Longrightarrow> b \<lesssim> a \<Longrightarrow> a = b\<close>
+  using part_of_def positivity by auto
+
+definition less_eq_sepadd :: \<open>'a \<Rightarrow> 'a \<Rightarrow> bool\<close> (infix \<open>\<preceq>\<close> 50) where
+  \<open>(\<preceq>) \<equiv> \<lambda>a b. a = b \<or> a \<lesssim> b\<close>
+
+lemmas less_eq_sepadd_def' = less_eq_sepadd_def[simplified part_of_def]
+
+definition less_sepadd :: \<open>'a \<Rightarrow> 'a \<Rightarrow> bool\<close> (infix \<open>\<prec>\<close> 50) where
+  \<open>(\<prec>) \<equiv> \<lambda>a b. a \<noteq> b \<and> a \<lesssim> b\<close>
+
+lemmas less_sepadd_def' = less_sepadd_def[simplified part_of_def]
+
+abbreviation (input) greater_eq_sepadd  (infix \<open>\<succeq>\<close> 50)
+  where \<open>(\<succeq>) \<equiv> \<lambda>x y. (\<preceq>) y x\<close>
+
+abbreviation (input) greater_sepadd (infix \<open>\<succ>\<close> 50)
+  where \<open>(\<succ>) \<equiv> \<lambda>x y. (\<prec>) y x\<close>
+
+sublocale resource_order: ordering \<open>(\<preceq>)\<close> \<open>(\<prec>)\<close>
+  apply standard
+     apply (metis less_eq_sepadd_def)
+    apply (force dest: part_of_trans simp add: less_eq_sepadd_def)
+   apply (metis less_eq_sepadd_def less_sepadd_def)
+  apply (metis less_eq_sepadd_def part_of_antisym)
+  done
+
+lemma nless_sepadd_le_sepadd: "\<not> x \<prec> y \<longleftrightarrow> \<not> x \<preceq> y \<or> x = y"
+  using less_sepadd_def resource_order.order_iff_strict
+  by auto
+
+local_setup \<open>
+  HOL_Order_Tac.declare_order {
+    ops = {eq = @{term \<open>(=) :: 'a \<Rightarrow> 'a \<Rightarrow> bool\<close>}, le = @{term \<open>(\<preceq>)\<close>}, lt = @{term \<open>(\<prec>)\<close>}},
+    thms = {trans = @{thm resource_order.trans}, refl = @{thm resource_order.refl},
+            eqD1 = @{thm eq_refl}, eqD2 = @{thm eq_refl[OF sym]},
+            antisym = @{thm resource_order.antisym}, contr = @{thm notE}},
+    conv_thms = {less_le = @{thm eq_reflection[OF resource_order.strict_iff_order]},
+                 nless_le = @{thm eq_reflection[OF nless_sepadd_le_sepadd]}}
+  }
+\<close>
+
+lemma le_res_less_le_not_le:
+  \<open>a \<prec> b \<longleftrightarrow> a \<lesssim> b \<and> \<not> b \<lesssim> a\<close>
+  by (metis part_of_def less_sepadd_def positivity)
+
+lemma partial_le_plus: \<open>a ## b \<Longrightarrow> a \<preceq> a + b\<close>
+  by (meson less_eq_sepadd_def part_of_def)
+
+lemma partial_le_plus2: \<open>a ## b \<Longrightarrow> b \<preceq> a + b\<close>
+  by (metis partial_le_plus disjoint_sym partial_add_commute)
+
+lemma partial_le_part_left: \<open>a ## b \<Longrightarrow> a + b \<preceq> c \<Longrightarrow> a \<preceq> c\<close>
+  using resource_order.trans partial_le_plus by blast
+
+lemma partial_le_part_right: \<open>a ## b \<Longrightarrow> a + b \<preceq> c \<Longrightarrow> b \<preceq> c\<close>
+  using resource_order.trans partial_le_plus2 by blast
+
+lemma common_subresource_selfsep:
+  \<open>a ## b \<Longrightarrow> ab \<preceq> a \<Longrightarrow> ab \<preceq> b \<Longrightarrow> ab ## ab\<close>
+  by (metis disjoint_add_rightL disjoint_sym less_eq_sepadd_def part_of_def)
+
+lemma selfdisjoint_over_selfdisjoint:
+  \<open>a ## a \<Longrightarrow> \<forall>x. x \<preceq> a \<longrightarrow> x ## x\<close>
+  using common_subresource_selfsep by blast
+
+lemma disjoint_preservation:
+  \<open>a' \<preceq> a \<Longrightarrow> a ## b \<Longrightarrow> a' ## b\<close>
+  by (metis disjoint_add_rightL disjoint_sym less_eq_sepadd_def part_of_def)
+
+lemma disjoint_preservation2:
+  \<open>b' \<preceq> b \<Longrightarrow> a ## b \<Longrightarrow> a ## b'\<close>
+  using disjoint_preservation disjoint_sym by blast
+
+lemma sepadd_left_mono:
+  \<open>a ## b \<Longrightarrow> a ## c \<Longrightarrow> b \<preceq> c \<Longrightarrow> a + b \<preceq> a + c\<close>
+  by (metis disjoint_add_swap_rl less_eq_sepadd_def part_of_def partial_add_assoc3)
+
+lemma sepadd_right_mono: \<open>a ## c \<Longrightarrow> b ## c \<Longrightarrow> a \<preceq> b \<Longrightarrow> a + c \<preceq> b + c\<close>
   by (metis disjoint_sym_iff partial_add_commute sepadd_left_mono)
+
 
 subsection \<open> sepadd_unit \<close>
 
@@ -195,27 +243,26 @@ definition \<open>sepadd_unit a \<equiv> a ## a \<and> (\<forall>b. a ## b \<lon
 
 abbreviation \<open>sepadd_units \<equiv> Collect sepadd_unit\<close>
 
-text \<open> sepadd_unit antimono \<close>
-
+text \<open> sepadd_unit is antimono; positivity said a different way \<close>
 lemma below_unit_impl_unit:
-  \<open>a \<le> b \<Longrightarrow> sepadd_unit b \<Longrightarrow> sepadd_unit a\<close>
-  unfolding sepadd_unit_def
-  by (metis disjoint_add_rightL order.antisym le_iff_sepadd_weak)
+  \<open>a \<preceq> b \<Longrightarrow> sepadd_unit b \<Longrightarrow> sepadd_unit a\<close>
+  unfolding sepadd_unit_def less_eq_sepadd_def part_of_def
+  by (metis disjoint_add_rightL positivity)
+
+lemma units_separate_to_units:
+  \<open>x ## y \<Longrightarrow> sepadd_unit (x + y) \<Longrightarrow> sepadd_unit x\<close>
+  using below_unit_impl_unit partial_le_plus by blast
 
 lemma le_unit_iff_eq:
-  \<open>sepadd_unit b \<Longrightarrow> a \<le> b \<longleftrightarrow> b = a\<close>
-  unfolding sepadd_unit_def
-  by (metis disjoint_add_rightL order.antisym le_iff_sepadd_weak)
+  \<open>sepadd_unit b \<Longrightarrow> a \<preceq> b \<longleftrightarrow> b = a\<close>
+  by (metis disjoint_preservation2 partial_le_plus resource_order.eq_iff sepadd_unit_def)
 
-lemma units_least: \<open>sepadd_unit x \<Longrightarrow> x ## y \<Longrightarrow> x \<le> y\<close>
-  using le_iff_sepadd_weak sepadd_unit_def by auto
+lemma units_least: \<open>sepadd_unit x \<Longrightarrow> x ## y \<Longrightarrow> x \<preceq> y\<close>
+  by (metis partial_le_plus sepadd_unit_def)
 
-lemma almost_units_are_nondisjoint_to_everything:
-  \<open>(\<forall>b. a ## b \<longrightarrow> a + b = b) \<Longrightarrow> \<not> a ## a \<Longrightarrow> \<not> a ## b\<close>
-  by (metis disjoint_add_leftL disjoint_sym)
-
-lemma units_separate_to_units: \<open>x ## y \<Longrightarrow> sepadd_unit (x + y) \<Longrightarrow> sepadd_unit x\<close>
-  using below_unit_impl_unit partial_le_plus by blast
+lemma almost_units_are_units:
+  \<open>(\<forall>b. a ## b \<longrightarrow> a + b = b) \<Longrightarrow> a ## b \<Longrightarrow> a ## a\<close>
+  by (metis disjoint_add_rightL)
 
 lemma sepadd_unit_idem_add[simp]: \<open>sepadd_unit u \<Longrightarrow> u + u = u\<close>
   using sepadd_unit_def by auto
@@ -253,30 +300,25 @@ lemma sepadd_unit_disjoint_trans:
   \<open>sepadd_unit a \<Longrightarrow> a ## b \<Longrightarrow> b ## c \<Longrightarrow> a ## c\<close>
   using disjoint_preservation units_least by blast
 
-lemma sometimes_unit_sub_closure:
-  \<open>a ## x \<Longrightarrow> a + x ## y \<Longrightarrow> x ## x \<Longrightarrow> y ## y \<Longrightarrow> a + (x + y) = a \<Longrightarrow> a + x = a\<close>
+lemma unit_sub_closure2:
+  \<open>a ## x \<Longrightarrow> a + x ## y \<Longrightarrow> y ## y \<Longrightarrow> a + (x + y) = a \<Longrightarrow> a + x = a\<close>
   by (simp add: positivity partial_add_assoc2)
+
 
 subsection \<open> zero_sepadd \<close>
 
 definition \<open>sepadd_zero a \<equiv> a ## a \<and> (\<forall>b. a ## b \<longrightarrow> a + b = a)\<close>
 
-text \<open> sepadd_zero antimono \<close>
+text \<open> sepadd_zero is antimono \<close>
 lemma above_zero_impl_zero:
-  \<open>a \<le> b \<Longrightarrow> sepadd_zero a \<Longrightarrow> sepadd_zero b\<close>
-  unfolding sepadd_zero_def
-  using le_iff_sepadd_weak by force
+  \<open>a \<preceq> b \<Longrightarrow> sepadd_zero a \<Longrightarrow> sepadd_zero b\<close>
+  by (metis less_eq_sepadd_def part_of_def sepadd_zero_def)
 
-(* obvious, but a nice dual to the unit case *)
 lemma zeros_add_to_zero: \<open>x ## y \<Longrightarrow> sepadd_zero x \<Longrightarrow> sepadd_zero (x + y)\<close>
   by (simp add: sepadd_zero_def)
 
 
 subsection \<open> duplicable \<close>
-
-text \<open>
-  Dup sub-closure ensures that all elements less than a duplicable element are also duplicable.
-\<close>
 
 lemma add_to_selfsep_preserves_selfsep: \<open>a ## b \<Longrightarrow> a + b = c \<Longrightarrow> c ## c \<Longrightarrow> a ## a\<close>
   by (meson disjoint_add_rightL disjoint_sym)
@@ -284,13 +326,13 @@ lemma add_to_selfsep_preserves_selfsep: \<open>a ## b \<Longrightarrow> a + b = 
 lemma add_to_selfsep_preserves_selfsepR: \<open>a ## b \<Longrightarrow> a + b = c \<Longrightarrow> c ## c \<Longrightarrow> b ## b\<close>
   using disjoint_sym partial_add_commute add_to_selfsep_preserves_selfsep by blast
 
-lemma positivityR: \<open>a ## b \<Longrightarrow> a + b = c \<Longrightarrow> c ## c \<Longrightarrow> c + c = c \<Longrightarrow> b + b = b\<close>
-  using disjoint_sym partial_add_commute dup_sub_closure by blast
-
 text \<open>
-  Duplicable elements. These are related to the logical content of a separation algebra (as
-  contrasted with the resource content.)
+  Duplicalbe sub-closure ensures that all elements less than a duplicable element
+  are also duplicable.
 \<close>
+
+lemma dupp_sub_closureR: \<open>a ## b \<Longrightarrow> a + b = c \<Longrightarrow> c ## c \<Longrightarrow> c + c = c \<Longrightarrow> b + b = b\<close>
+  using disjoint_sym partial_add_commute dup_sub_closure by blast
 
 definition \<open>sepadd_dup a \<equiv> a ## a \<and> a + a = a\<close>
 
@@ -300,51 +342,45 @@ lemma units_are_dup: \<open>sepadd_unit a \<Longrightarrow> sepadd_dup a\<close>
 lemma zeros_are_dup: \<open>sepadd_zero a \<Longrightarrow> sepadd_dup a\<close>
   by (simp add: sepadd_dup_def sepadd_zero_def)
 
+text \<open> another form of dup_sub_closure \<close>
 lemma sepadd_dup_antimono:
-  \<open>a \<le> b \<Longrightarrow> sepadd_dup b \<Longrightarrow> sepadd_dup a\<close>
+  \<open>a \<preceq> b \<Longrightarrow> sepadd_dup b \<Longrightarrow> sepadd_dup a\<close>
   apply (clarsimp simp add: sepadd_dup_def)
   apply (rule conjI)
    apply (force dest: common_subresource_selfsep)
-  apply (metis le_iff_sepadd_weak dup_sub_closure)
+  apply (metis less_eq_sepadd_def part_of_def dup_sub_closure)
   done
-
-text \<open> note we don't use dup_sub_closure in this lemma \<close>
-lemma sepadd_dup_antimono_is_dup_sub_closure:
-  \<open>(\<forall>a b. a \<le> b \<longrightarrow> sepadd_dup b \<longrightarrow> sepadd_dup a) \<longleftrightarrow>
-    (\<forall>a b c. a ## b \<longrightarrow> a + b = c \<longrightarrow> c ## c \<longrightarrow> c + c = c \<longrightarrow> a + a = a)\<close>
-  unfolding sepadd_dup_def le_iff_sepadd_weak
-  by (metis add_to_selfsep_preserves_selfsep)
 
 
 subsection \<open> core \<close>
 
 text \<open>
-  Here we introduce the notion of a core, the greatest duplicable element below an element.
+  Here we introduce the notion of a (duplicable) core, the greatest duplicable element
+  below an element.
 
   Iris uses this notion to algebraise shared invariant predicates. Note that our version is weaker
-  than Iris'; we do not have that \<open>has_core\<close> is monotone (or even antimonotone). This is because
-  there can be several non-comparible duplicable elements sitting below a or b.
-  When all non-empty subsets of duplicable elements have a lub which is itself duplicable,
-  \<open>has_core\<close> is monotone. (See glb/lub section.)
+  than Iris'; we do not have that \<open>has_core\<close> is monotone. This is because there can be
+  several non-comparible duplicable elements sitting below a or b.
+    When all non-empty subsets of duplicable elements have a lub which is itself duplicable,
+  \<open>has_core\<close> is monotone.
 
-  Note this is different to Pottier and Appel's versions of core, which are actually \<open>unitof\<close>
-  from a multiunit_sep_alg.
+  Note this is different to Pottier and Appel's versions of core, which are the (unital) core,
+  which is \<open>unitof\<close> from \<open>multiunit_sep_alg\<close>.
 \<close>
 
-definition \<open>core_rel a ca \<equiv> ca \<le> a \<and> sepadd_dup ca \<and> (\<forall>y\<le>a. sepadd_dup y \<longrightarrow> y \<le> ca)\<close>
+definition \<open>core_rel a ca \<equiv> ca \<preceq> a \<and> sepadd_dup ca \<and> (\<forall>y. y \<preceq> a \<longrightarrow> sepadd_dup y \<longrightarrow> y \<preceq> ca)\<close>
 
 abbreviation \<open>has_core a \<equiv> Ex (core_rel a)\<close>
 abbreviation \<open>the_core a \<equiv> The (core_rel a)\<close>
 
 (* simp doesn't like rewriting core_rel under an Ex in goal position. *)
 lemma has_core_def:
-  \<open>has_core a \<longleftrightarrow> (\<exists>ca. ca \<le> a \<and> sepadd_dup ca \<and> (\<forall>y\<le>a. sepadd_dup y \<longrightarrow> y \<le> ca))\<close>
+  \<open>has_core a \<longleftrightarrow> (\<exists>ca. ca \<preceq> a \<and> sepadd_dup ca \<and> (\<forall>y. y \<preceq> a \<longrightarrow> sepadd_dup y \<longrightarrow> y \<preceq> ca))\<close>
   using core_rel_def by presburger
 
 lemma the_core_core_rel_eq[simp]:
   \<open>core_rel a ca \<Longrightarrow> the_core a = ca\<close>
-  using core_rel_def order.antisym
-  using leD by auto
+  using core_rel_def resource_order.antisym by auto
 
 lemma has_core_the_core_eq:
   \<open>has_core a \<Longrightarrow> P (the_core a) \<longleftrightarrow> (\<forall>ca. core_rel a ca \<longrightarrow> P ca)\<close>
@@ -352,7 +388,21 @@ lemma has_core_the_core_eq:
 
 lemma core_dup_self[simp]:
   \<open>sepadd_dup a \<Longrightarrow> the_core a = a\<close>
-  by (simp add: core_rel_def)
+  by (simp add: core_rel_def resource_order.refl)
+
+lemma core_is_dup:
+  \<open>has_core a \<Longrightarrow> sepadd_dup (the_core a)\<close>
+  using core_rel_def the_core_core_rel_eq by blast
+
+lemma core_is_selfsep:
+  \<open>has_core a \<Longrightarrow> the_core a ## the_core a\<close>
+  using core_is_dup sepadd_dup_def
+  by blast
+
+lemma core_is_selfadd:
+  \<open>has_core a \<Longrightarrow> the_core a + the_core a = the_core a\<close>
+  using core_is_dup sepadd_dup_def
+  by blast
 
 lemma core_idem:
   \<open>has_core a \<Longrightarrow> the_core (the_core a) = the_core a\<close>
@@ -360,15 +410,13 @@ lemma core_idem:
 
 lemma core_disjoint:
   \<open>has_core a \<Longrightarrow> the_core a ## a\<close>
-  apply (clarsimp simp add: core_rel_def)
-  apply (metis disjoint_add_swap_lr le_iff_sepadd_weak sepadd_dup_def)
-  done
+  by (metis core_rel_def less_eq_sepadd_def disjoint_add_left_commute2 disjoint_sym part_of_def
+      sepadd_dup_def the_core_core_rel_eq)
 
 lemma core_plus_same[simp]:
   \<open>has_core a \<Longrightarrow> the_core a + a = a\<close>
-  apply (clarsimp simp add: core_rel_def)
-  apply (metis le_iff_sepadd_weak partial_add_assoc2 sepadd_dup_def)
-  done
+  by (metis core_rel_def less_eq_sepadd_def part_of_def partial_add_assoc sepadd_dup_def
+      the_core_core_rel_eq)
 
 lemma core_plus_sameR[simp]:
   \<open>has_core a \<Longrightarrow> a + the_core a = a\<close>
@@ -376,8 +424,8 @@ lemma core_plus_sameR[simp]:
   by auto
 
 lemma the_core_le_impl:
-  \<open>has_core a \<Longrightarrow> has_core b \<Longrightarrow> a \<le> b \<Longrightarrow> the_core a \<le> the_core b\<close>
-  by (clarsimp simp add: core_rel_def)
+  \<open>has_core a \<Longrightarrow> has_core b \<Longrightarrow> a \<preceq> b \<Longrightarrow> the_core a \<preceq> the_core b\<close>
+  by (metis core_rel_def resource_order.trans the_core_core_rel_eq)
 
 text \<open>
   As every duplicable element is its own core, the monotonicity criterion is equivalent to
@@ -385,21 +433,24 @@ text \<open>
   duplicable element below it.
 \<close>
 lemma has_core_mono_iff:
-  \<open>(\<forall>a b. a \<le> b \<longrightarrow> has_core a \<longrightarrow> has_core b) \<longleftrightarrow>
-    (\<forall>x. sepadd_dup x \<longrightarrow> (\<forall>a\<ge>x. has_core a))\<close>
-  by (metis core_rel_def order.trans eq_refl)
-
+  \<open>(\<forall>a b. a \<preceq> b \<longrightarrow> has_core a \<longrightarrow> has_core b) \<longleftrightarrow>
+    (\<forall>x. sepadd_dup x \<longrightarrow> (\<forall>a. x \<preceq> a \<longrightarrow> has_core a))\<close>
+  unfolding sepadd_dup_def has_core_def
+  apply (rule iffI)
+   apply (blast intro: resource_order.refl)
+  apply (blast intro: resource_order.trans)
+  done
 
 lemma core_rel_additive:
   \<open>x ## y \<Longrightarrow> core_rel x x \<Longrightarrow> core_rel y y \<Longrightarrow> core_rel (x + y) (x + y)\<close>
-  unfolding sepadd_dup_def core_rel_def
-  by (metis disjoint_add_swap_rl disjoint_middle_swap order_refl partial_add_double_assoc)
+  unfolding core_rel_def
+  by (metis disjoint_middle_swap2 disjoint_sym partial_add_commute partial_add_double_assoc
+      sepadd_dup_def sepadd_left_mono)
 
-lemma core_rel_mono:
+lemma core_rel_additive:
   \<open>x ## y \<Longrightarrow> core_rel x cx \<Longrightarrow> core_rel y cy \<Longrightarrow> core_rel (x + y) cxy \<Longrightarrow> cx + cy \<le> cxy\<close>
-  unfolding sepadd_dup_def core_rel_def
-  by (metis (mono_tags, opaque_lifting) disjoint_preservation2 disjoint_sym_iff order.trans
-      partial_add_commute partial_le_plus2 sepadd_right_mono)
+  unfolding core_rel_def
+  oops
 
 
 subsection \<open>sepdomeq\<close>
@@ -469,7 +520,7 @@ definition septract_rev :: \<open>('a \<Rightarrow> bool) \<Rightarrow> ('a \<Ri
   \<open>P \<odot>\<midarrow> Q \<equiv> \<lambda>h. \<exists>h'. h ## h' \<and> P (h + h') \<and> Q h'\<close>
 
 definition subheapexist :: \<open>('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool)\<close> where
-  \<open>subheapexist P \<equiv> \<lambda>h. \<exists>h1. h1 \<le> h \<and> P h1\<close>
+  \<open>subheapexist P \<equiv> \<lambda>h. \<exists>h1. h1 \<preceq> h \<and> P h1\<close>
 
 definition emp :: \<open>'a \<Rightarrow> bool\<close> where
   \<open>emp \<equiv> \<lambda>x. sepadd_unit x\<close>
@@ -623,7 +674,7 @@ lemma sepcoimp_curry: \<open>P \<sim>\<^emph> Q \<sim>\<^emph> R = P \<^emph> Q 
 section \<open> Precision \<close>
 
 definition precise :: \<open>('a \<Rightarrow> bool) \<Rightarrow> bool\<close> where
-  \<open>precise P \<equiv> \<forall>h. \<forall>h1\<le>h. \<forall>h2\<le>h. P h1 \<longrightarrow> P h2 \<longrightarrow> h1 = h2\<close>
+  \<open>precise P \<equiv> \<forall>h h1 h2. h1 \<preceq> h \<longrightarrow> h2 \<preceq> h \<longrightarrow> P h1 \<longrightarrow> P h2 \<longrightarrow> h1 = h2\<close>
 
 subsection \<open> sepconj/conj distributivity \<close>
 
@@ -712,13 +763,12 @@ section \<open> Intuitionistic \<close>
 
 (* TODO: rename intuitionistic to bring it in line with the seplogic jungle paper *)
 definition intuitionistic :: \<open>('a \<Rightarrow> bool) \<Rightarrow> bool\<close> where
-  \<open>intuitionistic P \<equiv> \<forall>h h'. h \<le> h' \<longrightarrow> P h \<longrightarrow> P h'\<close>
+  \<open>intuitionistic P \<equiv> \<forall>h h'. h \<preceq> h' \<longrightarrow> P h \<longrightarrow> P h'\<close>
 
 lemma precise_to_intuitionistic:
   \<open>precise P \<Longrightarrow> intuitionistic (P \<^emph> \<top>)\<close>
-  apply (simp add: sepconj_def precise_def intuitionistic_def)
-  apply (metis le_iff_sepadd_weak order_eq_iff order_trans)
-  done
+  unfolding sepconj_def precise_def intuitionistic_def
+  by (metis less_eq_sepadd_def' partial_le_part_left resource_order.antisym top_conj(1))
 
 lemma strong_sepcoimp_imp_sepconj:
   \<open>(P \<^emph> \<top>) \<sqinter> (P \<sim>\<^emph> Q) \<le> P \<^emph> Q\<close>
@@ -734,21 +784,38 @@ lemma sepcoimp_pconj_distrib_left:
 section \<open> Supported \<close>
 
 definition supported :: \<open>('a \<Rightarrow> bool) \<Rightarrow> bool\<close> where
-  \<open>supported P \<equiv> \<forall>s. P s \<longrightarrow> (\<exists>hp. P hp \<and> hp \<le> s \<and> (\<forall>s'. hp \<le> s' \<longrightarrow> s' \<le> s \<longrightarrow> P s'))\<close>
+  \<open>supported P \<equiv> \<forall>s. P s \<longrightarrow> (\<exists>hp. P hp \<and> hp \<preceq> s \<and> (\<forall>s'. hp \<preceq> s' \<longrightarrow> s' \<preceq> s \<longrightarrow> P s'))\<close>
 
 lemma precise_to_supported:
   \<open>precise P \<Longrightarrow> supported (P \<^emph> \<top>)\<close>
-  by (metis order.eq_iff supported_def)
+  using resource_order.eq_iff supported_def by auto
 
 end
 
 subsection \<open> Multi-unit Separation Algebras \<close>
 
-class multiunit_sep_alg = perm_alg +
+class multiunit_sep_alg = order + perm_alg +
   fixes unitof :: \<open>'a \<Rightarrow> 'a\<close>
   assumes unitof_disjoint[simp,intro!]: \<open>unitof a ## a\<close>
   assumes unitof_is_unit[simp]: \<open>\<And>a b. unitof a ## b \<Longrightarrow> unitof a + b = b\<close>
+  assumes leq_iff_sepadd: \<open>\<And>a b. a \<le> b \<longleftrightarrow> (\<exists>c. a ## c \<and> b = a + c)\<close>
 begin
+
+lemma leq_is_resource_leq: \<open>(\<le>) = (\<preceq>)\<close>
+  using leq_iff_sepadd less_eq_sepadd_def'
+  by fastforce
+
+lemma less_is_resource_less: \<open>(<) = (\<prec>)\<close>
+  using order.order_iff_strict leq_is_resource_leq resource_order.strict_iff_order
+  by fastforce
+
+lemma le_iff_sepadd: \<open>a \<le> b \<longleftrightarrow> (\<exists>c. a ## c \<and> b = a + c)\<close>
+  unfolding less_eq_sepadd_def' leq_is_resource_leq
+  by (metis disjoint_sym partial_add_commute unitof_disjoint unitof_is_unit)
+
+lemma le_iff_part_of: \<open>a \<le> b \<longleftrightarrow> a \<lesssim> b\<close>
+  unfolding part_of_def le_iff_sepadd
+  by blast
 
 lemma unitof_disjoint2[simp,intro!]: \<open>a ## unitof a\<close>
   by (simp add: disjoint_sym)
@@ -771,13 +838,11 @@ lemma unitof_idem[simp]: \<open>unitof (unitof a) = unitof a\<close>
 lemma unitof_is_sepadd_unit: \<open>sepadd_unit (unitof a)\<close>
   by (simp add: sepadd_unit_def unitof_inherits_disjointness)
 
-lemma le_iff_sepadd: \<open>a \<le> b \<longleftrightarrow> (\<exists>c. a ## c \<and> b = a + c)\<close>
-  by (metis unitof_disjoint2 le_iff_sepadd_weak unitof_is_unitR2)
-
 subsection \<open>partial canonically_ordered_monoid_add lemmas\<close>
 
 lemma unitof_le[simp]: \<open>unitof x \<le> x\<close>
-  using partial_le_plus unitof_disjoint by fastforce
+  using partial_le_plus unitof_disjoint leq_is_resource_leq
+  by fastforce
 
 lemma le_unitof_eq[simp]: \<open>x \<le> unitof x \<longleftrightarrow> x = unitof x\<close>
   by (auto intro: order.antisym)
@@ -795,8 +860,7 @@ lemma not_gr_unitof[simp]: "\<not> unitof x < x \<longleftrightarrow> x = unitof
   by (simp add: unitof_less_iff_neq_unitof)
 
 lemma gr_implies_not_unitof: "m < x \<Longrightarrow> x \<noteq> unitof x"
-  by (metis disjoint_preservation dual_order.strict_iff_not partial_le_plus2 unitof_disjoint
-      unitof_is_unitR2)
+  by (metis le_unit_iff_eq leq_is_resource_leq nless_le unitof_is_sepadd_unit)
 
 lemma unitof_sepadd_unit:
   \<open>sepadd_unit x \<Longrightarrow> unitof x = x\<close>
@@ -804,8 +868,7 @@ lemma unitof_sepadd_unit:
 
 lemma sepadd_eq_unitof_iff_both_eq_unitof[simp]:
   \<open>x ## y \<Longrightarrow> x + y = unitof (x + y) \<longleftrightarrow> x = unitof x \<and> y = unitof y\<close>
-  by (metis gr_implies_not_unitof dual_order.not_eq_order_implies_strict partial_le_plus2
-      unitof_is_unitR2)
+  by (metis add_sepadd_unit_add_iff_parts_sepadd_unit unitof_is_sepadd_unit unitof_sepadd_unit)
 
 lemma unitof_eq_sepadd_iff_both_eq_unitof[simp]:
   \<open>x ## y \<Longrightarrow> unitof (x + y) = x + y \<longleftrightarrow> x = unitof x \<and> y = unitof y\<close>
@@ -874,7 +937,8 @@ lemma sepadd_0[simp]: \<open>0 + a = a\<close>
   by (metis sepadd_bot zero_is_bot)
 
 lemma zero_disjointL[simp]: \<open>0 ## a\<close>
-  using bot_least disjoint_preservation zero_is_bot by blast
+  using bot_least disjoint_preservation zero_is_bot leq_is_resource_leq
+  by blast
 
 lemma zero_disjointR[simp]: \<open>a ## 0\<close>
   by (simp add: disjoint_sym)
@@ -913,7 +977,7 @@ lemma gr_implies_not_zero: \<open>m < n \<Longrightarrow> n \<noteq> 0\<close>
   by auto
 
 lemma sepadd_eq_0_iff_both_eq_0[simp]: \<open>x ## y \<Longrightarrow> x + y = 0 \<longleftrightarrow> x = 0 \<and> y = 0\<close>
-  by (metis partial_le_plus le_zero_eq sepadd_0)
+  using sepadd_eq_unitof_iff_both_eq_unitof by auto
 
 lemma zero_eq_sepadd_iff_both_eq_0[simp]: \<open>x ## y \<Longrightarrow> 0 = x + y \<longleftrightarrow> x = 0 \<and> y = 0\<close>
   using sepadd_eq_0_iff_both_eq_0 by fastforce
@@ -940,22 +1004,22 @@ context perm_alg
 begin
 
 definition compatible :: \<open>'a \<Rightarrow> 'a \<Rightarrow> bool\<close> where
-  \<open>compatible \<equiv> ((\<le>) \<squnion> (\<ge>))\<^sup>*\<^sup>*\<close>
+  \<open>compatible \<equiv> ((\<preceq>) \<squnion> (\<succeq>))\<^sup>*\<^sup>*\<close>
 
 lemmas compatible_induct[consumes 1] =
-  rtranclp_induct[of \<open>(\<le>) \<squnion> (\<ge>)\<close>, simplified compatible_def[symmetric], simplified]
+  rtranclp_induct[of \<open>(\<preceq>) \<squnion> (\<succeq>)\<close>, simplified compatible_def[symmetric], simplified]
 
 lemmas converse_compatible_induct[consumes 1] =
-  converse_rtranclp_induct[of \<open>(\<le>) \<squnion> (\<ge>)\<close>, simplified compatible_def[symmetric], simplified]
+  converse_rtranclp_induct[of \<open>(\<preceq>) \<squnion> (\<succeq>)\<close>, simplified compatible_def[symmetric], simplified]
 
 lemmas compatibleE =
-  rtranclE[of \<open>(\<le>) \<squnion> (\<ge>)\<close>, simplified compatible_def[symmetric], simplified]
+  rtranclE[of \<open>(\<preceq>) \<squnion> (\<succeq>)\<close>, simplified compatible_def[symmetric], simplified]
 
 lemmas converse_compatibleE =
-  converse_rtranclpE[of \<open>(\<le>) \<squnion> (\<ge>)\<close>, simplified compatible_def[symmetric], simplified]
+  converse_rtranclpE[of \<open>(\<preceq>) \<squnion> (\<succeq>)\<close>, simplified compatible_def[symmetric], simplified]
 
-lemmas compatible_trans =
-  rtranclp_trans[of \<open>(\<le>) \<squnion> (\<ge>)\<close>, simplified compatible_def[symmetric], simplified]
+lemmas compatible_trans[trans] =
+  rtranclp_trans[of \<open>(\<preceq>) \<squnion> (\<succeq>)\<close>, simplified compatible_def[symmetric], simplified]
 
 lemma compatible_refl[intro!, simp]:
   \<open>compatible a a\<close>
@@ -965,36 +1029,36 @@ lemma compatible_sym:
   assumes \<open>compatible a b\<close>
   shows \<open>compatible b a\<close>
 proof -
-  have \<open>((\<le>) \<squnion> (\<ge>))\<^sup>*\<^sup>* = (((\<le>) \<squnion> (\<ge>))\<inverse>\<inverse>)\<^sup>*\<^sup>*\<close>
+  have \<open>((\<preceq>) \<squnion> (\<succeq>))\<^sup>*\<^sup>* = (((\<preceq>) \<squnion> (\<succeq>))\<inverse>\<inverse>)\<^sup>*\<^sup>*\<close>
     by (force intro!: arg_cong[of _ _ rtranclp])
-  also have \<open>... = ((\<le>) \<squnion> (\<ge>))\<^sup>*\<^sup>*\<inverse>\<inverse>\<close>
+  also have \<open>... = ((\<preceq>) \<squnion> (\<succeq>))\<^sup>*\<^sup>*\<inverse>\<inverse>\<close>
     by (simp add: rtranclp_conversep)
   finally show ?thesis
     by (metis assms compatible_def conversep_iff)
 qed
 
 lemma le_is_compatible[intro]:
-  \<open>a \<le> b \<Longrightarrow> compatible a b\<close>
+  \<open>a \<preceq> b \<Longrightarrow> compatible a b\<close>
   by (simp add: compatible_def r_into_rtranclp)
 
 lemma ge_is_compatible[intro]:
-  \<open>a \<ge> b \<Longrightarrow> compatible a b\<close>
+  \<open>a \<succeq> b \<Longrightarrow> compatible a b\<close>
   by (simp add: compatible_def r_into_rtranclp)
 
 lemma trans_le_le_is_compatible[intro]:
-  \<open>a \<le> b \<Longrightarrow> b \<le> c \<Longrightarrow> compatible a c\<close>
+  \<open>a \<preceq> b \<Longrightarrow> b \<preceq> c \<Longrightarrow> compatible a c\<close>
   using le_is_compatible by force
 
 lemma trans_ge_ge_is_compatible[intro]:
-  \<open>b \<le> a \<Longrightarrow> c \<le> b \<Longrightarrow> compatible a c\<close>
+  \<open>b \<preceq> a \<Longrightarrow> c \<preceq> b \<Longrightarrow> compatible a c\<close>
   using ge_is_compatible by force
 
 lemma trans_ge_le_is_compatible[intro]:
-  \<open>b \<le> a \<Longrightarrow> b \<le> c \<Longrightarrow> compatible a c\<close>
+  \<open>b \<preceq> a \<Longrightarrow> b \<preceq> c \<Longrightarrow> compatible a c\<close>
   using compatible_trans by blast
 
 lemma trans_le_ge_is_compatible[intro]:
-  \<open>a \<le> b \<Longrightarrow> c \<le> b \<Longrightarrow> compatible a c\<close>
+  \<open>a \<preceq> b \<Longrightarrow> c \<preceq> b \<Longrightarrow> compatible a c\<close>
   using compatible_trans by blast
 
 subsection \<open> Relation to other relations \<close>
@@ -1007,12 +1071,13 @@ lemma disjoint_rtrancl_implies_compatible:
   done
 
 lemma compatible_eq_strict_compatible:
-  \<open>compatible = ((<) \<squnion> (>))\<^sup>*\<^sup>*\<close>
+  \<open>(compatible :: 'a \<Rightarrow> 'a \<Rightarrow> bool) = ((\<prec>) \<squnion> (\<succ>))\<^sup>*\<^sup>*\<close>
 proof -
-  have \<open>compatible = ((=) \<squnion> (<) \<squnion> (>))\<^sup>*\<^sup>*\<close>
-    by (force simp add: compatible_def intro: arg_cong[of _ _ rtranclp])
-  also have \<open>... = ((<) \<squnion> (>))\<^sup>*\<^sup>*\<close>
-    by (metis rtranclp_reflclp sup_assoc sup_commute)
+  have \<open>compatible = ((=) \<squnion> (\<prec>) \<squnion> (\<succ>))\<^sup>*\<^sup>*\<close>
+    by (force intro: arg_cong[of _ _ rtranclp]
+        simp add: compatible_def less_sepadd_def less_eq_sepadd_def)
+  also have \<open>... = ((\<prec>) \<squnion> (\<succ>))\<^sup>*\<^sup>*\<close>
+    by (metis inf_sup_aci(5) rtranclp_reflclp rtranclp_sup_rtranclp)
   finally show ?thesis .
 qed
 
@@ -1030,12 +1095,12 @@ lemma implies_compatible_then_rtranscl_implies_compatible2:
 subsection \<open> Relation to units \<close>
 
 lemma step_compatible_units_identical:
-  \<open>compatible b z \<Longrightarrow> a \<le> b \<or> b \<le> a \<Longrightarrow> sepadd_unit a \<Longrightarrow> sepadd_unit z \<Longrightarrow> a = z\<close>
+  \<open>compatible b z \<Longrightarrow> a \<preceq> b \<or> b \<preceq> a \<Longrightarrow> sepadd_unit a \<Longrightarrow> sepadd_unit z \<Longrightarrow> a = z\<close>
   apply (induct rule: converse_compatible_induct)
    apply (force simp add: le_unit_iff_eq)
   apply (simp add: le_unit_iff_eq)
-  apply (metis disjoint_preservation2 order.trans le_iff_sepadd_weak le_unit_iff_eq
-      sepadd_unit_left)
+  apply (metis disjoint_preservation2 le_unit_iff_eq less_eq_sepadd_def' sepadd_unit_left
+      resource_order.trans)
   done
 
 lemma compatible_units_identical:
@@ -1046,23 +1111,21 @@ lemma compatible_unit_disjoint[dest]:
   \<open>compatible u a \<Longrightarrow> sepadd_unit u \<Longrightarrow> a ## u\<close>
   apply (induct rule: compatible_induct)
    apply force
-  apply (metis disjoint_add_swap_lr disjoint_preservation2 disjoint_sym le_iff_sepadd_weak
-      partial_add_commute sepadd_unit_right)
+  apply (metis disjoint_add_leftL disjoint_add_left_commute2 less_eq_sepadd_def' sepadd_unit_right)
   done
 
 lemma compatible_unit_disjoint2[dest]:
   \<open>compatible a u \<Longrightarrow> sepadd_unit u \<Longrightarrow> a ## u\<close>
   apply (induct rule: converse_compatible_induct)
    apply force
-  apply (metis disjoint_add_swap_lr disjoint_preservation2 disjoint_sym le_iff_sepadd_weak
-      partial_add_commute sepadd_unit_right)
+  apply (metis disjoint_add_leftL disjoint_add_left_commute2 less_eq_sepadd_def' sepadd_unit_right)
   done
 
 lemma compatible_to_unit_is_unit_left:
   \<open>compatible u a \<Longrightarrow> sepadd_unit u \<Longrightarrow> u + a = a\<close>
   apply (induct rule: compatible_induct)
    apply force
-   apply (simp add: le_iff_sepadd_weak)
+  apply (simp add: less_eq_sepadd_def')
   apply (elim disjE; clarsimp) (* 1 \<rightarrow> 2 *)
    apply (metis compatible_unit_disjoint disjoint_sym partial_add_assoc2)
   apply (metis compatible_unit_disjoint disjoint_add_leftL partial_add_commute sepadd_unit_right)
@@ -1071,6 +1134,20 @@ lemma compatible_to_unit_is_unit_left:
 lemma compatible_to_unit_is_unit_right:
   \<open>compatible u a \<Longrightarrow> sepadd_unit u \<Longrightarrow> a + u = a\<close>
   by (simp add: compatible_unit_disjoint sepadd_unit_right)
+
+end
+
+context multiunit_sep_alg
+begin
+
+lemma same_unit_compatible:
+  \<open>unitof a = unitof b \<Longrightarrow> compatible a b\<close>
+  by (metis leq_is_resource_leq trans_ge_le_is_compatible unitof_le)
+
+lemma compatible_then_same_unit:
+  \<open>compatible a b \<Longrightarrow> unitof a = unitof b\<close>
+  by (metis compatible_trans compatible_unit_disjoint2 disjoint_same_unit unitof_idem
+      unitof_is_sepadd_unit same_unit_compatible)
 
 end
 
@@ -1088,21 +1165,7 @@ lemma all_units_eq:
 
 end
 
-context multiunit_sep_alg
-begin
-
-lemma same_unit_compatible:
-  \<open>unitof a = unitof b \<Longrightarrow> compatible a b\<close>
-  by (metis trans_ge_le_is_compatible unitof_le)
-
-lemma compatible_then_same_unit:
-  \<open>compatible a b \<Longrightarrow> unitof a = unitof b\<close>
-  by (meson compatible_trans ge_is_compatible step_compatible_units_identical
-      unitof_is_sepadd_unit unitof_le)
-
-end
-
-(* compatible multiunit sep algebras collapse *)
+(* allcompatible multiunit sep algebras collapse *)
 class allcompatible_multiunit_sep_alg = allcompatible_perm_alg + multiunit_sep_alg
 begin
 
@@ -1116,14 +1179,14 @@ lemma the_unit_is_a_unit:
   unfolding the_unit_def
   by (rule theI', simp add: exactly_one_unit)
 
-lemma is_sep_alg:
-  \<open>class.sep_alg the_unit the_unit (+) (\<le>) (<) (##) (\<lambda>_. the_unit)\<close>
+sublocale is_sep_alg: sep_alg the_unit the_unit \<open>(\<le>)\<close> \<open>(<)\<close> \<open>(+)\<close> \<open>(##)\<close> \<open>(\<lambda>_. the_unit)\<close>
   apply standard
-    apply (metis exactly_one_unit unitof_disjoint unitof_is_sepadd_unit the_unit_is_a_unit)
-   apply (metis exactly_one_unit unitof_disjoint2 unitof_is_unit2 unitof_is_sepadd_unit
+     apply (metis exactly_one_unit unitof_disjoint unitof_is_sepadd_unit the_unit_is_a_unit)
+    apply (metis exactly_one_unit unitof_disjoint2 unitof_is_unit2 unitof_is_sepadd_unit
       the_unit_is_a_unit)
-  apply (simp add: all_compatible compatible_unit_disjoint2 disjoint_sym units_least
-      the_unit_is_a_unit)
+   apply (simp add: le_iff_sepadd; fail)
+  apply (simp add: all_compatible compatible_unit_disjoint disjoint_sym_iff leq_is_resource_leq
+      units_least the_unit_is_a_unit)
   done
 
 end
@@ -1219,400 +1282,6 @@ class disjoint_parts_multiunit_sep_alg = multiunit_sep_alg + disjoint_parts_perm
 
 class disjoint_parts_sep_alg = sep_alg + disjoint_parts_multiunit_sep_alg
 
-subsection \<open> weak glb / lub \<close>
-
-context perm_alg
-begin
-
-definition \<open>glb_rel a b ab \<equiv> ab \<le> a \<and> ab \<le> b \<and> (\<forall>ab'. ab' \<le> a \<longrightarrow> ab' \<le> b \<longrightarrow> ab' \<le> ab)\<close>
-
-abbreviation \<open>glb_exists a b \<equiv> Ex (glb_rel a b)\<close>
-abbreviation \<open>glb a b \<equiv> The (glb_rel a b)\<close>
-
-definition \<open>lub_rel a b ab \<equiv> a \<le> ab \<and> b \<le> ab \<and> (\<forall>ab'. a \<le> ab' \<longrightarrow> b \<le> ab' \<longrightarrow> ab \<le> ab')\<close>
-
-abbreviation \<open>lub_exists a b \<equiv> Ex (lub_rel a b)\<close>
-abbreviation \<open>lub a b \<equiv> The (lub_rel a b)\<close>
-
-lemma glb_glb_rel_eq[simp]:
-  \<open>glb_rel a b ab \<Longrightarrow> glb a b = ab\<close>
-  using glb_rel_def order.antisym by auto
-
-lemma lub_lub_rel_eq[simp]:
-  \<open>lub_rel a b ab \<Longrightarrow> lub a b = ab\<close>
-  using lub_rel_def order.antisym by auto
-
-lemma glb_exists_glb_eq:
-  \<open>glb_exists a b \<Longrightarrow> P (glb a b) \<longleftrightarrow> (\<forall>ab. glb_rel a b ab \<longrightarrow> P ab)\<close>
-  using glb_glb_rel_eq by blast
-
-lemma lub_exists_lub_eq:
-  \<open>lub_exists a b \<Longrightarrow> P (lub a b) \<longleftrightarrow> (\<forall>ab. lub_rel a b ab \<longrightarrow> P ab)\<close>
-  using lub_lub_rel_eq by blast
-
-subsection \<open> Complete Glb \<close>
-
-definition \<open>Glb_rel A x \<equiv> (\<forall>a\<in>A. x \<le> a) \<and> (\<forall>x'. (\<forall>a\<in>A. x' \<le> a) \<longrightarrow> x' \<le> x)\<close>
-
-abbreviation \<open>Glb_exists A \<equiv> Ex (Glb_rel A)\<close>
-abbreviation \<open>Glb A \<equiv> The (Glb_rel A)\<close>
-
-definition \<open>Lub_rel A x \<equiv> (\<forall>a\<in>A. a \<le> x) \<and> (\<forall>x'. (\<forall>a\<in>A. a \<le> x') \<longrightarrow> x \<le> x')\<close>
-
-abbreviation \<open>Lub_exists A \<equiv> Ex (Lub_rel A)\<close>
-abbreviation \<open>Lub A \<equiv> The (Lub_rel A)\<close>
-
-lemma Glb_Glb_rel_eq[simp]:
-  \<open>Glb_rel A x \<Longrightarrow> Glb A = x\<close>
-  using Glb_rel_def order.antisym by auto
-
-lemma Lub_Lub_rel_eq[simp]:
-  \<open>Lub_rel A x \<Longrightarrow> Lub A = x\<close>
-  using Lub_rel_def order.antisym by auto
-
-lemma Glb_exists_Glb_eq:
-  \<open>Glb_exists A \<Longrightarrow> P (Glb A) \<longleftrightarrow> (\<forall>x. Glb_rel A x \<longrightarrow> P x)\<close>
-  using Glb_Glb_rel_eq by blast
-
-lemma Lub_exists_Lub_eq:
-  \<open>Lub_exists A \<Longrightarrow> P (Lub A) \<longleftrightarrow> (\<forall>x. Lub_rel A x \<longrightarrow> P x)\<close>
-  using Lub_Lub_rel_eq by blast
-
-
-lemma Glb_rel_in_Least_equality:
-  \<open>Glb_rel (Collect P) x \<Longrightarrow> P x \<Longrightarrow> Least P = x\<close>
-  apply (clarsimp simp add: Glb_rel_def)
-  apply (subst Least_equality; force)
-  done
-
-lemma Lub_rel_in_Greatest_equality:
-  \<open>Lub_rel (Collect P) x \<Longrightarrow> P x \<Longrightarrow> Greatest P = x\<close>
-  apply (clarsimp simp add: Lub_rel_def)
-  apply (subst Greatest_equality; force)
-  done
-
-subsection \<open> lub glb interchange properties \<close>
-
-lemma lub_glb_distrib_weak:
-  assumes
-    \<open>glb_exists b c\<close>
-    \<open>lub_exists a (glb b c)\<close>
-    \<open>lub_exists a b\<close>
-    \<open>lub_exists a c\<close>
-    \<open>glb_exists (lub a b) (lub a c)\<close>
-  shows
-    \<open>lub a (glb b c) \<le> glb (lub a b) (lub a c)\<close>
-  using assms
-  by (clarsimp simp add: lub_rel_def glb_rel_def)
-
-lemma lub_glb_distrib_strong:
-  assumes
-    \<open>glb_exists b c\<close>
-    \<open>lub_exists a (glb b c)\<close>
-    \<open>lub_exists a b\<close>
-    \<open>lub_exists a c\<close>
-    \<open>glb_exists (lub a b) (lub a c)\<close>
-  shows
-    \<open>glb (lub a b) (lub a c) \<le> lub a (glb b c)\<close>
-  text \<open> not true \<close>
-  nitpick
-  oops
-
-lemma glb_lub_distrib_weak:
-  assumes
-    \<open>glb_exists a b\<close>
-    \<open>glb_exists a c\<close>
-    \<open>lub_exists (glb a b) (glb a c)\<close>
-    \<open>lub_exists b c\<close>
-    \<open>glb_exists a (lub b c)\<close>
-  shows
-  \<open>lub (glb a b) (glb a c) \<le> glb a (lub b c)\<close>
-  using assms
-  by (clarsimp simp add: lub_rel_def glb_rel_def)
-
-lemma glb_lub_distrib_strong:
-  assumes
-    \<open>glb_exists a b\<close>
-    \<open>glb_exists a c\<close>
-    \<open>lub_exists (glb a b) (glb a c)\<close>
-    \<open>lub_exists b c\<close>
-    \<open>glb_exists a (lub b c)\<close>
-  shows
-  \<open>glb a (lub b c) \<le> lub (glb a b) (glb a c)\<close>
-  text \<open> not true! \<close>
-  oops
-
-paragraph \<open> with addition \<close>
-
-lemma \<open>a ## b \<Longrightarrow> lub_exists a b \<Longrightarrow> lub a b \<le> a + b\<close>
-  by (clarsimp simp add: lub_rel_def)
-
-lemma \<open>a ## b \<Longrightarrow> lub_exists a b \<Longrightarrow> lub a b \<ge> a + b\<close>
-  text \<open> not true! \<close>
-  oops
-
-
-lemma add_glb_distrib_weak:
-  assumes
-    \<open>glb_exists b c\<close>
-    \<open>a ## (glb b c)\<close>
-    \<open>a ## b\<close>
-    \<open>a ## c\<close>
-    \<open>glb_exists (a + b) (a + c)\<close>
-  shows
-    \<open>a + (glb b c) \<le> glb (a + b) (a + c)\<close>
-  using assms
-  by (clarsimp simp add: glb_rel_def sepadd_left_mono)
-
-lemma add_glb_distrib_strong:
-  assumes
-    \<open>glb_exists b c\<close>
-    \<open>a ## (glb b c)\<close>
-    \<open>a ## b\<close>
-    \<open>a ## c\<close>
-    \<open>glb_exists (a + b) (a + c)\<close>
-  shows
-    \<open>glb (a + b) (a + c) \<le> a + (glb b c)\<close>
-  text \<open> not true \<close>
-  nitpick
-  oops
-
-lemma glb_add_distrib_weak:
-  assumes
-    \<open>glb_exists a b\<close>
-    \<open>glb_exists a c\<close>
-    \<open>(glb a b) ## (glb a c)\<close>
-    \<open>b ## c\<close>
-    \<open>glb_exists a (b + c)\<close>
-  shows
-    \<open>(glb a b) + (glb a c) \<le> glb a (b + c)\<close>
-  text \<open> not true \<close>
-  nitpick
-  oops
-
-lemma glb_add_distrib_strong:
-  assumes
-    \<open>glb_exists a b\<close>
-    \<open>glb_exists a c\<close>
-    \<open>(glb a b) ## (glb a c)\<close>
-    \<open>b ## c\<close>
-    \<open>glb_exists a (b + c)\<close>
-  shows
-  \<open>glb a (b + c) \<le> (glb a b) + (glb a c)\<close>
-  text \<open> not true \<close>
-  nitpick
-  oops
-
-subsection \<open> glb properties \<close>
-
-lemma glb_leqL[intro]: \<open>glb_exists a b \<Longrightarrow> glb a b \<le> a\<close>
-  by (clarsimp simp add: glb_rel_def)
-
-lemma glb_leqR[intro]: \<open>glb_exists a b \<Longrightarrow> glb a b \<le> b\<close>
-  by (clarsimp simp add: glb_rel_def)
-
-lemma glb_least[intro]: \<open>glb_exists a b \<Longrightarrow> c \<le> a \<Longrightarrow> c \<le> b \<Longrightarrow> c \<le> glb a b\<close>
-  by (clarsimp simp add: glb_rel_def)
-
-lemma glb_disjointL: \<open>a ## b \<Longrightarrow> glb_exists a c \<Longrightarrow> glb a c ## b\<close>
-  using disjoint_preservation by blast
-
-lemma glb_disjointR: \<open>a ## b \<Longrightarrow> glb_exists b c \<Longrightarrow> a ## glb b c\<close>
-  using disjoint_preservation2 by blast
-
-lemma glb_idem[simp]: \<open>glb a a = a\<close>
-  by (simp add: glb_rel_def)
-
-lemma sepinf_assoc[simp]:
-  \<open>glb_exists b c \<Longrightarrow>
-    glb_exists a b \<Longrightarrow>
-    glb_exists a (glb b c) \<Longrightarrow>
-    glb_exists (glb a b) c \<Longrightarrow>
-    glb a (glb b c) = glb (glb a b) c\<close>
-  by (clarsimp, meson glb_rel_def order.antisym order.trans)
-
-
-subsection \<open> weak glb + core \<close>
-
-lemma glb_dup[dest]:
-  \<open>glb_exists a b \<Longrightarrow> sepadd_dup a \<Longrightarrow> sepadd_dup (glb a b)\<close>
-  using sepadd_dup_antimono
-  by blast
-
-lemma glb_dup2[dest]:
-  \<open>glb_exists a b \<Longrightarrow> sepadd_dup b \<Longrightarrow> sepadd_dup (glb a b)\<close>
-  using sepadd_dup_antimono
-  by blast
-
-lemma glb_has_core_antimono:
-  \<open>\<forall>x. sepadd_dup x \<longrightarrow> glb_exists a x \<Longrightarrow>
-    a \<le> b \<Longrightarrow>
-    has_core b \<Longrightarrow>
-    has_core a\<close>
-  unfolding core_rel_def
-  apply clarsimp
-  apply (rename_tac cb)
-  apply (rule_tac x=\<open>glb a cb\<close> in exI)
-  apply (simp add: glb_exists_glb_eq glb_exists_glb_eq[of _ _ \<open>\<lambda>x. x \<le> _\<close>] glb_rel_def)
-  apply (metis sepadd_dup_antimono)
-  done
-
-lemma has_core_iff_Lub:
-  \<open>has_core a \<longleftrightarrow> (\<exists>x. Lub_rel {x. sepadd_dup x \<and> x \<le> a} x \<and> sepadd_dup x)\<close>
-  apply (rule iffI)
-   apply (clarsimp simp add: Lub_rel_def has_core_def, blast)
-  apply (clarsimp simp add: Lub_rel_def has_core_def, blast)
-  done
-
-lemma Lub_has_core_mono:
-  \<open>(\<And>A. A \<noteq> {} \<Longrightarrow> Ball A sepadd_dup \<Longrightarrow> (\<exists>x. Lub_rel A x \<and> sepadd_dup x)) \<Longrightarrow>
-    a \<le> b \<Longrightarrow> has_core a \<Longrightarrow> has_core b\<close>
-  apply (clarsimp simp add: has_core_iff_Lub)
-  apply (drule meta_spec[of _ \<open>{x. sepadd_dup x \<and> x \<le> b}\<close>])
-  apply (fastforce simp add: Lub_rel_def)
-  done
-
-lemma has_core_mono_iff_Lub:
-  \<open>(\<forall>a b. a \<le> b \<longrightarrow> has_core a \<longrightarrow> has_core b) \<Longrightarrow>
-    \<forall>A. A \<noteq> {} \<longrightarrow>
-      Ball A sepadd_dup \<longrightarrow>
-      (\<forall>x y. x \<le> y \<longrightarrow> y \<in> A \<longrightarrow> x \<in> A) \<longrightarrow>
-      (\<exists>z. \<forall>x\<in>A. x \<le> z) \<longrightarrow>
-      (\<exists>y. Lub_rel A y \<and> sepadd_dup y)\<close>
-  apply -
-  apply (subst (asm) has_core_mono_iff)
-  apply (clarsimp simp add: Lub_rel_def)
-  oops
-
-
-end
-
-subsection \<open> Separation Algebras with glb \<close>
-
-class inf_perm_alg = perm_alg + inf +
-  assumes sepinf_leqL[intro]: \<open>compatible a b \<Longrightarrow> a \<sqinter> b \<le> a\<close>
-    and sepinf_leqR[intro]: \<open>compatible a b \<Longrightarrow> a \<sqinter> b \<le> b\<close>
-    and sepinf_least[intro]: \<open>compatible a b \<Longrightarrow> c \<le> a \<Longrightarrow> c \<le> b \<Longrightarrow> c \<le> a \<sqinter> b\<close>
-begin
-
-lemma sepinf_disjointL: \<open>a ## b \<Longrightarrow> compatible a c \<Longrightarrow> a \<sqinter> c ## b\<close>
-  using disjoint_preservation by blast
-
-lemma sepinf_disjointR: \<open>a ## b \<Longrightarrow> compatible b c \<Longrightarrow> a ## b \<sqinter> c\<close>
-  using disjoint_preservation2 by blast
-
-lemma sepinf_preserves_compatibleL:
-  \<open>compatible a b \<Longrightarrow> compatible a c \<Longrightarrow> compatible (a \<sqinter> b) c\<close>
-  by (meson compatible_trans le_is_compatible sepinf_leqL)
-
-lemma sepinf_preserves_compatibleL2:
-  \<open>compatible a b \<Longrightarrow> compatible b c \<Longrightarrow> compatible (a \<sqinter> b) c\<close>
-  by (meson compatible_trans sepinf_preserves_compatibleL)
-
-lemma sepinf_preserves_compatibleL3:
-  \<open>compatible a c \<Longrightarrow> compatible b c \<Longrightarrow> compatible (a \<sqinter> b) c\<close>
-  by (meson compatible_sym compatible_trans sepinf_preserves_compatibleL)
-
-lemma sepinf_preserves_compatibleR:
-  \<open>compatible b c \<Longrightarrow> compatible a b \<Longrightarrow> compatible a (b \<sqinter> c)\<close>
-  by (meson compatible_trans ge_is_compatible sepinf_leqL)
-
-lemma sepinf_preserves_compatibleR2:
-  \<open>compatible b c \<Longrightarrow> compatible a c \<Longrightarrow> compatible a (b \<sqinter> c)\<close>
-  by (meson compatible_sym sepinf_preserves_compatibleL2)
-
-lemma sepinf_preserves_compatibleR3:
-  \<open>compatible a b \<Longrightarrow> compatible a c \<Longrightarrow> compatible a (b \<sqinter> c)\<close>
-  by (meson compatible_sym sepinf_preserves_compatibleL3)
-
-
-lemma sepinf_idem[simp]: \<open>a \<sqinter> a = a\<close>
-  by (simp add: order_antisym sepinf_least sepinf_leqR)
-
-lemma sepinf_assoc[simp]:
-  \<open>compatible a b \<Longrightarrow> compatible b c \<Longrightarrow> a \<sqinter> (b \<sqinter> c) = a \<sqinter> b \<sqinter> c\<close>
-  apply (subgoal_tac \<open>compatible (a \<sqinter> b) c\<close>)
-   prefer 2
-   apply (metis sepinf_preserves_compatibleL2)
-  apply (subgoal_tac \<open>compatible a (b \<sqinter> c)\<close>)
-   prefer 2
-   apply (metis sepinf_preserves_compatibleR)
-  apply (meson order.antisym order.trans sepinf_least sepinf_leqL sepinf_leqR; fail)
-  done
-
-lemma disjoint_sepinf_of_add_impl_disjoint_sepinf_part:
-  \<open>a ## b \<Longrightarrow>
-    compatible a c \<Longrightarrow>
-    compatible (a + b) c \<Longrightarrow>
-    (a + b) \<sqinter> c ## y \<Longrightarrow>
-    a \<sqinter> c ## y\<close>
-  by (meson disjoint_preservation order.trans partial_le_plus sepinf_least sepinf_leqL sepinf_leqR)
-
-lemma sepinf_of_unit_is_unit:
-  \<open>compatible a b \<Longrightarrow> sepadd_unit a \<Longrightarrow> sepadd_unit (a \<sqinter> b)\<close>
-  using below_unit_impl_unit by blast
-
-lemma sepinf_of_unit_eq_that_unit[simp]:
-  \<open>compatible a b \<Longrightarrow> sepadd_unit a \<Longrightarrow> a \<sqinter> b = a\<close>
-  by (metis le_unit_iff_eq sepinf_leqL)
-
-lemma sepinf_of_unit_eq_that_unit2[simp]:
-  \<open>compatible a b \<Longrightarrow> sepadd_unit b \<Longrightarrow> a \<sqinter> b = b\<close>
-  by (metis le_unit_iff_eq sepinf_leqR)
-
-subsection \<open> inf + core \<close>
-
-lemma sepinf_dup[dest]:
-  \<open>compatible a b \<Longrightarrow> sepadd_dup a \<Longrightarrow> sepadd_dup (a \<sqinter> b)\<close>
-  using sepadd_dup_antimono by blast
-
-lemma sepinf_dup2[dest]:
-  \<open>compatible a b \<Longrightarrow> sepadd_dup b \<Longrightarrow> sepadd_dup (a \<sqinter> b)\<close>
-  using sepadd_dup_antimono by blast
-
-end
-
-
-class allcompatible_inf_perm_alg = inf_perm_alg + allcompatible_perm_alg
-begin
-
-subclass semilattice_inf
-  by standard
-    (simp add: all_compatible sepinf_leqL sepinf_leqR sepinf_least)+
-
-end
-
-class inf_multiunit_sep_alg = multiunit_sep_alg + inf_perm_alg
-
-class inf_sep_alg = sep_alg + inf_multiunit_sep_alg
-begin
-
-subclass allcompatible_inf_perm_alg
-  by standard
-
-end
-
-subsubsection \<open> distributive glb/add \<close>
-
-(* TODO: generalise this to non-compatible algebras *)
-class distrib_perm_alg = allcompatible_inf_perm_alg +
-  assumes inf_add_distrib1:
-    \<open>\<And>x a b. a ## b \<Longrightarrow> x \<sqinter> (a + b) = (x \<sqinter> a) + (x \<sqinter> b)\<close>
-begin
-
-lemma left_inf_preserves_disjoint:
-  \<open>a ## b \<Longrightarrow> (x \<sqinter> a) ## (x \<sqinter> b)\<close>
-  by (meson disjoint_preservation disjoint_sym inf.cobounded2)
-
-lemma inf_add_distrib2:
-    \<open>\<And>x a b. a ## b \<Longrightarrow> (a + b) \<sqinter> x = (a \<sqinter> x) + (b \<sqinter> x)\<close>
-  by (simp add: inf_add_distrib1 inf_commute)
-
-end
-
-(* multiunit algebras collapse to a sep alg *)
-
-class distrib_sep_alg = sep_alg + distrib_perm_alg
 
 subsection \<open>Trivial Self-disjointness Separation Algebra\<close>
 
@@ -1731,7 +1400,7 @@ lemma sepconj_conj_distrib_then_precise:
   assumes \<open>\<And>x. P x \<Longrightarrow> \<exists>u. x ## u \<and> sepadd_unit u\<close>
   shows \<open>sepconj_conj_distrib P \<Longrightarrow> precise P\<close>
   apply (clarsimp simp add: precise_def sepconj_conj_distrib_def sepconj_def le_fun_def
-      imp_ex_conjL imp_conjL less_eq_sepadd_def)
+      imp_ex_conjL imp_conjL less_eq_sepadd_def')
   apply (intro conjI impI allI)
     apply clarsimp
     apply (rename_tac h2 w)
@@ -1745,7 +1414,7 @@ lemma sepconj_conj_distrib_then_precise:
    apply (drule_tac x=sepadd_unit and y=\<open>(=) w\<close> in spec2)
    apply (metis disjoint_add_left_commute2 sepadd_unit_right)
   apply clarsimp
-  apply (rename_tac hp1 hq1 hp2 hq2)
+  apply (rename_tac hp1 hp2 hq1 hq2)
   apply (drule_tac x=\<open>(=) hq1\<close> and y=\<open>(=) hq2\<close> in spec2)
   apply force
   done
@@ -1789,11 +1458,12 @@ qed
 
 lemma precise_implies_unitlikes_are_units:
   \<open>precise P \<Longrightarrow> (\<forall>h u. P h \<longrightarrow> h ## u \<longrightarrow> P (h + u) \<longrightarrow> sepadd_unit u)\<close>
-  by (meson cancel_left_to_unit eq_refl partial_le_plus precise_def)
+  by (meson cancel_left_to_unit less_eq_sepadd_def partial_le_plus precise_def)
 
 end
 
 class cancel_sep_alg = cancel_multiunit_sep_alg + sep_alg
+
 
 subsection \<open>No-unit perm alg\<close>
 
@@ -1866,7 +1536,7 @@ lemma trivial_half[simp]: \<open>half a = a\<close>
 
 lemma all_duplicable:
   \<open>sepadd_dup x\<close>
-  using local.all_selfdisjoint_dup local.half_self_disjoint
+  using all_selfdisjoint_dup half_self_disjoint
   by auto
 
 end
