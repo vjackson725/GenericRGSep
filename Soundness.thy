@@ -1042,16 +1042,18 @@ next
     using safe_endet[of n c1 hl hs r g q \<top> c2]
     by (meson safe_guarantee_mono safe_postpred_mono)
 next
-  case (rgsat_parallel s1 r g2 g1 p1 q1 s2 p2 q2 g q1' q2')
+  case (rgsat_par s1 r g2 g1 p1 q1 s2 p2 q2 g p q)
   then show ?case
     apply -
     apply (clarsimp simp add: sepconj_conj_def[of p1 p2] le_fun_def[of p]
         simp del: sup_apply top_apply)
+    apply (drule spec2, drule mp, blast)
+    apply (clarsimp simp del: sup_apply top_apply)
     apply (rule safe_parallel[where ?q1.0=q1 and ?q2.0=q2])
         apply (rule safe_postpred_mono[rotated], assumption, blast)
        apply (rule safe_postpred_mono[rotated], assumption, blast)
       apply blast
-     apply (metis sepconj_conj_mono)
+     apply blast
     apply blast
     done
 next

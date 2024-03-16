@@ -351,6 +351,13 @@ lemma sepadd_dup_antimono:
   apply (metis less_eq_sepadd_def part_of_def dup_sub_closure)
   done
 
+lemma sepadd_dup_plus_dupL:
+  \<open>a ## b \<Longrightarrow> sepadd_dup (a + b) \<Longrightarrow> sepadd_dup a\<close>
+  using partial_le_plus sepadd_dup_antimono by auto
+
+lemma sepadd_dup_plus_dupR:
+  \<open>a ## b \<Longrightarrow> sepadd_dup (a + b) \<Longrightarrow> sepadd_dup b\<close>
+  using partial_le_plus2 sepadd_dup_antimono by auto
 
 subsection \<open> core \<close>
 
@@ -358,14 +365,24 @@ text \<open>
   Here we introduce the notion of a (duplicable) core, the greatest duplicable element
   below an element.
 
-  Iris uses this notion to algebraise shared invariant predicates. Note that our version is weaker
-  than Iris'; we do not have that \<open>has_core\<close> is monotone. This is because there can be
-  several non-comparible duplicable elements sitting below a or b.
-    When all non-empty subsets of duplicable elements have a lub which is itself duplicable,
-  \<open>has_core\<close> is monotone.
+  The concept was originally introduced by Pottier (2012) (TODO: cite properly),
+  and is used to great effect in Iris (TODO: cite properly).
 
-  Note this is different to Pottier and Appel's versions of core, which are the (unital) core,
-  which is \<open>unitof\<close> from \<open>multiunit_sep_alg\<close>.
+  We do not have Pottier's second rule:
+    \<open>a ## b \<Longrightarrow> a + b = c \<Longrightarrow> core_rel c c' \<Longrightarrow> core_rel a a' \<Longrightarrow> c' = a'\<close>
+  or his law
+    \<open>a ## b \<Longrightarrow> a + b = c \<Longrightarrow>
+      core_rel a a' \<Longrightarrow> core_rel b b' \<Longrightarrow> core_rel c c' \<Longrightarrow>
+      a' + b' = c'\<close>
+  both of which are much too strong, and prevent more than one duplicable element being below a
+  resource. A quick argument to this effect: if \<open>a \<prec> c\<close> and both are duplicable, then \<open>a\<close>'s core
+  should be \<open>a\<close>, and \<open>c\<close>'s core should be \<open>c\<close>, with this law, they are the same. This law is
+  claimed by Pottier to be equivalent to the rule \<open>dup_sub_closure\<close>, but as we can see,
+  it is in fact stronger.
+
+  Neither do we have Iris' law that \<open>has_core\<close> is monotone. This is because there can be
+  several non-comparible duplicable elements sitting below a or b. When all non-empty subsets
+  of duplicable elements have a lub which is itself duplicable, \<open>has_core\<close> is monotone.
 \<close>
 
 definition \<open>core_rel a ca \<equiv> ca \<preceq> a \<and> sepadd_dup ca \<and> (\<forall>y. y \<preceq> a \<longrightarrow> sepadd_dup y \<longrightarrow> y \<preceq> ca)\<close>
@@ -386,7 +403,11 @@ lemma has_core_the_core_eq:
   \<open>has_core a \<Longrightarrow> P (the_core a) \<longleftrightarrow> (\<forall>ca. core_rel a ca \<longrightarrow> P ca)\<close>
   using the_core_core_rel_eq by blast
 
-lemma core_dup_self[simp]:
+lemma dup_has_core[dest]:
+  \<open>sepadd_dup a \<Longrightarrow> has_core a\<close>
+  using core_rel_def resource_order.refl by auto
+
+lemma core_dup_is_self[simp]:
   \<open>sepadd_dup a \<Longrightarrow> the_core a = a\<close>
   by (simp add: core_rel_def resource_order.refl)
 
@@ -403,6 +424,14 @@ lemma core_is_selfadd:
   \<open>has_core a \<Longrightarrow> the_core a + the_core a = the_core a\<close>
   using core_is_dup sepadd_dup_def
   by blast
+
+lemma add_to_core_then_dup:
+  \<open>a ## b \<Longrightarrow> core_rel c c' \<Longrightarrow> a + b = c' \<Longrightarrow> sepadd_dup a\<close>
+  using core_rel_def the_core_core_rel_eq sepadd_dup_plus_dupL by blast
+
+lemma add_to_core_then_dupR:
+  \<open>a ## b \<Longrightarrow> core_rel c c' \<Longrightarrow> a + b = c' \<Longrightarrow> sepadd_dup b\<close>
+  using core_rel_def sepadd_dup_plus_dupR by blast
 
 lemma core_idem:
   \<open>has_core a \<Longrightarrow> the_core (the_core a) = the_core a\<close>
@@ -427,6 +456,14 @@ lemma the_core_le_impl:
   \<open>has_core a \<Longrightarrow> has_core b \<Longrightarrow> a \<preceq> b \<Longrightarrow> the_core a \<preceq> the_core b\<close>
   by (metis core_rel_def resource_order.trans the_core_core_rel_eq)
 
+text \<open> Pottier's second core condition collapses duplicable elements \<close>
+lemma
+  \<open>(\<And>a b c c' a'.
+    a ## b \<Longrightarrow> a + b = c \<Longrightarrow> core_rel c c' \<Longrightarrow> core_rel a a' \<Longrightarrow> c' = a') \<Longrightarrow>
+    a \<preceq> b \<Longrightarrow> sepadd_dup b \<Longrightarrow> a = b\<close>
+  by (metis core_dup_is_self dup_has_core less_eq_sepadd_def' sepadd_dup_antimono
+      the_core_core_rel_eq)
+  
 text \<open>
   As every duplicable element is its own core, the monotonicity criterion is equivalent to
   the property that every element above a duplicable element (e.g. 0) has a unique greatest

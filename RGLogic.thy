@@ -556,15 +556,15 @@ inductive rgsat ::
     g1 \<le> g \<Longrightarrow> g2 \<le> g \<Longrightarrow>
     q1 \<le> q \<Longrightarrow> q2 \<le> q \<Longrightarrow>
     rgsat (c1 \<box> c2) r g p q\<close>
-| rgsat_parallel:
+| rgsat_par:
   \<open>rgsat s1 (r \<squnion> g2) g1 p1 q1 \<Longrightarrow>
     rgsat s2 (r \<squnion> g1) g2 p2 q2 \<Longrightarrow>
     g1 \<le> g \<Longrightarrow> g2 \<le> g \<Longrightarrow>
-    sswa (r \<squnion> g2) q1 \<le> q1' \<Longrightarrow>
-    sswa (r \<squnion> g1) q2 \<le> q2' \<Longrightarrow>
-    rgsat (s1 \<parallel> s2) r g (p1 \<^emph>\<and> p2) (q1' \<^emph>\<and> q2')\<close>
+    p \<le> p1 \<^emph>\<and> p2 \<Longrightarrow>
+    sswa (r \<squnion> g2) q1 \<^emph>\<and> sswa (r \<squnion> g1) q2 \<le> q \<Longrightarrow>
+    rgsat (s1 \<parallel> s2) r g p q\<close>
 | rgsat_atom:
-  \<open>sp b (wlp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) p) \<le> sswa r q \<Longrightarrow>
+  \<open>sp b (wssa r p) \<le> sswa r q \<Longrightarrow>
     \<forall>f. sp b (wssa r (p \<^emph>\<and> f)) \<le> sswa r (q \<^emph>\<and> f) \<Longrightarrow>
     b \<le> \<top> \<times>\<^sub>R g \<Longrightarrow>
     p' \<le> wssa r p \<Longrightarrow>
@@ -599,5 +599,37 @@ lemma backwards_done:
   by (rule rgsat_weaken[OF rgsat_skip _ _ order.refl order.refl,
         where p'=\<open>wlp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*) p\<close> and q'=p])
     (clarsimp simp add: sp_def wlp_def le_fun_def)+
+
+lemma rgsat_ex:
+  \<open>rgsat c r g p q' \<Longrightarrow> q' = q x \<Longrightarrow> rgsat c r g p (\<lambda>y. \<exists>x. q x y)\<close>
+  apply (induct arbitrary: q x rule: rgsat.inducts)
+            apply (rule rgsat_skip)
+            apply (force simp add: sp_def le_fun_def imp_ex_conjL)
+           apply (rule rgsat_iter, force, force)
+           apply (simp add: sp_def le_fun_def imp_ex_conjL; metis)
+          apply (rule rgsat_seq; force)
+         apply (rule rgsat_indet, fast, fast, fast, fast, fast, fast)
+        apply (rule rgsat_endet, fast, fast, fast, fast, fast, fast)
+       apply (rule rgsat_par; blast)
+      apply (rule rgsat_atom; blast)
+     apply (rule rgsat_weaken, (rule rgsat_frame; blast); force)
+    apply (rule rgsat_weaken, blast, blast, blast, blast, blast)
+   apply (rule rgsat_weaken, rule_tac ?p1.0=p1 and ?p2.0=p2 and ?q1.0=q1 and ?q2.0=q2 in rgsat_disj)
+        apply blast
+       apply blast
+      apply (simp; fail)
+     apply (clarsimp, blast)
+    apply blast
+   apply blast
+  apply (rule rgsat_weaken, rule_tac ?p1.0=p1 and ?p2.0=p2 and ?q1.0=q1 and ?q2.0=q2 in rgsat_conj)
+        apply blast
+       apply blast
+      apply (simp; fail)
+     apply (simp; fail)
+    apply (clarsimp, blast)
+   apply blast
+  apply blast
+  done
+
 
 end

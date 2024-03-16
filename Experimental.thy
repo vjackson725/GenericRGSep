@@ -17,8 +17,8 @@ definition sep_alg_homomorphism :: \<open>('a :: sep_alg \<Rightarrow> 'b :: sep
 
 
 lemma perm_alg_homomorphism_mono:
-  \<open>perm_alg_homomorphism f \<Longrightarrow> x \<le> y \<Longrightarrow> f x \<le> f y\<close>
-  by (metis (no_types, lifting) less_eq_sepadd_def perm_alg_homomorphism_def)
+  \<open>perm_alg_homomorphism f \<Longrightarrow> x \<preceq> y \<Longrightarrow> f x \<preceq> f y\<close>
+  by (clarsimp simp add: less_eq_sepadd_def' perm_alg_homomorphism_def, metis)
 
 lemma perm_alg_homomorphism_tuple:
   \<open>perm_alg_homomorphism f \<Longrightarrow>
@@ -235,12 +235,6 @@ next
           \<open>rx \<circ>\<^sub>R fs\<close> \<open>gx \<circ>\<^sub>R fs\<close> \<open>px \<circ> map_prod fl fs\<close> \<open>qx \<circ> map_prod fl fs\<close>])
         apply (rule rgsat_weaken.hyps(2); simp)
     oops
-       apply fastforce
-      apply fastforce
-     apply (simp add: rel_precomp_mono; fail)
-    apply (simp add: rel_precomp_mono; fail)
-    done
-qed
 
 
 lemma rgsat_preserved_under_homomorphism2:
@@ -261,105 +255,44 @@ lemma rgsat_preserved_under_homomorphism2:
     r' = r \<circ>\<^sub>R fs \<Longrightarrow>
     g' = g \<circ>\<^sub>R fs \<Longrightarrow>
     rgsat c r g p q\<close>
-proof (induct arbitrary: c p q r g rule: rgsat.inducts)
-  case (rgsat_skip r p q g)
-  then show ?case
-    apply (clarsimp simp add: map_comm_rev_iff2)
-    apply (rule rgsat.rgsat_skip)
-    apply (clarsimp simp add: le_fun_def)
-    apply (subgoal_tac \<open>(\<exists>a'. a = fl a') \<and> (\<exists>b'. b = fs b')\<close>)
-     prefer 2
-     apply (metis surjD)
-    apply clarsimp
-    apply (metis map_prod_simp)
-    done
-next
-  case (rgsat_iter c r g i p q)
-  then show ?case
-    apply (clarsimp simp add: map_comm_rev_iff2)
-    apply (rule rgsat.rgsat_iter)
-    thm rgsat.rgsat_iter rgsat_iter.hyps(2)
-      apply (rule rgsat_iter.hyps(2))
-               apply force
-              apply force
-             apply force
-            apply force
-           apply force
-          apply (simp; fail)
-
-    sorry
-next
-  case (rgsat_seq c1 r g p1 p2 c2 p3)
-  then show ?case
-    sorry
-next
-  case (rgsat_indet c1 r g1 p q1 c2 g2 q2 g q)
-  then show ?case
-    sorry
-next
-  case (rgsat_endet c1 r g1 p q1 c2 g2 q2 g q)
-  then show ?case sorry
-next
-  case (rgsat_parallel s1 r g2 g1 p1 q1 s2 p2 q2 g q1' q2')
-  then show ?case sorry
-next
-  case (rgsat_atom b r p q g p' q')
-  then show ?case sorry
-next
-  case (rgsat_frame c r g p q f f')
-  then show ?case sorry
-next
-  case (rgsat_weaken c r' g' p' q' p q r g)
-  then show ?case sorry
-qed
+  oops
 
 
 class appel_perm_alg = ord +
-  fixes R :: \<open>'a \<Rightarrow> 'a \<Rightarrow> 'a \<Rightarrow> bool\<close>
-  fixes add_leq :: \<open>'a \<Rightarrow> 'a \<Rightarrow> bool\<close> (infix \<open>\<lesssim>\<close> 50)
-  assumes add_leq_def: \<open>a \<lesssim> b \<longleftrightarrow> (\<exists>c. R a c b)\<close>
-  assumes join_eq: \<open>R a b z1 \<Longrightarrow> R a b z2 \<Longrightarrow> z1 = z2\<close>
-  assumes join_assoc: \<open>R a b d \<Longrightarrow> R d c e \<Longrightarrow> \<exists>f. R b c f \<and> R a f e\<close>
-  assumes join_comm: \<open>R a b c \<Longrightarrow> R b a c\<close>
-  assumes join_positivity: \<open>a \<lesssim> b \<Longrightarrow> b \<lesssim> a \<Longrightarrow> a = b\<close>
+  fixes J :: \<open>'a \<Rightarrow> 'a \<Rightarrow> 'a \<Rightarrow> bool\<close>
+  assumes join_eq: \<open>J a b z1 \<Longrightarrow> J a b z2 \<Longrightarrow> z1 = z2\<close>
+  assumes join_assoc: \<open>J a b d \<Longrightarrow> J d c e \<Longrightarrow> \<exists>f. J b c f \<and> J a f e\<close>
+  assumes join_comm: \<open>J a b c \<Longrightarrow> J b a c\<close>
+  assumes join_positivity: \<open>J a c1 b \<Longrightarrow> J b c2 a \<Longrightarrow> a = b\<close>
 begin
 
-lemma is_order:
-  \<open>class.order ((=) \<squnion> (\<lesssim>)) ((\<noteq>) \<sqinter> (\<lesssim>))\<close>
-  apply standard
-     apply (simp, metis join_positivity)
-    apply fast
-   apply (simp, metis add_leq_def join_assoc)
-  apply (simp, metis join_positivity)
-  done
-
 lemma ex_pseudo_unit:
-  \<open>\<forall>a. \<exists>u. R a u a\<close>
+  \<open>\<forall>a. \<exists>u. J a u a\<close>
   nitpick
   oops
 
 lemma related_pseudo_units_identical_failure:
-  \<open>R u1 a a \<Longrightarrow> R u2 a a \<Longrightarrow> u1 = u2\<close>
+  \<open>J u1 a a \<Longrightarrow> J u2 a a \<Longrightarrow> u1 = u2\<close>
   nitpick
   oops
 
 lemma related_units_identical_failure:
-  \<open>(\<forall>a z. R u1 a z \<longrightarrow> z = a) \<Longrightarrow> (\<forall>a z. R u2 a z \<longrightarrow> z = a) \<Longrightarrow>
-    R u1 a a \<Longrightarrow> R u2 a a \<Longrightarrow> u1 = u2\<close>
+  \<open>(\<forall>a z. J u1 a z \<longrightarrow> z = a) \<Longrightarrow> (\<forall>a z. J u2 a z \<longrightarrow> z = a) \<Longrightarrow>
+    J u1 a a \<Longrightarrow> J u2 a a \<Longrightarrow> u1 = u2\<close>
   by (metis join_assoc join_comm)
 
 definition
-  \<open>disjoint2 a b \<equiv> Ex (R a b)\<close>
+  \<open>disjoint2 a b \<equiv> Ex (J a b)\<close>
 
 definition
-  \<open>plus2 a b \<equiv> (THE c. R a b c)\<close>
+  \<open>plus2 a b \<equiv> (THE c. J a b c)\<close>
 
 lemma plus2_eq[simp]:
-  \<open>R a b x \<Longrightarrow> plus2 a b = x\<close>
+  \<open>J a b x \<Longrightarrow> plus2 a b = x\<close>
   by (metis plus2_def the_equality join_eq)
 
 lemma plus2_eq2[simp]:
-  \<open>R b a x \<Longrightarrow> plus2 a b = x\<close>
+  \<open>J b a x \<Longrightarrow> plus2 a b = x\<close>
   using join_comm plus2_eq by blast
 
 lemma partial_add_commute:
@@ -367,7 +300,7 @@ lemma partial_add_commute:
   by (clarsimp simp add: disjoint2_def)
 
 lemma join_assoc2:
-  \<open>R a b ab \<Longrightarrow> R b c bc \<Longrightarrow> R ab c abc \<Longrightarrow> R a bc abc\<close>
+  \<open>J a b ab \<Longrightarrow> J b c bc \<Longrightarrow> J ab c abc \<Longrightarrow> J a bc abc\<close>
   using join_assoc join_eq by blast
 
 lemma partial_add_assoc:
@@ -395,6 +328,83 @@ lemma disjoint_add_right_commute:
 
 end
 
+
+class dockins_multi_sep_alg = ord +
+  fixes J :: \<open>'a \<Rightarrow> 'a \<Rightarrow> 'a \<Rightarrow> bool\<close>
+  assumes join_eq: \<open>J a b z1 \<Longrightarrow> J a b z2 \<Longrightarrow> z1 = z2\<close>
+  assumes join_cancel: \<open>J x1 y z \<Longrightarrow> J x2 y z \<Longrightarrow> x1 = x2\<close>
+  assumes join_comm: \<open>J x y z \<Longrightarrow> J y x z\<close>
+  assumes join_assoc: \<open>J x y xy \<Longrightarrow> J xy z xyz \<Longrightarrow> \<exists>yz. J y z yz \<and> J x yz xyz\<close>
+  assumes join_multiunits: \<open>\<exists>u. J x u x\<close>
+begin
+
+definition
+  \<open>join_dup_positivity (aty :: 'a itself) \<equiv>
+    \<forall>a b c::'a. J a b c \<longrightarrow> J c c c \<longrightarrow> J a a a\<close>
+
+lemma join_assoc2:
+  \<open>J b c bc \<Longrightarrow> J a bc abc \<Longrightarrow> \<exists>ab. J a b ab \<and> J ab c abc\<close>
+  by (meson join_assoc join_comm)
+
+lemma dup_add_then_eq:
+  \<open>J u u u \<Longrightarrow> J a u b \<Longrightarrow> b = a\<close>
+  using join_assoc2 join_cancel join_eq by blast
+
+lemma positivity:
+  assumes
+    \<open>join_dup_positivity TYPE('a)\<close>
+    \<open>J a a' b\<close>
+    \<open>J b b' a\<close>
+  shows \<open>a = b\<close>
+proof -
+  obtain w where l1: \<open>J a' b' w\<close> \<open>J a w a\<close>
+    using assms join_assoc by blast
+  moreover have l3: \<open>J w w w \<close>
+    using l1 join_assoc join_cancel join_comm by blast
+  ultimately show ?thesis
+    using assms dup_add_then_eq join_dup_positivity_def
+    by blast
+qed
+
+
+lemma positivity_implies_join_dup_positivity:
+  assumes \<open>\<And>a b a' b'. J a a' b \<Longrightarrow> J b b' a \<Longrightarrow> a = b\<close>
+  shows \<open>join_dup_positivity TYPE('a)\<close>
+  unfolding join_dup_positivity_def
+proof clarify
+  fix a b c
+  assume assms2:
+    \<open>J a b c\<close>
+    \<open>J c c c\<close>
+  then show \<open>J a a a\<close>
+    using assms join_assoc2 join_cancel
+    by blast
+qed
+
+
+lemma join_strong_dup_positivity:
+  assumes
+    \<open>join_dup_positivity TYPE('a)\<close>
+    \<open>J a b c\<close>
+    \<open>J c c c\<close>
+  shows
+    \<open>a = c\<close>
+proof -
+  obtain ac where l1: \<open>J a c ac\<close>
+    using assms join_assoc2 join_comm by blast
+  moreover obtain bc where l2: \<open>J b c bc\<close>
+    using assms join_assoc2 join_comm by blast
+  moreover have l3: \<open>ac = c\<close>
+    using assms l1 dup_add_then_eq local.join_comm positivity
+    by blast
+  moreover have l4: \<open>bc = c\<close>
+    using assms l1 l2 l3
+    by (metis join_cancel join_comm join_eq)
+  ultimately show \<open>a = c\<close>
+    using assms join_cancel by blast
+qed
+
+end
 
 
 class pre_semi_sep_alg = disjoint + plus +
@@ -810,7 +820,7 @@ lemma safe_refinement_mono:
   done
 
 lemma refinement_atomic_condition1:
-  \<open>b' \<le> b \<Longrightarrow> sp b (wlp R P) s \<le> Q \<Longrightarrow> sp b' (wlp R P) s \<le> Q\<close>
+  \<open>b' \<le> b \<Longrightarrow> sp b (wlp J P) s \<le> Q \<Longrightarrow> sp b' (wlp J P) s \<le> Q\<close>
   using sp_rel_mono
   by auto
 
