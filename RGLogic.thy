@@ -333,4 +333,30 @@ lemma rgsat_ex:
   done
 
 
+section \<open> Rules for defined constructs \<close>
+
+lemma
+  fixes r g :: \<open>('s::perm_alg) resources \<Rightarrow> _ \<Rightarrow> bool\<close>
+  assumes
+    \<open>g = (\<lambda>x y. (lk \<^bold>\<mapsto> Unlocked s) x \<and> (lk \<^bold>\<mapsto> Locked) y)\<close>
+  shows
+  \<open>r, g \<turnstile> { wssa r (\<S> (lk \<^bold>\<mapsto> Unlocked s)) }
+            \<langle> acquire lk \<rangle>
+          { \<L> ((=) s) \<^emph>\<and> sswa r (\<S> (lk \<^bold>\<mapsto> Locked)) }\<close>
+  using assms
+  apply -
+  apply (rule rgsat_atom[where  q=\<open>\<L> _ \<^emph>\<and> \<S> _\<close>])
+      apply (rule order.refl)
+     apply (simp, rule order.refl)
+    apply (clarsimp simp add: sp_def[of \<open>acquire _\<close>] le_fun_def)
+    apply (rename_tac hl' hs' hl hs)
+    apply (rule_tac b=hl in sepconj_conjI)
+       apply force
+      apply (force simp add: acquire_def points_to_def)
+     apply (force simp add: acquire_def points_to_def wlp_def le_fun_def disjoint_sym_iff[of _ s])
+    apply (force simp add: acquire_def points_to_def wlp_def le_fun_def
+      dest: partial_add_commute)
+  oops
+
+
 end
