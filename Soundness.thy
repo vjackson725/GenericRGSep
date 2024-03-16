@@ -176,66 +176,13 @@ qed
 lemmas rev_opstep_preserves_all_atom_comm = opstep_preserves_all_atom_comm[rotated]
 
 
-subsection \<open> Sugared atomic programs \<close>
-
-definition \<open>passert p \<equiv> \<lambda>a b. p a \<and> a = b\<close>
-
-abbreviation \<open>Assert p \<equiv> Atomic (passert p)\<close>
-abbreviation \<open>Assume p \<equiv> Atomic (\<lambda>a. p)\<close>
-
-lemmas Assert_def = arg_cong[where f=Atomic, OF meta_eq_to_obj_eq[OF passert_def]]
-
-lemma passert_simps[simp]:
-  \<open>passert p a b \<longleftrightarrow> p a \<and> b = a\<close>
-  by (force simp add: passert_def)
+subsection \<open> Opstep rules for defined programs \<close>
 
 lemma opstep_assert[intro!]: \<open>p h \<Longrightarrow> opstep Local (h, Assert p) (h, Skip)\<close>
   by (force simp add: opstep.atomic passert_def)
 
 lemma opstep_assume[intro!]: \<open>q h' \<Longrightarrow> opstep Local (h, Assume q) (h', Skip)\<close>
   by (force simp add: opstep.atomic rel_liftR_def)
-
-subsection \<open> If-then-else and While Loops \<close>
-
-definition \<open>IfThenElse p ct cf \<equiv> Assert p ;; ct \<box> Assert (-p) ;; cf\<close>
-definition \<open>WhileLoop p c \<equiv> \<mu> (Assert p ;; map_fixvar Suc c ;; FixVar 0 \<box> Assert (-p))\<close>
-
-lemma IfThenElse_inject[simp]:
-  \<open>IfThenElse p1 ct1 cf1 = IfThenElse p2 ct2 cf2 \<longleftrightarrow> p1 = p2 \<and> ct1 = ct2 \<and> cf1 = cf2\<close>
-  by (simp add: IfThenElse_def passert_def fun_eq_iff, blast)
-
-lemma WhileLoop_inject[simp]:
-  \<open>WhileLoop p1 c1 = WhileLoop p2 c2 \<longleftrightarrow> p1 = p2 \<and> c1 = c2\<close>
-  by (simp add: WhileLoop_def map_fixvar_inj_inject passert_def fun_eq_iff, blast)
-
-lemma IfThenElse_distinct[simp]:
-  \<open>IfThenElse p ct cf \<noteq> Skip\<close>
-  \<open>IfThenElse p ct cf \<noteq> c1 ;; c2\<close>
-  \<open>IfThenElse p ct cf \<noteq> c1 \<parallel> c2\<close>
-  \<open>IfThenElse p ct cf \<noteq> \<mu> c\<close>
-  \<open>IfThenElse p ct cf \<noteq> Atomic b\<close>
-  \<open>Skip \<noteq> IfThenElse p ct cf\<close>
-  \<open>c1 ;; c2 \<noteq> IfThenElse p ct cf\<close>
-  \<open>c1 \<parallel> c2 \<noteq> IfThenElse p ct cf\<close>
-  \<open>\<mu> c \<noteq> IfThenElse p ct cf\<close>
-  \<open>Atomic b \<noteq> IfThenElse p ct cf\<close>
-  by (simp add: IfThenElse_def)+
-
-lemma WhileLoop_distinct[simp]:
-  \<open>WhileLoop p c \<noteq> Skip\<close>
-  \<open>WhileLoop p c \<noteq> c1 \<box> c2\<close>
-  \<open>WhileLoop p c \<noteq> c1 \<parallel> c2\<close>
-  \<open>WhileLoop p c \<noteq> Atomic b\<close>
-  \<open>Skip \<noteq> WhileLoop p c\<close>
-  \<open>c1 \<box> c2 \<noteq> WhileLoop p c\<close>
-  \<open>c1 \<parallel> c2 \<noteq> WhileLoop p c\<close>
-  \<open>Atomic b \<noteq> WhileLoop p c\<close>
-  \<open>WhileLoop p c \<noteq> \<mu> c\<close>
-  \<open>\<mu> c \<noteq> WhileLoop p c\<close>
-           apply (simp add: WhileLoop_def; fail)+
-   apply (rule size_neq_size_imp_neq, simp add: WhileLoop_def)+
-  done
-
 
 lemma opstep_IfThenElse_iff[opstep_iff]:
   \<open>opstep a (h, IfThenElse p ct cf) s' \<longleftrightarrow>
