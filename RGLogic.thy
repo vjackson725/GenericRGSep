@@ -332,5 +332,4 @@ lemma rgsat_ex:
   apply blast
   done
 
-
 end

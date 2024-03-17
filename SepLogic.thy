@@ -35,16 +35,17 @@ class disjoint =
 subsection \<open> Permission Algebras \<close>
 
 class perm_alg = disjoint + plus +
-  (* ordered partial commutative monoid *)
+  (* partial commutative monoid *)
   assumes partial_add_assoc: \<open>a ## b \<Longrightarrow> b ## c \<Longrightarrow> a ## c \<Longrightarrow> (a + b) + c = a + (b + c)\<close>
   assumes partial_add_commute: \<open>a ## b \<Longrightarrow> a + b = b + a\<close>
-  (* separation laws *)
   assumes disjoint_sym: \<open>a ## b \<Longrightarrow> b ## a\<close>
   assumes disjoint_add_rightL: \<open>b ## c \<Longrightarrow> a ## b + c \<Longrightarrow> a ## b\<close>
   assumes disjoint_add_right_commute: \<open>b ## c \<Longrightarrow> a ## b + c \<Longrightarrow> b ## a + c\<close>
+  (* separation laws *)
   assumes positivity:
     \<open>a ## c1 \<Longrightarrow> a + c1 = b \<Longrightarrow> b ## c2 \<Longrightarrow> b + c2 = a \<Longrightarrow> a = b\<close>
-  assumes dup_sub_closure: \<open>a ## b \<Longrightarrow> a + b = c \<Longrightarrow> c ## c \<Longrightarrow> c + c = c \<Longrightarrow> a + a = a\<close>
+  assumes dup_sub_closure:
+    \<open>a ## b \<Longrightarrow> a + b = c \<Longrightarrow> c ## c \<Longrightarrow> c + c = c \<Longrightarrow> a + a = a\<close>
 begin
 
 lemma trans_helper:
@@ -185,6 +186,8 @@ sublocale resource_order: ordering \<open>(\<preceq>)\<close> \<open>(\<prec>)\<
 lemma nless_sepadd_le_sepadd: "\<not> x \<prec> y \<longleftrightarrow> \<not> x \<preceq> y \<or> x = y"
   using less_sepadd_def resource_order.order_iff_strict
   by auto
+
+text \<open> Set up the isabelle machinery to treat this like an order. \<close>
 
 local_setup \<open>
   HOL_Order_Tac.declare_order {

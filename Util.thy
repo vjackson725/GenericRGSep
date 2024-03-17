@@ -965,7 +965,7 @@ lemma wlp_bot[simp]:
   \<open>wlp r \<bottom> = - pre_state r\<close>
   by (simp add: wlp_def fun_eq_iff pre_state_def)
 
-lemma wlp_sup_semidistirb:
+lemma wlp_sup_semidistrib:
   \<open>wlp r p \<squnion> wlp r q \<le> wlp r (p \<squnion> q)\<close>
   by (force simp add: wlp_def)
 

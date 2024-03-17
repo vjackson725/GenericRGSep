@@ -1,261 +1,6 @@
 theory Experimental
-  imports Soundness
+  imports SepLogic
 begin
-
-
-definition perm_alg_homomorphism :: \<open>('a :: perm_alg \<Rightarrow> 'b :: perm_alg) \<Rightarrow> bool\<close> where
-  \<open>perm_alg_homomorphism f \<equiv>
-    (\<forall>x y. x ## y \<longrightarrow> f x ## f y) \<and>
-    (\<forall>x y. x ## y \<longrightarrow> f (x + y) = f x + f y)\<close>
-
-definition sep_alg_homomorphism :: \<open>('a :: sep_alg \<Rightarrow> 'b :: sep_alg) \<Rightarrow> bool\<close> where
-  \<open>sep_alg_homomorphism f \<equiv>
-    (\<forall>x y. x ## y \<longrightarrow> f x ## f y) \<and>
-    (\<forall>x y. x ## y \<longrightarrow> f (x + y) = f x + f y) \<and>
-    (\<forall>x. f (unitof x) = unitof (f x)) \<and>
-    (f 0 = 0)\<close>
-
-
-lemma perm_alg_homomorphism_mono:
-  \<open>perm_alg_homomorphism f \<Longrightarrow> x \<preceq> y \<Longrightarrow> f x \<preceq> f y\<close>
-  by (clarsimp simp add: less_eq_sepadd_def' perm_alg_homomorphism_def, metis)
-
-lemma perm_alg_homomorphism_tuple:
-  \<open>perm_alg_homomorphism f \<Longrightarrow>
-    perm_alg_homomorphism g \<Longrightarrow>
-    perm_alg_homomorphism (map_prod f g)\<close>
-  by (clarsimp simp add: perm_alg_homomorphism_def)
-
-definition
-  \<open>split_preserving_morphism (f :: ('a::perm_alg \<Rightarrow> 'b::perm_alg)) \<equiv>
-    \<forall>x y' z'. y' ## z' \<longrightarrow> f x = y' + z' \<longrightarrow> (\<exists>y z. x = y + z \<and> y ## z \<and> y' = f y \<and> z' = f z)\<close>
-
-lemma function_rel_subsetD:
-  \<open>(\<lambda>x y. r (f x) (f y))\<^sup>*\<^sup>* x y \<Longrightarrow> (\<lambda>x y. r\<^sup>*\<^sup>* (f x) (f y)) x y\<close>
-  by (induct rule: rtranclp_induct) force+
-
-lemma function_rel_subset:
-  \<open>(\<lambda>x y. r (f x) (f y))\<^sup>*\<^sup>* \<le> (\<lambda>x y. r\<^sup>*\<^sup>* (f x) (f y))\<close>
-  by (simp add: function_rel_subsetD predicate2I)
-
-lemma helper:
-  \<open>sswa (\<lambda>a b. r (fs a) (fs b)) (i \<circ> map_prod fl fs) \<le> (\<lambda>a. sswa r i (map_prod fl fs a))\<close>
-  apply (clarsimp simp add: sp_def fun_eq_iff)
-  apply (rename_tac a y x)
-  apply (rule_tac x=\<open>fs x\<close> in exI)
-  apply (rule conjI)
-   apply (simp add: function_rel_subsetD; fail)
-  apply blast
-  done
-
-definition rel_precomp :: \<open>('a \<Rightarrow> 'a \<Rightarrow> 'z) \<Rightarrow> ('b \<Rightarrow> 'a) \<Rightarrow> ('b \<Rightarrow> 'b \<Rightarrow> 'z)\<close> (infixl \<open>\<circ>\<^sub>R\<close> 55) where
-  \<open>r \<circ>\<^sub>R f \<equiv> \<lambda>x y. r (f x) (f y)\<close>
-
-lemma rel_precomp_sup_eq:
-  \<open>(r1 \<squnion> r2) \<circ>\<^sub>R f = (r1 \<circ>\<^sub>R f) \<squnion> (r2 \<circ>\<^sub>R f)\<close>
-  by (fastforce simp add: rel_precomp_def)
-
-lemma helper_rewrite:
-  \<open>\<forall>x y. (\<lambda>x y. r (fs x) (fs y))\<^sup>*\<^sup>* = (\<lambda>x y. r\<^sup>*\<^sup>* (fs x) (fs y)) \<Longrightarrow>
-    range fs = UNIV \<Longrightarrow>
-    sswa r p \<circ> map_prod fl fs = sswa (r \<circ>\<^sub>R fs) (p \<circ> map_prod fl fs)\<close>
-  apply (clarsimp simp add: sp_def comp_def rel_precomp_def fun_eq_iff)
-  apply (rule iffI)
-   apply (metis surjD)
-  apply blast
-  done
-
-lemma rel_precomp_mono:
-  \<open>r \<le> r' \<Longrightarrow> r \<circ>\<^sub>R fs \<le> r' \<circ>\<^sub>R fs\<close>
-  by (simp add: le_fun_def rel_precomp_def)
-
-lemma sepconj_conj_map_prod_impl1:
-  \<open>perm_alg_homomorphism fl \<Longrightarrow>
-    ((q1' \<circ> map_prod fl fs) \<^emph>\<and> (q2' \<circ> map_prod fl fs)) x \<Longrightarrow>
-    (q1' \<^emph>\<and> q2') (map_prod fl fs x)\<close>
-  apply (clarsimp simp add: sepconj_conj_def perm_alg_homomorphism_def)
-  apply blast
-  done
-
-lemma
-  \<open>perm_alg_homomorphism (f :: ('a::perm_alg \<Rightarrow> 'b::perm_alg)) \<Longrightarrow>
-    \<forall>x. f x ## f x \<longrightarrow> x ## x \<Longrightarrow>
-    \<forall>x. sepadd_unit (f x) \<longrightarrow> sepadd_unit x \<Longrightarrow>
-    \<forall>x y. (x ## y \<longrightarrow> pa x y = Some (x + (y::'a))) \<and> (\<not>x ## y \<longrightarrow> pa x y = None) \<Longrightarrow>
-    \<forall>x y. (x ## y \<longrightarrow> pb x y = Some (x + (y::'b))) \<and> (\<not>x ## y \<longrightarrow> pb x y = None) \<Longrightarrow>
-    \<forall>x y' z'. y' ## z' \<longrightarrow> f x = y' + z' \<longrightarrow> (\<exists>y z. x = y + z \<and> y ## z \<and> y' = f y \<and> z' = f z)\<close>
-  apply (clarsimp simp add: sep_alg_homomorphism_def)
-  oops
-
-lemma sepconj_conj_map_prod_eq:
-  \<open>perm_alg_homomorphism fl \<Longrightarrow>
-    split_preserving_morphism fl \<Longrightarrow>
-    (q1' \<^emph>\<and> q2') (map_prod fl fs a) = ((q1' \<circ> map_prod fl fs) \<^emph>\<and> (q2' \<circ> map_prod fl fs)) a\<close>
-  apply (cases a)
-  apply (clarsimp simp add: sepconj_conj_def perm_alg_homomorphism_def
-      split_preserving_morphism_def)
-  apply (rule iffI, blast, metis)
-  done
-
-
-lemma semilattice_sup_helper1:
-  fixes ra :: \<open>'a :: semilattice_sup\<close>
-  shows
-  \<open>rb1 \<le> rb \<Longrightarrow>
-    rb2 \<le> rb \<Longrightarrow>
-    ra \<le> rab' \<Longrightarrow>
-    rb2 \<le> rab' \<Longrightarrow>
-    rab' \<le> ra \<squnion> rb2 \<squnion> rb1 \<Longrightarrow>
-    rab' \<le> ra \<squnion> rb\<close>
-  by (metis sup.absorb_iff2 sup_assoc)
-
-lemma rgsat_preserved_under_homomorphism:
-  fixes p :: \<open>'a::perm_alg \<times> 'b::perm_alg \<Rightarrow> bool\<close>
-    and q :: \<open>'a \<times> 'b \<Rightarrow> bool\<close>
-    and fl :: \<open>'c::perm_alg \<Rightarrow> 'a\<close>
-    and fs :: \<open>'d::perm_alg \<Rightarrow> 'b\<close>
-  shows
-  \<open>rgsat c r g p q \<Longrightarrow>
-    perm_alg_homomorphism fl \<Longrightarrow>
-    perm_alg_homomorphism fs \<Longrightarrow>
-    split_preserving_morphism fl \<Longrightarrow>
-    (\<And>p rx. r \<le> rx \<Longrightarrow> rx \<le> r \<squnion> g \<Longrightarrow>
-        sswa rx p \<circ> map_prod fl fs = sswa (rx \<circ>\<^sub>R fs) (p \<circ> map_prod fl fs)) \<Longrightarrow>
-    c' = map_comm (map_prod fl fs) c \<Longrightarrow>
-    p' = (p \<circ> map_prod fl fs) \<Longrightarrow>
-    q' = (q \<circ> map_prod fl fs) \<Longrightarrow>
-    r' = r \<circ>\<^sub>R fs \<Longrightarrow>
-    g' = g \<circ>\<^sub>R fs \<Longrightarrow>
-    rgsat c' r' g' p' q'\<close>
-proof (induct arbitrary: c' p' q' r' g' rule: rgsat.inducts)
-  case (rgsat_skip r p q g)
-  then show ?case
-    apply (clarsimp simp add: map_comm_rev_iff2)
-    apply (rule rgsat.rgsat_skip)
-    apply (clarsimp simp add: le_fun_def sp_def imp_ex_conjL rel_precomp_def)
-    apply (frule function_rel_subsetD)
-    apply blast
-    done
-next
-  case (rgsat_iter c r g i p q)
-  show ?case
-    using rgsat_iter.prems rgsat_iter.hyps(1,3-)
-    apply (clarsimp simp add: map_comm_rev_iff2 simp del: sup_apply)
-    apply (rule rgsat.rgsat_iter[where i=\<open>i \<circ> map_prod fl fs\<close>])
-      apply (rule rgsat_iter.hyps(2); simp add: comp_def sp_comp_rel del: sup_apply; fail)
-     apply fastforce
-    apply (drule meta_spec[of _ r])
-    apply (clarsimp simp add: le_fun_def comp_def)
-    apply (metis map_prod_simp)
-    done
-next
-  case (rgsat_seq c1 r g p1 p2 c2 p3)
-  show ?case
-    using rgsat_seq.prems
-    apply (clarsimp simp add: map_comm_rev_iff2)
-    apply (rule rgsat.rgsat_seq)
-     apply (rule rgsat_seq.hyps(2); force simp add: comp_def sp_comp_rel)
-    apply (rule rgsat_seq.hyps(4); simp add: comp_def sp_comp_rel; fail)
-    done
-next
-  case (rgsat_indet c1 r g1 p q1 c2 g2 q2 g q)
-  show ?case
-    using rgsat_indet.prems rgsat_indet.hyps(5-)
-    apply (clarsimp simp add: map_comm_rev_iff2 simp del: sup_apply)
-    apply (rule rgsat.rgsat_indet)
-         apply (rule rgsat_indet.hyps(2); simp add: comp_def sp_comp_rel del: sup_apply)
-         apply (drule_tac x=rx in meta_spec)
-         apply (simp del: sup_apply, blast)
-        apply (rule rgsat_indet.hyps(4); simp add: comp_def sp_comp_rel)
-        apply (drule_tac x=rx in meta_spec)
-        apply (simp del: sup_apply, blast)
-       apply (metis rel_precomp_mono)
-      apply (metis rel_precomp_mono)
-     apply (simp add: le_fun_def)
-    apply (simp add: le_fun_def)
-    done
-next
-  case (rgsat_endet c1 r g1 p q1 c2 g2 q2 g q)
-  show ?case
-    using rgsat_endet.prems rgsat_endet.hyps(5-)
-    apply (clarsimp simp add: map_comm_rev_iff2)
-    apply (rule rgsat.rgsat_endet)
-         apply (rule rgsat_endet.hyps(2); simp add: comp_def sp_comp_rel)
-         apply (drule_tac x=rx in meta_spec)
-         apply (simp del: sup_apply, blast)
-        apply (rule rgsat_endet.hyps(4); simp add: comp_def sp_comp_rel)
-        apply (drule_tac x=rx in meta_spec)
-        apply (simp del: sup_apply, blast)
-       apply (metis rel_precomp_mono)
-      apply (metis rel_precomp_mono)
-     apply (simp add: le_fun_def)
-    apply (simp add: le_fun_def)
-    done
-next
-  case (rgsat_parallel s1 r g2 g1 p1 q1 s2 p2 q2 g q1' q2')
-  show ?case
-    using rgsat_parallel.prems rgsat_parallel.hyps(5-)
-    apply (clarsimp simp add: map_comm_rev_iff2 sepconj_conj_map_prod_eq simp del: sup_apply)
-    apply (rule rgsat.rgsat_parallel[of
-          _ \<open>r \<circ>\<^sub>R fs\<close> \<open>g2 \<circ>\<^sub>R fs\<close> \<open>g1 \<circ>\<^sub>R fs\<close> \<open>p1 \<circ> map_prod fl fs\<close> \<open>q1 \<circ> map_prod fl fs\<close>
-          _ \<open>p2 \<circ> map_prod fl fs\<close> \<open>q2 \<circ> map_prod fl fs\<close>])
-         apply (rule rgsat_parallel.hyps(2); (simp del: sup_apply)?) (* 6 \<rightarrow> 7 *)
-          apply (metis semilattice_sup_helper1)
-         apply (metis rel_precomp_sup_eq)
-        apply (rule rgsat_parallel.hyps(4); (simp del: sup_apply)?) (* 6 \<rightarrow> 7 *)
-         apply (metis semilattice_sup_helper1)
-        apply (metis rel_precomp_sup_eq)
-       apply (simp add: rel_precomp_mono; fail)
-      apply (simp add: rel_precomp_mono; fail)
-     apply (drule_tac x=\<open>r \<squnion> g2\<close> and y=q1 in meta_spec2)
-     apply (clarsimp simp add: rel_precomp_sup_eq[symmetric] le_supI2 comp_def simp del: sup_apply)
-     apply (clarsimp simp add: le_fun_def)
-     apply (metis map_prod_simp)
-    apply (drule_tac x=\<open>r \<squnion> g1\<close> and y=q2 in meta_spec2)
-    apply (clarsimp simp add: rel_precomp_sup_eq[symmetric] le_supI2 comp_def simp del: sup_apply)
-    apply (clarsimp simp add: le_fun_def)
-    apply (metis map_prod_simp)
-    done
-next
-  case (rgsat_atom b r p q g p' q')
-  then show ?case
-    apply (clarsimp simp add: map_comm_rev_iff2 sepconj_conj_map_prod_eq)
-    apply (rule rgsat.rgsat_atom)
-        apply blast
-    sorry
-next
-  case (rgsat_frame c r g p q f f')
-  then show ?case sorry
-next
-  case (rgsat_weaken c rx gx px qx p q r g)
-  show ?case
-    using rgsat_weaken.prems rgsat_weaken.hyps(3-)
-    apply -
-    apply (rule rgsat.rgsat_weaken[of _
-          \<open>rx \<circ>\<^sub>R fs\<close> \<open>gx \<circ>\<^sub>R fs\<close> \<open>px \<circ> map_prod fl fs\<close> \<open>qx \<circ> map_prod fl fs\<close>])
-        apply (rule rgsat_weaken.hyps(2); simp)
-    oops
-
-
-lemma rgsat_preserved_under_homomorphism2:
-  fixes p :: \<open>'a::perm_alg \<times> 'b::perm_alg \<Rightarrow> bool\<close>
-    and q :: \<open>'a \<times> 'b \<Rightarrow> bool\<close>
-    and fl :: \<open>'c::perm_alg \<Rightarrow> 'a\<close>
-    and fs :: \<open>'d::perm_alg \<Rightarrow> 'b\<close>
-  shows
-  \<open>rgsat c' r' g' p' q' \<Longrightarrow>
-    perm_alg_homomorphism fl \<Longrightarrow>
-    perm_alg_homomorphism fs \<Longrightarrow>
-    (\<And>p. sswa r p \<circ> map_prod fl fs = sswa (r \<circ>\<^sub>R fs) (p \<circ> map_prod fl fs)) \<Longrightarrow>
-    surj fl \<Longrightarrow>
-    surj fs \<Longrightarrow>
-    c' = map_comm (map_prod fl fs) c \<Longrightarrow>
-    p' = (p \<circ> map_prod fl fs) \<Longrightarrow>
-    q' = (q \<circ> map_prod fl fs) \<Longrightarrow>
-    r' = r \<circ>\<^sub>R fs \<Longrightarrow>
-    g' = g \<circ>\<^sub>R fs \<Longrightarrow>
-    rgsat c r g p q\<close>
-  oops
 
 
 class appel_perm_alg = ord +
@@ -395,7 +140,7 @@ proof -
   moreover obtain bc where l2: \<open>J b c bc\<close>
     using assms join_assoc2 join_comm by blast
   moreover have l3: \<open>ac = c\<close>
-    using assms l1 dup_add_then_eq local.join_comm positivity
+    using assms l1 dup_add_then_eq join_comm positivity
     by blast
   moreover have l4: \<open>bc = c\<close>
     using assms l1 l2 l3
@@ -406,110 +151,53 @@ qed
 
 end
 
-
-class pre_semi_sep_alg = disjoint + plus +
-  (* ordered partial commutative monoid *)
-  assumes partial_add_assoc: \<open>a ## b \<Longrightarrow> b ## c \<Longrightarrow> a ## c \<Longrightarrow> (a + b) + c = a + (b + c)\<close>
-  assumes partial_add_commute: \<open>a ## b \<Longrightarrow> a + b = b + a\<close>
-  (* separation laws *)
-  assumes disjoint_sym: \<open>a ## b \<Longrightarrow> b ## a\<close>
-  assumes disjoint_add_rightL: \<open>b ## c \<Longrightarrow> a ## b + c \<Longrightarrow> a ## b\<close>
-  assumes disjoint_add_right_commute: \<open>b ## c \<Longrightarrow> a ## b + c \<Longrightarrow> b ## a + c\<close>
-  assumes unit_sub_closure:
-    \<open>a ## b \<Longrightarrow> a + b ## c \<Longrightarrow> b ## b \<Longrightarrow> c ## c \<Longrightarrow> a + (b + c) = a \<Longrightarrow> a + b = a\<close>
-(* assumes dup_sub_closure: \<open>a ## b \<Longrightarrow> a + b = c \<Longrightarrow> c ## c \<Longrightarrow> c + c = c \<Longrightarrow> a + a = a\<close> *)
+class multi_sep_alg2 = perm_alg + order +
+  fixes unitof :: \<open>'a \<Rightarrow> 'a\<close>
+  assumes unitof_disjoint[simp,intro!]: \<open>unitof a ## a\<close>
+  assumes unitof_is_unit[simp]: \<open>\<And>a b. unitof a ## b \<Longrightarrow> unitof a + b = b\<close>
+  assumes le_add1: \<open>a ## b \<Longrightarrow> a \<le> a + b\<close>
+  assumes le_add_monoR:
+    \<open>a ## c \<Longrightarrow> b ## c \<Longrightarrow> a \<le> b \<Longrightarrow> a + c \<le> b + c\<close>
+  assumes \<open>a \<le> b \<Longrightarrow> compatible a b\<close>
 begin
 
-lemma positive_impl_unit_sub_closure:
-  \<open>(\<And>a b c1 c2. a ## c1 \<Longrightarrow> a + c1 = b \<Longrightarrow> b ## c2 \<Longrightarrow> b + c2 = a \<Longrightarrow> a = b) \<Longrightarrow>
-    (\<And>a b c. a ## b \<Longrightarrow> a + b ## c \<Longrightarrow> b ## b \<Longrightarrow> c ## c \<Longrightarrow> a + (b + c) = a \<Longrightarrow> a + b = a)\<close>
-  by (metis disjoint_add_rightL disjoint_sym partial_add_assoc partial_add_commute)
+lemma add_to_unit_is_unit:
+  \<open>a ## b \<Longrightarrow> a + b = c \<Longrightarrow> unitof c = unitof a\<close>
+  by (metis disjoint_add_rightL partial_add_commute unitof_disjoint unitof_is_unit)
 
-lemma unit_sub_closure_impl_positive:
-  \<open>(\<And>a b c. a ## b \<Longrightarrow> a + b ## c \<Longrightarrow> b ## b \<Longrightarrow> c ## c \<Longrightarrow> a + (b + c) = a \<Longrightarrow> a + b = a) \<Longrightarrow>
-    (\<And>a b c1 c2. a ## c1 \<Longrightarrow> a + c1 = b \<Longrightarrow> b ## c2 \<Longrightarrow> b + c2 = a \<Longrightarrow> a = b)\<close>
-  by (metis disjoint_add_rightL disjoint_sym partial_add_assoc partial_add_commute)
+lemma le_add2: \<open>a ## b \<Longrightarrow> b \<le> a + b\<close>
+  by (metis disjoint_sym le_add1 partial_add_commute)
 
-lemma \<open>a ## c1 \<Longrightarrow> a + c1 = b \<Longrightarrow> b ## c2 \<Longrightarrow> b + c2 = a \<Longrightarrow> a = b\<close>
-  by (metis disjoint_add_rightL disjoint_sym partial_add_assoc partial_add_commute unit_sub_closure)
+lemma unitof_least: \<open>a ## b \<Longrightarrow> unitof a \<le> b\<close>
+  by (metis disjoint_add_rightL disjoint_sym le_add1 unitof_disjoint unitof_is_unit)
 
-definition subadd :: \<open>'a \<Rightarrow> 'a \<Rightarrow> bool\<close> (infix \<open>\<prec>\<^sub>+\<close> 50) where
-  \<open>a \<prec>\<^sub>+ b \<equiv> a \<noteq> b \<and> (\<exists>c. a ## c \<and> a + c = b)\<close>
 
-definition subaddeq :: \<open>'a \<Rightarrow> 'a \<Rightarrow> bool\<close> (infix \<open>\<preceq>\<^sub>+\<close> 50) where
-  \<open>a \<preceq>\<^sub>+ b \<equiv> a = b \<or> (\<exists>c. a ## c \<and> a + c = b)\<close>
-
-lemma subadd_order:
-  \<open>class.order (\<preceq>\<^sub>+) (\<prec>\<^sub>+)\<close>
-  apply (unfold subadd_def subaddeq_def)
-  apply standard
-     apply (rule iffI conjI impI; elim conjE exE disjE)
-       apply clarsimp
-       apply (rule conjI, force)
-       apply clarsimp
-       apply (metis disjoint_add_rightL disjoint_sym partial_add_assoc partial_add_commute unit_sub_closure)
-      apply blast
-     apply blast
-    apply blast
-   apply clarsimp
-   apply (elim disjE)
-      apply blast
-     apply blast
-    apply blast
-   apply clarsimp
-   apply (metis disjoint_add_rightL disjoint_add_right_commute disjoint_sym partial_add_assoc
-      partial_add_commute)
-  apply (metis disjoint_add_rightL disjoint_sym partial_add_assoc partial_add_commute unit_sub_closure)
+lemma leq_sepadd_impl_leq: \<open>a \<preceq> b \<Longrightarrow> a \<le> b\<close>
+  apply (cases \<open>a = b\<close>)
+   apply force
+  apply (force dest: le_add1 simp add: less_eq_sepadd_def')
   done
 
-definition \<open>sepadd_unit2 u \<equiv> u ## u \<and> (\<forall>a. u ## a \<longrightarrow> a + u = a)\<close>
-
-lemma \<open>sepadd_unit2 u \<Longrightarrow> u \<preceq>\<^sub>+ a \<Longrightarrow> a ## b \<Longrightarrow> u \<preceq>\<^sub>+ a + b\<close>
-  unfolding sepadd_unit2_def subaddeq_def
-  by (metis disjoint_add_right_commute disjoint_sym partial_add_commute)
-
-lemma \<open>sepadd_unit2 u \<Longrightarrow> u \<preceq>\<^sub>+ a \<Longrightarrow> a ## b \<Longrightarrow> u \<preceq>\<^sub>+ b\<close>
-  unfolding sepadd_unit2_def subaddeq_def
-  by (metis disjoint_add_rightL disjoint_sym partial_add_commute)
-
-lemma \<open>sepadd_unit2 u \<Longrightarrow> u \<preceq>\<^sub>+ a \<Longrightarrow> a ## b \<Longrightarrow> u \<preceq>\<^sub>+ a + b\<close>
-  unfolding sepadd_unit2_def subaddeq_def
-  by (metis disjoint_add_right_commute disjoint_sym partial_add_commute)
-
-lemma \<open>sepadd_unit2 u \<Longrightarrow> u \<preceq>\<^sub>+ a \<Longrightarrow> a ## b \<Longrightarrow> u \<preceq>\<^sub>+ b\<close>
-  unfolding sepadd_unit2_def subaddeq_def
-  by (metis disjoint_add_rightL disjoint_sym partial_add_commute)
-
-lemma 
-    \<open>\<forall>u a. a \<preceq>\<^sub>+ u \<longrightarrow> sepadd_unit2 u \<longrightarrow> sepadd_unit2 a\<close>
-   by (clarsimp simp add: sepadd_unit2_def subaddeq_def,
-      metis unit_sub_closure disjoint_add_rightL disjoint_sym partial_add_commute)
-
-lemma \<open>sepadd_unit2 u \<Longrightarrow> a ## b \<Longrightarrow> a + b = u \<Longrightarrow> sepadd_unit2 a\<close>
-  unfolding sepadd_unit2_def subaddeq_def
-  by (metis disjoint_add_rightL disjoint_sym partial_add_commute unit_sub_closure[of _ a b])
-
-
-definition \<open>is_sepdup a \<equiv> a ## a \<and> a + a = a\<close>
-
-lemma \<open>sepadd_unit2 u \<Longrightarrow> is_sepdup u\<close>
-  by (simp add: is_sepdup_def sepadd_unit2_def)
-
-lemma sepdup_antimono_iff_positivity:
-  \<open>(\<forall>a b. a \<preceq>\<^sub>+ b \<longrightarrow> is_sepdup b \<longrightarrow> is_sepdup a) \<longleftrightarrow>
-    (\<forall>a b c. a ## b \<longrightarrow> a + b = c \<longrightarrow> c ## c \<longrightarrow> c + c = c \<longrightarrow> a + a = a)\<close>
-  apply (rule iffI)
-   apply (meson is_sepdup_def subaddeq_def; fail)
-  apply (simp add: is_sepdup_def subaddeq_def, clarify)
-  apply (meson disjoint_add_rightL disjoint_sym)
-  done
-  
-
-lemma \<open>a \<preceq>\<^sub>+ b \<Longrightarrow> is_sepdup b \<Longrightarrow> is_sepdup a\<close>
+lemma leq_impl_leq_sepadd: \<open>a \<le> b \<Longrightarrow> a \<preceq> b\<close>
+  apply (cases \<open>a = b\<close>)
+   apply force
+  apply (simp add: less_eq_sepadd_def')
   nitpick
   oops
 
+lemma leq_iff_sepadd: \<open>\<And>a b. a \<le> b \<longleftrightarrow> (\<exists>c. a ## c \<and> b = a + c)\<close>
+  oops
+  by (metis disjoint_sym le_add1 le_res_less_le_not_le leq_impl_leq_sepadd part_of_def
+      partial_add_commute resource_order.order_iff_strict unitof_disjoint unitof_is_unit)
+
 end
+
+context perm_alg
+begin
+
+end
+
+
 
 context order
 begin
@@ -524,7 +212,9 @@ begin
 
 text \<open> addition irreducible; cf. join/meet irreducible \<close>
 definition sepadd_irr :: \<open>'a \<Rightarrow> bool\<close> where
-  \<open>sepadd_irr x \<equiv> (\<not> sepadd_unit x) \<and> (\<forall>a b. a < x \<longrightarrow> b < x \<longrightarrow> a ## b \<longrightarrow> a + b < x)\<close>
+  \<open>sepadd_irr x \<equiv>
+    (\<not> sepadd_unit x) \<and>
+    (\<forall>a b. a \<prec> x \<longrightarrow> b \<prec> x \<longrightarrow> a ## b \<longrightarrow> a + b \<prec> x)\<close>
 
 definition \<open>foundation a \<equiv> {j. j \<le> a \<and> sepadd_irr j}\<close>
 
