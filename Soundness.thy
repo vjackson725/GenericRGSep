@@ -1009,7 +1009,7 @@ next
     using safe_postpred_mono[OF _ safe_iter[of r i n c g]]
     by blast
 next
-  case (rgsat_atom b r p q g p' q')
+  case (rgsat_atom p r p' q' q b g n)
   then show ?case
     by (intro safe_atom; blast)
 next
