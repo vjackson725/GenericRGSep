@@ -1,5 +1,5 @@
 theory RGSepExperimental
-  imports Soundness
+  imports "../Soundness"
 begin
 
 lemma

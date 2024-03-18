@@ -1,5 +1,5 @@
 theory SepLogicExperimental
-  imports SepLogic
+  imports "../SepLogic"
 begin
 
 
