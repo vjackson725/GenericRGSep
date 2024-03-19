@@ -74,6 +74,9 @@ lemma ex_eq_pair_iff[simp]:
 
 lemmas disjCI2 = disjCI[THEN Meson.disj_comm]
 
+lemma pred_conjD: \<open>(A1 \<sqinter> A2) s \<Longrightarrow> A1 \<le> B1 \<Longrightarrow> A2 \<le> B2 \<Longrightarrow> (B1 \<sqinter> B2) s\<close>
+  by blast
+
 
 section \<open> Tuples \<close>
 
@@ -799,6 +802,10 @@ lemma inf_twist_sup_idem: \<open>a \<sqinter> b \<squnion> b \<sqinter> a = a \<
 
 lemma inf_twist_sup_idem_assoc: \<open>a \<sqinter> b \<squnion> b \<sqinter> a \<squnion> c = a \<sqinter> b \<squnion> c\<close>
   by (simp add: inf_twist_sup_idem)
+
+lemma inf_abac_eq_abc:
+  shows \<open>(a \<sqinter> b) \<sqinter> a \<sqinter> c = a \<sqinter> b \<sqinter> c\<close>
+  by (simp add: inf.absorb1)
 
 end
 

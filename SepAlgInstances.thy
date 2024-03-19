@@ -38,13 +38,12 @@ declare disjoint_prod_def[simp]
 
 instance
   apply standard
-        apply (force simp add: partial_add_assoc)
-       apply (force dest: partial_add_commute)
-      apply (force simp add: disjoint_sym_iff)
-     apply (force dest: disjoint_add_rightL)
-    apply (force dest: disjoint_add_right_commute)
-   apply (force dest: positivity)
-  apply (force dest: dup_sub_closure)
+       apply (force simp add: partial_add_assoc)
+      apply (force dest: partial_add_commute)
+     apply (force simp add: disjoint_sym_iff)
+    apply (force dest: disjoint_add_rightL)
+   apply (force dest: disjoint_add_right_commute)
+  apply (force dest: positivity)
   done
 
 end
@@ -96,7 +95,12 @@ instance
 
 end
 
-subsubsection \<open> add_fst & add_snd for tuple perm_alg \<close>
+subsection \<open> Extended sep-alg instances \<close>
+
+instance prod :: (dupcl_perm_alg, dupcl_perm_alg) dupcl_perm_alg
+  by standard (force dest: dup_sub_closure)
+
+subsection \<open> add_fst & add_snd for tuple perm_alg \<close>
 
 lemma perm_alg_plus_fst_accum[simp]:
   fixes x :: \<open>'a :: perm_alg\<close>
@@ -271,20 +275,18 @@ lemma plus_sum_simps[simp]:
 
 instance
   apply standard
-        apply (simp add: disjoint_sum_def)
-        apply (elim disjE; force simp add: partial_add_assoc)
        apply (simp add: disjoint_sum_def)
-       apply (elim disjE; force dest: partial_add_commute)
+       apply (elim disjE; force simp add: partial_add_assoc)
       apply (simp add: disjoint_sum_def)
-      apply (elim disjE exE conjE; force dest: disjoint_sym)
+      apply (elim disjE; force dest: partial_add_commute)
      apply (simp add: disjoint_sum_def)
-     apply (elim disjE exE conjE; force dest: disjoint_add_rightL)
+     apply (elim disjE exE conjE; force dest: disjoint_sym)
     apply (simp add: disjoint_sum_def)
-    apply (elim disjE exE conjE; force dest: disjoint_add_right_commute)
+    apply (elim disjE exE conjE; force dest: disjoint_add_rightL)
    apply (simp add: disjoint_sum_def)
-   apply (elim disjE exE conjE; force dest: positivity)
+   apply (elim disjE exE conjE; force dest: disjoint_add_right_commute)
   apply (simp add: disjoint_sum_def)
-  apply (elim disjE exE conjE; force dest: dup_sub_closure)
+  apply (elim disjE exE conjE; force dest: positivity)
   done
 
 end
@@ -337,6 +339,14 @@ instance
   done
 
 end
+
+subsection \<open> Extended instances \<close>
+
+instance sum :: (dupcl_perm_alg, dupcl_perm_alg) dupcl_perm_alg
+  apply standard
+  apply (simp add: disjoint_sum_def)
+  apply (elim disjE exE conjE; force dest: dup_sub_closure)
+  done
 
 
 section \<open> (multiplicative) unit \<close>
@@ -470,22 +480,20 @@ declare bot_option_def[simp]
 
 instance
   apply standard
-                 apply (metis less_eq_option_def2 less_option_def2 resource_order.strict_iff_not)
-                apply (force simp add: less_eq_option_def2)
+                apply (metis less_eq_option_def2 less_option_def2 resource_order.strict_iff_not)
                apply (force simp add: less_eq_option_def2)
               apply (force simp add: less_eq_option_def2)
-             apply (simp add: disjoint_option_def plus_option_def partial_add_assoc
+             apply (force simp add: less_eq_option_def2)
+            apply (simp add: disjoint_option_def plus_option_def partial_add_assoc
       split: option.splits; fail)
-            apply (simp add: disjoint_option_def plus_option_def split: option.splits,
+           apply (simp add: disjoint_option_def plus_option_def split: option.splits,
       metis partial_add_commute; fail)
-           apply (metis disjoint_option_def2 disjoint_sym)
-          apply (simp add: less_option_def disjoint_option_def split: option.splits,
+          apply (metis disjoint_option_def2 disjoint_sym)
+         apply (simp add: less_option_def disjoint_option_def split: option.splits,
       metis disjoint_add_rightL; fail)
-         apply (simp add: less_option_def disjoint_option_def disjoint_sym_iff
+        apply (simp add: less_option_def disjoint_option_def disjoint_sym_iff
       disjoint_add_right_commute split: option.splits; fail)
-        apply (simp add: less_option_def disjoint_option_def positivity split: option.splits; fail)
-       apply (simp add: less_option_def disjoint_option_def split: option.splits,
-      metis dup_sub_closure)
+       apply (simp add: less_option_def disjoint_option_def positivity split: option.splits; fail)
       apply (simp; fail)
      apply (simp; fail)
     apply (force simp add: less_eq_option_def fun_eq_iff disjoint_option_def less_eq_sepadd_def'
@@ -506,6 +514,14 @@ lemma less_sepadd_option_simps[simp]:
   \<open>None \<prec> Some x\<close>
   \<open>Some x \<prec> Some y \<longleftrightarrow> x \<prec> y\<close>
   by (simp add: less_sepadd_def' disjoint_option_iff plus_option_iff; blast?; force)+
+
+
+subsection \<open> Extended instances \<close>
+
+instance option :: (dupcl_perm_alg) dupcl_perm_alg
+  by standard
+    (simp add: less_option_def disjoint_option_def split: option.splits,
+      metis dup_sub_closure)
 
 
 section \<open> functions \<close>
@@ -529,13 +545,12 @@ lemma plus_fun_apply[simp]:
 
 instance
   apply standard
-        apply (simp add: disjoint_fun_def plus_fun_def fun_eq_iff, metis partial_add_assoc)
-       apply (simp add: disjoint_fun_def plus_fun_def fun_eq_iff, metis partial_add_commute)
-      apply (simp add: disjoint_fun_def, metis disjoint_sym)
-     apply (simp add: disjoint_fun_def plus_fun_def, metis disjoint_add_rightL)
-    apply (simp add: disjoint_fun_def plus_fun_def, metis disjoint_add_right_commute)
-   apply (simp add: disjoint_fun_def plus_fun_def fun_eq_iff, metis positivity)
-  apply (simp add: disjoint_fun_def plus_fun_def fun_eq_iff, metis dup_sub_closure)
+       apply (simp add: disjoint_fun_def plus_fun_def fun_eq_iff, metis partial_add_assoc)
+      apply (simp add: disjoint_fun_def plus_fun_def fun_eq_iff, metis partial_add_commute)
+     apply (simp add: disjoint_fun_def, metis disjoint_sym)
+    apply (simp add: disjoint_fun_def plus_fun_def, metis disjoint_add_rightL)
+   apply (simp add: disjoint_fun_def plus_fun_def, metis disjoint_add_right_commute)
+  apply (simp add: disjoint_fun_def plus_fun_def fun_eq_iff, metis positivity)
   done
 
 end
@@ -569,6 +584,18 @@ instance
   by standard (simp add: fun_eq_iff zero_is_bot le_fun_def)+
 
 end
+
+
+subsection \<open> Extended instances \<close>
+
+instance "fun" :: (type, dupcl_perm_alg) dupcl_perm_alg
+  by standard
+    (simp add: disjoint_fun_def plus_fun_def fun_eq_iff,
+      metis dup_sub_closure)
+
+instance "fun" :: (type, cancel_perm_alg) cancel_perm_alg
+  by standard
+    (simp add: disjoint_fun_def plus_fun_def fun_eq_iff)
 
 
 section \<open> Discrete Algebra \<close>
@@ -720,17 +747,15 @@ lemma plus_fperm_eq:
 
 instance
   apply standard
-          apply (force simp add: fperm_val_inject_rev add.assoc disjoint_fperm_def plus_fperm.rep_eq)
-         apply (force simp add: fperm_val_inject_rev add.commute disjoint_fperm_def plus_fperm.rep_eq)
-        apply (simp add: disjoint_fperm_def add.commute; fail)
-       apply (simp add: disjoint_fperm_def plus_fperm.rep_eq add.assoc[symmetric])
-       apply (metis fperm_val_conditions(1) ge0_plus_le_then_left_le add_pos_pos order_less_imp_le)
-      apply (simp add: disjoint_fperm_def plus_fperm.rep_eq add.left_commute min.coboundedI2
+       apply (force simp add: fperm_val_inject_rev add.assoc disjoint_fperm_def plus_fperm.rep_eq)
+      apply (force simp add: fperm_val_inject_rev add.commute disjoint_fperm_def plus_fperm.rep_eq)
+     apply (simp add: disjoint_fperm_def add.commute; fail)
+    apply (simp add: disjoint_fperm_def plus_fperm.rep_eq add.assoc[symmetric])
+    apply (metis fperm_val_conditions(1) ge0_plus_le_then_left_le add_pos_pos order_less_imp_le)
+   apply (simp add: disjoint_fperm_def plus_fperm.rep_eq add.left_commute min.coboundedI2
       min_add_distrib_right; fail)
-   apply (metis disjoint_fperm_def plus_fperm.rep_eq fperm_val_conditions(1) less_add_same_cancel1
+  apply (metis disjoint_fperm_def plus_fperm.rep_eq fperm_val_conditions(1) less_add_same_cancel1
       min.absorb2 not_less_iff_gr_or_eq)
-     apply (simp add: disjoint_fperm_def plus_fperm_eq FPerm_eq_iff fperm_val_conditions)
-  apply (metis FPerm_inverse_iff add_cancel_right_right fperm_val_add_gt0 fperm_val_never_zero)
   done
 
 
@@ -754,125 +779,149 @@ lemma fperm_less_is_resource_less:
 end
 
 
+subsection \<open> Extended instances \<close>
 
-section \<open> mfault \<close>
+instance fperm :: (linordered_semidom) dupcl_perm_alg
+  apply standard
+  apply (simp add: disjoint_fperm_def plus_fperm_eq FPerm_eq_iff fperm_val_conditions)
+  apply (metis FPerm_inverse_iff add_cancel_right_right fperm_val_add_gt0 fperm_val_never_zero)
+  done
 
-text \<open> TODO: turn this into error \<close>
 
-datatype 'a mfault =
-  Success (the_success: 'a)
-  | Fault
+section \<open> Error monad \<close>
 
-instantiation mfault :: (ord) ord
+datatype 'a error =
+  Val (the_val: 'a)
+  | Error
+
+instantiation error :: (ord) ord
 begin
 
-fun less_eq_mfault :: \<open>'a mfault \<Rightarrow> 'a mfault \<Rightarrow> bool\<close> where
-  \<open>less_eq_mfault _ Fault = True\<close>
-| \<open>less_eq_mfault Fault (Success b) = False\<close>
-| \<open>less_eq_mfault (Success a) (Success b) = (a \<le> b)\<close>
+fun less_eq_error :: \<open>'a error \<Rightarrow> 'a error \<Rightarrow> bool\<close> where
+  \<open>less_eq_error _ Error = True\<close>
+| \<open>less_eq_error Error (Val b) = False\<close>
+| \<open>less_eq_error (Val a) (Val b) = (a \<le> b)\<close>
 
-lemma less_eq_mfault_def:
+lemma less_eq_error_def:
   \<open>a \<le> b =
     (case b of
-      Fault \<Rightarrow> True
-    | Success b \<Rightarrow>
+      Error \<Rightarrow> True
+    | Val b \<Rightarrow>
       (case a of
-        Fault \<Rightarrow> False
-      | Success a \<Rightarrow> a \<le> b))\<close>
+        Error \<Rightarrow> False
+      | Val a \<Rightarrow> a \<le> b))\<close>
   by (cases a; cases b; force)
 
-fun less_mfault :: \<open>'a mfault \<Rightarrow> 'a mfault \<Rightarrow> bool\<close> where
-  \<open>less_mfault Fault _ = False\<close>
-| \<open>less_mfault (Success a) Fault = True\<close>
-| \<open>less_mfault (Success a) (Success b) = (a < b)\<close>
+fun less_error :: \<open>'a error \<Rightarrow> 'a error \<Rightarrow> bool\<close> where
+  \<open>less_error Error _ = False\<close>
+| \<open>less_error (Val a) Error = True\<close>
+| \<open>less_error (Val a) (Val b) = (a < b)\<close>
 
-lemma less_mfault_def:
+lemma less_error_def:
   \<open>a < b =
     (case a of
-      Fault \<Rightarrow> False
-    | Success a \<Rightarrow>
+      Error \<Rightarrow> False
+    | Val a \<Rightarrow>
       (case b of
-        Fault \<Rightarrow> True
-      | Success b \<Rightarrow> a < b))\<close>
+        Error \<Rightarrow> True
+      | Val b \<Rightarrow> a < b))\<close>
   by (cases a; cases b; force)
 
 instance proof qed
 
 end
 
-instantiation mfault :: (preorder) preorder
+instantiation error :: (preorder) preorder
 begin
 
 instance proof
-  fix x y z :: \<open>'a :: preorder mfault\<close>
+  fix x y z :: \<open>'a :: preorder error\<close>
   show \<open>(x < y) = (x \<le> y \<and> \<not> y \<le> x)\<close>
-    by (simp add: less_eq_mfault_def less_mfault_def mfault.case_eq_if less_le_not_le)
+    by (simp add: less_eq_error_def less_error_def error.case_eq_if less_le_not_le)
   show \<open>x \<le> x\<close>
-    by (simp add: less_eq_mfault_def mfault.case_eq_if)
+    by (simp add: less_eq_error_def error.case_eq_if)
   show \<open>x \<le> y \<Longrightarrow> y \<le> z \<Longrightarrow> x \<le> z\<close>
-    by (force dest: order_trans simp add: less_eq_mfault_def split: mfault.splits)
+    by (force dest: order_trans simp add: less_eq_error_def split: error.splits)
 qed
 
 end
 
 
-instantiation mfault :: (order) order_top
+instantiation error :: (order) order_top
 begin
 
-definition \<open>top_mfault \<equiv> Fault\<close>
+definition \<open>top_error \<equiv> Error\<close>
 
 instance proof
-  fix x y z :: \<open>'a :: order mfault\<close>
+  fix x y z :: \<open>'a :: order error\<close>
   show \<open>x \<le> y \<Longrightarrow> y \<le> x \<Longrightarrow> x = y\<close>
-    by (simp add: less_eq_mfault_def split: mfault.splits)
+    by (simp add: less_eq_error_def split: error.splits)
   show \<open>x \<le> top\<close>
-    by (simp add: top_mfault_def)
+    by (simp add: top_error_def)
 qed
 
 end
 
-instantiation mfault :: (linorder) linorder
+instantiation error :: (order_bot) order_bot
 begin
 
-instance proof
-  fix x y z :: \<open>'a :: linorder mfault\<close>
-  show \<open>x \<le> y \<or> y \<le> x\<close>
-    by (cases x; cases y; force)
-qed
-
-end
-
-instantiation mfault :: (order_bot) order_bot
-begin
-
-definition \<open>bot_mfault = Success bot\<close>
+definition \<open>bot_error = Val bot\<close>
 
 instance proof
-  fix a :: \<open>'a :: order_bot mfault\<close>
+  fix a :: \<open>'a :: order_bot error\<close>
   show \<open>\<bottom> \<le> a\<close>
-    by (simp add: bot_mfault_def less_eq_mfault_def mfault.case_eq_if)
+    by (simp add: bot_error_def less_eq_error_def error.case_eq_if)
 qed
 
 end
 
-context perm_alg
+instantiation error :: (all_disjoint_perm_alg) perm_alg
 begin
 
-definition sepconj_mfault ::
-  \<open>('a \<Rightarrow> bool) mfault \<Rightarrow> ('a \<Rightarrow> bool) mfault \<Rightarrow> ('a \<Rightarrow> bool) mfault\<close> (infixl \<open>\<^emph>\<^sub>f\<close> 88)
-  where
-    \<open>P \<^emph>\<^sub>f Q \<equiv>
-      case P of
-        Fault \<Rightarrow> Fault
-      | Success P \<Rightarrow>
-        (case Q of
-          Fault \<Rightarrow> Fault
-        | Success Q \<Rightarrow> Success (\<lambda>h. \<exists>h1 h2. h1 ## h2 \<and> h = h1 + h2 \<and> P h1 \<and> Q h2))\<close>
+definition disjoint_error :: \<open>'a error \<Rightarrow> 'a error \<Rightarrow> bool\<close> where
+  \<open>disjoint_error a b \<equiv>
+    a = Error \<or> b = Error \<or> (\<exists>x y. a = Val x \<and> b = Val y \<and> x ## y)\<close>
 
-definition emp_mfault :: \<open>('a \<Rightarrow> bool) mfault\<close> ("emp\<^sub>f") where
-  \<open>emp\<^sub>f \<equiv> Success emp\<close>
+lemma disjoint_error_def2:
+  \<open>a ## b \<longleftrightarrow> a = Error \<or> b = Error \<or> the_val a ## the_val b\<close>
+  by (simp add: disjoint_error_def, metis error.exhaust)
+
+lemma disjoint_error_simps[simp]:
+  \<open>Error ## b\<close>
+  \<open>a ## Error\<close>
+  \<open>Val x ## Val y \<longleftrightarrow> x ## y\<close>
+  by (simp add: disjoint_error_def)+
+
+
+definition plus_error :: \<open>'a error \<Rightarrow> 'a error \<Rightarrow> 'a error\<close> where
+  \<open>a + b \<equiv> case a of Val x \<Rightarrow> (case b of Val y \<Rightarrow> Val (x + y) | Error \<Rightarrow> Error) | Error \<Rightarrow> Error\<close>
+
+lemma plus_error_def2:
+  \<open>a + b = (if a = Error \<or> b = Error then Error else Val (the_val a + the_val b))\<close>
+  by (simp add: error.case_eq_if plus_error_def)
+
+lemma plus_error_simps[simp]:
+  \<open>Error + b = Error\<close>
+  \<open>a + Error = Error\<close>
+  \<open>Val x + Val y = Val (x + y)\<close>
+  by (force simp add: plus_error_def split: error.splits)+
+
+
+instance
+  apply standard
+       apply (force simp add: disjoint_error_def plus_error_def partial_add_assoc
+      split: error.splits)
+      apply (force simp add: disjoint_error_def plus_error_def partial_add_commute
+      split: error.splits)
+     apply (force simp add: disjoint_error_def plus_error_def disjoint_sym_iff)
+    apply (simp add: disjoint_error_def plus_error_def disjoint_add_rightL split: error.splits;
+      metis error.exhaust)
+   apply (force simp add: disjoint_add_right_commute disjoint_error_def)
+  apply (force simp add: disjoint_error_def positivity)
+  done
 
 end
+
 
 section \<open> Locked resources \<close>
 (* TODO: this might be better as a datatype *)

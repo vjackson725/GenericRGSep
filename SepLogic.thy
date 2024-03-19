@@ -2,37 +2,12 @@ theory SepLogic
   imports Util
 begin
 
-thm less_induct
-
-section \<open> Predicate Logic \<close>
-
-lemma pred_conj_simp:
-  \<open>(p \<sqinter> q) x \<longleftrightarrow> p x \<and> q x\<close>
-  by (simp add:)
-
-lemma pred_disj_simp:
-  \<open>(p \<squnion> q) x \<longleftrightarrow> p x \<or> q x\<close>
-  by (simp add:)
-
-
-lemma pred_conjD: \<open>(A1 \<sqinter> A2) s \<Longrightarrow> A1 \<le> B1 \<Longrightarrow> A2 \<le> B2 \<Longrightarrow> (B1 \<sqinter> B2) s\<close>
-  by blast
-
-lemma pred_abac_eq_abc:
-  fixes A B C :: \<open>'a :: lattice\<close>
-  shows \<open>(A \<sqinter> B) \<sqinter> A \<sqinter> C = A \<sqinter> B \<sqinter> C\<close>
-  by (simp add: inf.absorb1)
-
-
-section \<open> Separation Logic \<close>
-
-subsection \<open> Common Notions \<close>
-
+section \<open> Common Notions \<close>
 
 class disjoint =
   fixes disjoint :: \<open>'a \<Rightarrow> 'a \<Rightarrow> bool\<close> (infix \<open>##\<close> 60)
 
-subsection \<open> Permission Algebras \<close>
+section \<open> Permission Algebras \<close>
 
 class perm_alg = disjoint + plus +
   (* partial commutative monoid *)
@@ -44,8 +19,6 @@ class perm_alg = disjoint + plus +
   (* separation laws *)
   assumes positivity:
     \<open>a ## c1 \<Longrightarrow> a + c1 = b \<Longrightarrow> b ## c2 \<Longrightarrow> b + c2 = a \<Longrightarrow> a = b\<close>
-  assumes dup_sub_closure:
-    \<open>a ## b \<Longrightarrow> a + b = c \<Longrightarrow> c ## c \<Longrightarrow> c + c = c \<Longrightarrow> a + a = a\<close>
 begin
 
 lemma trans_helper:
@@ -329,14 +302,6 @@ lemma add_to_selfsep_preserves_selfsep: \<open>a ## b \<Longrightarrow> a + b = 
 lemma add_to_selfsep_preserves_selfsepR: \<open>a ## b \<Longrightarrow> a + b = c \<Longrightarrow> c ## c \<Longrightarrow> b ## b\<close>
   using disjoint_sym partial_add_commute add_to_selfsep_preserves_selfsep by blast
 
-text \<open>
-  Duplicalbe sub-closure ensures that all elements less than a duplicable element
-  are also duplicable.
-\<close>
-
-lemma dupp_sub_closureR: \<open>a ## b \<Longrightarrow> a + b = c \<Longrightarrow> c ## c \<Longrightarrow> c + c = c \<Longrightarrow> b + b = b\<close>
-  using disjoint_sym partial_add_commute dup_sub_closure by blast
-
 definition \<open>sepadd_dup a \<equiv> a ## a \<and> a + a = a\<close>
 
 lemma units_are_dup: \<open>sepadd_unit a \<Longrightarrow> sepadd_dup a\<close>
@@ -344,23 +309,6 @@ lemma units_are_dup: \<open>sepadd_unit a \<Longrightarrow> sepadd_dup a\<close>
 
 lemma zeros_are_dup: \<open>sepadd_zero a \<Longrightarrow> sepadd_dup a\<close>
   by (simp add: sepadd_dup_def sepadd_zero_def)
-
-text \<open> another form of dup_sub_closure \<close>
-lemma sepadd_dup_antimono:
-  \<open>a \<preceq> b \<Longrightarrow> sepadd_dup b \<Longrightarrow> sepadd_dup a\<close>
-  apply (clarsimp simp add: sepadd_dup_def)
-  apply (rule conjI)
-   apply (force dest: common_subresource_selfsep)
-  apply (metis less_eq_sepadd_def part_of_def dup_sub_closure)
-  done
-
-lemma sepadd_dup_plus_dupL:
-  \<open>a ## b \<Longrightarrow> sepadd_dup (a + b) \<Longrightarrow> sepadd_dup a\<close>
-  using partial_le_plus sepadd_dup_antimono by auto
-
-lemma sepadd_dup_plus_dupR:
-  \<open>a ## b \<Longrightarrow> sepadd_dup (a + b) \<Longrightarrow> sepadd_dup b\<close>
-  using partial_le_plus2 sepadd_dup_antimono by auto
 
 subsection \<open> core \<close>
 
@@ -428,14 +376,6 @@ lemma core_is_selfadd:
   using core_is_dup sepadd_dup_def
   by blast
 
-lemma add_to_core_then_dup:
-  \<open>a ## b \<Longrightarrow> core_rel c c' \<Longrightarrow> a + b = c' \<Longrightarrow> sepadd_dup a\<close>
-  using core_rel_def the_core_core_rel_eq sepadd_dup_plus_dupL by blast
-
-lemma add_to_core_then_dupR:
-  \<open>a ## b \<Longrightarrow> core_rel c c' \<Longrightarrow> a + b = c' \<Longrightarrow> sepadd_dup b\<close>
-  using core_rel_def sepadd_dup_plus_dupR by blast
-
 lemma core_idem:
   \<open>has_core a \<Longrightarrow> the_core (the_core a) = the_core a\<close>
   by (clarsimp simp add: core_rel_def)
@@ -459,13 +399,6 @@ lemma the_core_le_impl:
   \<open>has_core a \<Longrightarrow> has_core b \<Longrightarrow> a \<preceq> b \<Longrightarrow> the_core a \<preceq> the_core b\<close>
   by (metis core_rel_def resource_order.trans the_core_core_rel_eq)
 
-text \<open> Pottier's second core condition collapses duplicable elements \<close>
-lemma
-  \<open>(\<And>a b c c' a'.
-    a ## b \<Longrightarrow> a + b = c \<Longrightarrow> core_rel c c' \<Longrightarrow> core_rel a a' \<Longrightarrow> c' = a') \<Longrightarrow>
-    a \<preceq> b \<Longrightarrow> sepadd_dup b \<Longrightarrow> a = b\<close>
-  by (metis core_dup_is_self dup_has_core less_eq_sepadd_def' sepadd_dup_antimono
-      the_core_core_rel_eq)
   
 text \<open>
   As every duplicable element is its own core, the monotonicity criterion is equivalent to
@@ -711,7 +644,7 @@ lemma sepcoimp_curry: \<open>P \<sim>\<^emph> Q \<sim>\<^emph> R = P \<^emph> Q 
       partial_add_commute)+
   done
 
-section \<open> Precision \<close>
+subsection \<open> Precision \<close>
 
 definition precise :: \<open>('a \<Rightarrow> bool) \<Rightarrow> bool\<close> where
   \<open>precise P \<equiv> \<forall>h h1 h2. h1 \<preceq> h \<longrightarrow> h2 \<preceq> h \<longrightarrow> P h1 \<longrightarrow> P h2 \<longrightarrow> h1 = h2\<close>
@@ -799,7 +732,7 @@ lemma septract_sepconj_imp_impl_sepconj_conj_distrib:
       septract_reverse)
   
 
-section \<open> Intuitionistic \<close>
+subsection \<open> Intuitionistic \<close>
 
 (* TODO: rename intuitionistic to bring it in line with the seplogic jungle paper *)
 definition intuitionistic :: \<open>('a \<Rightarrow> bool) \<Rightarrow> bool\<close> where
@@ -821,7 +754,7 @@ lemma sepcoimp_pconj_distrib_left:
   \<open>P \<sim>\<^emph> (Q \<sqinter> Q') = (P \<sim>\<^emph> Q) \<sqinter> (P \<sim>\<^emph> Q')\<close>
   by (force simp add: sepcoimp_def)
 
-section \<open> Supported \<close>
+subsection \<open> Supported \<close>
 
 definition supported :: \<open>('a \<Rightarrow> bool) \<Rightarrow> bool\<close> where
   \<open>supported P \<equiv> \<forall>s. P s \<longrightarrow> (\<exists>hp. P hp \<and> hp \<preceq> s \<and> (\<forall>s'. hp \<preceq> s' \<longrightarrow> s' \<preceq> s \<longrightarrow> P s'))\<close>
@@ -832,7 +765,8 @@ lemma precise_to_supported:
 
 end
 
-subsection \<open> Multi-unit Separation Algebras \<close>
+
+section \<open> Multi-unit Separation Algebra \<close>
 
 class multiunit_sep_alg = order + perm_alg +
   fixes unitof :: \<open>'a \<Rightarrow> 'a\<close>
@@ -953,7 +887,8 @@ lemma supported_intuitionistic_to_precise:
 
 end
 
-subsection \<open> Separation Algebras (with a single unit) \<close>
+
+section \<open> (Single Unit) Separation Algebra\<close>
 
 class sep_alg = multiunit_sep_alg + zero + bot +
   assumes zero_least: \<open>0 \<le> x\<close>
@@ -1037,6 +972,7 @@ lemma not_coimp_emp0:
   done
 
 end
+
 
 section \<open> Compatibility \<close>
 
@@ -1132,6 +1068,7 @@ lemma implies_compatible_then_rtranscl_implies_compatible2:
   using implies_compatible_then_rtranscl_implies_compatible
   by (simp add: le_fun_def)
 
+
 subsection \<open> Relation to units \<close>
 
 lemma step_compatible_units_identical:
@@ -1192,7 +1129,7 @@ lemma compatible_then_same_unit:
 end
 
 
-section \<open> Permission/Separation Algebra Subclasses \<close>
+subsection \<open> All-compatible Resource Algebras \<close>
 
 (* almost a sep_alg, in that if there was a unit, it would be a sep-algebra *)
 class allcompatible_perm_alg = perm_alg +
@@ -1240,7 +1177,8 @@ subclass allcompatible_perm_alg
 
 end
 
-subsection \<open>Strongly Separated Separation Algebra\<close>
+
+section \<open> Strongly Separated Separation Algebra \<close>
 
 class strong_sep_perm_alg = perm_alg +
   assumes selfsep_implies_unit: \<open>a ## a \<Longrightarrow> sepadd_unit a\<close>
@@ -1274,7 +1212,8 @@ lemma sepalg_selfsep_implies_unit: \<open>a ## a \<Longrightarrow> a = 0\<close>
 
 end
 
-subsection \<open> Disjoint Parts Algebra \<close>
+
+section \<open> Disjoint Parts Algebra \<close>
 
 class disjoint_parts_perm_alg = perm_alg +
   assumes disjointness_left_plusI: \<open>a ## b \<Longrightarrow> a ## c \<Longrightarrow> b ## c \<Longrightarrow> a + b ## c\<close>
@@ -1323,7 +1262,7 @@ class disjoint_parts_multiunit_sep_alg = multiunit_sep_alg + disjoint_parts_perm
 class disjoint_parts_sep_alg = sep_alg + disjoint_parts_multiunit_sep_alg
 
 
-subsection \<open>Trivial Self-disjointness Separation Algebra\<close>
+section \<open> Trivial Self-disjointness Separation Algebra \<close>
 
 class trivial_selfdisjoint_perm_alg = perm_alg +
   assumes selfdisjoint_same: \<open>a ## a \<Longrightarrow> a + a = b \<Longrightarrow> a = b\<close>
@@ -1341,7 +1280,8 @@ class trivial_selfdisjoint_multiunit_sep_alg = multiunit_sep_alg + trivial_selfd
 
 class trivial_selfdisjoint_sep_alg = sep_alg + trivial_selfdisjoint_multiunit_sep_alg
 
-subsection \<open>Cross-Split Separation Algebra\<close>
+
+section \<open> Cross-Split Separation Algebra \<close>
 
 class crosssplit_perm_alg = perm_alg +
   assumes cross_split:
@@ -1354,7 +1294,8 @@ class crosssplit_multiunit_sep_alg = multiunit_sep_alg + crosssplit_perm_alg
 
 class crosssplit_sep_alg = sep_alg + crosssplit_multiunit_sep_alg
 
-subsection \<open>Cancellative Separation Logic\<close>
+
+section \<open> Cancellative Separation Algebras\<close>
 
 class cancel_perm_alg = perm_alg +
   assumes partial_right_cancel[simp]: \<open>\<And>a b c. a ## c \<Longrightarrow> b ## c \<Longrightarrow> (a + c = b + c) = (a = b)\<close>
@@ -1423,9 +1364,10 @@ lemma cancel_left_to_unit:
   \<open>a ## b \<Longrightarrow> a + b = a \<Longrightarrow> sepadd_unit b\<close>
   by (metis cancel_right_to_unit disjoint_sym partial_add_commute)
 
-paragraph \<open> Seplogic \<close>
 
-text \<open> cancellability is a weak form of precision / sepconj/conj_distributivity \<close>
+subsection \<open> Separation Logic \<close>
+
+text \<open> cancellability is a weak form of sepconj-conj distributivity \<close>
 lemma sepconj_conj_distrib_eqpred:
   \<open>sepconj_conj_distrib ((=) x)\<close>
   by (force simp add: sepconj_conj_distrib_def fun_eq_iff sepconj_iff)
@@ -1505,7 +1447,7 @@ end
 class cancel_sep_alg = cancel_multiunit_sep_alg + sep_alg
 
 
-subsection \<open>No-unit perm alg\<close>
+section \<open>No-unit perm alg\<close>
 
 text \<open>
   Here we create a perm_alg without any unit.
@@ -1527,7 +1469,8 @@ lemma no_unit_cancel_leftD[dest]:
 
 end
 
-subsection \<open> Halving separation algebra \<close>
+
+section \<open> Halving separation algebra \<close>
 
 class halving_perm_alg = perm_alg +
   fixes half :: \<open>'a \<Rightarrow> 'a\<close>
@@ -1580,5 +1523,76 @@ lemma all_duplicable:
   by auto
 
 end
+
+section \<open> Duplicable closure \<close>
+
+class dupcl_perm_alg = perm_alg +
+  assumes dup_sub_closure:
+    \<open>a ## b \<Longrightarrow> a + b = c \<Longrightarrow> c ## c \<Longrightarrow> c + c = c \<Longrightarrow> a + a = a\<close>
+begin
+
+
+text \<open>
+  Duplicable sub-closure ensures that all elements less than a duplicable element
+  are also duplicable.
+\<close>
+
+lemma dupp_sub_closureR: \<open>a ## b \<Longrightarrow> a + b = c \<Longrightarrow> c ## c \<Longrightarrow> c + c = c \<Longrightarrow> b + b = b\<close>
+  using disjoint_sym partial_add_commute dup_sub_closure by blast
+
+text \<open> another form of dup_sub_closure \<close>
+lemma sepadd_dup_antimono:
+  \<open>a \<preceq> b \<Longrightarrow> sepadd_dup b \<Longrightarrow> sepadd_dup a\<close>
+  apply (clarsimp simp add: sepadd_dup_def)
+  apply (rule conjI)
+   apply (force dest: common_subresource_selfsep)
+  apply (metis less_eq_sepadd_def part_of_def dup_sub_closure)
+  done
+
+lemma sepadd_dup_plus_dupL:
+  \<open>a ## b \<Longrightarrow> sepadd_dup (a + b) \<Longrightarrow> sepadd_dup a\<close>
+  using partial_le_plus sepadd_dup_antimono by auto
+
+lemma sepadd_dup_plus_dupR:
+  \<open>a ## b \<Longrightarrow> sepadd_dup (a + b) \<Longrightarrow> sepadd_dup b\<close>
+  using partial_le_plus2 sepadd_dup_antimono by auto
+
+lemma add_to_core_then_dup:
+  \<open>a ## b \<Longrightarrow> core_rel c c' \<Longrightarrow> a + b = c' \<Longrightarrow> sepadd_dup a\<close>
+  using core_rel_def the_core_core_rel_eq sepadd_dup_plus_dupL by blast
+
+lemma add_to_core_then_dupR:
+  \<open>a ## b \<Longrightarrow> core_rel c c' \<Longrightarrow> a + b = c' \<Longrightarrow> sepadd_dup b\<close>
+  using core_rel_def sepadd_dup_plus_dupR by blast
+
+text \<open>
+  In the presence of dup_sub_closure,
+  Pottier's second core condition collapses duplicable elements.
+\<close>
+lemma pottier2_collapse:
+  \<open>(\<And>a b c c' a'.
+    a ## b \<Longrightarrow> a + b = c \<Longrightarrow> core_rel c c' \<Longrightarrow> core_rel a a' \<Longrightarrow> c' = a') \<Longrightarrow>
+    a \<preceq> b \<Longrightarrow> sepadd_dup b \<Longrightarrow> a = b\<close>
+  by (metis core_dup_is_self dup_has_core less_eq_sepadd_def' sepadd_dup_antimono
+      the_core_core_rel_eq)
+
+end
+
+
+section \<open> All-disjoint algebra \<close>
+
+text \<open>
+  This seems very strong, but the discrete algebra is this sort
+  of algebra, and it's the necessary precondition to build up Error.
+\<close>
+
+class all_disjoint_perm_alg = perm_alg +
+  assumes all_disjoint[simp]: \<open>a ## b\<close>
+
+class all_disjoint_multiunit_sep_alg =
+  multiunit_sep_alg + all_disjoint_perm_alg
+
+class all_disjoint_sep_alg =
+  sep_alg + all_disjoint_perm_alg
 
 end

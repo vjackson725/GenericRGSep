@@ -26,6 +26,10 @@ lemma related_units_identical_failure:
     J u1 a a \<Longrightarrow> J u2 a a \<Longrightarrow> u1 = u2\<close>
   by (metis join_assoc join_comm)
 
+lemma join_add_rightL: \<open>J b c bc \<Longrightarrow> J a bc abc \<Longrightarrow> \<exists>ab. J a b ab\<close>
+  using join_assoc join_comm by blast
+
+
 definition
   \<open>disjoint2 a b \<equiv> Ex (J a b)\<close>
 
