@@ -1,5 +1,5 @@
 theory MoreSepAlgInstances
-  imports SepAlgInstances
+  imports "../SepAlgInstances"
 begin
 
 class bounded_distrib_lattice = distrib_lattice + bounded_lattice
@@ -10,7 +10,30 @@ subclass bounded_distrib_lattice
   by standard
 end
 
-section \<open> lock permissions \<close>
+
+section \<open> Locked resources \<close>
+
+(* This doesn't work. *)
+
+(* TODO: this might be better as a datatype. *)
+type_synonym 'a locked = \<open>munit + 'a\<close>
+
+abbreviation(input) \<open>Locked \<equiv> Inl \<one> :: 'a locked\<close>
+abbreviation(input) \<open>Unlocked x \<equiv> Inr x :: 'a locked\<close>
+
+lemma disjoint_locked_simps[simp]:
+  \<open>\<And>b. Locked ## b \<longleftrightarrow> False\<close>
+  \<open>\<And>a. a ## Locked \<longleftrightarrow> False\<close>
+  \<open>\<And>a b. Unlocked a ## Unlocked b \<longleftrightarrow> a ## b\<close>
+    apply (case_tac b; simp)
+   apply (case_tac a; simp)
+  apply simp
+  done
+
+type_synonym 'a resources = \<open>nat \<rightharpoonup> 'a locked\<close>
+
+
+section \<open> lock permissions #2 \<close>
 
 text \<open>
   Krebber's (TODO cite) `lockable' permission structure.
@@ -19,8 +42,8 @@ text \<open>
 typedef ('a::bounded_distrib_lattice) lock_perm = \<open>UNIV :: 'a set\<close>
   by blast
 
-definition \<open>Locked \<equiv> Abs_lock_perm \<bottom>\<close>
-definition \<open>Unlocked \<equiv> Abs_lock_perm \<top>\<close>
+definition \<open>Top \<equiv> Abs_lock_perm \<bottom>\<close>
+definition \<open>Bot \<equiv> Abs_lock_perm \<top>\<close>
 
 declare Abs_lock_perm_inject[simplified, simp]
 declare Abs_lock_perm_inverse[simplified, simp]
@@ -50,31 +73,28 @@ lift_definition disjoint_lock_perm :: \<open>'a lock_perm \<Rightarrow> 'a lock_
 
 
 lemma disjoint_lock_perm_simps[simp]:
-  \<open>Locked ## b \<longleftrightarrow> b = Unlocked\<close>
-  \<open>a ## Locked \<longleftrightarrow> a = Unlocked\<close>
-  \<open>Locked ## Locked \<longleftrightarrow> (\<bottom>::'a) = \<top>\<close>
-  by (force simp add: disjoint_lock_perm.rep_eq Locked_def Unlocked_def Abs_lock_perm_helpers)+
+  \<open>Top ## b \<longleftrightarrow> b = Bot\<close>
+  \<open>a ## Top \<longleftrightarrow> a = Bot\<close>
+  \<open>Top ## Top \<longleftrightarrow> (\<bottom>::'a) = \<top>\<close>
+  by (force simp add: disjoint_lock_perm.rep_eq Top_def Bot_def Abs_lock_perm_helpers)+
 
 lift_definition plus_lock_perm :: \<open>'a lock_perm \<Rightarrow> 'a lock_perm \<Rightarrow> 'a lock_perm\<close> is \<open>(\<sqinter>)\<close> .
 
 lemma plus_lock_perm_simps[simp]:
-  \<open>Locked + Unlocked = Locked\<close>
-  \<open>Unlocked + Locked = Locked\<close>
-  \<open>Unlocked + Unlocked = Unlocked\<close>
-  unfolding Unlocked_def Locked_def
+  \<open>Top + Bot = Top\<close>
+  \<open>Bot + Top = Top\<close>
+  \<open>Bot + Bot = Bot\<close>
+  unfolding Bot_def Top_def
   by (transfer, force)+
 
 instance
   apply standard
-          apply (transfer, metis inf.assoc)
-         apply (transfer, metis inf.commute)
-        apply (transfer, metis sup.commute)
-       apply (transfer, simp add: sup_inf_distrib1; fail)
-      apply (transfer, simp add: inf_sup_aci(5) sup_inf_distrib1; fail)
-     apply (transfer, simp; fail)
-    apply (transfer, metis sup_commute sup_inf_absorb)
-   apply (transfer, blast)
-  apply (transfer, blast)
+       apply (transfer, metis inf.assoc)
+      apply (transfer, metis inf.commute)
+     apply (transfer, metis sup.commute)
+    apply (transfer, simp add: sup_inf_distrib1; fail)
+   apply (transfer, simp add: inf_sup_aci(5) sup_inf_distrib1; fail)
+  subgoal sorry
   done
 
 end
