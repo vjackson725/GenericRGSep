@@ -2,6 +2,7 @@ theory Experimental
   imports "../SepLogic"
 begin
 
+section \<open> Appel et. al.'s permission algebra \<close>
 
 class appel_perm_alg = ord +
   fixes J :: \<open>'a \<Rightarrow> 'a \<Rightarrow> 'a \<Rightarrow> bool\<close>
@@ -77,7 +78,11 @@ lemma disjoint_add_right_commute:
 
 end
 
+section \<open> Dockins et. al.'s multiple unit sep-algebra \<close>
 
+text \<open>
+  We removed the dup-positivity law to show it's equivalent to positivity.
+\<close>
 class dockins_multi_sep_alg = ord +
   fixes J :: \<open>'a \<Rightarrow> 'a \<Rightarrow> 'a \<Rightarrow> bool\<close>
   assumes join_eq: \<open>J a b z1 \<Longrightarrow> J a b z2 \<Longrightarrow> z1 = z2\<close>
@@ -155,32 +160,56 @@ qed
 
 end
 
-class multi_sep_alg2 = perm_alg + order +
-  fixes unitof :: \<open>'a \<Rightarrow> 'a\<close>
-  assumes unitof_disjoint[simp,intro!]: \<open>unitof a ## a\<close>
-  assumes unitof_is_unit[simp]: \<open>\<And>a b. unitof a ## b \<Longrightarrow> unitof a + b = b\<close>
-  assumes le_add1: \<open>a ## b \<Longrightarrow> a \<le> a + b\<close>
-  assumes le_add_monoR:
-    \<open>a ## c \<Longrightarrow> b ## c \<Longrightarrow> a \<le> b \<Longrightarrow> a + c \<le> b + c\<close>
-  assumes \<open>a \<le> b \<Longrightarrow> compatible a b\<close>
+
+section \<open> Permission algebra without disjoint-associativity \<close>
+
+class weak_perm_alg = disjoint + plus +
+  (* partial commutative monoid *)
+  assumes partial_add_assoc: \<open>a ## b \<Longrightarrow> b ## c \<Longrightarrow> a ## c \<Longrightarrow> (a + b) + c = a + (b + c)\<close>
+  assumes partial_add_assoc2:
+    \<open>a ## b \<Longrightarrow> a + b ## c \<Longrightarrow> b ## c \<Longrightarrow> a ## b + c \<Longrightarrow> (a + b) + c = a + (b + c)\<close>
+  assumes partial_add_commute: \<open>a ## b \<Longrightarrow> a + b = b + a\<close>
+  assumes disjoint_sym: \<open>a ## b \<Longrightarrow> b ## a\<close>
+  assumes disjoint_add_right_commute: \<open>b ## c \<Longrightarrow> a ## b + c \<Longrightarrow> b ## a + c\<close>
+  (* separation laws *)
+  assumes positivity:
+    \<open>a ## c1 \<Longrightarrow> a + c1 = b \<Longrightarrow> b ## c2 \<Longrightarrow> b + c2 = a \<Longrightarrow> a = b\<close>
 begin
 
-lemma add_to_unit_is_unit:
-  \<open>a ## b \<Longrightarrow> a + b = c \<Longrightarrow> unitof c = unitof a\<close>
-  by (metis disjoint_add_rightL partial_add_commute unitof_disjoint unitof_is_unit)
 
-lemma le_add2: \<open>a ## b \<Longrightarrow> b \<le> a + b\<close>
-  by (metis disjoint_sym le_add1 partial_add_commute)
+lemma disjoint_add_rightL: \<open>b ## c \<Longrightarrow> a ## b + c \<Longrightarrow> a ## b\<close>
+  nitpick
+  oops
 
-lemma unitof_least: \<open>a ## b \<Longrightarrow> unitof a \<le> b\<close>
-  by (metis disjoint_add_rightL disjoint_sym le_add1 unitof_disjoint unitof_is_unit)
+definition sepconj :: \<open>('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool)\<close> (infixl \<open>\<^emph>\<^sub>2\<close> 88) where
+  \<open>P \<^emph>\<^sub>2 Q \<equiv> \<lambda>h. \<exists>h1 h2. h1 ## h2 \<and> h = h1 + h2 \<and> P h1 \<and> Q h2\<close>
 
+lemma \<open>p \<^emph>\<^sub>2 (q \<^emph>\<^sub>2 r) = (p \<^emph>\<^sub>2 q) \<^emph>\<^sub>2 r\<close>
+  nitpick
+  oops
+
+end
+
+section \<open> Multiple unit sep-algebra alternate \<close>
+
+text \<open>
+  A different multi_sep_algebra; trying to find the minimal conditions that imply the order is the
+  resource order.
+\<close>
+class multi_sep_alg2 = perm_alg + order +
+  fixes unitof :: \<open>'a \<Rightarrow> 'a\<close>
+  assumes unitof_disjoint[simp]: \<open>unitof a ## a\<close>
+  assumes unitof_is_unit[simp]: \<open>\<And>a b. unitof a ## b \<Longrightarrow> unitof a + b = b\<close>
+  assumes le_add_monoR:
+    \<open>a ## c \<Longrightarrow> b ## c \<Longrightarrow> a \<le> b \<Longrightarrow> a + c \<le> b + c\<close>
+  assumes unitof_least[simp]: \<open>compatible a b \<Longrightarrow> unitof a \<le> b\<close>
+  assumes le_then_compatible: \<open>a \<le> b \<Longrightarrow> compatible a b\<close>
+begin
 
 lemma leq_sepadd_impl_leq: \<open>a \<preceq> b \<Longrightarrow> a \<le> b\<close>
   apply (cases \<open>a = b\<close>)
    apply force
-  apply (force dest: le_add1 simp add: less_eq_sepadd_def')
-  done
+  oops
 
 lemma leq_impl_leq_sepadd: \<open>a \<le> b \<Longrightarrow> a \<preceq> b\<close>
   apply (cases \<open>a = b\<close>)
@@ -189,19 +218,27 @@ lemma leq_impl_leq_sepadd: \<open>a \<le> b \<Longrightarrow> a \<preceq> b\<clo
   nitpick
   oops
 
+lemma disjoint_unit_is_same: \<open>a ## b \<Longrightarrow> unitof a = unitof b\<close>
+  by (metis disjoint_add_rightL disjoint_sym partial_add_commute unitof_disjoint unitof_is_unit)
+
+lemma le_sepadd1: \<open>a ## b \<Longrightarrow> a \<le> a + b\<close>
+  using le_add_monoR[of \<open>unitof a\<close> a b, simplified]
+  by (simp add: disjoint_unit_is_same disjoint_sym_iff partial_add_commute)
+
+lemma add_to_unit_is_unit:
+  \<open>a ## b \<Longrightarrow> a + b = c \<Longrightarrow> unitof c = unitof a\<close>
+  by (metis disjoint_add_rightL partial_add_commute unitof_disjoint unitof_is_unit)
+
+lemma le_sepadd2: \<open>a ## b \<Longrightarrow> b \<le> a + b\<close>
+  by (metis disjoint_sym le_sepadd1 partial_add_commute)
+
 lemma leq_iff_sepadd: \<open>\<And>a b. a \<le> b \<longleftrightarrow> (\<exists>c. a ## c \<and> b = a + c)\<close>
   oops
-  by (metis disjoint_sym le_add1 le_res_less_le_not_le leq_impl_leq_sepadd part_of_def
-      partial_add_commute resource_order.order_iff_strict unitof_disjoint unitof_is_unit)
-
-end
-
-context perm_alg
-begin
 
 end
 
 
+section \<open> Old things \<close>
 
 context order
 begin
