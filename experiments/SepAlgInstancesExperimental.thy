@@ -1,4 +1,4 @@
-theory MoreSepAlgInstances
+theory SepAlgInstancesExperimental
   imports "../SepAlgInstances"
 begin
 

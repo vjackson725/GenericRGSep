@@ -2,6 +2,21 @@ theory RGSepExperimental
   imports "../Soundness"
 begin
 
+
+lemma safe_refinement_mono:
+  \<open>safe n prg hl hs r g q F \<Longrightarrow> prg = (Atomic b') \<Longrightarrow> b \<le> b' \<Longrightarrow> safe n (Atomic b) hl hs r g q F\<close>
+  apply (induct arbitrary: b' b rule: safe.inducts)
+   apply force
+  apply (simp add: safe_sucE)
+  apply (rule safe_suc)
+      apply blast
+     apply blast
+    apply (clarsimp simp add: opstep_iff le_fun_def, metis)
+   apply (clarsimp simp add: opstep_iff le_fun_def; fail)
+  apply (clarsimp simp add: opstep_iff le_fun_def; fail)  
+  done
+
+
 lemma
   fixes p :: \<open>'a::perm_alg \<times> 'b::perm_alg \<Rightarrow> bool\<close>
     and Pa :: \<open>'a \<Rightarrow> 'a \<Rightarrow> 'a option\<close>
@@ -18,6 +33,7 @@ lemma
     sp b (p \<^emph>\<and> f) \<le> ((q1 \<sqinter> q2) \<^emph>\<and> f)
   \<close>
   nitpick[card 'b=1]
+  oops
 
 definition perm_alg_homomorphism :: \<open>('a :: perm_alg \<Rightarrow> 'b :: perm_alg) \<Rightarrow> bool\<close> where
   \<open>perm_alg_homomorphism f \<equiv>
@@ -208,36 +224,34 @@ next
     apply (simp add: le_fun_def)
     done
 next
-  case (rgsat_parallel s1 r g2 g1 p1 q1 s2 p2 q2 g q1' q2')
+  case (rgsat_par s1 r g2 g1 p1 q1 s2 p2 q2 g p q)
   show ?case
-    using rgsat_parallel.prems rgsat_parallel.hyps(5-)
+    using rgsat_par.prems rgsat_par.hyps(5-)
     apply (clarsimp simp add: map_comm_rev_iff2 sepconj_conj_map_prod_eq simp del: sup_apply)
-    apply (rule rgsat.rgsat_parallel[of
+    apply (rule rgsat.rgsat_par[of
           _ \<open>r \<circ>\<^sub>R fs\<close> \<open>g2 \<circ>\<^sub>R fs\<close> \<open>g1 \<circ>\<^sub>R fs\<close> \<open>p1 \<circ> map_prod fl fs\<close> \<open>q1 \<circ> map_prod fl fs\<close>
           _ \<open>p2 \<circ> map_prod fl fs\<close> \<open>q2 \<circ> map_prod fl fs\<close>])
-         apply (rule rgsat_parallel.hyps(2); (simp del: sup_apply)?) (* 6 \<rightarrow> 7 *)
+         apply (rule rgsat_par.hyps(2); (simp del: sup_apply)?) (* 6 \<rightarrow> 7 *)
           apply (metis semilattice_sup_helper1)
          apply (metis rel_precomp_sup_eq)
-        apply (rule rgsat_parallel.hyps(4); (simp del: sup_apply)?) (* 6 \<rightarrow> 7 *)
+        apply (rule rgsat_par.hyps(4); (simp del: sup_apply)?) (* 6 \<rightarrow> 7 *)
          apply (metis semilattice_sup_helper1)
         apply (metis rel_precomp_sup_eq)
        apply (simp add: rel_precomp_mono; fail)
       apply (simp add: rel_precomp_mono; fail)
      apply (drule_tac x=\<open>r \<squnion> g2\<close> and y=q1 in meta_spec2)
      apply (clarsimp simp add: rel_precomp_sup_eq[symmetric] le_supI2 comp_def simp del: sup_apply)
-     apply (clarsimp simp add: le_fun_def)
-     apply (metis map_prod_simp)
+     apply (clarsimp simp add: le_fun_def sepconj_conj_def split_preserving_morphism_def, metis)
     apply (drule_tac x=\<open>r \<squnion> g1\<close> and y=q2 in meta_spec2)
     apply (clarsimp simp add: rel_precomp_sup_eq[symmetric] le_supI2 comp_def simp del: sup_apply)
-    apply (clarsimp simp add: le_fun_def)
-    apply (metis map_prod_simp)
-    done
+    apply (clarsimp simp add: le_fun_def sepconj_conj_def split_preserving_morphism_def)
+    apply (rename_tac s l1 l2)
+    sorry
 next
   case (rgsat_atom b r p q g p' q')
   then show ?case
     apply (clarsimp simp add: map_comm_rev_iff2 sepconj_conj_map_prod_eq)
     apply (rule rgsat.rgsat_atom)
-        apply blast
     sorry
 next
   case (rgsat_frame c r g p q f f')

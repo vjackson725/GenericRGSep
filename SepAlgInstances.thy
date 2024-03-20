@@ -65,15 +65,24 @@ subsection \<open> mu_sep_alg \<close>
 instantiation prod :: (multiunit_sep_alg,multiunit_sep_alg) multiunit_sep_alg
 begin
 
+lemma less_sepadd_prod_eq2[simp]:
+  fixes a :: \<open>'a \<times> 'b\<close>
+  shows \<open>a \<prec> b \<longleftrightarrow> (fst a \<prec> fst b \<and> snd a \<preceq> snd b \<or> fst a \<preceq> fst b \<and> snd a \<prec> snd b)\<close>
+  by (cases a, cases b, clarsimp simp add: less_sepadd_def' less_eq_sepadd_def',
+      metis unitof_disjoint2 unitof_is_unitR2)
+
+lemma less_eq_sepadd_prod_eq2[simp]:
+  fixes a :: \<open>'a \<times> 'b\<close>
+  shows \<open>a \<preceq> b \<longleftrightarrow> fst a \<preceq> fst b \<and> snd a \<preceq> snd b\<close>
+  by (cases a, cases b, clarsimp simp add: less_eq_sepadd_def',
+      metis unitof_disjoint2 unitof_is_unitR2)
+
 definition unitof_prod :: \<open>'a \<times> 'b \<Rightarrow> 'a \<times> 'b\<close> where
   \<open>unitof \<equiv> map_prod unitof unitof\<close>
 declare unitof_prod_def[simp]
 
 instance
-  apply standard
-    apply (simp add: less_eq_sepadd_def)+
-  apply (force simp add: le_iff_sepadd)
-  done
+  by standard (simp add: less_eq_sepadd_def)+
 
 end
 
@@ -91,7 +100,7 @@ definition bot_prod :: \<open>'a \<times> 'b\<close> where
 declare bot_prod_def[simp]
 
 instance
-  by standard (simp add: fun_eq_iff zero_is_bot)+
+  by standard (simp add: fun_eq_iff)+
 
 end
 
@@ -333,9 +342,8 @@ lemmas unitof_simps[simp] =
 
 instance
   apply standard
-    apply (case_tac a; simp)
-   apply (case_tac a; case_tac b; simp)
-  apply (fastforce simp add: less_eq_sum_def le_iff_sepadd disjoint_sum_def)
+   apply (case_tac a; simp)
+  apply (case_tac a; case_tac b; simp)
   done
 
 end
@@ -396,38 +404,8 @@ end
 
 section \<open> option \<close>
 
-instantiation option :: (perm_alg) sep_alg
+instantiation option :: (perm_alg) perm_alg
 begin
-
-definition less_eq_option :: \<open>'a option \<Rightarrow> 'a option \<Rightarrow> bool\<close> where
-  \<open>less_eq_option a b \<equiv>
-    case a of None \<Rightarrow> True | Some x \<Rightarrow>
-      (case b of None \<Rightarrow> False | Some y \<Rightarrow> x \<preceq> y)\<close>
-
-lemma less_eq_option_simps[simp]:
-  \<open>None \<le> a\<close>
-  \<open>Some x \<le> None \<longleftrightarrow> False\<close>
-  \<open>Some x \<le> Some y \<longleftrightarrow> x \<preceq> y\<close>
-  by (simp add: less_eq_option_def)+
-
-lemma less_eq_option_def2:
-  \<open>a \<le> b \<longleftrightarrow> a = None \<or> (b \<noteq> None \<and> the a \<preceq> the b)\<close>
-  by (cases a; cases b; simp)
-
-definition less_option :: \<open>'a option \<Rightarrow> 'a option \<Rightarrow> bool\<close> where
-  \<open>less_option a b \<equiv>
-    case a of None \<Rightarrow> b \<noteq> None | Some x \<Rightarrow>
-      (case b of None \<Rightarrow> False | Some y \<Rightarrow> x \<prec> y)\<close>
-
-lemma less_option_simps[simp]:
-  \<open>None < Some x\<close>
-  \<open>a < None \<longleftrightarrow> False\<close>
-  \<open>Some x < Some y \<longleftrightarrow> x \<prec> y\<close>
-  by (simp add: less_option_def split: option.splits)+
-
-lemma less_option_def2:
-  \<open>a < b \<longleftrightarrow> b \<noteq> None \<and> (a = None \<or> the a \<prec> the b)\<close>
-  by (cases a; cases b; simp)
 
 definition disjoint_option :: \<open>'a option \<Rightarrow> 'a option \<Rightarrow> bool\<close> where
   \<open>disjoint_option a b \<equiv>
@@ -466,39 +444,18 @@ lemma plus_option_iff:
   \<open>a + b = None \<longleftrightarrow> a = None \<and> b = None\<close>
   by (force simp add: disjoint_option_def plus_option_def split: option.splits)+
 
-definition unitof_option :: \<open>'a option \<Rightarrow> 'a option\<close> where
-  \<open>unitof_option x \<equiv> None\<close>
-declare unitof_option_def[simp]
-
-definition zero_option :: \<open>'a option\<close> where
-  \<open>zero_option \<equiv> None\<close>
-declare zero_option_def[simp]
-
-definition bot_option :: \<open>'a option\<close> where
-  \<open>bot_option \<equiv> None\<close>
-declare bot_option_def[simp]
-
 instance
   apply standard
-                apply (metis less_eq_option_def2 less_option_def2 resource_order.strict_iff_not)
-               apply (force simp add: less_eq_option_def2)
-              apply (force simp add: less_eq_option_def2)
-             apply (force simp add: less_eq_option_def2)
-            apply (simp add: disjoint_option_def plus_option_def partial_add_assoc
+       apply (simp add: disjoint_option_def plus_option_def partial_add_assoc
       split: option.splits; fail)
-           apply (simp add: disjoint_option_def plus_option_def split: option.splits,
+      apply (simp add: disjoint_option_def plus_option_def split: option.splits,
       metis partial_add_commute; fail)
-          apply (metis disjoint_option_def2 disjoint_sym)
-         apply (simp add: less_option_def disjoint_option_def split: option.splits,
+     apply (metis disjoint_option_def2 disjoint_sym)
+    apply (simp add: disjoint_option_def split: option.splits,
       metis disjoint_add_rightL; fail)
-        apply (simp add: less_option_def disjoint_option_def disjoint_sym_iff
+   apply (simp add: disjoint_option_def disjoint_sym_iff
       disjoint_add_right_commute split: option.splits; fail)
-       apply (simp add: less_option_def disjoint_option_def positivity split: option.splits; fail)
-      apply (simp; fail)
-     apply (simp; fail)
-    apply (force simp add: less_eq_option_def fun_eq_iff disjoint_option_def less_eq_sepadd_def'
-      split: option.splits)
-   apply (force simp add: less_eq_option_def)+
+  apply (simp add: disjoint_option_def positivity split: option.splits; fail)
   done
 
 end
@@ -515,12 +472,40 @@ lemma less_sepadd_option_simps[simp]:
   \<open>Some x \<prec> Some y \<longleftrightarrow> x \<prec> y\<close>
   by (simp add: less_sepadd_def' disjoint_option_iff plus_option_iff; blast?; force)+
 
+instantiation option :: (perm_alg) multiunit_sep_alg
+begin
+
+definition unitof_option :: \<open>'a option \<Rightarrow> 'a option\<close> where
+  \<open>unitof_option x \<equiv> None\<close>
+declare unitof_option_def[simp]
+
+instance
+  by standard force+
+
+end
+
+instantiation option :: (perm_alg) sep_alg 
+begin
+
+definition zero_option :: \<open>'a option\<close> where
+  \<open>zero_option \<equiv> None\<close>
+declare zero_option_def[simp]
+
+definition bot_option :: \<open>'a option\<close> where
+  \<open>bot_option \<equiv> None\<close>
+declare bot_option_def[simp]
+
+instance
+  by standard force+
+
+end
+
 
 subsection \<open> Extended instances \<close>
 
 instance option :: (dupcl_perm_alg) dupcl_perm_alg
   by standard
-    (simp add: less_option_def disjoint_option_def split: option.splits,
+    (simp add: disjoint_option_def split: option.splits,
       metis dup_sub_closure)
 
 
@@ -555,6 +540,18 @@ instance
 
 end
 
+lemma less_sepadd_fun_eq:
+  fixes f g :: \<open>'a \<Rightarrow> 'b::perm_alg\<close>
+  shows \<open>f \<prec> g \<longleftrightarrow> (\<exists>x. f x \<noteq> g x) \<and> (\<forall>x. f x \<lesssim> g x)\<close>
+  by (simp add: part_of_def less_sepadd_def' fun_eq_iff disjoint_fun_def,
+      metis)
+
+lemma less_eq_sepadd_fun_eq:
+  fixes f g :: \<open>'a \<Rightarrow> 'b::perm_alg\<close>
+  shows \<open>f \<preceq> g \<longleftrightarrow> (\<forall>x. f x = g x) \<or> (\<forall>x. f x \<lesssim> g x)\<close>
+  by (simp add: part_of_def less_eq_sepadd_def' disjoint_fun_def fun_eq_iff,
+      metis)
+
 instantiation "fun" :: (type, multiunit_sep_alg) multiunit_sep_alg
 begin
  
@@ -565,6 +562,16 @@ declare unitof_fun_def[simp]
 instance
   by standard
     (simp add: disjoint_fun_def plus_fun_def le_fun_def fun_eq_iff le_iff_sepadd; metis)+
+
+lemma less_sepadd_fun_eq2:
+  fixes f g :: \<open>'a \<Rightarrow> 'b\<close>
+  shows \<open>f \<prec> g \<longleftrightarrow> (\<exists>x. f x \<prec> g x) \<and> (\<forall>x. f x \<preceq> g x)\<close>
+  by (metis le_iff_part_of less_sepadd_def less_sepadd_fun_eq)
+
+lemma less_eq_sepadd_fun_eq2:
+  fixes f g :: \<open>'a \<Rightarrow> 'b\<close>
+  shows \<open>f \<preceq> g \<longleftrightarrow> (\<forall>x. f x \<preceq> g x)\<close>
+  by (metis le_iff_part_of less_eq_sepadd_def' less_eq_sepadd_fun_eq)
 
 end
 
@@ -581,7 +588,7 @@ definition bot_fun :: \<open>('a \<Rightarrow> 'b)\<close> where
 declare bot_fun_def[simp]
 
 instance
-  by standard (simp add: fun_eq_iff zero_is_bot le_fun_def)+
+  by standard (simp add: fun_eq_iff less_eq_sepadd_fun_eq2)+
 
 end
 

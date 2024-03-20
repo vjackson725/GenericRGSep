@@ -148,28 +148,34 @@ abbreviation (input) greater_eq_sepadd  (infix \<open>\<succeq>\<close> 50)
 abbreviation (input) greater_sepadd (infix \<open>\<succ>\<close> 50)
   where \<open>(\<succ>) \<equiv> \<lambda>x y. (\<prec>) y x\<close>
 
-sublocale resource_order: ordering \<open>(\<preceq>)\<close> \<open>(\<prec>)\<close>
+
+sublocale resource_ordering: ordering \<open>(\<preceq>)\<close> \<open>(\<prec>)\<close>
   apply standard
      apply (metis less_eq_sepadd_def)
-    apply (force dest: part_of_trans simp add: less_eq_sepadd_def)
-   apply (metis less_eq_sepadd_def less_sepadd_def)
+    apply (metis less_eq_sepadd_def part_of_trans)
+   apply (force dest: part_of_antisym simp add: less_sepadd_def less_eq_sepadd_def)
   apply (metis less_eq_sepadd_def part_of_antisym)
   done
 
-lemma nless_sepadd_le_sepadd: "\<not> x \<prec> y \<longleftrightarrow> \<not> x \<preceq> y \<or> x = y"
-  using less_sepadd_def resource_order.order_iff_strict
-  by auto
+sublocale resource_order: order \<open>(\<preceq>)\<close> \<open>(\<prec>)\<close>
+  apply standard
+     apply (force dest: part_of_antisym simp add: less_sepadd_def less_eq_sepadd_def)
+    apply (metis resource_ordering.refl)
+   apply (metis resource_ordering.trans)
+  apply (metis resource_ordering.antisym)
+  done
 
 text \<open> Set up the isabelle machinery to treat this like an order. \<close>
 
 local_setup \<open>
   HOL_Order_Tac.declare_order {
     ops = {eq = @{term \<open>(=) :: 'a \<Rightarrow> 'a \<Rightarrow> bool\<close>}, le = @{term \<open>(\<preceq>)\<close>}, lt = @{term \<open>(\<prec>)\<close>}},
-    thms = {trans = @{thm resource_order.trans}, refl = @{thm resource_order.refl},
+    thms = {trans = @{thm resource_ordering.trans},
+            refl = @{thm resource_ordering.refl},
             eqD1 = @{thm eq_refl}, eqD2 = @{thm eq_refl[OF sym]},
-            antisym = @{thm resource_order.antisym}, contr = @{thm notE}},
-    conv_thms = {less_le = @{thm eq_reflection[OF resource_order.strict_iff_order]},
-                 nless_le = @{thm eq_reflection[OF nless_sepadd_le_sepadd]}}
+            antisym = @{thm resource_ordering.antisym}, contr = @{thm notE}},
+    conv_thms = {less_le = @{thm eq_reflection[OF resource_order.less_le]},
+                 nless_le = @{thm eq_reflection[OF resource_order.nless_le]}}
   }
 \<close>
 
@@ -184,10 +190,10 @@ lemma partial_le_plus2: \<open>a ## b \<Longrightarrow> b \<preceq> a + b\<close
   by (metis partial_le_plus disjoint_sym partial_add_commute)
 
 lemma partial_le_part_left: \<open>a ## b \<Longrightarrow> a + b \<preceq> c \<Longrightarrow> a \<preceq> c\<close>
-  using resource_order.trans partial_le_plus by blast
+  using resource_ordering.trans partial_le_plus by blast
 
 lemma partial_le_part_right: \<open>a ## b \<Longrightarrow> a + b \<preceq> c \<Longrightarrow> b \<preceq> c\<close>
-  using resource_order.trans partial_le_plus2 by blast
+  using resource_ordering.trans partial_le_plus2 by blast
 
 lemma common_subresource_selfsep:
   \<open>a ## b \<Longrightarrow> ab \<preceq> a \<Longrightarrow> ab \<preceq> b \<Longrightarrow> ab ## ab\<close>
@@ -231,7 +237,7 @@ lemma units_separate_to_units:
 
 lemma le_unit_iff_eq:
   \<open>sepadd_unit b \<Longrightarrow> a \<preceq> b \<longleftrightarrow> b = a\<close>
-  by (metis disjoint_preservation2 partial_le_plus resource_order.eq_iff sepadd_unit_def)
+  by (metis disjoint_preservation2 partial_le_plus resource_ordering.eq_iff sepadd_unit_def)
 
 lemma units_least: \<open>sepadd_unit x \<Longrightarrow> x ## y \<Longrightarrow> x \<preceq> y\<close>
   by (metis partial_le_plus sepadd_unit_def)
@@ -309,121 +315,6 @@ lemma units_are_dup: \<open>sepadd_unit a \<Longrightarrow> sepadd_dup a\<close>
 
 lemma zeros_are_dup: \<open>sepadd_zero a \<Longrightarrow> sepadd_dup a\<close>
   by (simp add: sepadd_dup_def sepadd_zero_def)
-
-subsection \<open> core \<close>
-
-text \<open>
-  Here we introduce the notion of a (duplicable) core, the greatest duplicable element
-  below an element.
-
-  The concept was originally introduced by Pottier (2012) (TODO: cite properly),
-  and is used to great effect in Iris (TODO: cite properly).
-
-  We do not have Pottier's second rule:
-    \<open>a ## b \<Longrightarrow> a + b = c \<Longrightarrow> core_rel c c' \<Longrightarrow> core_rel a a' \<Longrightarrow> c' = a'\<close>
-  or his law
-    \<open>a ## b \<Longrightarrow> a + b = c \<Longrightarrow>
-      core_rel a a' \<Longrightarrow> core_rel b b' \<Longrightarrow> core_rel c c' \<Longrightarrow>
-      a' + b' = c'\<close>
-  both of which are much too strong, and prevent more than one duplicable element being below a
-  resource. A quick argument to this effect: if \<open>a \<prec> c\<close> and both are duplicable, then \<open>a\<close>'s core
-  should be \<open>a\<close>, and \<open>c\<close>'s core should be \<open>c\<close>, with this law, they are the same. This law is
-  claimed by Pottier to be equivalent to the rule \<open>dup_sub_closure\<close>, but as we can see,
-  it is in fact stronger.
-
-  Neither do we have Iris' law that \<open>has_core\<close> is monotone. This is because there can be
-  several non-comparible duplicable elements sitting below a or b. When all non-empty subsets
-  of duplicable elements have a lub which is itself duplicable, \<open>has_core\<close> is monotone.
-\<close>
-
-definition \<open>core_rel a ca \<equiv> ca \<preceq> a \<and> sepadd_dup ca \<and> (\<forall>y. y \<preceq> a \<longrightarrow> sepadd_dup y \<longrightarrow> y \<preceq> ca)\<close>
-
-abbreviation \<open>has_core a \<equiv> Ex (core_rel a)\<close>
-abbreviation \<open>the_core a \<equiv> The (core_rel a)\<close>
-
-(* simp doesn't like rewriting core_rel under an Ex in goal position. *)
-lemma has_core_def:
-  \<open>has_core a \<longleftrightarrow> (\<exists>ca. ca \<preceq> a \<and> sepadd_dup ca \<and> (\<forall>y. y \<preceq> a \<longrightarrow> sepadd_dup y \<longrightarrow> y \<preceq> ca))\<close>
-  using core_rel_def by presburger
-
-lemma the_core_core_rel_eq[simp]:
-  \<open>core_rel a ca \<Longrightarrow> the_core a = ca\<close>
-  using core_rel_def resource_order.antisym by auto
-
-lemma has_core_the_core_eq:
-  \<open>has_core a \<Longrightarrow> P (the_core a) \<longleftrightarrow> (\<forall>ca. core_rel a ca \<longrightarrow> P ca)\<close>
-  using the_core_core_rel_eq by blast
-
-lemma dup_has_core[dest]:
-  \<open>sepadd_dup a \<Longrightarrow> has_core a\<close>
-  using core_rel_def resource_order.refl by auto
-
-lemma core_dup_is_self[simp]:
-  \<open>sepadd_dup a \<Longrightarrow> the_core a = a\<close>
-  by (simp add: core_rel_def resource_order.refl)
-
-lemma core_is_dup:
-  \<open>has_core a \<Longrightarrow> sepadd_dup (the_core a)\<close>
-  using core_rel_def the_core_core_rel_eq by blast
-
-lemma core_is_selfsep:
-  \<open>has_core a \<Longrightarrow> the_core a ## the_core a\<close>
-  using core_is_dup sepadd_dup_def
-  by blast
-
-lemma core_is_selfadd:
-  \<open>has_core a \<Longrightarrow> the_core a + the_core a = the_core a\<close>
-  using core_is_dup sepadd_dup_def
-  by blast
-
-lemma core_idem:
-  \<open>has_core a \<Longrightarrow> the_core (the_core a) = the_core a\<close>
-  by (clarsimp simp add: core_rel_def)
-
-lemma core_disjoint:
-  \<open>has_core a \<Longrightarrow> the_core a ## a\<close>
-  by (metis core_rel_def less_eq_sepadd_def disjoint_add_left_commute2 disjoint_sym part_of_def
-      sepadd_dup_def the_core_core_rel_eq)
-
-lemma core_plus_same[simp]:
-  \<open>has_core a \<Longrightarrow> the_core a + a = a\<close>
-  by (metis core_rel_def less_eq_sepadd_def part_of_def partial_add_assoc sepadd_dup_def
-      the_core_core_rel_eq)
-
-lemma core_plus_sameR[simp]:
-  \<open>has_core a \<Longrightarrow> a + the_core a = a\<close>
-  using core_disjoint core_plus_same partial_add_commute
-  by auto
-
-lemma the_core_le_impl:
-  \<open>has_core a \<Longrightarrow> has_core b \<Longrightarrow> a \<preceq> b \<Longrightarrow> the_core a \<preceq> the_core b\<close>
-  by (metis core_rel_def resource_order.trans the_core_core_rel_eq)
-
-  
-text \<open>
-  As every duplicable element is its own core, the monotonicity criterion is equivalent to
-  the property that every element above a duplicable element (e.g. 0) has a unique greatest
-  duplicable element below it.
-\<close>
-lemma has_core_mono_iff:
-  \<open>(\<forall>a b. a \<preceq> b \<longrightarrow> has_core a \<longrightarrow> has_core b) \<longleftrightarrow>
-    (\<forall>x. sepadd_dup x \<longrightarrow> (\<forall>a. x \<preceq> a \<longrightarrow> has_core a))\<close>
-  unfolding sepadd_dup_def has_core_def
-  apply (rule iffI)
-   apply (blast intro: resource_order.refl)
-  apply (blast intro: resource_order.trans)
-  done
-
-lemma core_rel_additive:
-  \<open>x ## y \<Longrightarrow> core_rel x x \<Longrightarrow> core_rel y y \<Longrightarrow> core_rel (x + y) (x + y)\<close>
-  unfolding core_rel_def
-  by (metis disjoint_middle_swap2 disjoint_sym partial_add_commute partial_add_double_assoc
-      sepadd_dup_def sepadd_left_mono)
-
-lemma core_rel_additive:
-  \<open>x ## y \<Longrightarrow> core_rel x cx \<Longrightarrow> core_rel y cy \<Longrightarrow> core_rel (x + y) cxy \<Longrightarrow> cx + cy \<le> cxy\<close>
-  unfolding core_rel_def
-  oops
 
 
 subsection \<open>sepdomeq\<close>
@@ -741,7 +632,7 @@ definition intuitionistic :: \<open>('a \<Rightarrow> bool) \<Rightarrow> bool\<
 lemma precise_to_intuitionistic:
   \<open>precise P \<Longrightarrow> intuitionistic (P \<^emph> \<top>)\<close>
   unfolding sepconj_def precise_def intuitionistic_def
-  by (metis less_eq_sepadd_def' partial_le_part_left resource_order.antisym top_conj(1))
+  by (metis less_eq_sepadd_def' partial_le_part_left resource_ordering.antisym top_conj(1))
 
 lemma strong_sepcoimp_imp_sepconj:
   \<open>(P \<^emph> \<top>) \<sqinter> (P \<sim>\<^emph> Q) \<le> P \<^emph> Q\<close>
@@ -761,33 +652,23 @@ definition supported :: \<open>('a \<Rightarrow> bool) \<Rightarrow> bool\<close
 
 lemma precise_to_supported:
   \<open>precise P \<Longrightarrow> supported (P \<^emph> \<top>)\<close>
-  using resource_order.eq_iff supported_def by auto
+  using resource_ordering.eq_iff supported_def by auto
 
 end
 
 
 section \<open> Multi-unit Separation Algebra \<close>
 
-class multiunit_sep_alg = order + perm_alg +
+class multiunit_sep_alg = perm_alg +
   fixes unitof :: \<open>'a \<Rightarrow> 'a\<close>
   assumes unitof_disjoint[simp,intro!]: \<open>unitof a ## a\<close>
   assumes unitof_is_unit[simp]: \<open>\<And>a b. unitof a ## b \<Longrightarrow> unitof a + b = b\<close>
-  assumes leq_iff_sepadd: \<open>\<And>a b. a \<le> b \<longleftrightarrow> (\<exists>c. a ## c \<and> b = a + c)\<close>
 begin
 
-lemma leq_is_resource_leq: \<open>(\<le>) = (\<preceq>)\<close>
-  using leq_iff_sepadd less_eq_sepadd_def'
-  by fastforce
+lemma le_iff_sepadd: \<open>a \<preceq> b \<longleftrightarrow> (\<exists>c. a ## c \<and> b = a + c)\<close>
+  by (metis disjoint_sym less_eq_sepadd_def' partial_add_commute unitof_disjoint unitof_is_unit)
 
-lemma less_is_resource_less: \<open>(<) = (\<prec>)\<close>
-  using order.order_iff_strict leq_is_resource_leq resource_order.strict_iff_order
-  by fastforce
-
-lemma le_iff_sepadd: \<open>a \<le> b \<longleftrightarrow> (\<exists>c. a ## c \<and> b = a + c)\<close>
-  unfolding less_eq_sepadd_def' leq_is_resource_leq
-  by (metis disjoint_sym partial_add_commute unitof_disjoint unitof_is_unit)
-
-lemma le_iff_part_of: \<open>a \<le> b \<longleftrightarrow> a \<lesssim> b\<close>
+lemma le_iff_part_of: \<open>a \<preceq> b \<longleftrightarrow> a \<lesssim> b\<close>
   unfolding part_of_def le_iff_sepadd
   by blast
 
@@ -814,27 +695,27 @@ lemma unitof_is_sepadd_unit: \<open>sepadd_unit (unitof a)\<close>
 
 subsection \<open>partial canonically_ordered_monoid_add lemmas\<close>
 
-lemma unitof_le[simp]: \<open>unitof x \<le> x\<close>
-  using partial_le_plus unitof_disjoint leq_is_resource_leq
+lemma unitof_le[simp]: \<open>unitof x \<preceq> x\<close>
+  using partial_le_plus unitof_disjoint
   by fastforce
 
-lemma le_unitof_eq[simp]: \<open>x \<le> unitof x \<longleftrightarrow> x = unitof x\<close>
-  by (auto intro: order.antisym)
+lemma le_unitof_eq[simp]: \<open>x \<preceq> unitof x \<longleftrightarrow> x = unitof x\<close>
+  by (auto intro: resource_ordering.antisym)
 
-lemma not_less_unitof[simp]: \<open>\<not> x < unitof x\<close>
-  by (auto simp: less_le)
+lemma not_less_unitof[simp]: \<open>\<not> x \<prec> unitof x\<close>
+  by (simp add: resource_order.leD)
 
-lemma unitof_less_iff_neq_unitof: \<open>unitof x < x \<longleftrightarrow> x \<noteq> unitof x\<close>
-  by (metis antisym_conv2 unitof_le)
+lemma unitof_less_iff_neq_unitof: \<open>unitof x \<prec> x \<longleftrightarrow> x \<noteq> unitof x\<close>
+  by (metis resource_order.antisym_conv2 unitof_le)
 
-lemma gr_unitofI: "(x = unitof x \<Longrightarrow> False) \<Longrightarrow> unitof x < x"
+lemma gr_unitofI: "(x = unitof x \<Longrightarrow> False) \<Longrightarrow> unitof x \<prec> x"
   using unitof_less_iff_neq_unitof by blast
 
-lemma not_gr_unitof[simp]: "\<not> unitof x < x \<longleftrightarrow> x = unitof x"
+lemma not_gr_unitof[simp]: "\<not> unitof x \<prec> x \<longleftrightarrow> x = unitof x"
   by (simp add: unitof_less_iff_neq_unitof)
 
-lemma gr_implies_not_unitof: "m < x \<Longrightarrow> x \<noteq> unitof x"
-  by (metis le_unit_iff_eq leq_is_resource_leq nless_le unitof_is_sepadd_unit)
+lemma gr_implies_not_unitof: "z \<prec> x \<Longrightarrow> x \<noteq> unitof x"
+  by (metis le_unit_iff_eq resource_order.dual_order.strict_iff_not unitof_is_sepadd_unit)
 
 lemma unitof_sepadd_unit:
   \<open>sepadd_unit x \<Longrightarrow> unitof x = x\<close>
@@ -858,9 +739,10 @@ lemma common_disjoint_same_unit:
 
 lemmas unitof_order = unitof_le le_unitof_eq not_less_unitof unitof_less_iff_neq_unitof not_gr_unitof
 
+
 subsection \<open> emp \<close>
 
-text \<open> emp is not really useful until every element has a unit. \<close>
+text \<open> emp is not really useful until now, where every element has a unit. \<close>
 
 lemma emp_sepconj_unit[simp]: \<open>emp \<^emph> P = P\<close>
   apply (simp add: emp_def sepconj_def fun_eq_iff)
@@ -891,65 +773,47 @@ end
 section \<open> (Single Unit) Separation Algebra\<close>
 
 class sep_alg = multiunit_sep_alg + zero + bot +
-  assumes zero_least: \<open>0 \<le> x\<close>
-  assumes bot_least': \<open>\<bottom> \<le> x\<close>
+  assumes zero_least[simp,intro!]: \<open>0 \<preceq> x\<close>
+  assumes bot_is_zero[simp]: \<open>\<bottom> = 0\<close>
 begin
 
-lemma zero_is_bot: \<open>0 = \<bottom>\<close>
-  by (simp add: bot_least' zero_least order.antisym)
+sublocale order_bot \<open>\<bottom>\<close> \<open>(\<preceq>)\<close> \<open>(\<prec>)\<close>
+  by standard
+    (metis bot_is_zero zero_least)
 
-subclass order_bot
-  by standard (simp add: bot_least')
-
-lemma bot_unit:
-  \<open>sepadd_unit \<bottom>\<close>
-  by (metis bot_least le_unitof_eq unitof_is_sepadd_unit)
-
-lemma sepadd_bot[simp]: \<open>\<bottom> + a = a\<close>
-  by (metis bot_unit bot_least le_iff_sepadd sepadd_unit_def)
-
-lemma sepadd_0[simp]: \<open>0 + a = a\<close>
-  by (metis sepadd_bot zero_is_bot)
+lemma unitof_eq_zero[simp]: \<open>unitof x = 0\<close>
+  by (metis common_disjoint_same_unit disjoint_preservation le_unitof_eq unitof_disjoint
+      unitof_is_sepadd_unit unitof_sepadd_unit zero_least)
 
 lemma zero_disjointL[simp]: \<open>0 ## a\<close>
-  using bot_least disjoint_preservation zero_is_bot leq_is_resource_leq
-  by blast
+  using unitof_disjoint by auto
 
 lemma zero_disjointR[simp]: \<open>a ## 0\<close>
   by (simp add: disjoint_sym)
 
+lemma sepadd_0[simp]: \<open>0 + a = a\<close>
+  using unitof_disjoint2 unitof_is_unit2 by auto
+
 lemma sepadd_0_right[simp]: "a + 0 = a"
   by (metis zero_disjointR sepadd_0 partial_add_commute)
 
-lemma unitof_zero[simp]: \<open>unitof a = 0\<close>
-  by (metis sepadd_0 unitof_is_unitR zero_disjointR)
-
 lemma zero_only_unit[simp]:
   \<open>sepadd_unit x \<longleftrightarrow> x = 0\<close>
-  by (metis unitof_is_sepadd_unit unitof_sepadd_unit unitof_zero)
+  by (metis unitof_is_sepadd_unit unitof_sepadd_unit unitof_eq_zero)
 
 subsection \<open>partial canonically_ordered_monoid_add lemmas\<close>
 
-lemma zero_le[simp]: \<open>0 \<le> x\<close>
-  using unitof_le by force
+lemma zero_less_iff_neq_zero: "0 \<prec> n \<longleftrightarrow> n \<noteq> 0"
+  using bot_less by auto
 
-lemma le_zero_eq[simp]: "n \<le> 0 \<longleftrightarrow> n = 0"
-  using le_unitof_eq by force
-
-lemma not_less_zero[simp]: "\<not> n < 0"
-  by (auto simp: less_le)
-
-lemma zero_less_iff_neq_zero: "0 < n \<longleftrightarrow> n \<noteq> 0"
-  by (auto simp: less_le)
-
-lemma gr_zeroI: "(n = 0 \<Longrightarrow> False) \<Longrightarrow> 0 < n"
+lemma gr_zeroI: "(n = 0 \<Longrightarrow> False) \<Longrightarrow> 0 \<prec> n"
   using zero_less_iff_neq_zero by auto
 
-lemma not_gr_zero[simp]: "\<not> 0 < n \<longleftrightarrow> n = 0"
+lemma not_gr_zero[simp]: "\<not> 0 \<prec> n \<longleftrightarrow> n = 0"
   by (simp add: zero_less_iff_neq_zero)
 
-lemma gr_implies_not_zero: \<open>m < n \<Longrightarrow> n \<noteq> 0\<close>
-  by auto
+lemma gr_implies_not_zero: \<open>m \<prec> n \<Longrightarrow> n \<noteq> 0\<close>
+  using not_less_bot by auto
 
 lemma sepadd_eq_0_iff_both_eq_0[simp]: \<open>x ## y \<Longrightarrow> x + y = 0 \<longleftrightarrow> x = 0 \<and> y = 0\<close>
   using sepadd_eq_unitof_iff_both_eq_unitof by auto
@@ -958,6 +822,7 @@ lemma zero_eq_sepadd_iff_both_eq_0[simp]: \<open>x ## y \<Longrightarrow> 0 = x 
   using sepadd_eq_0_iff_both_eq_0 by fastforce
 
 lemmas zero_order = zero_le le_zero_eq not_less_zero zero_less_iff_neq_zero not_gr_zero
+
 
 paragraph \<open> Separation Logic \<close>
 
@@ -1077,7 +942,7 @@ lemma step_compatible_units_identical:
    apply (force simp add: le_unit_iff_eq)
   apply (simp add: le_unit_iff_eq)
   apply (metis disjoint_preservation2 le_unit_iff_eq less_eq_sepadd_def' sepadd_unit_left
-      resource_order.trans)
+      resource_ordering.trans)
   done
 
 lemma compatible_units_identical:
@@ -1119,7 +984,7 @@ begin
 
 lemma same_unit_compatible:
   \<open>unitof a = unitof b \<Longrightarrow> compatible a b\<close>
-  by (metis leq_is_resource_leq trans_ge_le_is_compatible unitof_le)
+  by (metis trans_ge_le_is_compatible unitof_le)
 
 lemma compatible_then_same_unit:
   \<open>compatible a b \<Longrightarrow> unitof a = unitof b\<close>
@@ -1156,14 +1021,14 @@ lemma the_unit_is_a_unit:
   unfolding the_unit_def
   by (rule theI', simp add: exactly_one_unit)
 
-sublocale is_sep_alg: sep_alg the_unit the_unit \<open>(\<le>)\<close> \<open>(<)\<close> \<open>(+)\<close> \<open>(##)\<close> \<open>(\<lambda>_. the_unit)\<close>
+sublocale is_sep_alg: sep_alg the_unit the_unit \<open>(+)\<close> \<open>(##)\<close> \<open>(\<lambda>_. the_unit)\<close>
   apply standard
      apply (metis exactly_one_unit unitof_disjoint unitof_is_sepadd_unit the_unit_is_a_unit)
     apply (metis exactly_one_unit unitof_disjoint2 unitof_is_unit2 unitof_is_sepadd_unit
       the_unit_is_a_unit)
-   apply (simp add: le_iff_sepadd; fail)
-  apply (simp add: all_compatible compatible_unit_disjoint disjoint_sym_iff leq_is_resource_leq
+   apply (simp add: all_compatible compatible_unit_disjoint disjoint_sym_iff
       units_least the_unit_is_a_unit)
+  apply simp
   done
 
 end
@@ -1379,23 +1244,23 @@ lemma precise_then_sepconj_conj_distrib:
   done
 
 lemma sepconj_conj_distrib_then_precise:
-  assumes \<open>\<And>x. P x \<Longrightarrow> \<exists>u. x ## u \<and> sepadd_unit u\<close>
+  assumes P_has_units: \<open>\<And>x. P x \<Longrightarrow> \<exists>u. x ## u \<and> sepadd_unit u\<close>
   shows \<open>sepconj_conj_distrib P \<Longrightarrow> precise P\<close>
   apply (clarsimp simp add: precise_def sepconj_conj_distrib_def sepconj_def le_fun_def
       imp_ex_conjL imp_conjL less_eq_sepadd_def')
   apply (intro conjI impI allI)
     apply clarsimp
-    apply (rename_tac h2 w)
-    apply (frule_tac x=h2 in assms, clarsimp)
-    apply (drule_tac x=sepadd_unit and y=\<open>(=) w\<close> in spec2)
-    apply (drule_tac x=\<open>h2 + w\<close> and y=u in spec2)
-    apply (metis disjoint_add_left_commute2 sepadd_unit_right)
+    apply (frule_tac ?x1=\<open>h2 + _\<close> in P_has_units)
+    apply clarsimp
+    apply (rename_tac h2 w u)
+    apply (drule_tac x=\<open>(=) (w + u)\<close> and y=\<open>(=) u\<close> in spec2)
+    apply (metis disjoint_add_leftR sepadd_unit_right)
    apply clarsimp
-   apply (rename_tac h1 w)
-   apply (frule_tac x=h1 in assms, clarsimp)
-   apply (drule_tac x=sepadd_unit and y=\<open>(=) w\<close> in spec2)
-   apply (metis disjoint_add_left_commute2 sepadd_unit_right)
-  apply clarsimp
+   apply (frule_tac ?x1=\<open>h1 + _\<close> in P_has_units)
+   apply clarsimp
+   apply (rename_tac h2 w u)
+   apply (drule_tac x=\<open>(=) (w + u)\<close> and y=\<open>(=) u\<close> in spec2)
+   apply (metis disjoint_add_leftR sepadd_unit_right)
   apply (rename_tac hp1 hp2 hq1 hq2)
   apply (drule_tac x=\<open>(=) hq1\<close> and y=\<open>(=) hq2\<close> in spec2)
   apply force
@@ -1556,25 +1421,6 @@ lemma sepadd_dup_plus_dupL:
 lemma sepadd_dup_plus_dupR:
   \<open>a ## b \<Longrightarrow> sepadd_dup (a + b) \<Longrightarrow> sepadd_dup b\<close>
   using partial_le_plus2 sepadd_dup_antimono by auto
-
-lemma add_to_core_then_dup:
-  \<open>a ## b \<Longrightarrow> core_rel c c' \<Longrightarrow> a + b = c' \<Longrightarrow> sepadd_dup a\<close>
-  using core_rel_def the_core_core_rel_eq sepadd_dup_plus_dupL by blast
-
-lemma add_to_core_then_dupR:
-  \<open>a ## b \<Longrightarrow> core_rel c c' \<Longrightarrow> a + b = c' \<Longrightarrow> sepadd_dup b\<close>
-  using core_rel_def sepadd_dup_plus_dupR by blast
-
-text \<open>
-  In the presence of dup_sub_closure,
-  Pottier's second core condition collapses duplicable elements.
-\<close>
-lemma pottier2_collapse:
-  \<open>(\<And>a b c c' a'.
-    a ## b \<Longrightarrow> a + b = c \<Longrightarrow> core_rel c c' \<Longrightarrow> core_rel a a' \<Longrightarrow> c' = a') \<Longrightarrow>
-    a \<preceq> b \<Longrightarrow> sepadd_dup b \<Longrightarrow> a = b\<close>
-  by (metis core_dup_is_self dup_has_core less_eq_sepadd_def' sepadd_dup_antimono
-      the_core_core_rel_eq)
 
 end
 

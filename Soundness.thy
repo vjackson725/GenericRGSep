@@ -197,10 +197,16 @@ lemma opstep_IfThenElse_false[intro]:
   \<open>\<not> p h \<Longrightarrow> opstep Local (h, IfThenElse p a b) (h, Skip ;; b)\<close>
   by (simp add: opstep_iff)
 
+lemma pre_state_passert_eq[simp]:
+  \<open>pre_state (passert p) = p\<close>
+  by (simp add: passert_def pre_state_def)
+
 lemma opstep_WhileLoop_iff[opstep_iff]:
   \<open>opstep a (h, WhileLoop p c) s' \<longleftrightarrow>
-    a = Tau \<and> s' = (h, Assert p ;; map_fixvar Suc c ;; WhileLoop p c \<box> Assert (- p))\<close>
-  by (simp add: WhileLoop_def opstep_iff fixvar_subst_over_map_avoid)
+    a = Tau \<and> s' = (h,
+      (Assert p ;; c \<box> Assert (- p)) ;;
+        DO Assert p ;; c \<box> Assert (- p) OD)\<close>
+  by (simp add: WhileLoop_def opstep_iff)
 
 
 section \<open> Safe \<close>

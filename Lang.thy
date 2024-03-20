@@ -258,7 +258,7 @@ lemma passert_simps[simp]:
 subsection \<open> If-then-else and While Loops \<close>
 
 definition \<open>IfThenElse p ct cf \<equiv> Assert p ;; ct \<box> Assert (-p) ;; cf\<close>
-definition \<open>WhileLoop p c \<equiv> \<mu> (Assert p ;; map_fixvar Suc c ;; FixVar 0 \<box> Assert (-p))\<close>
+definition \<open>WhileLoop p c \<equiv> DO (Assert p ;; c \<box> Assert (-p)) OD\<close>
 
 lemma IfThenElse_inject[simp]:
   \<open>IfThenElse p1 ct1 cf1 = IfThenElse p2 ct2 cf2 \<longleftrightarrow> p1 = p2 \<and> ct1 = ct2 \<and> cf1 = cf2\<close>
@@ -292,26 +292,7 @@ lemma WhileLoop_distinct[simp]:
   \<open>Atomic b \<noteq> WhileLoop p c\<close>
   \<open>WhileLoop p c \<noteq> \<mu> c\<close>
   \<open>\<mu> c \<noteq> WhileLoop p c\<close>
-           apply (simp add: WhileLoop_def; fail)+
-   apply (rule size_neq_size_imp_neq, simp add: WhileLoop_def)+
-  done
-
-
-subsection \<open> Heaps \<close>
-
-(* TODO *)
-
-subsection \<open> Locked shared state \<close>
-
-definition acquire
-  :: \<open>nat \<Rightarrow> 'a::perm_alg \<times> 'a resources \<Rightarrow> 'a \<times> 'a resources \<Rightarrow> bool\<close>
-  where
-  \<open>acquire lk \<equiv> \<lambda>(l,s) (l',s'). (\<exists>st.
-      s lk = Some (Unlocked st) \<and>
-      l ## st \<and>
-      l' = l + st \<and>
-      s' = s(lk \<mapsto> Locked)
-  )\<close>
+  by (simp add: WhileLoop_def; fail)+
 
 
 end
