@@ -858,6 +858,19 @@ lemma bequiv_iff2: \<open>a \<sim> b = (a \<sqinter> b) \<squnion> (-a \<sqinter
 
 end
 
+subsection \<open> Bounded distributive lattices \<close>
+
+class distrib_lattice_bot = distrib_lattice + bounded_lattice_bot
+class distrib_lattice_top = distrib_lattice + bounded_lattice_top
+class bounded_distrib_lattice = distrib_lattice_bot + distrib_lattice_top
+
+context boolean_algebra
+begin
+subclass distrib_lattice_bot by standard
+subclass distrib_lattice_top by standard
+subclass bounded_distrib_lattice by standard
+end
+
 section \<open> Times \<close>
 
 definition pred_Times :: \<open>('a \<Rightarrow> bool) \<Rightarrow> ('b \<Rightarrow> bool) \<Rightarrow> ('a \<times> 'b \<Rightarrow> bool)\<close>

@@ -930,6 +930,185 @@ instance
 end
 
 
+section \<open> Distributive Lattice Separation Algebra \<close>
+
+text \<open>
+  This is a lifting of a distributive lattice (with bot) into a sep-algebra,
+  such that + \<equiv> \<squnion>, except that you are only able to add when the sup is disjoint.
+  (Compare the standard heap instance.)
+
+  This is also a generalisation of Krebber's [Krebbers2014] lockable permission structure.
+  (Which, in this formulation, is \<open>bool dlat_sep\<close>.) The value \<bottom> represents locked,
+  and all other elements denote unlocked values.
+  Locked elements are not compatible with other locked elements.
+\<close>
+
+typedef ('a::order) dlat_sep = \<open>UNIV :: 'a set\<close>
+  by blast
+
+declare Abs_dlat_sep_inject[simplified, simp]
+declare Abs_dlat_sep_inverse[simplified, simp]
+declare Rep_dlat_sep_inverse[simplified, simp]
+
+lemmas Rep_dlat_sep_inject2 = Rep_dlat_sep_inject[simplified]
+
+lemma Abs_dlat_sep_helpers:
+  \<open>(a = Abs_dlat_sep x) \<longleftrightarrow> x = Rep_dlat_sep a\<close>
+  \<open>(Abs_dlat_sep x = a) \<longleftrightarrow> x = Rep_dlat_sep a\<close>
+  using Abs_dlat_sep_inverse Rep_dlat_sep_inject2
+  by force+
+
+setup_lifting type_definition_dlat_sep
+
+subsection \<open> Order + Lattice liftings \<close>
+
+instantiation dlat_sep :: (order) order
+begin
+lift_definition less_eq_dlat_sep :: \<open>'a dlat_sep \<Rightarrow> 'a dlat_sep \<Rightarrow> bool\<close> is \<open>(\<le>)\<close> .
+lift_definition less_dlat_sep :: \<open>'a dlat_sep \<Rightarrow> 'a dlat_sep \<Rightarrow> bool\<close> is \<open>(<)\<close> .
+instance by standard (transfer, force)+
+end
+
+instantiation dlat_sep :: (semilattice_inf) semilattice_inf
+begin
+lift_definition inf_dlat_sep :: \<open>'a dlat_sep \<Rightarrow> 'a dlat_sep \<Rightarrow> 'a dlat_sep\<close> is \<open>(\<sqinter>)\<close> .
+instance by standard (transfer, force)+
+end
+
+instantiation dlat_sep :: (semilattice_sup) semilattice_sup
+begin
+lift_definition sup_dlat_sep :: \<open>'a dlat_sep \<Rightarrow> 'a dlat_sep \<Rightarrow> 'a dlat_sep\<close> is \<open>(\<squnion>)\<close> .
+instance by standard (transfer, force)+
+end
+
+instantiation dlat_sep :: (order_bot) order_bot
+begin
+lift_definition bot_dlat_sep :: \<open>'a dlat_sep\<close> is \<open>(\<bottom>)\<close> .
+instance by standard (transfer, force)+
+end
+
+instantiation dlat_sep :: (order_top) order_top
+begin
+lift_definition top_dlat_sep :: \<open>'a dlat_sep\<close> is \<open>\<top>\<close> .
+instance by standard (transfer, force)+
+end
+
+instance dlat_sep :: (distrib_lattice) distrib_lattice
+  by standard (transfer, force simp add: sup_inf_distrib1)+
+
+instance dlat_sep :: (distrib_lattice_bot) distrib_lattice_bot
+  by standard (transfer, force simp add: sup_inf_distrib1)+
+
+instance dlat_sep :: (bounded_distrib_lattice) bounded_distrib_lattice
+  by standard (transfer, force simp add: sup_inf_distrib1)+
+
+instantiation dlat_sep :: (boolean_algebra) boolean_algebra
+begin
+lift_definition minus_dlat_sep :: \<open>'a dlat_sep \<Rightarrow> 'a dlat_sep \<Rightarrow> 'a dlat_sep\<close> is \<open>minus\<close> .
+lift_definition uminus_dlat_sep :: \<open>'a dlat_sep \<Rightarrow> 'a dlat_sep\<close> is \<open>uminus\<close> .
+instance by standard (transfer, force simp add: diff_eq)+
+end
+
+
+subsection \<open> Permisson/Separation algebra instances \<close>
+
+instantiation dlat_sep :: (distrib_lattice_bot) perm_alg
+begin
+
+lift_definition disjoint_dlat_sep :: \<open>'a dlat_sep \<Rightarrow> 'a dlat_sep \<Rightarrow> bool\<close> is
+  \<open>\<lambda>a b. a \<sqinter> b = \<bottom>\<close> .
+
+lemma disjoint_dlat_sep_simps[simp]:
+  fixes a b :: \<open>'a dlat_sep\<close>
+  shows \<open>a ## b \<longleftrightarrow> a \<sqinter> b = \<bottom>\<close>
+  by (transfer, force)+
+
+lift_definition plus_dlat_sep :: \<open>'a dlat_sep \<Rightarrow> 'a dlat_sep \<Rightarrow> 'a dlat_sep\<close> is \<open>(\<squnion>)\<close> .
+
+lemma plus_dlat_sep_eq_iff[simp]:
+  \<open>a + b = (\<bottom>::'a dlat_sep) \<longleftrightarrow> a = \<bottom> \<and> b = \<bottom>\<close>
+  by (transfer, force)+
+
+instance
+  apply standard
+       apply (transfer, metis sup.assoc)
+      apply (transfer, metis sup.commute)
+     apply (transfer, metis inf.commute)
+    apply (transfer, simp add: inf_sup_distrib1; fail)
+   apply (transfer, simp add: inf_sup_aci inf_sup_distrib1; fail)
+  apply (transfer, metis inf_commute inf_sup_absorb)
+  done
+
+lemma part_of_dlat_sep_eq:
+  fixes a b :: \<open>('a::distrib_lattice_bot) dlat_sep\<close>
+  shows \<open>a \<lesssim> b \<longleftrightarrow> (\<exists>c. Rep_dlat_sep a \<sqinter> c = \<bottom> \<and> Rep_dlat_sep b = Rep_dlat_sep a \<squnion> c)\<close>
+  by (simp add: part_of_def, transfer, force)
+
+lemma less_eq_dlat_sep_eq:
+  fixes a b :: \<open>('a::distrib_lattice_bot) dlat_sep\<close>
+  shows \<open>a \<preceq> b \<longleftrightarrow> Rep_dlat_sep a = Rep_dlat_sep b \<or>
+                    (\<exists>c. Rep_dlat_sep a \<sqinter> c = \<bottom> \<and> Rep_dlat_sep b = Rep_dlat_sep a \<squnion> c)\<close>
+  by (simp add: less_eq_sepadd_def part_of_dlat_sep_eq Rep_dlat_sep_inject2)
+
+lemma less_dlat_sep_eq:
+  fixes a b :: \<open>('a::distrib_lattice_bot) dlat_sep\<close>
+  shows \<open>a \<prec> b \<longleftrightarrow> Rep_dlat_sep a \<noteq> Rep_dlat_sep b \<and>
+                    (\<exists>c. Rep_dlat_sep a \<sqinter> c = \<bottom> \<and> Rep_dlat_sep b = Rep_dlat_sep a \<squnion> c)\<close>
+  by (simp add: less_sepadd_def part_of_dlat_sep_eq Rep_dlat_sep_inject2)
+
+lemma sepadd_bot_least[intro]:
+  fixes a b :: \<open>('a::distrib_lattice_bot) dlat_sep\<close>
+  shows \<open>\<bottom> \<preceq> a\<close>
+  by (simp add: less_eq_dlat_sep_eq, transfer, force)
+
+lemma leq_sepadd_then_leq:
+  fixes a b :: \<open>('a::distrib_lattice_bot) dlat_sep\<close>
+  shows \<open>a \<preceq> b \<Longrightarrow> a \<le> b\<close>
+  by (simp add: less_eq_dlat_sep_eq, transfer, force)
+
+lemma less_sepadd_then_less:
+  fixes a b :: \<open>('a::distrib_lattice_bot) dlat_sep\<close>
+  shows \<open>a \<prec> b \<Longrightarrow> a < b\<close>
+  by (simp add: less_dlat_sep_eq inf.strict_order_iff, transfer, force)
+
+end
+
+instantiation dlat_sep :: (distrib_lattice_bot) multiunit_sep_alg
+begin
+lift_definition unitof_dlat_sep :: \<open>'a dlat_sep \<Rightarrow> 'a dlat_sep\<close> is \<open>\<lambda>_. \<bottom>\<close> .
+instance by standard (transfer, force)+
+end
+
+instantiation dlat_sep :: (bounded_distrib_lattice) sep_alg
+begin
+lift_definition zero_dlat_sep :: \<open>'a dlat_sep\<close> is \<open>\<bottom>\<close> .
+instance
+  by standard
+    (simp add: zero_dlat_sep_def bot_dlat_sep_def;
+      metis bot_dlat_sep_def sepadd_bot_least)+
+end
+
+instance dlat_sep :: (distrib_lattice_bot) dupcl_perm_alg
+  by standard
+    (transfer, metis sup_idem)
+
+instance dlat_sep :: (distrib_lattice_bot) cancel_perm_alg
+  by standard
+    (transfer, metis inf_commute inf_sup_absorb inf_sup_distrib1)
+
+instance dlat_sep :: (distrib_lattice_bot) trivial_selfdisjoint_perm_alg
+  by standard
+    (transfer, metis inf_commute inf_sup_absorb inf_sup_distrib1)
+
+instance dlat_sep :: (distrib_lattice_bot) disjoint_parts_perm_alg
+  by standard
+    (transfer, simp add: inf_sup_distrib2)
+
+instance dlat_sep :: (distrib_lattice_bot) strong_sep_perm_alg
+  by standard
+    (transfer, metis cancel_left_to_unit selfdisjoint_same)
+
+
 section \<open> Heaps and Permission-heaps \<close>
 
 type_synonym ('i,'v) heap = \<open>'i \<rightharpoonup> (munit \<times> 'v discr)\<close>
@@ -955,6 +1134,13 @@ lemma sepdomeq_fun:
       simp del: not_Some_prod_eq split: if_splits, metis)
   apply blast
   done
+
+
+section \<open> Bibliography \<close>
+
+text \<open>
+  [Krebbers2014] R Krebbers. Separation Algebras for C Verification in Coq. VSTTE 2014. \<^url>\<open>https://doi.org/10.1007/978-3-319-12154-3 10\<close>
+\<close>
 
 
 end
