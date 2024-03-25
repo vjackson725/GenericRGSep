@@ -538,8 +538,6 @@ instance
   apply (simp add: disjoint_fun_def plus_fun_def fun_eq_iff, metis positivity)
   done
 
-end
-
 lemma less_sepadd_fun_eq:
   fixes f g :: \<open>'a \<Rightarrow> 'b::perm_alg\<close>
   shows \<open>f \<prec> g \<longleftrightarrow> (\<exists>x. f x \<noteq> g x) \<and> (\<forall>x. f x \<lesssim> g x)\<close>
@@ -551,6 +549,12 @@ lemma less_eq_sepadd_fun_eq:
   shows \<open>f \<preceq> g \<longleftrightarrow> (\<forall>x. f x = g x) \<or> (\<forall>x. f x \<lesssim> g x)\<close>
   by (simp add: part_of_def less_eq_sepadd_def' disjoint_fun_def fun_eq_iff,
       metis)
+
+end
+
+lemma fun_all_unit_elems_then_unit:
+  \<open>\<forall>x. sepadd_unit (f x) \<Longrightarrow> sepadd_unit f\<close>
+  by (simp add: disjoint_fun_def plus_fun_def sepadd_unit_def)
 
 instantiation "fun" :: (type, multiunit_sep_alg) multiunit_sep_alg
 begin
@@ -592,7 +596,6 @@ instance
 
 end
 
-
 subsection \<open> Extended instances \<close>
 
 instance "fun" :: (type, dupcl_perm_alg) dupcl_perm_alg
@@ -600,9 +603,62 @@ instance "fun" :: (type, dupcl_perm_alg) dupcl_perm_alg
     (simp add: disjoint_fun_def plus_fun_def fun_eq_iff,
       metis dup_sub_closure)
 
+(* not allcompatible_perm_alg *)
+
+instance "fun" :: (type, strong_sep_perm_alg) strong_sep_perm_alg
+  by standard
+    (clarsimp simp add: disjoint_fun_def plus_fun_def fun_eq_iff selfsep_iff
+      fun_all_unit_elems_then_unit)
+
+instance "fun" :: (type, disjoint_parts_perm_alg) disjoint_parts_perm_alg
+  by standard (simp add: disjoint_fun_def)
+
+instance "fun" :: (type, trivial_selfdisjoint_perm_alg) trivial_selfdisjoint_perm_alg
+  by standard
+    (force dest: selfdisjoint_same simp add: disjoint_fun_def plus_fun_def fun_eq_iff)
+
+instance "fun" :: (type, crosssplit_perm_alg) crosssplit_perm_alg
+proof standard
+  fix a b c d :: \<open>'a \<Rightarrow> 'b\<close>
+  assume
+    \<open>a ## b\<close>
+    \<open>c ## d\<close>
+    \<open>a + b = c + d\<close>
+  then have assms2:
+    \<open>\<forall>x. a x ## b x\<close>
+    \<open>\<forall>x. c x ## d x\<close>
+    \<open>\<forall>x. a x + b x = c x + d x\<close>
+    by (simp add: disjoint_fun_def plus_fun_def fun_eq_iff)+
+  then have \<open>\<forall>x. \<exists>acx adx bcx bdx.
+      acx ## adx \<and> bcx ## bdx \<and> acx ## bcx \<and> adx ## bdx \<and>
+      a x = acx + adx \<and> b x = bcx + bdx \<and>
+      c x = acx + bcx \<and> d x = adx + bdx\<close>
+    using cross_split[of \<open>a x\<close> \<open>b x\<close> \<open>c x\<close> \<open>d x\<close> for x]
+    by metis
+  then show
+    \<open>\<exists>ac ad bc bd.
+        ac ## ad \<and> bc ## bd \<and> ac ## bc \<and> ad ## bd \<and>
+        ac + ad = a \<and> bc + bd = b \<and> ac + bc = c \<and> ad + bd = d\<close>
+    by (simp add: disjoint_fun_def plus_fun_def fun_eq_iff, metis)
+qed
+
 instance "fun" :: (type, cancel_perm_alg) cancel_perm_alg
   by standard
     (simp add: disjoint_fun_def plus_fun_def fun_eq_iff)
+
+(* not no_unit_perm_alg *)
+
+instantiation "fun" :: (type, halving_perm_alg) halving_perm_alg
+begin
+definition \<open>half_fun (f :: 'a \<Rightarrow> 'b) \<equiv> \<lambda>x. half (f x)\<close>
+instance
+  by standard
+    (simp add: half_fun_def disjoint_fun_def plus_fun_def fun_eq_iff
+      half_additive_split half_self_disjoint half_sepadd_distrib)+
+end
+
+instance "fun" :: (type, all_disjoint_perm_alg) all_disjoint_perm_alg
+  by standard (simp add: disjoint_fun_def)+
 
 
 section \<open> Discrete Algebra \<close>
@@ -657,19 +713,56 @@ definition unitof_discr :: \<open>'a discr \<Rightarrow> 'a discr\<close> where
   \<open>unitof_discr x = x\<close>
 declare unitof_discr_def[simp]
 
-instance
-  by standard
-    (force simp add: the_discr_inject)+
+instance by standard (force simp add: the_discr_inject)+
 
 end
 
+subsection \<open> Extended instances \<close>
+
+(* not sep_alg *)
+
+instance discr :: (type) dupcl_perm_alg
+  by standard force
+
+(* not allcompatible_perm_alg *)
+
+instance discr :: (type) strong_sep_perm_alg
+  by standard (simp add: sepadd_unit_def)
+
+instance discr :: (type) disjoint_parts_perm_alg
+  by standard force
+
+instance discr :: (type) trivial_selfdisjoint_perm_alg
+  by standard force
+
+instance discr :: (type) crosssplit_perm_alg
+  by standard force
+
+instance discr :: (type) cancel_perm_alg
+  by standard force
+
+(* not no_unit_perm_alg *)
+
+instantiation discr :: (type) halving_perm_alg
+begin
+definition \<open>half_discr (a :: 'a discr) \<equiv> a\<close>
+declare half_discr_def[simp]
+instance by standard simp+
+end
+
+(* not all_disjoint_perm_alg *)
+
+
 section \<open> Fractional FPermissions \<close>
 
-typedef(overloaded) ('a::linordered_semidom) fperm = \<open>{x. (0::'a) < x \<and> x \<le> 1}\<close>
+typedef(overloaded) ('a::\<open>{linordered_semiring,zero_less_one}\<close>) fperm =
+  \<open>{x. (0::'a) < x \<and> x \<le> 1}\<close>
   morphisms fperm_val FPerm
   using zero_less_one by blast
 
 setup_lifting type_definition_fperm
+
+subsection \<open> helper lemmas \<close>
 
 lemmas FPerm_inverse_iff[simp] = FPerm_inverse[simplified]
 lemmas FPerm_inject_iff[simp] = FPerm_inject[simplified]
@@ -692,25 +785,11 @@ lemma fperm_val_never_zero[simp]:
   \<open>fperm_val x = 0 \<longleftrightarrow> False\<close>
   by (metis less_irrefl fperm_val_conditions(1))
 
-lemma fperm_val_less_then_fperm_conditions_sub:
-  \<open>fperm_val a < fperm_val b \<Longrightarrow> 0 < fperm_val b - fperm_val a\<close>
-  \<open>fperm_val a < fperm_val b \<Longrightarrow> fperm_val b - fperm_val a \<le> 1\<close>
-  apply (metis add_le_same_cancel2 leD leI le_add_diff_inverse2 order_less_imp_le)
-  apply (metis fperm_val_conditions leD leI le_add_diff_inverse order_less_imp_le pos_add_strict)
-  done
-
-lemma fperm_val_less_then_fperm_conditions_sub2:
-  \<open>fperm_val a \<le> fperm_val b \<Longrightarrow> fperm_val a \<noteq> fperm_val b \<Longrightarrow> 0 < fperm_val b - fperm_val a\<close>
-  \<open>fperm_val a \<le> fperm_val b \<Longrightarrow> fperm_val a \<noteq> fperm_val b \<Longrightarrow> fperm_val b - fperm_val a \<le> 1\<close>
-   apply (simp add: fperm_val_less_then_fperm_conditions_sub(1))
-  apply (simp add: fperm_val_less_then_fperm_conditions_sub(2))
-  done
-
 lemma fperm_val_add_gt0:
   \<open>0 < fperm_val x + fperm_val y\<close>
   by (simp add: add_pos_pos fperm_val_conditions(1))
 
-instantiation fperm :: (linordered_semidom) order
+instantiation fperm :: (\<open>{linordered_semiring,zero_less_one}\<close>) order
 begin
 
 definition less_eq_fperm :: \<open>'a fperm \<Rightarrow> 'a fperm \<Rightarrow> bool\<close> where
@@ -735,14 +814,17 @@ instance
 
 end
 
-instantiation fperm :: (linordered_semidom) perm_alg
+subsection \<open> perm_alg \<close>
+
+instantiation fperm :: (\<open>{linordered_semiring,zero_less_one}\<close>) perm_alg
 begin
 
-definition disjoint_fperm :: \<open>'a fperm \<Rightarrow> 'a fperm \<Rightarrow> bool\<close> where
-  \<open>disjoint_fperm a b \<equiv> fperm_val a + fperm_val b \<le> 1\<close>
+lift_definition disjoint_fperm :: \<open>'a fperm \<Rightarrow> 'a fperm \<Rightarrow> bool\<close> is
+  \<open>\<lambda>a b. a + b \<le> 1\<close> .
+lemmas disjoint_fperm_iff = disjoint_fperm.rep_eq
 
 lift_definition plus_fperm :: \<open>'a fperm \<Rightarrow> 'a fperm \<Rightarrow> 'a fperm\<close> is \<open>\<lambda>x y. min 1 (x + y)\<close>
-  by (simp add: pos_add_strict)
+  by (force simp add: add_pos_pos min_def)
 
 lemma plus_fperm_iff[simp]:
   \<open>0 < x \<Longrightarrow> x \<le> 1 \<Longrightarrow> 0 < y \<Longrightarrow> y \<le> 1 \<Longrightarrow> FPerm x + FPerm y = FPerm (min 1 (x + y))\<close>
@@ -761,41 +843,41 @@ instance
     apply (metis fperm_val_conditions(1) ge0_plus_le_then_left_le add_pos_pos order_less_imp_le)
    apply (simp add: disjoint_fperm_def plus_fperm.rep_eq add.left_commute min.coboundedI2
       min_add_distrib_right; fail)
-  apply (metis disjoint_fperm_def plus_fperm.rep_eq fperm_val_conditions(1) less_add_same_cancel1
+  apply (metis disjoint_fperm_iff plus_fperm.rep_eq fperm_val_conditions(1) less_add_same_cancel1
       min.absorb2 not_less_iff_gr_or_eq)
-  done
-
-
-lemma fprem_leq_is_resource_leq:
-  \<open>((\<le>) :: 'a fperm \<Rightarrow> 'a fperm \<Rightarrow> bool) = (\<preceq>)\<close>
-  apply (clarsimp simp add: fun_eq_iff less_eq_fperm_def less_eq_sepadd_def' plus_fperm_def
-      disjoint_fperm_def fperm_val_add_gt0 fperm_val_inject_rev)
-  apply (metis FPerm_inverse_iff order.refl dual_order.strict_iff_order fperm_val_conditions
-      fperm_val_less_then_fperm_conditions_sub2(2) le_add_diff_inverse less_add_same_cancel1
-      min.absorb2)
-  done
-
-lemma fperm_less_is_resource_less:
-  \<open>((<) :: 'a fperm \<Rightarrow> 'a fperm \<Rightarrow> bool) = (\<prec>)\<close>
-    apply (clarsimp simp add: fun_eq_iff less_fperm_def less_sepadd_def' plus_fperm_def
-      disjoint_fperm_def fperm_val_add_gt0 fperm_val_inject_rev)
-  apply (metis FPerm_inverse_iff order.strict_iff_order fperm_val_conditions less_add_same_cancel1
-      fperm_val_less_then_fperm_conditions_sub(2) le_add_diff_inverse min.absorb2)
   done
 
 end
 
-
 subsection \<open> Extended instances \<close>
 
-instance fperm :: (linordered_semidom) dupcl_perm_alg
-  apply standard
-  apply (simp add: disjoint_fperm_def plus_fperm_eq FPerm_eq_iff fperm_val_conditions)
-  apply (metis FPerm_inverse_iff add_cancel_right_right fperm_val_add_gt0 fperm_val_never_zero)
-  done
+instance fperm :: (\<open>{linordered_semiring,zero_less_one}\<close>) dupcl_perm_alg
+  by standard (transfer, force)
+
+instance fperm :: (\<open>{linordered_semiring,zero_less_one}\<close>) cancel_perm_alg
+  by standard (transfer, force)
+
+instantiation fperm :: (linordered_field) halving_perm_alg
+begin
+
+lift_definition half_fperm :: \<open>'a fperm \<Rightarrow> 'a fperm\<close> is
+  \<open>\<lambda>x. x / 2\<close> by simp
+
+instance
+  by standard (transfer, simp)+
+
+end
 
 
 section \<open> Error monad \<close>
+
+text \<open>
+  Unfortunately, Error does not, in most cases, form a separation algebra.
+  The global non-cancellative nature of the Error value breaks the disjoint-subpart law.
+
+  However, it does form a good instance when there are only trivial subparts.
+  (I.e. when every element is disjoint.)
+\<close>
 
 datatype 'a error =
   Val (the_val: 'a)

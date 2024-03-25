@@ -846,6 +846,42 @@ lemma not_coimp_emp0:
 end
 
 
+section \<open> Duplicable closure \<close>
+
+class dupcl_perm_alg = perm_alg +
+  assumes dup_sub_closure:
+    \<open>a ## b \<Longrightarrow> a + b = c \<Longrightarrow> c ## c \<Longrightarrow> c + c = c \<Longrightarrow> a + a = a\<close>
+begin
+
+
+text \<open>
+  Duplicable sub-closure ensures that all elements less than a duplicable element
+  are also duplicable.
+\<close>
+
+lemma dupp_sub_closureR: \<open>a ## b \<Longrightarrow> a + b = c \<Longrightarrow> c ## c \<Longrightarrow> c + c = c \<Longrightarrow> b + b = b\<close>
+  using disjoint_sym partial_add_commute dup_sub_closure by blast
+
+text \<open> another form of dup_sub_closure \<close>
+lemma sepadd_dup_antimono:
+  \<open>a \<preceq> b \<Longrightarrow> sepadd_dup b \<Longrightarrow> sepadd_dup a\<close>
+  apply (clarsimp simp add: sepadd_dup_def)
+  apply (rule conjI)
+   apply (force dest: common_subresource_selfsep)
+  apply (metis less_eq_sepadd_def part_of_def dup_sub_closure)
+  done
+
+lemma sepadd_dup_plus_dupL:
+  \<open>a ## b \<Longrightarrow> sepadd_dup (a + b) \<Longrightarrow> sepadd_dup a\<close>
+  using partial_le_plus sepadd_dup_antimono by auto
+
+lemma sepadd_dup_plus_dupR:
+  \<open>a ## b \<Longrightarrow> sepadd_dup (a + b) \<Longrightarrow> sepadd_dup b\<close>
+  using partial_le_plus2 sepadd_dup_antimono by auto
+
+end
+
+
 section \<open> Compatibility \<close>
 
 context perm_alg
@@ -1157,7 +1193,7 @@ section \<open> Cross-Split Separation Algebra \<close>
 
 class crosssplit_perm_alg = perm_alg +
   assumes cross_split:
-  \<open>a ## b \<Longrightarrow> c ## d \<Longrightarrow> a + b = z \<Longrightarrow> c + d = z \<Longrightarrow>
+  \<open>a ## b \<Longrightarrow> c ## d \<Longrightarrow> a + b = c + d \<Longrightarrow>
     \<exists>ac ad bc bd.
       ac ## ad \<and> bc ## bd \<and> ac ## bc \<and> ad ## bd \<and>
       ac + ad = a \<and> bc + bd = b \<and> ac + bc = c \<and> ad + bd = d\<close>
@@ -1319,7 +1355,7 @@ end
 class cancel_sep_alg = cancel_multiunit_sep_alg + sep_alg
 
 
-section \<open>No-unit perm alg\<close>
+section \<open> No-unit perm alg \<close>
 
 text \<open>
   Here we create a perm_alg without any unit.
@@ -1381,7 +1417,7 @@ class halving_multiunit_sep_alg = multiunit_sep_alg + halving_perm_alg
 class halving_sep_alg = sep_alg + halving_multiunit_sep_alg
 
 
-section \<open> Trivial self-disjoint + halving (very boring) \<close>
+subsection \<open> Trivial self-disjoint + halving (very boring) \<close>
 
 class trivial_halving_perm_alg = trivial_selfdisjoint_perm_alg + halving_perm_alg
 begin
@@ -1393,41 +1429,6 @@ lemma all_duplicable:
   \<open>sepadd_dup x\<close>
   using all_selfdisjoint_dup half_self_disjoint
   by auto
-
-end
-
-section \<open> Duplicable closure \<close>
-
-class dupcl_perm_alg = perm_alg +
-  assumes dup_sub_closure:
-    \<open>a ## b \<Longrightarrow> a + b = c \<Longrightarrow> c ## c \<Longrightarrow> c + c = c \<Longrightarrow> a + a = a\<close>
-begin
-
-
-text \<open>
-  Duplicable sub-closure ensures that all elements less than a duplicable element
-  are also duplicable.
-\<close>
-
-lemma dupp_sub_closureR: \<open>a ## b \<Longrightarrow> a + b = c \<Longrightarrow> c ## c \<Longrightarrow> c + c = c \<Longrightarrow> b + b = b\<close>
-  using disjoint_sym partial_add_commute dup_sub_closure by blast
-
-text \<open> another form of dup_sub_closure \<close>
-lemma sepadd_dup_antimono:
-  \<open>a \<preceq> b \<Longrightarrow> sepadd_dup b \<Longrightarrow> sepadd_dup a\<close>
-  apply (clarsimp simp add: sepadd_dup_def)
-  apply (rule conjI)
-   apply (force dest: common_subresource_selfsep)
-  apply (metis less_eq_sepadd_def part_of_def dup_sub_closure)
-  done
-
-lemma sepadd_dup_plus_dupL:
-  \<open>a ## b \<Longrightarrow> sepadd_dup (a + b) \<Longrightarrow> sepadd_dup a\<close>
-  using partial_le_plus sepadd_dup_antimono by auto
-
-lemma sepadd_dup_plus_dupR:
-  \<open>a ## b \<Longrightarrow> sepadd_dup (a + b) \<Longrightarrow> sepadd_dup b\<close>
-  using partial_le_plus2 sepadd_dup_antimono by auto
 
 end
 
