@@ -1139,7 +1139,8 @@ lemma sepdomeq_fun:
 section \<open> Bibliography \<close>
 
 text \<open>
-  [Krebbers2014] R Krebbers. Separation Algebras for C Verification in Coq. VSTTE 2014. \<^url>\<open>https://doi.org/10.1007/978-3-319-12154-3 10\<close>
+  [Krebbers2014] R Krebbers. Separation Algebras for C Verification in Coq. VSTTE 2014.
+                  \<^url>\<open>https://doi.org/10.1007/978-3-319-12154-3 10\<close>
 \<close>
 
 

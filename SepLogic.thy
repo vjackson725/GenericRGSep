@@ -2,6 +2,12 @@ theory SepLogic
   imports Util
 begin
 
+text \<open>
+  This file implements a hierarchy of typeclasses for resource algebras.
+  This is inspired by Klein et. al's [KKB2012] Isabelle/HOL separation algebra typeclasses
+  and Appel et. al.'s [VSTBook2014] typeclass hierarchy in Coq.
+\<close>
+
 section \<open> Common Notions \<close>
 
 class disjoint =
@@ -374,6 +380,7 @@ lemma sepconjE[elim!]:
 definition sepimp :: \<open>('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool)\<close> (infixr \<open>\<midarrow>\<^emph>\<close> 65) where
   \<open>P \<midarrow>\<^emph> Q \<equiv> \<lambda>h. \<forall>h1. h ## h1 \<longrightarrow> P h1 \<longrightarrow> Q (h + h1)\<close>
 
+text \<open> See Bannister et. al. [BHK2018] for more discussion of this connective. \<close>
 definition sepcoimp :: \<open>('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool)\<close> (infixr \<open>\<sim>\<^emph>\<close> 65) where
   \<open>P \<sim>\<^emph> Q \<equiv> \<lambda>h. \<forall>h1 h2. h1 ## h2 \<longrightarrow> h = h1 + h2 \<longrightarrow> P h1 \<longrightarrow> Q h2\<close>
 
@@ -542,7 +549,7 @@ definition precise :: \<open>('a \<Rightarrow> bool) \<Rightarrow> bool\<close> 
 
 subsection \<open> sepconj/conj distributivity \<close>
 
-text \<open> one direction is always true \<close>
+text \<open> this direction is always true \<close>
 lemma sepconj_conj_semidistrib:
   \<open>f \<^emph> (q1 \<sqinter> q2) \<le> (f \<^emph> q1) \<sqinter> (f \<^emph> q2)\<close>
   by (force simp add: le_fun_def)
@@ -1440,5 +1447,24 @@ class all_disjoint_multiunit_sep_alg =
 
 class all_disjoint_sep_alg =
   sep_alg + all_disjoint_perm_alg
+
+
+section \<open> Bibliography \<close>
+
+text \<open>
+  [KKB2012] Klein, Gerwin, Rafal Kolanski, and Andrew Boyton. 2012.
+      "Mechanised Separation Algebra." ITP 2012.
+      \<^url>\<open>https://doi.org/10.1007/978-3-642-32347-8_22\<close>.
+
+  [VSTBook2014] Appel, Andrew W., Robert Dockins, Aquinas Hobor, Lennart Beringer, Josiah Dodds,
+      Gordon Stewart, Sandrine Blazy, and Xavier Leroy.
+      2014. "Chapter 6 - Separation Algebras."
+      In Program Logics for Certified Compilers, 1st ed. Cambridge University Press.
+      \<^url>\<open>https://doi.org/10.1017/CBO9781107256552\<close>.
+
+  [BHK2018] Bannister, Callum, Peter Höfner, and Gerwin Klein.
+      2018. "Backwards and Forwards with Separation Logic." ITP 2018.
+      \<^url>\<open>https://doi.org/10.1007/978-3-319-94821-8_5\<close>.
+\<close>
 
 end
