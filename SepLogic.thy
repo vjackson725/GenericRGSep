@@ -229,6 +229,19 @@ subsection \<open> sepadd_unit \<close>
 
 definition \<open>sepadd_unit a \<equiv> a ## a \<and> (\<forall>b. a ## b \<longrightarrow> a + b = b)\<close>
 
+lemma sepadd_unitI[intro]:
+  \<open>a ## a \<Longrightarrow> (\<And>b. a ## b \<Longrightarrow> a + b = b) \<Longrightarrow> sepadd_unit a\<close>
+  using sepadd_unit_def by blast
+
+lemma sepadd_unitE[elim]:
+  \<open>sepadd_unit a \<Longrightarrow> (a ## a \<Longrightarrow> (\<And>b. a ## b \<Longrightarrow> a + b = b) \<Longrightarrow> P) \<Longrightarrow> P\<close>
+  using sepadd_unit_def by blast
+
+lemma sepadd_unitD:
+  \<open>sepadd_unit a \<Longrightarrow> a ## a\<close>
+  \<open>sepadd_unit a \<Longrightarrow> a ## b \<Longrightarrow> a + b = b\<close>
+  by blast+
+
 abbreviation \<open>sepadd_units \<equiv> Collect sepadd_unit\<close>
 
 text \<open> sepadd_unit is antimono; positivity said a different way \<close>

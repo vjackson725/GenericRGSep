@@ -104,10 +104,70 @@ instance
 
 end
 
-subsection \<open> Extended sep-alg instances \<close>
+lemma prod_sepadd_unit_iff[simp]:
+  \<open>sepadd_unit (a, b) \<longleftrightarrow> sepadd_unit a \<and> sepadd_unit b\<close>
+  by (simp add: sepadd_unit_def, force)
+
+subsection \<open> Extended instances \<close>
 
 instance prod :: (dupcl_perm_alg, dupcl_perm_alg) dupcl_perm_alg
   by standard (force dest: dup_sub_closure)
+
+(* not an allcompatible_perm_alg *)
+
+instance prod :: (strong_sep_perm_alg, strong_sep_perm_alg) strong_sep_perm_alg
+  by standard (clarsimp simp add: selfsep_iff)
+
+instance prod :: (disjoint_parts_perm_alg, disjoint_parts_perm_alg) disjoint_parts_perm_alg
+  by standard simp
+
+instance prod :: (trivial_selfdisjoint_perm_alg, trivial_selfdisjoint_perm_alg) trivial_selfdisjoint_perm_alg
+  by standard (clarsimp, meson selfdisjoint_same)
+
+instance prod :: (crosssplit_perm_alg, crosssplit_perm_alg) crosssplit_perm_alg
+  apply standard
+  apply clarsimp
+  apply (rename_tac a x b y c z d w)
+  apply (frule(2) cross_split[of \<open>_::'a\<close>])
+  apply (frule(2) cross_split[of \<open>_::'b\<close>])
+  apply clarsimp
+  apply metis
+  done
+
+instance prod :: (cancel_perm_alg, cancel_perm_alg) cancel_perm_alg
+  by standard force
+
+text \<open>
+  This instance is troublesome. We have that if either the left
+  or the right lacks a unit, then the entire instance will lack a unit.
+  However, Isabelle's typeclasses will now allow multiple instances,
+  even when the instance is completely logical. (I.e. there are no new definitions.)
+
+  We pick a right biased implementation, to match the default associativity.
+  This means that permissions must be added on the *right* of a tuple if we
+  want certain nice instances, like the cancellability of munit heaps.
+\<close>
+instance prod :: (perm_alg, no_unit_perm_alg) no_unit_perm_alg
+  by (standard) (metis no_units prod_eq_decompose(2) prod_sepadd_unit_iff)
+
+(*
+instance prod :: (perm_alg, no_unit_perm_alg) no_unit_perm_alg
+  by (standard) (metis no_units prod_eq_decompose(1) prod_sepadd_unit_iff)
+*)
+
+instantiation prod :: (halving_perm_alg, halving_perm_alg) halving_perm_alg
+begin
+definition \<open>half_prod \<equiv> \<lambda>(a,b). (half a, half b)\<close>
+declare half_prod_def[simp]
+instance
+  by standard
+    (clarsimp simp add: half_additive_split half_self_disjoint half_sepadd_distrib
+      split: prod.splits)+
+end
+
+instance prod :: (all_disjoint_perm_alg, all_disjoint_perm_alg) all_disjoint_perm_alg
+  by standard simp
+
 
 subsection \<open> add_fst & add_snd for tuple perm_alg \<close>
 
@@ -205,6 +265,41 @@ instance
   by standard simp+
 
 end
+
+subsection \<open> Extended instances \<close>
+
+instance unit :: dupcl_perm_alg
+  by standard simp
+
+instance unit :: allcompatible_perm_alg
+  by standard simp
+
+instance unit :: strong_sep_perm_alg
+  by standard simp
+
+instance unit :: disjoint_parts_perm_alg
+  by standard simp
+
+instance unit :: trivial_selfdisjoint_perm_alg
+  by standard simp
+
+instance unit :: crosssplit_perm_alg
+  by standard simp
+
+instance unit :: cancel_perm_alg
+  by standard simp
+
+(* not a no_unit_perm_alg *)
+
+instantiation unit :: halving_perm_alg
+begin
+definition \<open>half_unit \<equiv> \<lambda>_::unit. ()\<close>
+declare half_unit_def[simp]
+instance by standard simp+
+end
+
+instance unit :: all_disjoint_perm_alg
+  by standard simp
 
 
 section \<open> Sum \<close>
@@ -401,6 +496,35 @@ instance
 
 end
 
+subsection \<open> Extended instances \<close>
+
+instance munit :: dupcl_perm_alg
+  by standard simp
+
+(* not a allcompatible_perm_alg *)
+
+instance munit :: strong_sep_perm_alg
+  by standard simp
+
+instance munit :: disjoint_parts_perm_alg
+  by standard simp
+
+instance munit :: trivial_selfdisjoint_perm_alg
+  by standard simp
+
+instance munit :: crosssplit_perm_alg
+  by standard simp
+
+instance munit :: cancel_perm_alg
+  by standard simp
+
+instance munit :: no_unit_perm_alg
+  by standard (simp add: sepadd_unit_def)
+
+(* not a halving_perm_alg *)
+
+(* not an all_disjoint_perm_alg *)
+
 
 section \<open> option \<close>
 
@@ -500,13 +624,71 @@ instance
 
 end
 
-
 subsection \<open> Extended instances \<close>
 
 instance option :: (dupcl_perm_alg) dupcl_perm_alg
   by standard
     (simp add: disjoint_option_def split: option.splits,
       metis dup_sub_closure)
+
+(* is an allcompatible_perm_alg as it's a sep_alg  *)
+
+(* not a strong_sep_perm_alg *)
+
+instance option :: (disjoint_parts_perm_alg) disjoint_parts_perm_alg
+  by standard
+    (simp add: disjoint_option_def split: option.splits)
+
+instance option :: (trivial_selfdisjoint_perm_alg) trivial_selfdisjoint_perm_alg
+  by standard
+    (force dest: selfdisjoint_same simp add: disjoint_option_def plus_option_def
+      split: option.splits)
+
+instance option :: (crosssplit_perm_alg) crosssplit_perm_alg
+  apply standard
+  apply (clarsimp simp add: disjoint_option_def plus_option_def
+      split: option.splits)
+          apply blast
+         apply blast
+        apply blast
+       apply blast
+      apply blast
+     apply blast
+    apply blast
+   apply blast
+  apply (frule(2) cross_split)
+  apply clarsimp
+  apply (rule_tac x=\<open>Some ac\<close> in exI)
+  apply (rule_tac x=\<open>Some ad\<close> in exI)
+  apply simp
+  apply (rule_tac x=\<open>Some bc\<close> in exI)
+  apply simp
+  apply (rule_tac x=\<open>Some bd\<close> in exI)
+  apply simp
+  done
+
+text \<open>
+  The option-instance is only cancellable when the sub-instance is cancellative *and*
+  that instance has no units.
+\<close>
+instance option :: (\<open>{cancel_perm_alg,no_unit_perm_alg}\<close>) cancel_perm_alg
+  by standard
+    (simp add: disjoint_option_def plus_option_def split: option.splits;
+      metis cancel_right_to_unit no_units)
+
+(* not no_unit_perm_alg *)
+
+instantiation option :: (halving_perm_alg) halving_perm_alg
+begin
+definition \<open>half_option \<equiv> map_option half\<close>
+instance
+  by standard
+    (simp add: half_option_def disjoint_option_def plus_option_def half_additive_split
+      half_self_disjoint half_sepadd_distrib split: option.splits)+
+end
+
+instance option :: (all_disjoint_perm_alg) all_disjoint_perm_alg
+  by standard (simp add: disjoint_option_def split: option.splits)+
 
 
 section \<open> functions \<close>
@@ -816,6 +998,12 @@ end
 
 subsection \<open> perm_alg \<close>
 
+instantiation fperm :: (\<open>{linordered_semiring,zero_less_one}\<close>) one
+begin
+lift_definition one_fperm :: \<open>'a fperm\<close> is \<open>1\<close> by simp
+instance by standard
+end
+
 instantiation fperm :: (\<open>{linordered_semiring,zero_less_one}\<close>) perm_alg
 begin
 
@@ -849,24 +1037,45 @@ instance
 
 end
 
+lemma fperm_one_greatest:
+  fixes a :: \<open>'a::linordered_semidom fperm\<close>
+  shows \<open>a \<preceq> 1\<close>
+  unfolding less_eq_sepadd_def'
+  by (transfer, clarsimp,
+      metis add_le_same_cancel2 less_add_same_cancel1 add_diff_inverse nle_le
+      order_less_imp_not_less order_neq_less_conv(2))
+
 subsection \<open> Extended instances \<close>
 
 instance fperm :: (\<open>{linordered_semiring,zero_less_one}\<close>) dupcl_perm_alg
   by standard (transfer, force)
 
+instance fperm :: (linordered_semidom) allcompatible_perm_alg
+  by standard 
+    (simp add: compatible_def,
+      metis compatible_def fperm_one_greatest trans_le_ge_is_compatible)
+
+(* not a strong_sep_perm_alg *)
+
+(* not a disjoint_parts_perm_alg *)
+
+(* not a trivial_selfdisjoint_perm_alg *)
+
+(* not a crosssplit_perm_alg *)
+
 instance fperm :: (\<open>{linordered_semiring,zero_less_one}\<close>) cancel_perm_alg
   by standard (transfer, force)
 
+instance fperm :: (\<open>{linordered_semiring,zero_less_one}\<close>) no_unit_perm_alg
+  by standard (clarsimp simp add: sepadd_unit_def, transfer, force)
+
 instantiation fperm :: (linordered_field) halving_perm_alg
 begin
-
-lift_definition half_fperm :: \<open>'a fperm \<Rightarrow> 'a fperm\<close> is
-  \<open>\<lambda>x. x / 2\<close> by simp
-
-instance
-  by standard (transfer, simp)+
-
+lift_definition half_fperm :: \<open>'a fperm \<Rightarrow> 'a fperm\<close> is \<open>\<lambda>x. x / 2\<close> by simp
+instance  by standard (transfer, simp)+
 end
+
+(* not an all_disjoint_perm_alg *)
 
 
 section \<open> Error monad \<close>
@@ -1193,11 +1402,10 @@ instance dlat_sep :: (distrib_lattice_bot) strong_sep_perm_alg
 
 section \<open> Heaps and Permission-heaps \<close>
 
-type_synonym ('i,'v) heap = \<open>'i \<rightharpoonup> (munit \<times> 'v discr)\<close>
+type_synonym ('i,'v) heap = \<open>'i \<rightharpoonup> ('v discr \<times> munit)\<close>
 
-type_synonym ('i,'v) perm_heap = \<open>'i \<rightharpoonup> (rat fperm \<times> 'v discr)\<close>
+type_synonym ('i,'v) perm_heap = \<open>'i \<rightharpoonup> ('v discr \<times> rat fperm)\<close>
 
-(* this also works for resources *)
 definition points_to :: \<open>'a \<Rightarrow> 'b \<Rightarrow> ('a \<rightharpoonup> 'b) \<Rightarrow> bool\<close> (infix \<open>\<^bold>\<mapsto>\<close> 55) where
   \<open>p \<^bold>\<mapsto> v \<equiv> \<lambda>h. h p = Some v\<close>
 

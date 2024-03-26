@@ -80,6 +80,15 @@ lemma pred_conjD: \<open>(A1 \<sqinter> A2) s \<Longrightarrow> A1 \<le> B1 \<Lo
 
 section \<open> Tuples \<close>
 
+lemma prod_eq_decompose:
+  \<open>a = (b,c) \<longleftrightarrow> fst a = b \<and> snd a = c\<close>
+  \<open>(b,c) = a \<longleftrightarrow> fst a = b \<and> snd a = c\<close>
+  by force+
+
+lemma common_if_prod[simp]:
+  \<open>(if P then a1 else a2, if P then b1 else b2) = (if P then (a1,b1) else (a2,b2))\<close>
+  by simp
+
 abbreviation plus_right_fst :: \<open>'a::plus \<times> 'b \<Rightarrow> 'a \<Rightarrow> 'a \<times> 'b\<close> (infixl \<open>+\<^sub>L\<close> 65) where
   \<open>plus_right_fst xy a \<equiv> apfst (\<lambda>z. z + a) xy\<close>
 
@@ -95,18 +104,6 @@ lemma plus_right_snd_accum[simp]:
   fixes y :: \<open>'a :: semigroup_add\<close>
   shows \<open>(xy +\<^sub>R y) +\<^sub>R y' = xy +\<^sub>R (y + y')\<close>
   by (cases xy, simp add: add.assoc)
-
-
-section \<open> TODO: move \<close>
-
-lemma prod_eq_decompose:
-  \<open>a = (b,c) \<longleftrightarrow> fst a = b \<and> snd a = c\<close>
-  \<open>(b,c) = a \<longleftrightarrow> fst a = b \<and> snd a = c\<close>
-  by force+
-
-lemma common_if_prod[simp]:
-  \<open>(if P then a1 else a2, if P then b1 else b2) = (if P then (a1,b1) else (a2,b2))\<close>
-  by simp
 
 section \<open> Lists \<close>
 
