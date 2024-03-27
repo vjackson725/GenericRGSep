@@ -409,9 +409,9 @@ definition subheapexist :: \<open>('a \<Rightarrow> bool) \<Rightarrow> ('a \<Ri
 definition emp :: \<open>'a \<Rightarrow> bool\<close> where
   \<open>emp \<equiv> \<lambda>x. sepadd_unit x\<close>
 
-fun iterated_sepconj :: \<open>('a \<Rightarrow> bool) list \<Rightarrow> ('a \<Rightarrow> bool)\<close> where
-  \<open>iterated_sepconj (P # Ps) = P \<^emph> iterated_sepconj Ps\<close>
-| \<open>iterated_sepconj [] = emp\<close>
+fun iter_sepconj :: \<open>('a \<Rightarrow> bool) list \<Rightarrow> ('a \<Rightarrow> bool)\<close> where
+  \<open>iter_sepconj (P # Ps) = P \<^emph> iter_sepconj Ps\<close>
+| \<open>iter_sepconj [] = emp\<close>
 
 subsection \<open> Seplogic connective properties \<close>
 
@@ -1194,6 +1194,14 @@ text \<open> All selfdisjoint elements are duplicable \<close>
 lemma all_selfdisjoint_dup:
   \<open>a ## a \<Longrightarrow> sepadd_dup a\<close>
   using selfdisjoint_same sepadd_dup_def by presburger
+
+end
+
+context strong_sep_perm_alg
+begin
+(* trivial selfdisjointness is a subclass of strong separation *)
+subclass trivial_selfdisjoint_perm_alg
+  by standard (simp add: selfsep_iff)
 
 end
 
