@@ -124,11 +124,12 @@ section \<open> Operational Semantics \<close>
 
 subsection \<open> Actions \<close>
 
-datatype 'a act = Tau | Vis 'a
+datatype 'a act = Tau | Loc 'a | Env 'a
 
 lemma act_not_eq_iff[simp]:
-  \<open>a \<noteq> Tau \<longleftrightarrow> (\<exists>x. a = Vis x)\<close>
-  \<open>(\<forall>x. a \<noteq> Vis x) \<longleftrightarrow> a = Tau\<close>
+  \<open>a \<noteq> Tau \<longleftrightarrow> (\<exists>x. a = Loc x) \<or> (\<exists>x. a = Env x)\<close>
+  \<open>(\<forall>x. a \<noteq> Loc x) \<longleftrightarrow> a = Tau \<or> (\<exists>x. a = Env x)\<close>
+  \<open>(\<forall>x. a \<noteq> Env x) \<longleftrightarrow> a = Tau \<or> (\<exists>x. a = Loc x)\<close>
   by (meson act.distinct act.exhaust)+
 
 subsection \<open> Operational semantics steps \<close>
@@ -146,19 +147,19 @@ fun head_atoms :: \<open>'a comm \<Rightarrow> ('a \<Rightarrow> 'a \<Rightarrow
 | \<open>head_atoms (FixVar x) = \<bottom>\<close>
 
 inductive opstep
-  :: \<open>('a::perm_alg \<times> 'a) act \<Rightarrow>
-        'a \<times> 'a comm \<Rightarrow>
-        'a \<times> 'a comm \<Rightarrow> bool\<close>
+  :: \<open>('b::perm_alg \<times> 'b) act \<Rightarrow>
+        ('a::perm_alg \<times> 'b) \<times> ('a \<times> 'b) comm \<Rightarrow>
+        ('a \<times> 'b) \<times> ('a \<times> 'b) comm \<Rightarrow> bool\<close>
   where
   seq_left[intro!]: \<open>opstep a (h, c1) (h', c1') \<Longrightarrow> opstep a (h, c1 ;; c2) (h', c1' ;; c2)\<close>
 | seq_right[intro!]: \<open>opstep Tau (h, Skip ;; c2) (h, c2)\<close>
-| indet_left[intro]:  \<open>opstep a (h, c1) s' \<Longrightarrow> opstep a (h, c1 \<^bold>+ c2) s'\<close>
+| indet_left[intro]: \<open>opstep a (h, c1) s' \<Longrightarrow> opstep a (h, c1 \<^bold>+ c2) s'\<close>
 | indet_right[intro]: \<open>opstep a (h, c2) s' \<Longrightarrow> opstep a (h, c1 \<^bold>+ c2) s'\<close>
-| endet_tau_left[intro]:  \<open>opstep Tau (h, c1) (h', c1') \<Longrightarrow> opstep Tau (h, c1 \<box> c2) (h', c1' \<box> c2)\<close>
+| endet_tau_left[intro]: \<open>opstep Tau (h, c1) (h', c1') \<Longrightarrow> opstep Tau (h, c1 \<box> c2) (h', c1' \<box> c2)\<close>
 | endet_tau_right[intro]: \<open>opstep Tau (h, c2) (h', c2') \<Longrightarrow> opstep Tau (h, c1 \<box> c2) (h', c1 \<box> c2')\<close>
-| endet_skip_left[intro!]:  \<open>opstep Tau (h, Skip \<box> c2) (h, c2)\<close>
+| endet_skip_left[intro!]: \<open>opstep Tau (h, Skip \<box> c2) (h, c2)\<close>
 | endet_skip_right[intro!]: \<open>opstep Tau (h, c1 \<box> Skip) (h, c1)\<close>
-| endet_local_left[intro]:  \<open>a \<noteq> Tau \<Longrightarrow> opstep a (h, c1) s' \<Longrightarrow> opstep a (h, c1 \<box> c2) s'\<close>
+| endet_local_left[intro]: \<open>a \<noteq> Tau \<Longrightarrow> opstep a (h, c1) s' \<Longrightarrow> opstep a (h, c1 \<box> c2) s'\<close>
 | endet_local_right[intro]: \<open>a \<noteq> Tau \<Longrightarrow> opstep a (h, c2) s' \<Longrightarrow> opstep a (h, c1 \<box> c2) s'\<close>
 (* TODO
 | par_left_tau[intro]: \<open>opstep Tau (h, Skip \<parallel> t) (h', t)\<close>
@@ -171,14 +172,14 @@ inductive opstep
 | iter_end[intro]: \<open>\<not> pre_state (\<Squnion>(head_atoms c)) h \<Longrightarrow> opstep Tau (h, DO c OD) (h, Skip)\<close>
 | fixpt_skip[intro!]: \<open>c' = c[0 \<leftarrow> \<mu> c] \<Longrightarrow> opstep Tau (h, \<mu> c) (h, c')\<close>
 | atomic[intro!]:
-  \<open>a = Vis (hx, hx') \<Longrightarrow>
-    weak_framed_subresource_rel \<top> hx hx' h h' \<Longrightarrow>
+  \<open>a = Loc (snd h, snd h') \<Longrightarrow>
     c' = Skip \<Longrightarrow>
-    b hx hx' \<Longrightarrow>
+    b h h' \<Longrightarrow>
     opstep a (h, Atomic b) (h', c')\<close>
 
 inductive_cases opstep_tauE[elim]: \<open>opstep Tau s s'\<close>
-inductive_cases opstep_localE[elim]: \<open>opstep Local s s'\<close>
+inductive_cases opstep_locE[elim]: \<open>opstep (Loc x) s s'\<close>
+inductive_cases opstep_envE[elim]: \<open>opstep (Env x) s s'\<close>
 
 inductive_cases opstep_skipE[elim!]: \<open>opstep a (h, Skip) s'\<close>
 inductive_cases opstep_seqE[elim]: \<open>opstep a (h, c1 ;; c2) s'\<close>
@@ -222,11 +223,9 @@ lemma opstep_iff_standard[opstep_iff]:
     a = Tau \<and> s' = (h, c ;; DO c OD)\<close>
   \<open>opstep a (h, \<mu> c) s' \<longleftrightarrow> a = Tau \<and> s' = (h, c[0 \<leftarrow> \<mu> c])\<close>
   \<open>opstep a (h, Atomic b) s' \<longleftrightarrow>
-    (\<exists>hx hx'.
-      a = Vis (hx, hx') \<and>
-      weak_framed_subresource_rel \<top> hx hx' h (fst s') \<and>
-      snd s' = Skip \<and>
-      b hx hx')\<close>
+    snd s' = Skip \<and>
+    b h (fst s') \<and>
+    a = Loc (snd h, snd (fst s'))\<close>
          apply blast
         apply blast
        apply blast
@@ -251,12 +250,24 @@ proof -
     using assms by force
 qed
 
+lemma opstep_env_impossible:
+  assumes \<open>s \<midarrow>Env x\<rightarrow> s'\<close>
+  shows \<open>False\<close>
+proof -
+  { fix a
+    have \<open>s \<midarrow>a\<rightarrow> s' \<Longrightarrow> a = Env x \<Longrightarrow> False\<close>
+      by (induct arbitrary: x rule: opstep.inducts) force+
+  }
+  then show ?thesis
+    using assms by force
+qed
+
 lemma opstep_act_cases:
   \<open>s \<midarrow>a\<rightarrow> s' \<Longrightarrow>
     (a = Tau \<Longrightarrow> s \<midarrow>Tau\<rightarrow> s' \<Longrightarrow> fst s' = fst s \<Longrightarrow> P) \<Longrightarrow>
-    (\<And>x. a = Vis x \<Longrightarrow> s \<midarrow>Vis x\<rightarrow> s' \<Longrightarrow> P) \<Longrightarrow>
+    (\<And>x. a = Loc x \<Longrightarrow> s \<midarrow>Loc x\<rightarrow> s' \<Longrightarrow> P) \<Longrightarrow>
     P\<close>
-  by (metis (full_types) act.exhaust opstep_tau_preserves_heap)
+  by (metis (full_types) act.exhaust opstep_tau_preserves_heap opstep_env_impossible)
 
 lemma all_atom_comm_opstep:
   assumes
@@ -279,18 +290,19 @@ qed
 lemmas all_atom_comm_opstepD =
   all_atom_comm_opstep[rotated]
 
-lemma opstep_visD':
+lemma opstep_locD':
   \<open>opstep a s s' \<Longrightarrow>
-    a = Vis (hx, hx') \<Longrightarrow>
     s = (h, c) \<Longrightarrow>
     s' = (h', c') \<Longrightarrow>
-    weak_framed_subresource_rel \<top> hx hx' h h'\<close>
-  by (induct arbitrary: hx hx' h c h' c' rule: opstep.inducts) blast+
+    a = Loc (hy, hy') \<Longrightarrow>
+    weak_framed_subresource_rel \<top> hy hy' (snd h) (snd h')\<close>
+  by (induct arbitrary: hy hy' h c h' c' rule: opstep.inducts)
+    blast+
 
-lemma opstep_visD:
-  \<open>opstep (Vis (hx, hx')) (h, c) (h', c') \<Longrightarrow>
-    weak_framed_subresource_rel \<top> hx hx' h h'\<close>
-  by (meson opstep_visD')
+lemma opstep_locD:
+  \<open>opstep (Loc (hx, hx')) (h, c) (h', c') \<Longrightarrow>
+    weak_framed_subresource_rel \<top> hx hx' (snd h) (snd h')\<close>
+  by (metis opstep_locD')
 
 
 subsubsection \<open> adding parallel \<close>
@@ -326,64 +338,53 @@ lemmas rev_opstep_preserves_all_atom_comm = opstep_preserves_all_atom_comm[rotat
 
 subsection \<open> Opstep rules for defined programs \<close>
 
-lemma opstep_assert[intro!]:
-  \<open>p hx \<Longrightarrow>
-    hx' = hx \<Longrightarrow>
+lemma opstep_guard[intro!]:
+  \<open>p h \<Longrightarrow>
+    hsx' = hsx \<Longrightarrow>
+    hsx = snd h \<Longrightarrow>
     h' = h \<Longrightarrow>
-    hx \<preceq> h \<Longrightarrow>
-    opstep (Vis (hx, hx')) (h, Assert p) (h', Skip)\<close>
-  by (force simp add: Assert_def opstep_iff weak_framed_subresource_rel_def
-      less_eq_sepadd_def')
-
-lemma opstep_assume[intro!]:
-  \<open>q hx' \<Longrightarrow>
-    weak_framed_subresource_rel \<top> hx hx' h h' \<Longrightarrow>
-    opstep (Vis (hx, hx')) (h, Assume q) (h', Skip)\<close>
-  by (clarsimp simp add: Assert_def opstep_iff)
+    opstep (Loc (hsx, hsx')) (h, Guard p) (h', Skip)\<close>
+  by (force simp add: Guard_def opstep_iff less_eq_sepadd_def')
 
 lemma opstep_IfThenElse_iff[opstep_iff]:
   \<open>opstep a (h, IfThenElse p ct cf) s' \<longleftrightarrow>
-    (\<exists>hx.
-      a = Vis (hx, hx) \<and>
-      hx \<preceq> h \<and>
-      (p hx \<and> s' = (h, Skip ;; ct) \<or>
-        \<not> p hx \<and> s' = (h, Skip ;; cf)))\<close>
+    a = Loc (snd h, snd h) \<and>
+    (p h \<and> s' = (h, Skip ;; ct) \<or>
+      \<not> p h \<and> s' = (h, Skip ;; cf))\<close>
   by (force simp add: IfThenElse_def opstep_iff weak_framed_subresource_rel_def
       framed_subresource_rel_def less_eq_sepadd_def')
 
 lemma opstep_IfThenElse_true[intro]:
-  \<open>p hx \<Longrightarrow>
-    xy = (hx, hx) \<Longrightarrow>
+  \<open>p h \<Longrightarrow>
+    xy = (snd h, snd h) \<Longrightarrow>
     c' = Skip ;; ct \<Longrightarrow>
-    hx \<preceq> h \<Longrightarrow>
-    opstep (Vis xy) (h, IfThenElse p ct cf) (h, c')\<close>
+    opstep (Loc xy) (h, IfThenElse p ct cf) (h, c')\<close>
   by (simp add: opstep_iff)
 
 lemma opstep_IfThenElse_false[intro]:
-  \<open>\<not> p hx \<Longrightarrow>
-    xy = (hx, hx) \<Longrightarrow>
+  \<open>\<not> p h \<Longrightarrow>
+    xy = (snd h, snd h) \<Longrightarrow>
     c' = Skip ;; cf \<Longrightarrow>
-    hx \<preceq> h \<Longrightarrow>
-    opstep (Vis xy) (h, IfThenElse p ct cf) (h, c')\<close>
+    opstep (Loc xy) (h, IfThenElse p ct cf) (h, c')\<close>
   by (simp add: opstep_iff)
 
-lemma pre_state_passert_eq[simp]:
-  \<open>pre_state (passert p) = p\<close>
-  by (simp add: passert_def pre_state_def)
+lemma pre_state_pguard_eq[simp]:
+  \<open>pre_state (pguard p) = p\<close>
+  by (simp add: pguard_def pre_state_def)
 
 lemma opstep_WhileLoop_iff[opstep_iff]:
   \<open>opstep a (h, WhileLoop p c) s' \<longleftrightarrow>
     a = Tau \<and> s' = (h,
-      (Assert p ;; c \<box> Assert (- p)) ;;
-        DO Assert p ;; c \<box> Assert (- p) OD)\<close>
+      (Guard p ;; c \<box> Guard (- p)) ;;
+        DO Guard p ;; c \<box> Guard (- p) OD)\<close>
   by (simp add: WhileLoop_def opstep_iff)
 
 
 section \<open> Safe \<close>
 
 inductive safe
-  :: \<open>(('l::perm_alg \<times> 's::perm_alg) \<times> ('l \<times> 's)) act option list \<Rightarrow>
-      ('l \<times> 's) comm \<Rightarrow> 'l \<Rightarrow> 's \<Rightarrow>
+  :: \<open>('s::perm_alg \<times> 's) act list \<Rightarrow>
+      ('l::perm_alg \<times> 's) comm \<Rightarrow> 'l \<Rightarrow> 's \<Rightarrow>
       ('s \<Rightarrow> 's \<Rightarrow> bool) \<Rightarrow>
       ('s \<Rightarrow> 's \<Rightarrow> bool) \<Rightarrow>
       ('l \<times> 's \<Rightarrow> bool) \<Rightarrow>
@@ -397,22 +398,24 @@ inductive safe
                We may want a different model. \<close>
     (c = Skip \<longrightarrow> q (hl, hs)) \<Longrightarrow>
     \<comment> \<open> rely steps are safe \<close>
-    (\<And>hs'. ma = None \<Longrightarrow> r hs hs' \<Longrightarrow> safe as c hl hs' r g q F) \<Longrightarrow>
-    \<comment> \<open> non-\<tau> opsteps establish the guarantee \<close>
-    (\<And>a c' hlx hx'.
-        ma = Some a \<Longrightarrow>
+    (\<And>hs'.
+        a = Env (hs, hs') \<Longrightarrow>
+        r hs hs' \<Longrightarrow>
+        safe as c hl hs' r g q F) \<Longrightarrow>
+    \<comment> \<open> Loc opsteps establish the guarantee \<close>
+    (\<And>c' hlx hx'.
+        a = Loc (hs, snd hx') \<Longrightarrow>
         hl \<preceq> hlx \<Longrightarrow>
         ((hlx, hs), c) \<midarrow>a\<rightarrow> (hx', c') \<Longrightarrow>
-        a \<noteq> Tau \<Longrightarrow>
         g hs (snd hx')) \<Longrightarrow>
-    \<comment> \<open> opsteps are safe \<close>
-    (\<And>a c' hx'.
-        ma = Some a \<Longrightarrow>
+    \<comment> \<open> Loc opsteps are safe \<close>
+    (\<And>c' hx'.
+        a = Loc (hs, snd hx') \<Longrightarrow>
         ((hl, hs), c) \<midarrow>a\<rightarrow> (hx', c') \<Longrightarrow>
         safe as c' (fst hx') (snd hx') r g q F) \<Longrightarrow>
-    \<comment> \<open> opsteps are frame closed \<close>
-    (\<And>a c' hlf hx'.
-        ma = Some a \<Longrightarrow>
+    \<comment> \<open> non-Env opsteps are frame closed \<close>
+    (\<And>c' hlf hx'.
+        a = Tau \<or> a = Loc (hs, snd hx') \<Longrightarrow>
         ((hl + hlf, hs), c) \<midarrow>a\<rightarrow> (hx', c') \<Longrightarrow>
         hl ## hlf \<Longrightarrow>
         F hlf \<Longrightarrow>
@@ -421,7 +424,7 @@ inductive safe
           (a = Tau \<longrightarrow> hl' = hl) \<and>
           safe as c' hl' (snd hx') r g q F)) \<Longrightarrow>
     \<comment> \<open> conclude a step can be made \<close>
-    safe (ma # as) c hl hs r g q F\<close>
+    safe (a # as) c hl hs r g q F\<close>
 
 subsection \<open> Proofs about safe \<close>
 
@@ -433,21 +436,21 @@ lemma safe_nil_iff[simp]:
   by force
 
 lemma safe_suc_iff:
-  \<open>safe (ma # as) c hl hs r g q F \<longleftrightarrow>
+  \<open>safe (a # as) c hl hs r g q F \<longleftrightarrow>
     (c = Skip \<longrightarrow> q (hl, hs)) \<and>
-    (\<forall>hs'. ma = None \<longrightarrow>  r hs hs' \<longrightarrow> safe as c hl hs' r g q F) \<and>
-    (\<forall>a c' hlx hx'.
-      ma = Some a \<longrightarrow>
+    (\<forall>hs'. a = Env (hs, hs') \<longrightarrow> r hs hs' \<longrightarrow> safe as c hl hs' r g q F) \<and>
+    (\<forall>c' hlx hx'.
+      a = Loc (hs, snd hx') \<longrightarrow>
       hl \<preceq> hlx \<longrightarrow>
       ((hlx, hs), c) \<midarrow>a\<rightarrow> (hx', c') \<longrightarrow>
       a \<noteq> Tau \<longrightarrow>
       g hs (snd hx')) \<and>
-    (\<forall>a c' hx'.
-      ma = Some a \<longrightarrow>
+    (\<forall>c' hx'.
+      a = Loc (hs, snd hx') \<longrightarrow>
       ((hl, hs), c) \<midarrow>a\<rightarrow> (hx', c') \<longrightarrow>
       safe as c' (fst hx') (snd hx') r g q F) \<and>
-    (\<forall>a c' hlf hx'.
-      ma = Some a \<longrightarrow>
+    (\<forall>c' hlf hx'.
+      a = Tau \<or> a = Loc (hs, snd hx') \<longrightarrow>
       ((hl + hlf, hs), c) \<midarrow>a\<rightarrow> (hx', c') \<longrightarrow>
       hl ## hlf \<longrightarrow>
       F hlf \<longrightarrow>
@@ -461,20 +464,20 @@ lemma safe_suc_iff:
   done
 
 lemma safe_sucD:
-  \<open>safe (ma # as) c hl hs r g q F \<Longrightarrow> c = Skip \<Longrightarrow> q (hl, hs)\<close>
-  \<open>safe (ma # as) c hl hs r g q F \<Longrightarrow> ma = None \<Longrightarrow> r hs hs' \<Longrightarrow> safe as c hl hs' r g q F\<close>
-  \<open>safe (ma # as) c hl hs r g q F \<Longrightarrow>
-    ma = Some a \<Longrightarrow>
+  \<open>safe (a # as) c hl hs r g q F \<Longrightarrow> c = Skip \<Longrightarrow> q (hl, hs)\<close>
+  \<open>safe (a # as) c hl hs r g q F \<Longrightarrow> a = Env (hs, hs') \<Longrightarrow> r hs hs' \<Longrightarrow> safe as c hl hs' r g q F\<close>
+  \<open>safe (a # as) c hl hs r g q F \<Longrightarrow>
+    a = Loc (hs, snd hx') \<Longrightarrow>
     hl \<preceq> hlx \<Longrightarrow>
     a \<noteq> Tau \<Longrightarrow>
     ((hlx, hs), c) \<midarrow>a\<rightarrow> (hx', c') \<Longrightarrow>
     g hs (snd hx')\<close>
-  \<open>safe (ma # as) c hl hs r g q F \<Longrightarrow>
-    ma = Some a \<Longrightarrow>
+  \<open>safe (a # as) c hl hs r g q F \<Longrightarrow>
+    a = Loc (hs, snd hx') \<Longrightarrow>
     ((hl, hs), c) \<midarrow>a\<rightarrow> (hx', c') \<Longrightarrow>
     safe as c' (fst hx') (snd hx') r g q F\<close>
-  \<open>safe (ma # as) c hl hs r g q F \<Longrightarrow>
-    ma = Some a \<Longrightarrow>
+  \<open>safe (a # as) c hl hs r g q F \<Longrightarrow>
+    a = Tau \<or> a = Loc (hs, snd hx') \<Longrightarrow>
     ((hl + hlf, hs), c) \<midarrow>a\<rightarrow> (hx', c') \<Longrightarrow>
     hl ## hlf \<Longrightarrow>
     F hlf \<Longrightarrow>
@@ -538,7 +541,7 @@ proof (rotate_tac, induct arbitrary: c hl hs q rule: sublisteq.inducts)
     apply (rule safe_suc)
         apply blast
        apply (frule(2) safe_sucD; blast)
-      apply (frule(4) safe_sucD; blast)
+      apply (frule(2) safe_sucD; blast)
      apply (frule(2) safe_sucD; blast)
     apply (frule(3) safe_sucD; blast)
     done
@@ -590,7 +593,7 @@ lemma safe_frame':
 proof (induct arbitrary: hlf rule: safe.induct)
   case safe_nil then show ?case by blast
 next
-  case (safe_suc c q hl hs ma r as g F)
+  case (safe_suc c q hl hs a r as g F)
   show ?case
     using safe_suc.prems
     apply -
@@ -604,31 +607,35 @@ next
        apply (rule sswa_step, rule sup2I1, blast, blast)
       (* subgoal: opstep guarantee *)
       apply (simp add: opstep_iff del: sup_apply top_apply)
-      apply (metis act.simps(2) partial_le_part_left safe_suc.hyps(4))
+      apply (metis partial_le_part_left safe_suc.hyps(4))
       (* subgoal: plain opstep *)
-     apply (frule safe_suc.hyps(7), blast, blast, force)
+     apply (frule safe_suc.hyps(7)[OF disjI2], blast, blast, force)
      apply (erule opstep_act_cases, force)
      apply (clarsimp simp del: sup_apply top_apply)
-     apply (metis act.distinct(1) partial_le_plus safe_suc.hyps(4) snd_eqD sswa_stepD sup2I2)
-        (* subgoal: local framed opstep *)
+     apply (metis partial_le_plus safe_suc.hyps(4) snd_eqD sswa_stepD sup2I2)
+      (* subgoal: local framed opstep *)
     apply (clarsimp simp add: partial_add_assoc2[of hl hlf] simp del: sup_apply top_apply)
-    apply (frule(1) safe_suc.hyps(7), metis disjoint_add_swap_lr)
+    apply (frule safe_suc.hyps(7)[where hx'=\<open>(x,y)\<close> for x y, simplified snd_conv])
+       apply blast
+      apply (metis disjoint_add_swap_lr)
      apply (simp add: le_fun_def sepimp_def)
      apply (metis disjoint_preservation2 disjoint_sym_iff partial_add_commute partial_le_plus2)
     apply (rename_tac hlf2 hl'hlfhlf2 hs')
     apply (clarsimp simp del: sup_apply top_apply)
     apply (erule opstep_act_cases, force simp add: partial_add_assoc2)
-    apply (frule safe_suc.hyps(4)[rotated 2], blast, blast,
-        metis disjoint_add_swap_lr partial_le_plus)
+    apply (clarsimp simp del: sup_apply top_apply)
+    apply (frule safe_suc.hyps(4)[where hx'=\<open>(x,y)\<close> for x y, simplified snd_conv])
+      prefer 2
+      apply force
+     apply (metis disjoint_add_swap_lr partial_le_plus)
     apply (intro exI conjI)
-       prefer 2 (* instantiating a schematic *)
-       apply (rule partial_add_assoc[symmetric])
-         apply (metis disjoint_add_leftR disjoint_add_rightL)
-        apply (metis disjoint_add_leftR)
-       apply (metis disjoint_add_leftR disjoint_add_rightR)
-      apply (metis disjoint_add_leftR disjoint_add_swap_rl)
-     apply blast
-    apply (metis disjoint_add_leftR disjoint_add_rightL sndI sswa_step sup2I2)
+      prefer 2
+      apply (rule partial_add_assoc[symmetric])
+        apply (metis disjoint_add_leftR disjoint_add_rightL)
+       apply (metis disjoint_add_leftR)
+      apply (metis disjoint_add_leftR disjoint_add_rightR)
+     apply (metis disjoint_add_leftR disjoint_add_swap_rl)
+    apply (metis disjoint_add_leftR disjoint_add_rightL sswa_step sup2I2)
     done
 qed
 
@@ -675,16 +682,16 @@ proof (induct as arbitrary: hl hs)
     using Cons.prems
     apply (intro safe.safe_suc)
       (* subgoal: skip *)
-          apply force
+        apply force
       (* subgoal: rely *)
        apply (rule Cons.hyps; force simp add: wssa_step)
       (* subgoal: opstep guarantee *)
       apply (clarsimp simp add: opstep_iff simp del: top_apply sup_apply)
-      apply (metis (full_types) frame_closed_relD2 predicate2D rel_Times_iff)
+      apply (metis (full_types) predicate2D rel_Times_iff)
       (* subgoal: plain opstep *)
      apply (clarsimp simp add: opstep_iff simp del: top_apply sup_apply)
      apply (rule safe_skip[where p=\<open>sswa r q\<close>])
-      apply (metis frame_closed_relD2 sp_impliesD)
+      apply (metis sp_impliesD)
      apply force
       (* subgoal: local framed opstep *)
     apply (drule_tac x=\<open>wssa r ((=) hlf \<times>\<^sub>P \<top>)\<close> in spec)
