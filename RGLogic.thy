@@ -198,6 +198,16 @@ lemma framecl_frame_closed:
 
 end
 
+lemma framed_subresource_rel_tuple_sndD:
+  \<open>framed_subresource_rel p a a' b b' \<Longrightarrow>
+    framed_subresource_rel (\<lambda>y. \<exists>x. p (x, y)) (snd a) (snd a') (snd b) (snd b')\<close>
+  by (clarsimp simp add: framed_subresource_rel_def) blast
+
+lemma framed_subresource_rel_true_tuple_sndD:
+  \<open>framed_subresource_rel \<top> a a' b b' \<Longrightarrow>
+    framed_subresource_rel \<top> (snd a) (snd a') (snd b) (snd b')\<close>
+  by (clarsimp simp add: framed_subresource_rel_def) blast
+
 context multiunit_sep_alg
 begin
 
