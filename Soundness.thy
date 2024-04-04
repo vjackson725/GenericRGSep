@@ -683,7 +683,6 @@ lemma safe_atom':
   \<open>sp b (wssa r p) \<le> sswa r q \<Longrightarrow>
     \<forall>f. f \<le> F \<times>\<^sub>P \<top> \<longrightarrow> sp b (wssa r (p \<^emph>\<and> f)) \<le> sswa r (q \<^emph>\<and> f) \<Longrightarrow>
     b \<le> \<top> \<times>\<^sub>R g \<Longrightarrow>
-    framecl b \<le> b \<Longrightarrow>
     wssa r p (hl, hs) \<Longrightarrow>
     safe as (Atomic b) hl hs r g (sswa r q) F\<close>
 proof (induct as arbitrary: hl hs)
@@ -729,7 +728,6 @@ lemma safe_atom:
   \<open>sp b (wssa r p) \<le> sswa r q \<Longrightarrow>
     \<forall>f. f \<le> F \<times>\<^sub>P \<top> \<longrightarrow> sp b (wssa r (p \<^emph>\<and> f)) \<le> sswa r (q \<^emph>\<and> f) \<Longrightarrow>
     b \<le> \<top> \<times>\<^sub>R g \<Longrightarrow>
-    framecl b \<le> b \<Longrightarrow>
     wssa r p (hl, hs) \<Longrightarrow>
     sswa r q \<le> q' \<Longrightarrow>
     safe n (Atomic b) hl hs r g q' F\<close>
@@ -827,11 +825,11 @@ lemma safe_iter:
     sswa r i (hl, hs) \<Longrightarrow>
     safe as (Iter c) hl hs r g (sswa r i) F\<close>
 proof (induct as arbitrary: i hl hs rule: rev_sublisteq_list_strong_induct)
-  case (ConsLess ma as)
+  case (ConsLess a as)
 
   have safe_c2:
     \<open>\<And>as' hl' hs'. as' \<le>\<^sub>r as \<Longrightarrow> sswa r i (hl', hs') \<Longrightarrow> safe as' c hl' hs' r g (sswa r i) F\<close>
-    \<open>\<And>hl' hs'. sswa r i (hl', hs') \<Longrightarrow> safe (ma # as) c hl' hs' r g (sswa r i) F\<close>
+    \<open>\<And>hl' hs'. sswa r i (hl', hs') \<Longrightarrow> safe (a # as) c hl' hs' r g (sswa r i) F\<close>
     using ConsLess.prems(1)
     by (simp add: rev_sublisteq_Cons_iff)+
   note safe_c2_sucD = safe_sucD[OF safe_c2(2)]
@@ -1138,20 +1136,34 @@ proof (induct as arbitrary: c hl hs r g q1 q2)
     using Cons.prems
     apply -
     apply (intro safe_suc conjI impI allI)
-        apply blast
+      (* subgoal: skip *)
+         apply blast
+      (* subgoal: tau stuttering *)
+        apply (rule Cons.hyps; blast)
+      (* subgoal: guarantee step *)
        apply (rule Cons.hyps; blast)
+      (* subgoal: guarantee step *)
       apply (meson safe_sucD; fail)
-      (* subgoal opstep safe *)
-     apply (rule Cons.hyps, fastforce, fastforce, fastforce)
-      (* subgoal frame safe *)
+      (* subgoal: plain opstep *)
+     apply (rule Cons.hyps)
+       apply fastforce
+      apply force
+     apply force
+      (* subgoal: frame opstep *)
     apply (clarsimp simp del: inf_apply)
-    apply (frule safe_sucD(5)[where q=q1], blast, blast, blast, blast)
-    apply (frule safe_sucD(5)[where q=q2], blast, blast, blast, blast)
-    apply (case_tac a)
-     apply (clarsimp simp del: inf_apply; fail)
+    apply (frule safe_sucD(6)[where q=q1], blast, blast, blast, blast)
+    apply (frule safe_sucD(6)[where q=q2], blast, blast, blast, blast)
     apply (clarsimp simp del: inf_apply)
+    apply (subgoal_tac \<open>hl'a = hl'\<close>)
+     prefer 2
+     apply presburger
     apply (erule opstep_act_cases)
-    sorry
+     apply (clarsimp simp del: inf_apply)
+     apply (meson Cons.hyps; fail)
+    apply (clarsimp simp del: inf_apply)
+    apply (drule(1) Cons.hyps, metis)
+    apply blast
+    done
 qed force
 
 lemma safe_conj:
@@ -1172,26 +1184,26 @@ section \<open> Soundness \<close>
 lemma soundness:
   assumes \<open>rgsat c r g p q\<close>
     and \<open>p (hl, hs)\<close>
-  shows \<open>safe n c hl hs r g q \<top>\<close>
+  shows \<open>safe as c hl hs r g q \<top>\<close>
   using assms
-proof (induct c r g p q arbitrary: n hl hs rule: rgsat.inducts)
+proof (induct c r g p q arbitrary: as hl hs rule: rgsat.inducts)
   case (rgsat_skip p r q g as h)
   then show ?case
     by (simp add: safe_skip)
 next
   case (rgsat_seq c1 r g p1 p2 c2 p3)
   then show ?case
-    using safe_seq[of n c1 hl hs r g p2 \<top> c2 p3]
+    using safe_seq[of as c1 hl hs r g p2 \<top> c2 p3]
     by blast
 next
   case (rgsat_indet c1 r g1 p q1 c2 g2 q2 g q)
   then show ?case
-    using safe_indet[of n c1 hl hs r g q \<top> c2]
+    using safe_indet[of as c1 hl hs r g q \<top> c2]
     by (meson safe_guarantee_mono safe_postpred_mono)
 next
   case (rgsat_endet c1 r g1 p q1 c2 g2 q2 g q)
   then show ?case
-    using safe_endet[of n c1 hl hs r g q \<top> c2]
+    using safe_endet[of as c1 hl hs r g q \<top> c2]
     by (meson safe_guarantee_mono safe_postpred_mono)
 next
   case (rgsat_par s1 r g2 g1 p1 q1 s2 p2 q2 g p q)
@@ -1206,13 +1218,13 @@ next
        apply (rule safe_postpred_mono[rotated], assumption, blast)
       apply blast
      apply blast
-    apply blast
+    apply (meson le_sup_iff; fail)
     done
 next
   case (rgsat_iter c r g i p q)
   then show ?case
-    using safe_postpred_mono[OF _ safe_iter[of r i n c g]]
-    by blast
+    using safe_postpred_mono[OF _ safe_iter[of as r i c g]]
+    by (simp add: sp_mono2 sswa_trivial)
 next
   case (rgsat_atom p r p' q' q b g n)
   then show ?case
