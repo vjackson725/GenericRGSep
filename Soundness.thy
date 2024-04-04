@@ -399,11 +399,10 @@ inductive safe
     (c = Skip \<longrightarrow> q (hl, hs)) \<Longrightarrow>
     \<comment> \<open> Tau stuttering preserves safety \<close>
     (a = Tau \<longrightarrow> safe as c hl hs r g q F) \<Longrightarrow>
-    \<comment> \<open> rely steps are safe \<close>
-    (\<And>hs'.
-        a = Env (hs, hs') \<Longrightarrow>
-        r hs hs' \<Longrightarrow>
-        safe as c hl hs' r g q F) \<Longrightarrow>
+    \<comment> \<open> Env steps are safe \<close>
+    (\<And>hs'. a = Env (hs, hs') \<Longrightarrow> safe as c hl hs' r g q F) \<Longrightarrow>
+    \<comment> \<open> Env steps imply the rely  \<close>
+    (\<And>hs'. a = Env (hs, hs') \<Longrightarrow> r hs hs') \<Longrightarrow>
     \<comment> \<open> Loc opsteps establish the guarantee \<close>
     (\<And>c' hlx hlx' hs'.
         a = Loc (hs, hs') \<Longrightarrow>
@@ -441,7 +440,8 @@ lemma safe_suc_iff:
   \<open>safe (a # as) c hl hs r g q F \<longleftrightarrow>
     (c = Skip \<longrightarrow> q (hl, hs)) \<and>
     (a = Tau \<longrightarrow> safe as c hl hs r g q F) \<and>
-    (\<forall>hs'. a = Env (hs, hs') \<longrightarrow> r hs hs' \<longrightarrow> safe as c hl hs' r g q F) \<and>
+    (\<forall>hs'. a = Env (hs, hs') \<longrightarrow> safe as c hl hs' r g q F) \<and>
+    (\<forall>hs'. a = Env (hs, hs') \<longrightarrow> r hs hs') \<and>
     (\<forall>c' hlx hx'.
       a = Loc (hs, snd hx') \<longrightarrow>
       hl \<preceq> hlx \<longrightarrow>
@@ -469,7 +469,8 @@ lemma safe_suc_iff:
 lemma safe_sucD:
   \<open>safe (a # as) c hl hs r g q F \<Longrightarrow> c = Skip \<Longrightarrow> q (hl, hs)\<close>
   \<open>safe (a # as) c hl hs r g q F \<Longrightarrow> a = Tau \<Longrightarrow> safe as c hl hs r g q F\<close>
-  \<open>safe (a # as) c hl hs r g q F \<Longrightarrow> a = Env (hs, hs') \<Longrightarrow> r hs hs' \<Longrightarrow> safe as c hl hs' r g q F\<close>
+  \<open>safe (a # as) c hl hs r g q F \<Longrightarrow> a = Env (hs, hs') \<Longrightarrow> safe as c hl hs' r g q F\<close>
+  \<open>safe (a # as) c hl hs r g q F \<Longrightarrow> a = Env (hs, hs') \<Longrightarrow> r hs hs'\<close>
   \<open>safe (a # as) c hl hs r g q F \<Longrightarrow>
     a = Loc (hs, hs') \<Longrightarrow>
     hl \<preceq> hlx \<Longrightarrow>
@@ -512,30 +513,32 @@ proof (induct rule: safe.induct)
     using safe_suc.prems
     apply -
     apply (rule safe.safe_suc)
+          apply (simp add: safe_suc.hyps; fail)
          apply (simp add: safe_suc.hyps; fail)
         apply (simp add: safe_suc.hyps; fail)
        apply (simp add: safe_suc.hyps; fail)
-      apply (frule safe_suc.hyps(5); blast)
-     apply (frule safe_suc.hyps(7); blast)
-    apply (frule safe_suc.hyps(8); blast)
+      apply (frule safe_suc.hyps(6); blast)
+     apply (frule safe_suc.hyps(8); blast)
+    apply (frule safe_suc.hyps(9); blast)
     done
 qed blast
 
 lemmas safe_guarantee_mono = safe_guarantee_monoD[rotated]
 
-lemma safe_rely_antimonoD:
-  \<open>safe n c hl hs r g q F \<Longrightarrow> r' \<le> r \<Longrightarrow> safe n c hl hs r' g q F\<close>
+lemma safe_rely_monoD:
+  \<open>safe n c hl hs r g q F \<Longrightarrow> r \<le> r' \<Longrightarrow> safe n c hl hs r' g q F\<close>
   apply (induct rule: safe.induct)
    apply force
   apply (rule safe_suc)
+        apply presburger
        apply presburger
       apply presburger
-     apply (metis predicate2D)
+     apply force
     apply presburger+
   apply metis
   done
 
-lemmas safe_rely_antimono = safe_rely_antimonoD[rotated]
+lemmas safe_rely_mono = safe_rely_monoD[rotated]
 
 lemma safe_step_antimonoD:
   \<open>safe as c hl hs r g q F \<Longrightarrow> as' \<le>\<^sub>l as \<Longrightarrow> safe as' c hl hs r g q F\<close>
@@ -544,8 +547,9 @@ proof (rotate_tac, induct arbitrary: c hl hs q rule: sublisteq.inducts)
   then show ?case
     apply -
     apply (rule safe_suc)
-         apply blast
-        apply (metis safe_sucD(2))
+          apply blast
+         apply (metis safe_sucD(2))
+        apply fast
        apply (frule(2) safe_sucD; blast)
       apply (frule(2) safe_sucD; blast)
      apply (frule(2) safe_sucD; blast)
@@ -559,6 +563,7 @@ lemma safe_frameset_antimonoD:
    apply force
   apply clarsimp
   apply (rule safe_suc)
+        apply force
        apply force
       apply force
      apply force
@@ -575,11 +580,11 @@ lemma safe_skip':
   apply (induct n arbitrary: hl hs q)
    apply force
   apply (rule safe_suc)
+        apply blast
        apply blast
-      apply blast
+
      apply (simp add: weak_framed_subresource_rel_def all_conj_distrib sp_def)
      apply (meson opstep_skipE rtranclp.rtrancl_into_rtrancl; fail)
-    apply blast+
   done
 
 lemma safe_skip:
@@ -1065,11 +1070,9 @@ proof (induct as arbitrary: as1 as2 c1 c2 hl1 hl2 hs)
         apply (clarsimp simp del: sup_apply top_apply)
         apply (drule safe_sucD(3), blast)
     subgoal sorry
-
         apply (drule safe_sucD(4), blast, rule partial_le_part_right, blast, blast)
-
-      sledgehammer
-
+    subgoal sorry
+        apply blast
       (* subgoal: plain opstep safe *)
     subgoal
       apply (simp add: opstep_iff del: sup_apply top_apply)
