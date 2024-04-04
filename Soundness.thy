@@ -397,6 +397,8 @@ inductive safe
     \<comment> \<open> TODO: This requires termination is represented as infinite stuttering past the end.
                We may want a different model. \<close>
     (c = Skip \<longrightarrow> q (hl, hs)) \<Longrightarrow>
+    \<comment> \<open> Tau stuttering preserves safety \<close>
+    (a = Tau \<longrightarrow> safe as c hl hs r g q F) \<Longrightarrow>
     \<comment> \<open> rely steps are safe \<close>
     (\<And>hs'.
         a = Env (hs, hs') \<Longrightarrow>
@@ -438,6 +440,7 @@ lemma safe_nil_iff[simp]:
 lemma safe_suc_iff:
   \<open>safe (a # as) c hl hs r g q F \<longleftrightarrow>
     (c = Skip \<longrightarrow> q (hl, hs)) \<and>
+    (a = Tau \<longrightarrow> safe as c hl hs r g q F) \<and>
     (\<forall>hs'. a = Env (hs, hs') \<longrightarrow> r hs hs' \<longrightarrow> safe as c hl hs' r g q F) \<and>
     (\<forall>c' hlx hx'.
       a = Loc (hs, snd hx') \<longrightarrow>
@@ -465,6 +468,7 @@ lemma safe_suc_iff:
 
 lemma safe_sucD:
   \<open>safe (a # as) c hl hs r g q F \<Longrightarrow> c = Skip \<Longrightarrow> q (hl, hs)\<close>
+  \<open>safe (a # as) c hl hs r g q F \<Longrightarrow> a = Tau \<Longrightarrow> safe as c hl hs r g q F\<close>
   \<open>safe (a # as) c hl hs r g q F \<Longrightarrow> a = Env (hs, hs') \<Longrightarrow> r hs hs' \<Longrightarrow> safe as c hl hs' r g q F\<close>
   \<open>safe (a # as) c hl hs r g q F \<Longrightarrow>
     a = Loc (hs, hs') \<Longrightarrow>
@@ -508,11 +512,12 @@ proof (induct rule: safe.induct)
     using safe_suc.prems
     apply -
     apply (rule safe.safe_suc)
+         apply (simp add: safe_suc.hyps; fail)
         apply (simp add: safe_suc.hyps; fail)
        apply (simp add: safe_suc.hyps; fail)
-      apply (metis predicate2D safe_suc.hyps(4))
-     apply (simp add: safe_suc.hyps(6); fail)
-    apply (frule safe_suc.hyps(7); blast)
+      apply (frule safe_suc.hyps(5); blast)
+     apply (frule safe_suc.hyps(7); blast)
+    apply (frule safe_suc.hyps(8); blast)
     done
 qed blast
 
@@ -523,6 +528,7 @@ lemma safe_rely_antimonoD:
   apply (induct rule: safe.induct)
    apply force
   apply (rule safe_suc)
+       apply presburger
       apply presburger
      apply (metis predicate2D)
     apply presburger+
@@ -538,7 +544,8 @@ proof (rotate_tac, induct arbitrary: c hl hs q rule: sublisteq.inducts)
   then show ?case
     apply -
     apply (rule safe_suc)
-        apply blast
+         apply blast
+        apply (metis safe_sucD(2))
        apply (frule(2) safe_sucD; blast)
       apply (frule(2) safe_sucD; blast)
      apply (frule(2) safe_sucD; blast)
@@ -552,6 +559,7 @@ lemma safe_frameset_antimonoD:
    apply force
   apply clarsimp
   apply (rule safe_suc)
+       apply force
       apply force
      apply force
     apply force
@@ -567,10 +575,11 @@ lemma safe_skip':
   apply (induct n arbitrary: hl hs q)
    apply force
   apply (rule safe_suc)
-        apply blast
-       apply (simp add: weak_framed_subresource_rel_def all_conj_distrib sp_def)
-       apply (meson opstep_skipE rtranclp.rtrancl_into_rtrancl; fail)
-      apply blast+
+       apply blast
+      apply blast
+     apply (simp add: weak_framed_subresource_rel_def all_conj_distrib sp_def)
+     apply (meson opstep_skipE rtranclp.rtrancl_into_rtrancl; fail)
+    apply blast+
   done
 
 lemma safe_skip:
@@ -598,23 +607,25 @@ next
     apply -
     apply (rule safe.safe_suc)
       (* subgoal: skip *)
-        apply (clarsimp simp add: sepconj_conj_def simp del: sup_apply)
-        apply (drule mp[OF safe_suc.hyps(1)])
-        apply blast
+         apply (clarsimp simp add: sepconj_conj_def simp del: sup_apply top_apply)
+         apply (drule mp[OF safe_suc.hyps(1)])
+         apply blast
+      (* subgoal: tau stuttering *)
+        apply (metis safe_suc.hyps(2))
       (* subgoal: rely step *)
-       apply (rule safe_suc.hyps(3), blast, blast, blast, blast)
+       apply (rule safe_suc.hyps(4), blast, blast, blast, blast)
        apply (rule sswa_step, rule sup2I1, blast, blast)
       (* subgoal: opstep guarantee *)
       apply (simp add: opstep_iff del: sup_apply top_apply)
-      apply (metis partial_le_part_left safe_suc.hyps(4))
+      apply (metis partial_le_part_left safe_suc.hyps(5))
       (* subgoal: plain opstep *)
-     apply (frule safe_suc.hyps(7)[OF disjI2], blast, blast, force)
+     apply (frule safe_suc.hyps(8)[OF disjI2], blast, blast, force)
      apply (erule opstep_act_cases, force)
      apply (clarsimp simp del: sup_apply top_apply)
-     apply (metis partial_le_plus safe_suc.hyps(4) sswa_stepD sup2I2)
+     apply (metis partial_le_plus safe_suc.hyps(5) sswa_stepD sup2I2)
       (* subgoal: framed opstep *)
     apply (clarsimp simp add: partial_add_assoc2[of hl hlf] simp del: sup_apply top_apply)
-    apply (frule safe_suc.hyps(7))
+    apply (frule safe_suc.hyps(8))
        apply blast
       apply (metis disjoint_add_swap_lr)
      apply (simp add: le_fun_def sepimp_def)
@@ -623,7 +634,7 @@ next
     apply (clarsimp simp del: sup_apply top_apply)
     apply (erule opstep_act_cases, force simp add: partial_add_assoc2)
     apply (clarsimp simp del: sup_apply top_apply)
-    apply (frule safe_suc.hyps(4))
+    apply (frule safe_suc.hyps(5))
       prefer 2
       apply force
      apply (metis disjoint_add_swap_lr partial_le_plus)
@@ -681,7 +692,9 @@ proof (induct as arbitrary: hl hs)
     using Cons.prems
     apply (intro safe.safe_suc)
       (* subgoal: skip *)
-        apply force
+         apply force
+      (* subgoal: tau stuttering *)
+        apply (metis Cons.hyps(1))
       (* subgoal: rely *)
        apply (rule Cons.hyps; force simp add: wssa_step)
       (* subgoal: opstep guarantee *)
@@ -732,6 +745,7 @@ lemma safe_seq_assoc_left:
   apply (induct arbitrary: c1 c2 c3 rule: safe.inducts)
    apply force
   apply (rule safe_suc)
+       apply blast
       apply blast
      apply blast
     apply (simp add: opstep_iff, metis)
@@ -746,7 +760,8 @@ lemma safe_seq_assoc_right:
   apply (induct arbitrary: c1 c2 c3 rule: safe.inducts)
    apply force
   apply (rule safe_suc)
-     apply blast
+       apply blast
+      apply blast
      apply blast
     apply (simp add: opstep_iff, metis)
    apply (simp add: opstep_iff, metis)
@@ -759,7 +774,7 @@ lemma safe_seq':
     (\<forall>as' hl' hs'. as' \<le>\<^sub>r as \<longrightarrow> q (hl', hs') \<longrightarrow> safe as' c2 hl' hs' r g q' F) \<Longrightarrow>
     safe as (c1 ;; c2) hl hs r g q' F\<close>
 proof (induct arbitrary: c2 q' rule: safe.inducts)
-  case (safe_suc c1 q hl hs a r as g F)
+  case (safe_suc c1 q hl hs a as r g F)
 
   have c2_safe_suc:
     \<open>\<And>as' hl' hs'. as' \<le>\<^sub>r as \<Longrightarrow> q (hl', hs') \<Longrightarrow> safe as' c2 hl' hs' r g q' F\<close>
@@ -771,17 +786,20 @@ proof (induct arbitrary: c2 q' rule: safe.inducts)
     using safe_suc.hyps(1)
     apply -
     apply (rule safe.safe_suc)
-        apply force
+      (* subgoal: skip *)
+         apply force
+      (* subgoal: tau stuttering *)
+        apply (metis c2_safe_suc(1) safe_suc.hyps(2))
       (* subgoal: rely *)
-       apply (rule safe_suc.hyps(3), assumption, assumption)
+       apply (rule safe_suc.hyps(4), assumption, assumption)
        apply (simp add: c2_safe_suc(1); fail)
       (* subgoal: opstep guarantee *)
       apply (clarsimp simp add: opstep_iff simp del: top_apply sup_apply)
-      apply (frule(1) safe_suc.hyps(4), blast)
+      apply (frule(1) safe_suc.hyps(5), blast)
       apply blast
       (* subgoal: plain opstep *)
      apply (clarsimp simp add: opstep_iff simp del: sup_apply)
-     apply (frule safe_suc.hyps(6), blast)
+     apply (frule safe_suc.hyps(7), blast)
       prefer 2
       apply assumption
      apply (simp add: c2_safe_suc(1); fail)
@@ -790,7 +808,7 @@ proof (induct arbitrary: c2 q' rule: safe.inducts)
     apply (erule disjE[of _ \<open>Ex _\<close>])
      apply (simp add: c2_safe_suc(1); fail)
     apply clarsimp
-    apply (frule safe_suc.hyps(7), blast, blast, blast)
+    apply (frule safe_suc.hyps(8), blast, blast, blast)
     apply (metis c2_safe_suc(1))
     done
 qed force
@@ -823,7 +841,9 @@ proof (induct as arbitrary: i hl hs rule: rev_sublisteq_list_strong_induct)
     apply -
     apply (rule safe.safe_suc)
       (* subgoal: skip *)
-        apply blast
+         apply blast
+      (* subgoal: tau stuttering *)
+        apply (simp add: ConsLess.hyps ConsLess.prems(1) rev_sublisteq_Cons_iff; fail)
       (* subgoal: rely *)
        apply (rule ConsLess.hyps)
          apply blast
@@ -848,9 +868,9 @@ qed force
 subsubsection \<open> Safety of internal nondeterminism \<close>
 
 lemma safe_indet:
-    \<open>safe as c1 hl hs r g q F \<Longrightarrow>
-      safe as c2 hl hs r g q F \<Longrightarrow>
-      safe as (c1 \<^bold>+ c2) hl hs r g q F\<close>
+  \<open>safe as c1 hl hs r g q F \<Longrightarrow>
+    safe as c2 hl hs r g q F \<Longrightarrow>
+    safe as (c1 \<^bold>+ c2) hl hs r g q F\<close>
 proof (induct as arbitrary: c1 c2 hl hs)
   case (Cons a as)
 
@@ -865,20 +885,22 @@ proof (induct as arbitrary: c1 c2 hl hs)
   show ?case
     apply -
     apply (rule safe_suc)
-       apply blast
+         apply blast
+      (* subgoal: tau stuttering *)
+        apply (simp add: Cons.hyps safe_suc1(2) safe_suc2(2); fail)
       (* subgoal: rely *)
-      apply (metis Cons.hyps safe_suc1(2) safe_suc2(2))
+       apply (metis Cons.hyps safe_suc1(3) safe_suc2(3))
       (* subgoal: opstep guarantee *)
       apply (simp add: opstep_iff del: sup_apply)
-      apply (metis act.simps(4) safe_suc1(3) safe_suc2(3))
+      apply (metis safe_suc1(4) safe_suc2(4))
       (* subgoal: plain opstep *)
      apply (clarsimp simp add: opstep_iff simp del: sup_apply)
-     apply (metis safe_suc1(4) safe_suc2(4))
+     apply (metis safe_suc1(5) safe_suc2(5))
       (* subgoal: local frame opstep *)
     apply (clarsimp simp add: opstep_iff simp del: sup_apply)
     apply (elim disjE[of \<open>opstep _ _ _\<close>])
-     apply (erule opstep_act_cases; metis safe_suc1(5))
-    apply (erule opstep_act_cases; metis safe_suc2(5))
+     apply (erule opstep_act_cases; metis safe_suc1(6))
+    apply (erule opstep_act_cases; metis safe_suc2(6))
     done
 qed blast
 
@@ -903,46 +925,51 @@ proof (induct as arbitrary: c1 c2 hl hs rule: rev_sublisteq_list_strong_induct)
   show ?case
     apply -
     apply (rule safe_suc)
-        apply blast
+         apply blast
+      (* subgoal: tau stuttering *)
+        apply (simp add: ConsLess.hyps safe_suc1(2) safe_suc2(2); fail)
       (* subgoal: rely *)
-       apply (simp add: ConsLess.hyps safe_suc1(2) safe_suc2(2); fail)
+       apply (simp add: ConsLess.hyps safe_suc1(3) safe_suc2(3); fail)
       (* subgoal: opstep guarantee *)
       apply (simp add: opstep_iff del: sup_apply)
-      apply (metis safe_suc1(3) safe_suc2(3))
+      apply (metis safe_suc1(4) safe_suc2(4))
       (* subgoal: plain opstep *)
      apply (clarsimp simp add: opstep_iff simp del: sup_apply)
      apply (elim disjE conjE exE)
-      apply (frule safe_suc1(4), blast, blast)
-     apply (frule safe_suc2(4), blast, blast)
+      apply (frule safe_suc1(5), blast, blast)
+     apply (frule safe_suc2(5), blast, blast)
       (* subgoal: local frame opstep *)
     apply (clarsimp simp add: opstep_iff simp del: sup_apply)
     apply (elim disjE[of \<open>_ \<and> _\<close>] conjE exE)
-         apply (erule opstep_act_cases; metis safe_suc1(5))
-        apply (erule opstep_act_cases; metis safe_suc2(5))
+         apply (erule opstep_act_cases; metis safe_suc1(6))
+        apply (erule opstep_act_cases; metis safe_suc2(6))
       (* subsubgoal: left tau passthrough *)
-       apply (frule safe_suc1(5), blast, blast, blast)
+       apply (frule safe_suc1(6), blast, blast, blast)
        apply (clarsimp simp del: sup_apply)
        apply (frule opstep_tau_preserves_heap)
        apply (clarsimp simp del: sup_apply)
        apply (rule ConsLess.hyps)
          apply blast
         apply blast
-    subgoal sorry
+       apply (metis safe_suc2(2))
       (* subsubgoal: right tau passthrough *)
-      apply (frule safe_suc2(5), blast)
+      apply (frule safe_suc2(6), blast, blast, blast)
       apply clarsimp
       apply (frule opstep_tau_preserves_heap)
       apply (clarsimp simp del: sup_apply)
-    subgoal sorry
+      apply (rule ConsLess.hyps)
+        apply blast
+       apply (metis safe_suc1(2))
+      apply blast
       (* subsubgoal: right skip tau *)
      apply (erule disjE)
       apply (clarsimp simp del: sup_apply)
-    subgoal sorry
+      apply (metis safe_suc2(2))
      apply blast
       (* subsubgoal: left skip tau *)
     apply (erule disjE)
      apply (clarsimp simp del: sup_apply)
-    subgoal sorry
+     apply (metis safe_suc1(2))
     apply blast
     done
 qed simp
