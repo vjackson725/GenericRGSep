@@ -4,10 +4,16 @@ begin
 
 section \<open> rely/guarantee helpers \<close>
 
+definition  \<open>rel_step x y \<equiv> (\<lambda>i j. i = x \<and> j = y)\<close>
+
 abbreviation \<open>sswa r \<equiv> sp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*)\<close>
 abbreviation \<open>wssa r \<equiv> wlp ((=) \<times>\<^sub>R r\<^sup>*\<^sup>*)\<close>
 
 subsection \<open> step properties \<close>
+
+lemma rel_step_apply[simp]:
+  \<open>rel_step x y i j \<longleftrightarrow> i = x \<and> j = y\<close>
+  by (simp add: rel_step_def)
 
 lemma sp_rely_step:
   \<open>r y y' \<Longrightarrow>
@@ -87,6 +93,24 @@ lemma wssa_of_pred_Times_eq[simp]:
 lemma sp_rely_of_pred_Times_eq[simp]:
   \<open>sswa r (p \<times>\<^sub>P q) = (p \<times>\<^sub>P sp r\<^sup>*\<^sup>* q)\<close>
   by (force simp add: rel_Times_def pred_Times_def sp_def split: prod.splits)
+
+
+lemma sswa_rel_mono:
+  \<open>r1 \<le> r2 \<Longrightarrow> sswa r1 p \<le> sswa r2 p\<close>
+  by (clarsimp simp add: sp_def le_fun_def, metis mono_rtranclp)
+
+lemma sswa_rel_monoD:
+  \<open>sswa r1 p x \<Longrightarrow> r1 \<le> r2 \<Longrightarrow> sswa r2 p x\<close>
+  by (meson predicate1D sswa_rel_mono)
+
+lemma wssa_rel_antimono:
+  \<open>r2 \<le> r1 \<Longrightarrow> wssa r1 p \<le> wssa r2 p\<close>
+  by (clarsimp simp add: wlp_def le_fun_def, metis mono_rtranclp)
+
+lemma wssa_rel_antimonoD:
+  \<open>wssa r1 p x \<Longrightarrow> r2 \<le> r1 \<Longrightarrow> wssa r2 p x\<close>
+  by (meson predicate1D wssa_rel_antimono)
+
 
 subsection \<open> Local and shared predicate lifting \<close>
 
