@@ -450,94 +450,113 @@ lemma lopstep_WhileLoop_iff[lopstep_iff]:
 
 section \<open> Safe \<close>
 
+
 inductive safe
-  :: \<open>('s::perm_alg \<times> 's) act list \<Rightarrow>
-      ('l::perm_alg \<times> 's) comm \<Rightarrow> 'l \<Rightarrow> 's \<Rightarrow>
+  :: \<open>('s \<times> 's) act list set \<Rightarrow>
+      ('l::perm_alg \<times> 's::perm_alg) comm \<Rightarrow>
+      'l \<Rightarrow>
+      's \<Rightarrow>
+      ('s \<Rightarrow> 's \<Rightarrow> bool) \<Rightarrow>
+      ('s \<Rightarrow> 's \<Rightarrow> bool) \<Rightarrow>
       ('l \<times> 's \<Rightarrow> bool) \<Rightarrow>
       ('l \<Rightarrow> bool) \<Rightarrow>
       bool\<close>
   where
-  safe_nil[intro!]: \<open>safe [] c hl hs q F\<close>
+  safe_nil[intro]: \<open>safe {[]} c hl hs r g q F\<close>
 | safe_suc[intro]:
-  \<open>\<comment> \<open> if the command is Skip, the postcondition is established \<close>
+  \<open>[] \<notin> T \<Longrightarrow>
+    (\<forall>t1\<in>T. \<forall>t2\<in>T. length t1 = length t2) \<Longrightarrow>
+    \<comment> \<open> if the command is Skip, the postcondition is established \<close>
     \<comment> \<open> TODO: This requires termination is represented as infinite stuttering past the end.
                We may want a different model. \<close>
     (c = Skip \<longrightarrow> q (hl, hs)) \<Longrightarrow>
     \<comment> \<open> opsteps are safe \<close>
-    (\<And>c' hl' hs'.
+    (\<And>a c' hl' hs'.
       ((hl, hs), c) \<midarrow>a\<rightarrow> ((hl', hs'), c') \<Longrightarrow>
-      safe as c' hl' hs' q F) \<Longrightarrow>
+      safe {t. a#t \<in> T} c' hl' hs' r g q F) \<Longrightarrow>
     \<comment> \<open> lopsteps are frame closed \<close>
-    (\<And>c' hlf hlhlf' hs'.
+    (\<And>a c' hlf hlhlf' hs'.
       lopstep a ((hl + hlf, hs), c) ((hlhlf', hs'), c') \<Longrightarrow>
       hl ## hlf \<Longrightarrow>
       F hlf \<Longrightarrow>
       (\<exists>hl'.
         hl' ## hlf \<and> hlhlf' = hl' + hlf \<and>
         (a = Tau \<longrightarrow> hl' = hl) \<and>
-        safe as c' hl' hs' q F)) \<Longrightarrow>
+        safe {t. a#t \<in> T} c' hl' hs' r g q F)) \<Longrightarrow>
     \<comment> \<open> conclude a step can be made \<close>
-    safe (a # as) c hl hs q F\<close>
+    safe T c hl hs r g q F\<close>
 
 subsection \<open> Proofs about safe \<close>
 
-inductive_cases safe_zeroE[elim!]: \<open>safe [] c hl hs q F\<close>
-inductive_cases safe_sucE[elim]: \<open>safe (a # as) c hl hs q F\<close>
+inductive_cases safeE[elim]: \<open>safe T c hl hs q F\<close>
 
 lemma safe_nil_iff[simp]:
-  \<open>safe [] c hl hs q F \<longleftrightarrow> True\<close>
+  \<open>safe {[]} c hl hs q F \<longleftrightarrow> True\<close>
   by force
 
 lemma safe_suc_iff:
-  \<open>safe (a # as) c hl hs q F \<longleftrightarrow>
+  \<open>[] \<notin> T \<Longrightarrow>
+    \<forall>t1\<in>T. \<forall>t2\<in>T. length t1 = length t2 \<Longrightarrow>
+    safe T c hl hs q F \<longleftrightarrow>
     (c = Skip \<longrightarrow> q (hl, hs)) \<and>
-    (\<forall>c' hx'.
+    (\<forall>a c' hx'.
       ((hl, hs), c) \<midarrow>a\<rightarrow> (hx', c') \<longrightarrow>
-      safe as c' (fst hx') (snd hx') q F) \<and>
-    (\<forall>c' hlf hx'.
+      safe {t. a # t \<in> T} c' (fst hx') (snd hx') q F) \<and>
+    (\<forall>a c' hlf hx'.
       lopstep a ((hl + hlf, hs), c) (hx', c') \<longrightarrow>
       hl ## hlf \<longrightarrow>
       F hlf \<longrightarrow>
       (\<exists>hl'.
         hl' ## hlf \<and> fst hx' = hl' + hlf \<and>
         (a = Tau \<longrightarrow> hl' = hl) \<and>
-        safe as c' hl' (snd hx') q F))\<close>
+        safe {t. a # t \<in> T} c' hl' (snd hx') q F))\<close>
   apply (rule iffI)
-   apply (erule safe_sucE, force)
+   apply (erule safeE, blast)
+   apply (metis prod.collapse)
   apply (rule safe_suc; force)
   done
 
+(*
 lemma safe_suc_env_iff:
   \<open>safe (Env (x, hs') # as) c hl hs q F \<longleftrightarrow>
     (c = Skip \<longrightarrow> q (hl, hs)) \<and>
     (x = hs \<longrightarrow> safe as c hl hs' q F)\<close>
   by (simp add: safe_suc_iff opstep_def)
+*)
 
-lemma safe_sucD:
-  \<open>safe (a # as) c hl hs q F \<Longrightarrow> c = Skip \<Longrightarrow> q (hl, hs)\<close>
-  \<open>safe (a # as) c hl hs q F \<Longrightarrow>
+lemma safe_sucD[consumes 3]:
+  \<open>safe T c hl hs q F \<Longrightarrow>
+    [] \<notin> T \<Longrightarrow> \<forall>t1\<in>T. \<forall>t2\<in>T. length t1 = length t2 \<Longrightarrow>
+    c = Skip \<Longrightarrow> q (hl, hs)\<close>
+  \<open>safe T c hl hs q F \<Longrightarrow>
+    [] \<notin> T \<Longrightarrow> \<forall>t1\<in>T. \<forall>t2\<in>T. length t1 = length t2 \<Longrightarrow>
     ((hl, hs), c) \<midarrow>a\<rightarrow> ((hl', hs'), c') \<Longrightarrow>
-    safe as c' hl' hs' q F\<close>
-  \<open>safe (a # as) c hl hs q F \<Longrightarrow>
+    safe {t. a#t\<in>T} c' hl' hs' q F\<close>
+  \<open>safe T c hl hs q F \<Longrightarrow>
+    [] \<notin> T \<Longrightarrow> \<forall>t1\<in>T. \<forall>t2\<in>T. length t1 = length t2 \<Longrightarrow>
     lopstep a ((hl + hlf, hs), c) ((hlhlf', hs'), c') \<Longrightarrow>
     hl ## hlf \<Longrightarrow>
     F hlf \<Longrightarrow>
     (\<exists>hl'.
       hl' ## hlf \<and> hlhlf' = hl' + hlf \<and>
       (a = Tau \<longrightarrow> hl' = hl) \<and>
-      safe as c' hl' hs' q F)\<close>
-  by (erule safe_sucE; simp; fail)+
+      safe {t. a#t\<in>T} c' hl' hs' q F)\<close>
+  by (erule safeE, blast, presburger)+
+  
 
 lemma safe_suc_frame_leftD:
-  \<open>safe (a # as) c hl hs q F \<Longrightarrow>
+  \<open>safe T c hl hs q F \<Longrightarrow>
+    [] \<notin> T \<Longrightarrow> \<forall>t1\<in>T. \<forall>t2\<in>T. length t1 = length t2 \<Longrightarrow>
     lopstep a ((hlf + hl, hs), c) ((hlfhl', hs'), c') \<Longrightarrow>
     hlf ## hl \<Longrightarrow>
     F hlf \<Longrightarrow>
     (\<exists>hl'.
       hl' ## hlf \<and> hlfhl' = hlf + hl' \<and>
       (a = Tau \<longrightarrow> hl' = hl) \<and>
-      safe as c' hl' hs' q F)\<close>
+      safe {t. a#t\<in>T} c' hl' hs' q F)\<close>
   apply (drule safe_sucD(3))
+       apply blast
+      apply blast
      apply (simp add: disjoint_sym_iff[of _ hlf] partial_add_commute[of hlf]; fail)
     apply (simp add: disjoint_sym_iff[of _ hlf] partial_add_commute[of hlf]; fail)
    apply blast
@@ -552,12 +571,15 @@ lemma safe_postpred_monoD:
   apply (induct rule: safe.induct)
    apply blast
   apply (rule safe_suc)
-      apply (clarsimp simp add: le_fun_def; fail)+
+      apply blast
+     apply blast
+    apply (clarsimp simp add: le_fun_def; fail)+
   apply metis
   done
 
 lemmas safe_postpred_mono = safe_postpred_monoD[rotated]
 
+(*
 lemma safe_step_antimonoD:
   \<open>safe as c hl hs q F \<Longrightarrow> as' \<le>\<^sub>l as \<Longrightarrow> safe as' c hl hs q F\<close>
 proof (rotate_tac, induct arbitrary: c hl hs q rule: sublisteq.inducts)
@@ -570,6 +592,7 @@ proof (rotate_tac, induct arbitrary: c hl hs q rule: sublisteq.inducts)
     apply (frule(1) safe_sucD; blast)
     done
 qed blast
+*)
 
 lemma safe_frameset_antimonoD:
   \<open>safe n c hl hs q F \<Longrightarrow> F' \<le> F \<Longrightarrow> safe n c hl hs q F'\<close>
@@ -577,6 +600,8 @@ lemma safe_frameset_antimonoD:
    apply force
   apply clarsimp
   apply (rule safe_suc)
+      apply blast
+     apply blast
     apply force
    apply force
   apply (simp add: le_fun_def, metis)
