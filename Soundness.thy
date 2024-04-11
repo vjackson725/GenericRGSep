@@ -380,6 +380,27 @@ lemma opstep_WhileLoop_iff[opstep_iff]:
   by (simp add: WhileLoop_def opstep_iff)
 
 
+section \<open> Trace semantics \<close>
+
+type_synonym 'a trace = \<open>('a \<times> 'a) act list\<close>
+
+inductive opstep_trace :: \<open>'s comm \<Rightarrow> 's trace set \<Rightarrow> bool\<close> where
+  env_step: \<open>opstep_trace c {t. Env xy # t \<in> T} \<Longrightarrow> opstep_trace c T\<close>
+| seq_trace:
+  \<open>opstep_trace c1 T1 \<Longrightarrow> opstep_trace c2 T2 \<Longrightarrow>
+    opstep_trace (c1 ;; c2) {t1@t2|t1 t2. t1\<in>T1 \<and> t2\<in>T2}\<close>
+| indet_trace1: \<open>opstep_trace c1 T1 \<Longrightarrow> opstep_trace (c1 \<^bold>+ c2) T1\<close>
+| indet_trace2: \<open>opstep_trace c2 T2 \<Longrightarrow> opstep_trace (c1 \<^bold>+ c2) T2\<close>
+| endet_trace:
+  \<open>opstep_trace c1 T1 \<Longrightarrow> opstep_trace c1 T2 \<Longrightarrow>
+    opstep_trace (c1 \<box> c2) (endet_merge T1 T2)\<close>
+| par_trace:
+  \<open>opstep_trace c1 T1 \<Longrightarrow> opstep_trace c1 T2 \<Longrightarrow>
+    opstep_trace (c1 \<parallel> c2) (par_merge T1 T2)\<close>
+| iter_trace: \<open>opstep_trace c Ti \<Longrightarrow> opstep_trace (DO c OD) (iter_merge Ti)\<close>
+| atom_trace: \<open>opstep_trace (Atomic b) {[Loc (x,y)]|x y. b x y}\<close>
+
+
 section \<open> Safe \<close>
 
 (* TODO: move *)
