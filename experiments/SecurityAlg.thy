@@ -1,5 +1,5 @@
 theory SecurityAlg
-  imports SepAlgInstances
+  imports "../SepAlgInstances"
 begin
 
 definition tuple_lift :: \<open>('a \<Rightarrow> bool) \<Rightarrow> ('a \<times> 'a \<Rightarrow> bool)\<close> (\<open>\<T>\<close>) where
@@ -30,21 +30,16 @@ type_synonym 'a sec_st = \<open>'a \<times> 'a\<close>
 type_synonym ('l, 'a) sec_rel = \<open>'l \<Rightarrow> 'a sec_st \<Rightarrow> bool\<close>
 
 definition level_eval
-  :: \<open>('a \<Rightarrow> 'v) \<Rightarrow> ('a \<Rightarrow> 'l::order) \<Rightarrow> ('l \<Rightarrow> 'a \<times> 'a \<Rightarrow> bool)\<close>
+  :: \<open>('a \<Rightarrow> 'v) \<Rightarrow> ('a \<Rightarrow> 'l::order) \<Rightarrow> ('l,'a) sec_rel\<close>
   (\<open>_ \<triangleleft> _\<close> [55,55] 55)
   where
-  \<open>e \<triangleleft> el \<equiv> \<lambda>l (low, high).
-    el low = el high \<and>
-    (el low \<le> l \<longrightarrow> e high = e low)\<close>
+  \<open>e \<triangleleft> l' \<equiv> \<lambda>l (s, s').
+    l' s \<le> l \<longrightarrow> l' s' \<le> l \<longrightarrow> e s = e s'\<close>
 
-definition level_points_to
-  :: \<open>(('p \<rightharpoonup> 'v) \<Rightarrow> 'p) \<Rightarrow> (('p \<rightharpoonup> 'v) \<Rightarrow> 'l::order) \<Rightarrow> (('p \<rightharpoonup> 'v) \<Rightarrow> 'v) \<Rightarrow> ('l, 'p \<rightharpoonup> 'v) sec_rel\<close>
-  (\<open>_ \<^bold>\<mapsto>\<^bsub>_\<^esub> _\<close> [55,0,55] 55)
+definition sec_points_to
+  :: \<open>'a \<Rightarrow> 'b \<Rightarrow> ('l, 'a \<rightharpoonup> 'b) sec_rel\<close>
+  (infix \<open>\<^bold>\<mapsto>\<^sub>s\<close> 90)
   where
-  \<open>ep \<^bold>\<mapsto>\<^bsub>el\<^esub> ev \<equiv> \<lambda>l (low::('p \<rightharpoonup> 'v), high::('p \<rightharpoonup> 'v)).
-    (ep low \<^bold>\<mapsto> ev low) low \<and>
-    (ep high \<^bold>\<mapsto> ev high) high \<and>
-    (ep \<triangleleft> el) l (low, high) \<and>
-    (ev \<triangleleft> el) l (low, high)\<close>
+  \<open>p \<^bold>\<mapsto>\<^sub>s v \<equiv> \<lambda>l. \<T> (p \<^bold>\<mapsto> v)\<close>
 
 end

@@ -1406,7 +1406,10 @@ type_synonym ('i,'v) heap = \<open>'i \<rightharpoonup> ('v discr \<times> munit
 
 type_synonym ('i,'v) perm_heap = \<open>'i \<rightharpoonup> ('v discr \<times> rat fperm)\<close>
 
-definition points_to :: \<open>'a \<Rightarrow> 'b \<Rightarrow> ('a \<rightharpoonup> 'b) \<Rightarrow> bool\<close> (infix \<open>\<^bold>\<mapsto>\<close> 55) where
+definition points_to
+  :: \<open>'a \<Rightarrow> 'b \<Rightarrow> ('a \<rightharpoonup> 'b) \<Rightarrow> bool\<close>
+  (infix \<open>\<^bold>\<mapsto>\<close> 90)
+  where
   \<open>p \<^bold>\<mapsto> v \<equiv> \<lambda>h. h p = Some v\<close>
 
 
