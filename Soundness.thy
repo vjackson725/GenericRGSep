@@ -1,6 +1,9 @@
 theory Soundness
-  imports RGLogic
+  imports RGLogic "HOL-Library.FSet"
 begin
+
+(* TODO: move *)
+declare member_rec[simp]
 
 lemma Cons_neq_iff:
   \<open>a # as \<noteq> bs' \<longleftrightarrow> bs' = [] \<or> (\<exists>b bs. bs' = b # bs \<and> (a \<noteq> b \<or> as \<noteq> bs))\<close>
@@ -382,47 +385,13 @@ lemma opstep_WhileLoop_iff[opstep_iff]:
 
 section \<open> Trace semantics \<close>
 
-type_synonym 'a trace = \<open>('a \<times> 'a) act list\<close>
-
-inductive opstep_trace :: \<open>'s comm \<Rightarrow> 's trace set \<Rightarrow> bool\<close> where
-  env_step: \<open>opstep_trace c {t. Env xy # t \<in> T} \<Longrightarrow> opstep_trace c T\<close>
-| seq_trace:
-  \<open>opstep_trace c1 T1 \<Longrightarrow> opstep_trace c2 T2 \<Longrightarrow>
-    opstep_trace (c1 ;; c2) {t1@t2|t1 t2. t1\<in>T1 \<and> t2\<in>T2}\<close>
-| indet_trace1: \<open>opstep_trace c1 T1 \<Longrightarrow> opstep_trace (c1 \<^bold>+ c2) T1\<close>
-| indet_trace2: \<open>opstep_trace c2 T2 \<Longrightarrow> opstep_trace (c1 \<^bold>+ c2) T2\<close>
-| endet_trace:
-  \<open>opstep_trace c1 T1 \<Longrightarrow> opstep_trace c1 T2 \<Longrightarrow>
-    opstep_trace (c1 \<box> c2) (endet_merge T1 T2)\<close>
-| par_trace:
-  \<open>opstep_trace c1 T1 \<Longrightarrow> opstep_trace c1 T2 \<Longrightarrow>
-    opstep_trace (c1 \<parallel> c2) (par_merge T1 T2)\<close>
-| iter_trace: \<open>opstep_trace c Ti \<Longrightarrow> opstep_trace (DO c OD) (iter_merge Ti)\<close>
-| atom_trace: \<open>opstep_trace (Atomic b) {[Loc (x,y)]|x y. b x y}\<close>
-
+(* a rose tree *)
+datatype 'a tree = Branch (branches: \<open>'a \<Rightarrow> 'a tree fset\<close>)
 
 section \<open> Safe \<close>
 
-(* TODO: move *)
-definition \<open>good_trace_set n T \<equiv> (\<forall>t\<in>T. length t \<le> n) \<and> T \<noteq> {}\<close>
-
-lemma good_trace_set_zero_iff[simp]:
-  \<open>good_trace_set 0 T \<longleftrightarrow> T = {[]}\<close>
-  using good_trace_set_def by fastforce
-
-lemma good_trace_set_monoD[dest]:
-  \<open>good_trace_set m T \<Longrightarrow> m \<le> n \<Longrightarrow> good_trace_set n T\<close>
-  by (metis good_trace_set_def le_trans)
-
-lemma good_trace_set_step:
-  \<open>good_trace_set (Suc n) T \<Longrightarrow>
-    a#t \<in> T \<Longrightarrow>
-    good_trace_set n {t. a#t\<in>T}\<close>
-  by (force simp add: good_trace_set_def)
-
-
 inductive safe
-  :: \<open>('s::perm_alg \<times> 's) act list set \<Rightarrow>
+  :: \<open>('s::perm_alg \<times> 's) act tree \<Rightarrow>
       ('l::perm_alg \<times> 's) comm \<Rightarrow>
       'l \<Rightarrow>
       's \<Rightarrow>
@@ -433,35 +402,32 @@ inductive safe
       bool\<close>
   where
   safeI[intro]:
-  \<open>good_trace_set n T \<Longrightarrow>
-    \<comment> \<open> if the command is Skip, the postcondition is established \<close>
+  \<open>\<comment> \<open> if the command is Skip, the postcondition is established \<close>
     \<comment> \<open> TODO: This requires termination is represented as infinite stuttering past the end.
                We may want a different model. \<close>
     (c = Skip \<longrightarrow> q (hl, hs)) \<Longrightarrow>
-    \<comment> \<open> Tau stuttering preserves safety \<close>
-    (\<And>a t. a#t \<in> T \<Longrightarrow> a = Tau \<Longrightarrow> safe {t. a#t\<in>T} c hl hs r g q F) \<Longrightarrow>
     \<comment> \<open> Env steps are safe \<close>
-    (\<And>a t hs'.
-        a#t \<in> T \<Longrightarrow>
+    (\<And>a tt' hs'.
+        tt' |\<in>| branches tt a \<Longrightarrow>
         a = Env (hs, hs') \<Longrightarrow>
         r hs hs'\<Longrightarrow>
-        safe {t. a#t\<in>T} c hl hs' r g q F) \<Longrightarrow>
+        safe tt' c hl hs' r g q F) \<Longrightarrow>
     \<comment> \<open> Loc opsteps establish the guarantee \<close>
-    (\<And>a t c' hlx hlx' hs'.
-        a#t \<in> T \<Longrightarrow>
+    (\<And>a tt' c' hlx hlx' hs'.
+        tt' |\<in>| branches tt a \<Longrightarrow>
         a = Loc (hs, hs') \<Longrightarrow>
-        hl \<preceq> hlx \<Longrightarrow>
         ((hlx, hs), c) \<midarrow>a\<rightarrow> ((hlx', hs'), c') \<Longrightarrow>
+        hl \<preceq> hlx \<Longrightarrow>
         g hs hs') \<Longrightarrow>
     \<comment> \<open> opsteps are safe \<close>
-    (\<And>a t c' hl' hs'.
-        a#t \<in> T \<Longrightarrow>
+    (\<And>a tt' c' hl' hs'.
+        tt' |\<in>| branches tt a \<Longrightarrow>
         a = Tau \<or> a = Loc (hs, hs') \<Longrightarrow>
         ((hl, hs), c) \<midarrow>a\<rightarrow> ((hl', hs'), c') \<Longrightarrow>
-        safe {t. a#t\<in>T} c' hl' hs' r g q F) \<Longrightarrow>
+        safe tt' c' hl' hs' r g q F) \<Longrightarrow>
     \<comment> \<open> opsteps are frame closed \<close>
-    (\<And>a t c' hlf hlhlf' hs'.
-        a#t \<in> T \<Longrightarrow>
+    (\<And>a tt' c' hlf hlhlf' hs'.
+        tt' |\<in>| branches tt a \<Longrightarrow>
         a = Tau \<or> a = Loc (hs, hs') \<Longrightarrow>
         ((hl + hlf, hs), c) \<midarrow>a\<rightarrow> ((hlhlf', hs'), c') \<Longrightarrow>
         hl ## hlf \<Longrightarrow>
@@ -469,120 +435,111 @@ inductive safe
         (\<exists>hl'.
           hl' ## hlf \<and> hlhlf' = hl' + hlf \<and>
           (a = Tau \<longrightarrow> hl' = hl) \<and>
-          safe {t. a#t\<in>T} c' hl' hs' r g q F)) \<Longrightarrow>
+          safe tt' c' hl' hs' r g q F)) \<Longrightarrow>
     \<comment> \<open> conclude a step can be made \<close>
-    safe T c hl hs r g q F\<close>
+    safe tt c hl hs r g q F\<close>
 
 subsection \<open> Proofs about safe \<close>
 
 inductive_cases safeE[elim]: \<open>safe T c hl hs r g q F\<close>
 
-lemma safe_nil_iff[simp]:
-  \<open>safe {[]} c hl hs r g q F \<longleftrightarrow> (c = Skip \<longrightarrow> q (hl, hs))\<close>
+lemma safe_iff:
+  \<open>safe (Branch tf) c hl hs r g q F \<longleftrightarrow>
+      (c = Skip \<longrightarrow> q (hl, hs)) \<and>
+      (\<forall>a tt' hs'.
+          tt' |\<in>| tf a \<longrightarrow>
+          a = Env (hs, hs') \<longrightarrow>
+          r hs hs' \<longrightarrow>
+          safe tt' c hl hs' r g q F) \<and>
+      \<comment> \<open> Loc opsteps establish the guarantee \<close>
+      (\<forall>a tt' c' hlx hlx' hs'.
+          tt' |\<in>| tf a \<longrightarrow>
+          a = Loc (hs, hs') \<longrightarrow>
+          ((hlx, hs), c) \<midarrow>a\<rightarrow> ((hlx', hs'), c') \<longrightarrow>
+          hl \<preceq> hlx \<longrightarrow>
+          g hs hs') \<and>
+      \<comment> \<open> opsteps are safe \<close>
+      (\<forall>a tt' c' hl' hs'.
+          tt' |\<in>| tf a \<longrightarrow>
+          a = Tau \<or> a = Loc (hs, hs') \<longrightarrow>
+          ((hl, hs), c) \<midarrow>a\<rightarrow> ((hl', hs'), c') \<longrightarrow>
+          safe tt' c' hl' hs' r g q F) \<and>
+      \<comment> \<open> opsteps are frame closed \<close>
+      (\<forall>a tt' c' hlf hlhlf' hs'.
+          tt' |\<in>| tf a \<longrightarrow>
+          a = Tau \<or> a = Loc (hs, hs') \<longrightarrow>
+          ((hl + hlf, hs), c) \<midarrow>a\<rightarrow> ((hlhlf', hs'), c') \<longrightarrow>
+          hl ## hlf \<longrightarrow>
+          F hlf \<longrightarrow>
+          (\<exists>hl'.
+            hl' ## hlf \<and> hlhlf' = hl' + hlf \<and>
+            (a = Tau \<longrightarrow> hl' = hl) \<and>
+            safe tt' c' hl' hs' r g q F))\<close>
   apply (rule iffI)
-   apply (erule safeE, blast)
-  apply (rule safeI; simp add: good_trace_set_def)
+   apply (erule safeE, clarsimp simp add: dom_def, metis)
+  apply (rule safeI; simp; metis)
   done
 
-lemma safe_suc:
-  \<open>good_trace_set (Suc n) T \<Longrightarrow>
-    (c = Skip \<longrightarrow> q (hl, hs)) \<Longrightarrow>
-    (\<And>a t. a#t \<in> T \<Longrightarrow> a = Tau \<Longrightarrow> safe {t. a#t\<in>T} c hl hs r g q F) \<Longrightarrow>
-    (\<And>a t hs'.
-      a#t \<in> T \<Longrightarrow>
-      a = Env (hs, hs') \<Longrightarrow>
-      r hs hs' \<Longrightarrow>
-      safe {t. a#t\<in>T} c hl hs' r g q F) \<Longrightarrow>
-    (\<And>a t c' hlx hx'.
-      a#t \<in> T \<Longrightarrow>
-      a = Loc (hs, snd hx') \<Longrightarrow>
-      hl \<preceq> hlx \<Longrightarrow>
-      ((hlx, hs), c) \<midarrow>a\<rightarrow> (hx', c') \<Longrightarrow>
-      a \<noteq> Tau \<Longrightarrow>
-      g hs (snd hx')) \<Longrightarrow>
-    (\<And>a t c' hx'.
-      a#t \<in> T \<Longrightarrow>
-      a = Tau \<or> a = Loc (hs, snd hx') \<Longrightarrow>
-      ((hl, hs), c) \<midarrow>a\<rightarrow> (hx', c') \<Longrightarrow>
-      safe {t. a#t\<in>T} c' (fst hx') (snd hx') r g q F) \<Longrightarrow>
-    (\<And>a t c' hlf hx'.
-      a#t \<in> T \<Longrightarrow>
-      a = Tau \<or> a = Loc (hs, snd hx') \<Longrightarrow>
-      ((hl + hlf, hs), c) \<midarrow>a\<rightarrow> (hx', c') \<Longrightarrow>
-      hl ## hlf \<Longrightarrow>
-      F hlf \<Longrightarrow>
-      (\<exists>hl'.
-        hl' ## hlf \<and> fst hx' = hl' + hlf \<and>
-        (a = Tau \<longrightarrow> hl' = hl) \<and>
-        safe {t. a#t\<in>T} c' hl' (snd hx') r g q F)) \<Longrightarrow>
-    safe T c hl hs r g q F\<close>
-  by (rule safeI; force)
+lemma safe_nil_iff[simp]:
+  \<open>safe (Branch (\<lambda>_. {||})) c hl hs r g q F \<longleftrightarrow> (c = Skip \<longrightarrow> q (hl, hs))\<close>
+  by (simp add: safe_iff)
 
 lemma safe_suc_iff:
-  \<open>good_trace_set (Suc n) T \<Longrightarrow>
-    safe T c hl hs r g q F \<longleftrightarrow>
+  \<open>tf \<noteq> (\<lambda>_. {||}) \<Longrightarrow>
+    safe (Branch tf) c hl hs r g q F \<longleftrightarrow>
       (c = Skip \<longrightarrow> q (hl, hs)) \<and>
-      (\<forall>a t. a#t \<in> T \<longrightarrow> a = Tau \<longrightarrow> safe {t. a#t\<in>T} c hl hs r g q F) \<and>
-      (\<forall>a t hs'.
-        a#t \<in> T \<longrightarrow>
-        a = Env (hs, hs') \<longrightarrow>
-        r hs hs' \<longrightarrow>
-        safe {t. a#t\<in>T} c hl hs' r g q F) \<and>
-      (\<forall>a t c' hlx hx'.
-        a#t \<in> T \<longrightarrow>
-        a = Loc (hs, snd hx') \<longrightarrow>
-        hl \<preceq> hlx \<longrightarrow>
-        ((hlx, hs), c) \<midarrow>a\<rightarrow> (hx', c') \<longrightarrow>
-        a \<noteq> Tau \<longrightarrow>
-        g hs (snd hx')) \<and>
-      (\<forall>a t c' hx'.
-        a#t \<in> T \<longrightarrow>
-        a = Tau \<or> a = Loc (hs, snd hx') \<longrightarrow>
-        ((hl, hs), c) \<midarrow>a\<rightarrow> (hx', c') \<longrightarrow>
-        safe {t. a#t\<in>T} c' (fst hx') (snd hx') r g q F) \<and>
-      (\<forall>a t c' hlf hx'.
-        a#t \<in> T \<longrightarrow>
-        a = Tau \<or> a = Loc (hs, snd hx') \<longrightarrow>
-        ((hl + hlf, hs), c) \<midarrow>a\<rightarrow> (hx', c') \<longrightarrow>
-        hl ## hlf \<longrightarrow>
-        F hlf \<longrightarrow>
-        (\<exists>hl'.
-          hl' ## hlf \<and> fst hx' = hl' + hlf \<and>
-          (a = Tau \<longrightarrow> hl' = hl) \<and>
-          safe {t. a#t\<in>T} c' hl' (snd hx') r g q F))\<close>
-  apply (rule iffI)
-   apply (erule safeE, intro conjI)
-        apply (clarsimp; fail)+
-  apply (rule safe_suc, blast; metis)
-  done
+      (\<forall>a tt' hs'.
+          tt' |\<in>| tf a \<longrightarrow>
+          a = Env (hs, hs') \<longrightarrow>
+          r hs hs' \<longrightarrow>
+          safe tt' c hl hs' r g q F) \<and>
+      \<comment> \<open> Loc opsteps establish the guarantee \<close>
+      (\<forall>a tt' c' hlx hlx' hs'.
+          tt' |\<in>| tf a \<longrightarrow>
+          a = Loc (hs, hs') \<longrightarrow>
+          ((hlx, hs), c) \<midarrow>a\<rightarrow> ((hlx', hs'), c') \<longrightarrow>
+          hl \<preceq> hlx \<longrightarrow>
+          g hs hs') \<and>
+      \<comment> \<open> opsteps are safe \<close>
+      (\<forall>a tt' c' hl' hs'.
+          tt' |\<in>| tf a \<longrightarrow>
+          a = Tau \<or> a = Loc (hs, hs') \<longrightarrow>
+          ((hl, hs), c) \<midarrow>a\<rightarrow> ((hl', hs'), c') \<longrightarrow>
+          safe tt' c' hl' hs' r g q F) \<and>
+      \<comment> \<open> opsteps are frame closed \<close>
+      (\<forall>a tt' c' hlf hlhlf' hs'.
+          tt' |\<in>| tf a \<longrightarrow>
+          a = Tau \<or> a = Loc (hs, hs') \<longrightarrow>
+          ((hl + hlf, hs), c) \<midarrow>a\<rightarrow> ((hlhlf', hs'), c') \<longrightarrow>
+          hl ## hlf \<longrightarrow>
+          F hlf \<longrightarrow>
+          (\<exists>hl'.
+            hl' ## hlf \<and> hlhlf' = hl' + hlf \<and>
+            (a = Tau \<longrightarrow> hl' = hl) \<and>
+            safe tt' c' hl' hs' r g q F))\<close>
+  by (simp add: safe_iff dom_def)
 
 lemma safeD:
-  \<open>safe T c hl hs r g q F \<Longrightarrow> \<exists>n. good_trace_set n T\<close>
-  \<open>safe T c hl hs r g q F \<Longrightarrow>
+  \<open>safe tt c hl hs r g q F \<Longrightarrow>
     c = Skip \<Longrightarrow>
     q (hl, hs)\<close>
-  \<open>safe T c hl hs r g q F \<Longrightarrow>
-    a#t \<in> T \<Longrightarrow>
-    a = Tau \<Longrightarrow>
-    safe {t. a#t\<in>T} c hl hs r g q F\<close>
-  \<open>safe T c hl hs r g q F \<Longrightarrow>
-    a#t \<in> T \<Longrightarrow>
-    a = Env (hs, hs') \<Longrightarrow>
+  \<open>safe tt c hl hs r g q F \<Longrightarrow>
+    tt' |\<in>| branches tt (Env (hs, hs')) \<Longrightarrow>
     r hs hs' \<Longrightarrow>
-    safe {t. a#t\<in>T} c hl hs' r g q F\<close>
-  \<open>safe T c hl hs r g q F \<Longrightarrow>
-    a#t \<in> T \<Longrightarrow>
+    safe tt' c hl hs' r g q F\<close>
+  \<open>safe tt c hl hs r g q F \<Longrightarrow>
+    tt' |\<in>| branches tt a \<Longrightarrow>
     a = Loc (hs, hs') \<Longrightarrow>
-    hl \<preceq> hlx \<Longrightarrow>
     ((hlx, hs), c) \<midarrow>a\<rightarrow> ((hl', hs'), c') \<Longrightarrow>
+    hl \<preceq> hlx \<Longrightarrow>
     g hs hs'\<close>
-  \<open>safe T c hl hs r g q F \<Longrightarrow>
-    a#t \<in> T \<Longrightarrow>
+  \<open>safe tt c hl hs r g q F \<Longrightarrow>
+    tt' |\<in>| branches tt a \<Longrightarrow>
     a = Tau \<or> a = Loc (hs, hs') \<Longrightarrow>
     ((hl, hs), c) \<midarrow>a\<rightarrow> ((hl', hs'), c') \<Longrightarrow>
-    safe {t. a#t\<in>T} c' hl' hs' r g q F\<close>
-  \<open>safe T c hl hs r g q F \<Longrightarrow>
-    a#t \<in> T \<Longrightarrow>
+    safe tt' c' hl' hs' r g q F\<close>
+  \<open>safe tt c hl hs r g q F \<Longrightarrow>
+    tt' |\<in>| branches tt a \<Longrightarrow>
     a = Tau \<or> a = Loc (hs, hs') \<Longrightarrow>
     ((hl + hlf, hs), c) \<midarrow>a\<rightarrow> ((hlhlf', hs'), c') \<Longrightarrow>
     hl ## hlf \<Longrightarrow>
@@ -590,16 +547,12 @@ lemma safeD:
     (\<exists>hl'.
       hl' ## hlf \<and> hlhlf' = hl' + hlf \<and>
       (a = Tau \<longrightarrow> hl' = hl) \<and>
-      safe {t. a#t\<in>T} c' hl' hs' r g q F)\<close>
-        apply (erule safeE)
-        apply blast
-       apply blast
-      apply (erule safeE; simp; fail)+
-  done
+      safe tt' c' hl' hs' r g q F)\<close>
+  by (erule safeE, force simp add: dom_def)+
 
-lemma safe_suc_frame_leftD:
-  \<open>safe T c hl hs r g q F \<Longrightarrow>
-    a#t \<in> T \<Longrightarrow>
+lemma safe_frame_leftD:
+  \<open>safe tt c hl hs r g q F \<Longrightarrow>
+    tt' |\<in>| branches tt a \<Longrightarrow>
     a = Tau \<or> a = Loc (hs, hs') \<Longrightarrow>
     ((hlf + hl, hs), c) \<midarrow>a\<rightarrow> ((hlfhl', hs'), c') \<Longrightarrow>
     hlf ## hl \<Longrightarrow>
@@ -607,8 +560,8 @@ lemma safe_suc_frame_leftD:
     (\<exists>hl'.
       hl' ## hlf \<and> hlfhl' = hlf + hl' \<and>
       (a = Tau \<longrightarrow> hl' = hl) \<and>
-      safe {t. a#t\<in>T} c' hl' hs' r g q F)\<close>
-  apply (drule safeD(7)[where hlf=hlf and hlhlf'=hlfhl'], blast, blast)
+      safe tt' c' hl' hs' r g q F)\<close>
+  apply (drule safeD(5)[where hlf=hlf and hlhlf'=hlfhl'], blast, blast)
      apply (simp add: disjoint_sym_iff[of _ hlf] partial_add_commute[of hlf]; fail)
     apply (simp add: disjoint_sym_iff[of _ hlf] partial_add_commute[of hlf]; fail)
    apply blast
@@ -622,8 +575,7 @@ lemma safe_postpred_monoD:
   \<open>safe n c hl hs r g q F \<Longrightarrow> q \<le> q' \<Longrightarrow> safe n c hl hs r g q' F\<close>
   apply (induct rule: safe.induct)
   apply (rule safeI)
-        apply blast
-       apply (clarsimp simp add: le_fun_def; fail)+
+      apply (clarsimp simp add: le_fun_def; fail)+
   apply metis
   done
 
@@ -637,13 +589,11 @@ proof (induct rule: safe.induct)
     using safeI.hyps(1,2) safeI.prems
     apply -
     apply (rule safe.safeI)
-           apply blast
-          apply blast
-         apply (simp add: safeI.hyps; fail)
+        apply blast
        apply (simp add: safeI.hyps; fail)
-      apply (frule safeI.hyps(7); blast)
-     apply (frule safeI.hyps(9); blast)
-    apply (frule safeI.hyps(10); blast)
+      apply (frule safeI.hyps(4); blast)
+     apply (frule safeI.hyps(6); blast)
+    apply (frule safeI.hyps(7); blast)
     done
 qed
 
@@ -653,9 +603,7 @@ lemma safe_rely_antimonoD:
   \<open>safe n c hl hs r g q F \<Longrightarrow> r' \<le> r \<Longrightarrow> safe n c hl hs r' g q F\<close>
   apply (induct rule: safe.induct)
   apply (rule safeI)
-        apply blast
-       apply blast
-      apply fast
+      apply blast
      apply (auto; fail)[1]
     apply metis
    apply metis
@@ -664,47 +612,82 @@ lemma safe_rely_antimonoD:
 
 lemmas safe_rely_antimono = safe_rely_antimonoD[rotated]
 
+(* TODO: move *)
+inductive subtree_eq :: \<open>'a tree \<Rightarrow> 'a tree \<Rightarrow> bool\<close> (infix \<open>\<le>\<^sub>\<TT>\<close> 50) where
+  subtree_eqI:
+  \<open>\<forall>x a. a |\<in>| t1 x \<longrightarrow> (\<exists>b. b |\<in>| t2 x \<and> a \<le>\<^sub>\<TT> b) \<Longrightarrow>
+    Branch t1 \<le>\<^sub>\<TT> Branch t2\<close>
 
-lemma safe_traces_antimonoD:
-  assumes
-    \<open>safe T c hl hs r g q F\<close>
-    \<open>T' \<subseteq> T\<close>
-    \<open>good_trace_set n T'\<close>
-  shows
-    \<open>safe T' c hl hs r g q F\<close>
-  using assms
-  apply (induct n arbitrary: T T' c hl hs r g q F)
-   apply force
-  apply (rule safeI)
-        apply blast
-       apply blast
-      apply (subgoal_tac \<open>{t. a # t \<in> T'} \<subseteq> {t. a # t \<in> T}\<close>)
-       prefer 2
-       apply (meson Collect_mono subsetD; fail)
-      apply (frule safeD(3), blast, blast)
-      apply (metis good_trace_set_step)
-     apply (subgoal_tac \<open>{t. a # t \<in> T'} \<subseteq> {t. a # t \<in> T}\<close>)
-      prefer 2
-      apply (meson Collect_mono subsetD; fail)
-     apply (frule safeD(4), blast, blast, blast)
-     apply (metis good_trace_set_step)
-    apply (subgoal_tac \<open>{t. a # t \<in> T'} \<subseteq> {t. a # t \<in> T}\<close>)
-     prefer 2
-     apply (meson Collect_mono subsetD; fail)
-    apply (meson safeD(5) subsetD; fail)
-   apply (subgoal_tac \<open>{t. a # t \<in> T'} \<subseteq> {t. a # t \<in> T}\<close>)
-    prefer 2
-    apply (meson Collect_mono subsetD; fail)
-   apply (frule safeD(6), fast, fast, fast)
-   apply (metis good_trace_set_step)
-  apply (subgoal_tac \<open>{t. a # t \<in> T'} \<subseteq> {t. a # t \<in> T}\<close>)
-   prefer 2
-   apply (meson Collect_mono subsetD; fail)
-  apply (frule safeD(7), fast, fast, fast, fast, fast)
-  apply (metis good_trace_set_step)
+inductive_cases subtree_eqE[elim!]: \<open>Branch x \<le>\<^sub>\<TT> Branch y\<close>
+inductive_cases subtree_eqE'[elim]: \<open>x \<le>\<^sub>\<TT> y\<close>
+
+abbreviation(input) tree_supset_eq :: \<open>'a tree \<Rightarrow> 'a tree \<Rightarrow> bool\<close> (infix \<open>\<ge>\<^sub>\<TT>\<close> 50) where
+  \<open>x \<ge>\<^sub>\<TT> y \<equiv> y \<le>\<^sub>\<TT> x\<close>
+
+lemma subtree_eq_refl[iff]:
+  \<open>x \<le>\<^sub>\<TT> x\<close>
+  by (induct x) (blast intro: subtree_eqI dest: nth_mem)
+
+lemma subtree_eq_trans[trans]:
+  \<open>x \<le>\<^sub>\<TT> y \<Longrightarrow> y \<le>\<^sub>\<TT> z \<Longrightarrow> x \<le>\<^sub>\<TT> z\<close>
+  by (induct arbitrary: z rule: subtree_eq.induct)
+    (erule subtree_eqE', clarsimp, rule subtree_eqI, meson)
+(*
+lemma subtree_eq_antisym:
+  \<open>x \<le>\<^sub>\<TT> y \<Longrightarrow> y \<le>\<^sub>\<TT> x \<Longrightarrow> x = y\<close>
+  apply (induct rule: subtree_eq.induct)
+  apply (clarsimp simp add: fun_eq_iff fset_eq_iff)
+  apply (rule iffI)
+   apply (drule spec2, drule mp, blast)
+   apply clarsimp
+   apply (drule spec2, drule mp, blast)
+   apply clarsimp
+  oops
+  *)
+
+interpretation tree: preorder \<open>(\<le>\<^sub>\<TT>)\<close> \<open>((\<le>\<^sub>\<TT>) \<sqinter> - (\<ge>\<^sub>\<TT>))\<close>
+  apply standard
+     apply (force simp add: le_fun_def)
+    apply force
+   apply (force intro: subtree_eq_trans)
   done
 
+lemma subtree_eqD[dest]:
+  \<open>t1 \<le>\<^sub>\<TT> t2 \<Longrightarrow> a |\<in>| branches t1 x \<Longrightarrow> \<exists>b. b |\<in>| branches t2 x \<and> a \<le>\<^sub>\<TT> b\<close>
+  by fastforce
 
+lemma safe_subtree_eq_antimono:
+  assumes   
+    \<open>safe tt c hl hs r g q F\<close>
+    \<open>tt' \<le>\<^sub>\<TT> tt\<close>
+  shows
+    \<open>safe tt' c hl hs r g q F\<close>
+  using assms
+  apply (induct tt arbitrary: tt' c hl hs r g q F)
+  apply (rule safeI)
+      apply blast
+     apply clarsimp
+     apply (frule subtree_eqD, blast)
+     apply clarsimp
+     apply (frule safeD(2), force, force)
+     apply (metis range_eqI)
+    apply clarsimp
+    apply (frule subtree_eqD, blast)
+    apply clarsimp
+    apply (frule safeD(3); force)
+   apply clarsimp
+   apply (frule subtree_eqD, blast)
+   apply clarsimp
+   apply (frule safeD(4), force, force, force)
+   apply (metis range_eqI)
+  apply clarsimp
+  apply (frule subtree_eqD, blast)
+  apply clarsimp
+  apply (frule safeD(5), force, force, force, force, force)
+  apply (metis range_eqI)
+  done
+
+(*
 (* TODO: move *)
 lemma ball_eq_iff:
   \<open>(\<forall>x\<in>X. x = z) \<longleftrightarrow> X = {} \<or> X = {z}\<close>
@@ -773,22 +756,18 @@ lemma safe_step_antimonoD:
    apply metis
   apply blast
   done
+*)
 
 lemma safe_frameset_antimonoD:
   \<open>safe n c hl hs r g q F \<Longrightarrow> F' \<le> F \<Longrightarrow> safe n c hl hs r g q F'\<close>
   apply (induct arbitrary: F' rule: safe.inducts)
   apply clarsimp
   apply (rule safeI)
-        apply force
-       apply force
       apply force
      apply force
-    apply force
-   apply force
+    apply metis
+   apply metis
   apply (simp add: le_fun_def)
-  apply (drule meta_spec2, drule meta_spec2, drule meta_spec2,
-      drule meta_mp, assumption, drule meta_mp, assumption,
-      drule meta_mp, assumption, drule meta_mp, assumption)
   apply metis
   done
 
@@ -796,80 +775,71 @@ lemma safe_frameset_antimonoD:
 subsection \<open> Safety of Skip \<close>
 
 lemma safe_skip':
-  \<open>good_trace_set n T \<Longrightarrow>
-    sswa r q (hl, hs) \<Longrightarrow>
-    safe T Skip hl hs r g (sswa r q) F\<close>
-  apply (induct n arbitrary: T hl hs)
-   apply force
-  apply (rule safe_suc)
-        apply force
-       apply force
-      apply (metis good_trace_set_step)
-     apply (metis good_trace_set_step sswa_step)
+  \<open>sswa r q (hl, hs) \<Longrightarrow> safe tt Skip hl hs r g (sswa r q) F\<close>
+  apply (induct tt arbitrary: hl hs)
+  apply (rule safeI)
+      apply force
+     apply (clarsimp simp add: image_def, metis sswa_step)
     apply force
    apply force
   apply force
   done
 
 lemma safe_skip:
-  \<open>good_trace_set n T \<Longrightarrow>
-    p (hl, hs) \<Longrightarrow>
+  \<open>p (hl, hs) \<Longrightarrow>
     sswa r p \<le> q \<Longrightarrow>
     safe T Skip hl hs r g q F\<close>
-  apply (rule safe_postpred_monoD[OF safe_skip'[where q=p]])
-    apply blast
-   apply (metis (mono_tags, lifting) rel_Times_iff rtranclp.rtrancl_refl sp_def)
-  apply blast
-  done
+  by (rule safe_postpred_monoD[OF safe_skip'[where q=p]]; blast)
 
 
 subsection \<open> Safety of frame \<close>
 
 lemma safe_frame':
-  \<open>safe n c hl hs r g q F \<Longrightarrow>
+  \<open>safe tt c hl hs r g q F \<Longrightarrow>
+    sswa (r \<squnion> g) f \<le> F \<times>\<^sub>P \<top> \<Longrightarrow>
     hl ## hlf \<Longrightarrow>
-    (sswa (r \<squnion> g) f) \<le> F \<times>\<^sub>P \<top> \<Longrightarrow>
     sswa (r \<squnion> g) f (hlf, hs) \<Longrightarrow>
-    safe n c (hl + hlf) hs r g (q \<^emph>\<and> sswa (r \<squnion> g) f) (F \<midarrow>\<^emph> F)\<close>
+    safe tt c (hl + hlf) hs r g (q \<^emph>\<and> sswa (r \<squnion> g) f) (\<exists>\<^sub>L (sswa (r \<squnion> g) f) \<midarrow>\<^emph> F)\<close>
 proof (induct arbitrary: hlf rule: safe.induct)
-  case (safeI n T c q hl hs r g F)
+  case (safeI c q hl hs tt r g F)
   show ?case
     using safeI.prems safeI.hyps(1)
     apply -
     apply (rule safe.safeI)
-          apply blast
       (* subgoal: skip *)
-         apply (clarsimp simp add: sepconj_conj_def simp del: sup_apply top_apply)
-         apply (drule mp[OF safeI.hyps(2)])
-         apply blast
-      (* subgoal: tau stuttering *)
-        apply (metis safeI.hyps(4))
+        apply (clarsimp simp add: sepconj_conj_def simp del: sup_apply top_apply)
+        apply blast
       (* subgoal: rely step *)
-       apply (rule safeI.hyps(6), blast, blast, blast, blast, blast)
+       apply (rule safeI.hyps(3), blast, blast, blast, blast, blast)
        apply (rule sswa_step, rule sup2I1, blast, blast)
       (* subgoal: opstep guarantee *)
       apply (simp add: opstep_iff del: sup_apply top_apply)
-      apply (metis partial_le_part_left safeI.hyps(7))
+      apply (metis partial_le_part_left safeI.hyps(4))
       (* subgoal: plain opstep *)
-     apply (frule safeI.hyps(10), blast, blast, force, force)
+     apply (frule safeI.hyps(7), blast, blast, force, force)
      apply (erule opstep_act_cases, force)
      apply (clarsimp simp del: sup_apply top_apply)
-     apply (metis partial_le_plus safeI.hyps(7) sswa_stepD sup2I2)
+     apply (frule safeI.hyps(4), force, force, metis partial_le_plus)
+     apply (metis sswa_step sup2CI)
       (* subgoal: framed opstep *)
     apply (clarsimp simp add: partial_add_assoc2[of hl hlf] simp del: sup_apply top_apply)
-    apply (frule safeI.hyps(10), blast, blast)
+    apply (frule safeI.hyps(7), blast, blast)
       apply (metis disjoint_add_swap_lr)
-     apply (simp add: le_fun_def sepimp_def)
-     apply (metis (mono_tags) disjoint_add_leftR disjoint_sym_iff partial_add_commute)
+     apply (clarsimp simp add: le_fun_def sepimp_def simp del: sup_apply top_apply)
+     apply (metis disjoint_preservation2 disjoint_sym_iff partial_add_commute partial_le_plus2
+        tuple_ex_leftI)
     apply (rename_tac hlf2 hl'hlfhlf2 hs')
     apply (clarsimp simp del: sup_apply top_apply)
     apply (erule opstep_act_cases, force simp add: partial_add_assoc2)
     apply (clarsimp simp del: sup_apply top_apply)
-    apply (frule safeI.hyps(7))
-       apply fast
-      prefer 2
-      apply force
-     apply (metis disjoint_add_swap_lr partial_le_plus)
+    apply (frule safeI.hyps(7)[rotated 2])
+        apply (metis disjoint_add_swap_lr)
+       apply (metis disjoint_add_rightR disjoint_sym_iff partial_add_commute sepimp_def
+        tuple_ex_leftI)
+      apply assumption
+     apply blast
+    apply (clarsimp simp del: sup_apply top_apply)
+    apply (frule safeI.hyps(4), force, force, metis disjoint_add_swap_lr partial_le_plus)
     apply (intro exI conjI)
       prefer 2
       apply (rule partial_add_assoc[symmetric])
@@ -877,7 +847,7 @@ proof (induct arbitrary: hlf rule: safe.induct)
        apply (metis disjoint_add_leftR)
       apply (metis disjoint_add_leftR disjoint_add_rightR)
      apply (metis disjoint_add_leftR disjoint_add_swap_rl)
-    apply (metis disjoint_add_leftR disjoint_add_rightL sswa_step sup2I2)
+    apply (meson disjoint_add_leftR disjoint_add_rightL sswa_step sup2CI; fail)
     done
 qed
 
@@ -887,7 +857,7 @@ lemma safe_frame:
     f (hlf, hs) \<Longrightarrow>
     sswa (r \<squnion> g) f \<le> F \<times>\<^sub>P \<top> \<Longrightarrow>
     sswa (r \<squnion> g) f \<le> f' \<Longrightarrow>
-    F' \<le> F \<midarrow>\<^emph> F \<Longrightarrow>
+    F' \<le> \<exists>\<^sub>L (sswa (r \<squnion> g) f) \<midarrow>\<^emph> F \<Longrightarrow>
     safe n c (hl + hlf) hs r g (q \<^emph>\<and> f') F'\<close>
   apply (rule safe_postpred_monoD)
    apply (rule safe_frameset_antimonoD)
@@ -1150,20 +1120,27 @@ qed blast
 
 subsubsection \<open> Safety of external nondeterminism \<close>
 
-inductive endet_traces'
-  :: \<open>'a act list \<Rightarrow> 'a act list \<Rightarrow> 'a act list \<Rightarrow> bool\<close>
-  where
-  nil[intro]: \<open>endet_traces' [] [] []\<close>
-| loc_stepL[intro]: \<open>endet_traces' (Loc xy # ta) tb (Loc xy # ta)\<close>
-| loc_stepR[intro]: \<open>endet_traces' ta (Loc xy # tb) (Loc xy # tb)\<close>
-| tau_stepL[intro]:
-  \<open>endet_traces' ta tb t \<Longrightarrow> endet_traces' (Tau # ta) tb (Tau # t)\<close>
-| tau_stepR[intro]:
-  \<open>endet_traces' ta tb t \<Longrightarrow> endet_traces' ta (Tau # tb) (Tau # t)\<close>
-| env_stepL[intro]:
-  \<open>endet_traces' ta tb t \<Longrightarrow> endet_traces' (Env xy # ta) tb (Env xy # t)\<close>
-| env_stepR[intro]:
-  \<open>endet_traces' ta tb t \<Longrightarrow> endet_traces' ta (Env xy # tb) (Env xy # t)\<close>
+definition \<open>tree_term_rel \<equiv> {(t, Branch f)|t f. \<exists>x. t |\<in>| f x}\<^sup>+\<close>
+
+function endet_tracetree' :: \<open>'a act tree \<Rightarrow> 'a act tree \<Rightarrow> 'a act tree\<close> where
+  \<open>endet_tracetree' (Branch ta) (Branch tb) = Branch (\<lambda>a.
+    case a of
+      Env x \<Rightarrow>
+        ((\<lambda>x. endet_tracetree' x (Branch tb)) |`| ta (Env x)) |\<union>|
+        (endet_tracetree' (Branch ta) |`| tb (Env x))
+    | Loc x \<Rightarrow> ta (Loc x) |\<union>| tb (Loc x)
+    | Tau \<Rightarrow>
+        ((\<lambda>x. endet_tracetree' x (Branch tb)) |`| ta Tau) |\<union>|
+        (endet_tracetree' (Branch ta) |`| tb Tau)
+  )\<close>
+  by pat_completeness auto
+termination
+  apply (relation \<open>tree_term_rel \<times> UNIV \<union> UNIV \<times> tree_term_rel\<close>)
+  subgoal
+    sorry
+     apply (clarsimp simp add: tree_term_rel_def)
+  oops
+  
 
 inductive_cases endet_traces'_loc3E[elim]:
   \<open>endet_traces' ta tb (Loc xy # t')\<close>
@@ -1184,34 +1161,10 @@ lemma endet_traces'_full_dom:
   apply (case_tac a; blast)
   done
 
-lemma helper1:
-  \<open>endet_traces' ta tb t \<Longrightarrow>
-    length ta \<le> ma \<Longrightarrow>
-    length tb \<le> mb \<Longrightarrow>
-    length t \<le> ma + mb\<close>
-  by (induct arbitrary: ma mb rule: endet_traces'.inducts)
-    force+
-
-lemma good_trace_set_endet_traces:
-  \<open>good_trace_set ma A \<Longrightarrow>
-    good_trace_set mb B \<Longrightarrow>
-    good_trace_set (ma + mb) (endet_traces A B)\<close>
-  apply (clarsimp simp add: good_trace_set_def endet_traces_def)
-  apply (rule conjI)
-   apply (force intro: helper1)
-  apply (simp add: endet_traces'_full_dom ex_in_conv)
-  done
-
-lemma endet_traces_Tau3_eq:
-  \<open>{t. \<exists>ta. ta \<in> A \<and> (\<exists>tb. tb \<in> B \<and> endet_traces' ta tb (Tau # t))} =
-    endet_traces {t. Tau # t \<in> A} B \<union>
-    endet_traces A {t. Tau # t \<in> B}\<close>
-  by (force simp add: endet_traces_def set_eq_iff)
-
 lemma safe_endet:
   \<open>safe Ta c1 hl hs r g q F \<Longrightarrow>
     safe Tb c2 hl hs r g q F \<Longrightarrow>
-    safe (endet_traces Ta Tb) (c1 \<box> c2) hl hs r g q F\<close>
+    safe (endet_tracetree Ta Tb) (c1 \<box> c2) hl hs r g q F\<close>
 proof (induct arbitrary: Tb c2 rule: safe.inducts)
   case (safeI n T c q hl hs r g F)
   note safe_b = safeD[OF safeI.prems]

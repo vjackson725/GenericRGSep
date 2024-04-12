@@ -870,6 +870,8 @@ end
 
 section \<open> Times \<close>
 
+subsection \<open> predicate tuple product \<close>
+
 definition pred_Times :: \<open>('a \<Rightarrow> bool) \<Rightarrow> ('b \<Rightarrow> bool) \<Rightarrow> ('a \<times> 'b \<Rightarrow> bool)\<close>
   (infixr \<open>\<times>\<^sub>P\<close> 80) where
   \<open>p \<times>\<^sub>P q \<equiv> \<lambda>(a,b). p a \<and> q b\<close>
@@ -889,6 +891,40 @@ lemma bot_pred_Times_eq[simp]: \<open>\<bottom> \<times>\<^sub>P b = \<bottom>\<
 
 lemma pred_Times_bot_eq[simp]: \<open>a \<times>\<^sub>P \<bottom> = \<bottom>\<close>
   by (simp add: pred_Times_def fun_eq_iff)
+
+subsection \<open> existential tuple predicates \<close>
+
+definition tuple_ex_left :: \<open>_ \<Rightarrow> _\<close> (\<open>\<exists>\<^sub>L\<close>) where
+  \<open>\<exists>\<^sub>L p \<equiv> \<lambda>x. \<exists>y. p (x,y)\<close>
+
+definition tuple_ex_right :: \<open>_ \<Rightarrow> _\<close> (\<open>\<exists>\<^sub>R\<close>) where
+  \<open>\<exists>\<^sub>R p \<equiv> \<lambda>y. \<exists>x. p (x,y)\<close>
+
+lemma tuple_ex_leftI[intro]:
+  \<open>p (x, y) \<Longrightarrow> \<exists>\<^sub>L p x\<close>
+  by (meson tuple_ex_left_def)
+
+lemma tuple_ex_rightI[intro]:
+  \<open>p (x, y) \<Longrightarrow> \<exists>\<^sub>R p y\<close>
+  by (meson tuple_ex_right_def)
+
+lemma tuple_ex_leftR[elim]:
+  \<open>\<exists>\<^sub>L p x \<Longrightarrow> \<exists>y. p (x, y)\<close>
+  by (meson tuple_ex_left_def)
+
+lemma tuple_ex_rightE[elim]:
+  \<open>\<exists>\<^sub>R p y \<Longrightarrow> \<exists>x. p (x, y)\<close>
+  by (meson tuple_ex_right_def)
+
+lemma tuple_ex_left_galois:
+  \<open>\<exists>\<^sub>L p \<le> q \<longleftrightarrow> p \<le> q \<times>\<^sub>P \<top>\<close>
+  by (simp add: tuple_ex_left_def le_fun_def)
+
+lemma tuple_ex_right_galois:
+  \<open>\<exists>\<^sub>R p \<le> q \<longleftrightarrow> p \<le> \<top> \<times>\<^sub>P q\<close>
+  by (force simp add: tuple_ex_right_def le_fun_def)
+
+subsection \<open> relation tuple product \<close>
 
 definition rel_Times :: \<open>('a \<Rightarrow> 'b \<Rightarrow> bool) \<Rightarrow> ('c \<Rightarrow> 'd \<Rightarrow> bool) \<Rightarrow> ('a \<times> 'c \<Rightarrow> 'b \<times> 'd \<Rightarrow> bool)\<close>
   (infixr \<open>\<times>\<^sub>R\<close> 80) where
