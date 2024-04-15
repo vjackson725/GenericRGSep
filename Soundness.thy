@@ -385,6 +385,9 @@ lemma opstep_WhileLoop_iff[opstep_iff]:
 
 section \<open> Trace semantics \<close>
 
+thm natLeq_card_order natLeq_cinfinite regularCard_natLeq finite_iff_ordLess_natLeq
+
+
 (* a rose tree *)
 datatype 'a tree = Branch (branches: \<open>'a \<Rightarrow> 'a tree fset\<close>)
 
@@ -446,21 +449,96 @@ lemma subtree_eqD[dest]:
   \<open>t1 \<le>\<^sub>\<TT> t2 \<Longrightarrow> a |\<in>| branches t1 x \<Longrightarrow> \<exists>b. b |\<in>| branches t2 x \<and> a \<le>\<^sub>\<TT> b\<close>
   by fastforce
 
-definition \<open>tree_term_rel \<equiv> {(t, Branch f)|t f. \<exists>x. t |\<in>| f x}\<^sup>+\<close>
+definition tree_part_eq :: \<open>_ \<Rightarrow> _ \<Rightarrow> bool\<close> (infix \<open>\<le>\<^sub>t\<^sub>p\<close> 50) where
+  \<open>tree_part_eq \<equiv> (\<lambda>a b. \<exists>x. a |\<in>| branches b x)\<^sup>*\<^sup>*\<close>
 
-definition \<open>tree_term_rel2 \<equiv> {(x, y). x \<le>\<^sub>\<TT> y \<and> x \<noteq> y}\<close>
+lemmas tree_part_eq_induct =
+  rtranclp.induct[of \<open>\<lambda>a b. \<exists>x. a |\<in>| branches b x\<close>,
+    unfolded tree_part_eq_def[symmetric],
+    consumes 1,
+    case_names base step]
+
+lemmas converse_tree_part_eq_induct =
+  converse_rtranclp_induct[of \<open>\<lambda>a b. \<exists>x. a |\<in>| branches b x\<close>,
+    unfolded tree_part_eq_def[symmetric],
+    consumes 1,
+    case_names base step]
+
+definition tree_part :: \<open>_ \<Rightarrow> _ \<Rightarrow> bool\<close> (infix \<open><\<^sub>t\<^sub>p\<close> 50) where
+  \<open>tree_part \<equiv> (\<lambda>a b. \<exists>x. a |\<in>| branches b x)\<^sup>+\<^sup>+\<close>
+
+lemmas tree_part_induct =
+  tranclp.induct[of \<open>\<lambda>a b. \<exists>x. a |\<in>| branches b x\<close>,
+    unfolded tree_part_def[symmetric],
+    consumes 1,
+    case_names base step]
+
+lemmas converse_tree_part_induct =
+  converse_tranclp_induct[of \<open>\<lambda>a b. \<exists>x. a |\<in>| branches b x\<close>,
+    unfolded tree_part_def[symmetric],
+    consumes 1,
+    case_names base step]
+
+lemma tree_branch_not_eq:
+  \<open>a |\<in>| branches b x \<Longrightarrow> a \<noteq> b\<close>
+  by (induct b arbitrary: a) fastforce
+
+lemma tree_branch_no_loops:
+  \<open>a |\<in>| branches b x \<Longrightarrow> b |\<in>| branches a y \<Longrightarrow> False\<close>
+  by (induct b arbitrary: a x y) fastforce
+
+inductive is_subtree :: \<open>'a tree \<Rightarrow> 'a tree \<Rightarrow> bool\<close> where
+  subtree_refl: \<open>is_subtree t t\<close>
+| subtree_step: \<open>is_subtree a b \<Longrightarrow> b |\<in>| branches c x \<Longrightarrow> is_subtree a c\<close>
+
+lemma tree_part_no_loops:
+  \<open>a \<le>\<^sub>t\<^sub>p b \<Longrightarrow> b \<le>\<^sub>t\<^sub>p a \<Longrightarrow> a = b\<close>
+proof (induct a arbitrary: b)
+  case (Branch xa)
+  then show ?case
+    apply (clarsimp simp add: image_def)
+
+    sorry
+qed
+
+
+
+lemma tree_part_not_eq:
+  \<open>\<forall>a. a \<le>\<^sub>t\<^sub>p b \<longrightarrow> a \<noteq> b\<close>
+  apply (induct b)
+  apply (clarsimp simp add: image_def)
+  apply (erule tree_partE)
+   apply fastforce
+  apply (rename_tac fa b x)
+  apply (drule_tac x=\<open>fa x\<close> and y=b in meta_spec2)
+  apply (drule meta_mp, blast)
+  apply clarsimp
+  
+
+  sledgehammer
+
+lemma \<open>(a,b) \<in> tree_ord_rel \<longleftrightarrow> tree_part a b\<close>
+proof (rule iffI)
+  assume \<open>(a,b) \<in> tree_ord_rel\<close>
+  then show \<open>tree_part a b \<and> a \<noteq> b\<close>
+    unfolding tree_ord_rel_def
+    apply (induct rule: trancl.induct)
+     apply (force dest: tree_part_not_eq)
+    apply (clarsimp dest: tree_part_not_eq)
+    try0
+
+
 
 lemma tree_term_rel_wf_helper:
-  \<open>(x, z) \<in> {(t, Branch f) |t f. \<exists>x. t |\<in>| f x}\<^sup>+ \<Longrightarrow>
+  \<open>(x, z) \<in> {ab. \<exists>x. fst ab |\<in>| branches (snd ab) x}\<^sup>+ \<Longrightarrow>
     (\<forall>t a. t |\<in>| branches z a \<longrightarrow> P t) \<Longrightarrow>
     P x\<close>
-  apply (induct rule: converse_trancl_induct)
+  apply (induct rule: trancl.induct)
    apply force
   apply clarsimp
-
   oops
 
-lemma tree_term_rel_wf: \<open>wf tree_term_rel\<close>
+lemma tree_term_rel_wf: \<open>wf tree_ord_rel\<close>
   unfolding tree_term_rel_def wf_def
   apply clarsimp
   apply (induct_tac x)
@@ -476,8 +554,6 @@ lemma tree_term_rel_wf: \<open>wf tree_term_rel\<close>
   apply (subgoal_tac \<open>P c\<close>)
    prefer 2
    apply blast
-  sledgehammer
-
   find_theorems \<open>_ \<in> _\<^sup>+\<close>
 
   thm wfI[of UNIV UNIV]
