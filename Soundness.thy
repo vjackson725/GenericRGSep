@@ -388,6 +388,108 @@ section \<open> Trace semantics \<close>
 (* a rose tree *)
 datatype 'a tree = Branch (branches: \<open>'a \<Rightarrow> 'a tree fset\<close>)
 
+(* TODO: move *)
+inductive subtree_eq :: \<open>'a tree \<Rightarrow> 'a tree \<Rightarrow> bool\<close> (infix \<open>\<le>\<^sub>\<TT>\<close> 50) where
+  subtree_eqI:
+  \<open>\<forall>x a. a |\<in>| t1 x \<longrightarrow> (\<exists>b. b |\<in>| t2 x \<and> a \<le>\<^sub>\<TT> b) \<Longrightarrow>
+    Branch t1 \<le>\<^sub>\<TT> Branch t2\<close>
+
+inductive_cases subtree_eqE[elim!]: \<open>Branch x \<le>\<^sub>\<TT> Branch y\<close>
+inductive_cases subtree_eqE'[elim]: \<open>x \<le>\<^sub>\<TT> y\<close>
+
+abbreviation(input) tree_supset_eq :: \<open>'a tree \<Rightarrow> 'a tree \<Rightarrow> bool\<close> (infix \<open>\<ge>\<^sub>\<TT>\<close> 50) where
+  \<open>x \<ge>\<^sub>\<TT> y \<equiv> y \<le>\<^sub>\<TT> x\<close>
+
+lemma subtree_eq_refl[iff]:
+  \<open>x \<le>\<^sub>\<TT> x\<close>
+  by (induct x) (blast intro: subtree_eqI dest: nth_mem)
+
+lemma subtree_eq_trans[trans]:
+  \<open>x \<le>\<^sub>\<TT> y \<Longrightarrow> y \<le>\<^sub>\<TT> z \<Longrightarrow> x \<le>\<^sub>\<TT> z\<close>
+  by (induct arbitrary: z rule: subtree_eq.induct)
+    (erule subtree_eqE', clarsimp, rule subtree_eqI, meson)
+(*
+lemma subtree_eq_antisym:
+  \<open>x \<le>\<^sub>\<TT> y \<Longrightarrow> y \<le>\<^sub>\<TT> x \<Longrightarrow> x = y\<close>
+  apply (induct rule: subtree_eq.induct)
+  apply (clarsimp simp add: fun_eq_iff fset_eq_iff)
+  apply (rule iffI)
+   apply (drule spec2, drule mp, blast)
+   apply clarsimp
+   apply (drule spec2, drule mp, blast)
+   apply clarsimp
+  oops
+  *)
+
+lemma tree_less_equiv:
+  \<open>(\<le>\<^sub>\<TT>) \<sqinter> (\<noteq>) = ((\<le>\<^sub>\<TT>) \<sqinter> - (\<ge>\<^sub>\<TT>))\<close>
+proof (intro ext iffI; clarsimp)
+  fix x y :: \<open>'a tree\<close>
+  assume
+    \<open>x \<le>\<^sub>\<TT> y\<close>
+    \<open>x \<noteq> y\<close>
+    \<open>y \<le>\<^sub>\<TT> x\<close>
+  then show False
+    apply (induct)
+    apply (clarsimp simp add: fun_eq_iff)
+    oops
+
+
+interpretation tree: preorder \<open>(\<le>\<^sub>\<TT>)\<close> \<open>((\<le>\<^sub>\<TT>) \<sqinter> - (\<ge>\<^sub>\<TT>))\<close>
+  apply standard
+     apply (force simp add: le_fun_def)
+    apply force
+   apply (force intro: subtree_eq_trans)
+  done
+
+lemma subtree_eqD[dest]:
+  \<open>t1 \<le>\<^sub>\<TT> t2 \<Longrightarrow> a |\<in>| branches t1 x \<Longrightarrow> \<exists>b. b |\<in>| branches t2 x \<and> a \<le>\<^sub>\<TT> b\<close>
+  by fastforce
+
+definition \<open>tree_term_rel \<equiv> {(t, Branch f)|t f. \<exists>x. t |\<in>| f x}\<^sup>+\<close>
+
+definition \<open>tree_term_rel2 \<equiv> {(x, y). x \<le>\<^sub>\<TT> y \<and> x \<noteq> y}\<close>
+
+lemma tree_term_rel_wf_helper:
+  \<open>(x, z) \<in> {(t, Branch f) |t f. \<exists>x. t |\<in>| f x}\<^sup>+ \<Longrightarrow>
+    (\<forall>t a. t |\<in>| branches z a \<longrightarrow> P t) \<Longrightarrow>
+    P x\<close>
+  apply (induct rule: converse_trancl_induct)
+   apply force
+  apply clarsimp
+
+  oops
+
+lemma tree_term_rel_wf: \<open>wf tree_term_rel\<close>
+  unfolding tree_term_rel_def wf_def
+  apply clarsimp
+  apply (induct_tac x)
+  apply (clarsimp simp add: image_def)
+  apply (rename_tac f)
+  apply (drule spec, drule mp)
+   prefer 2
+   apply blast
+  apply clarsimp
+  apply (erule tranclE)
+   apply blast
+  apply clarsimp
+  apply (subgoal_tac \<open>P c\<close>)
+   prefer 2
+   apply blast
+  sledgehammer
+
+  find_theorems \<open>_ \<in> _\<^sup>+\<close>
+
+  thm wfI[of UNIV UNIV]
+  apply (rule wfI[of _ UNIV UNIV])
+   apply (simp add: tree_term_rel_def)
+  apply (clarsimp simp add: tree_term_rel2_def)
+  apply (case_tac x)
+  apply clarsimp
+  oops
+  find_theorems wf
+
+
 section \<open> Safe \<close>
 
 inductive safe
@@ -612,50 +714,6 @@ lemma safe_rely_antimonoD:
 
 lemmas safe_rely_antimono = safe_rely_antimonoD[rotated]
 
-(* TODO: move *)
-inductive subtree_eq :: \<open>'a tree \<Rightarrow> 'a tree \<Rightarrow> bool\<close> (infix \<open>\<le>\<^sub>\<TT>\<close> 50) where
-  subtree_eqI:
-  \<open>\<forall>x a. a |\<in>| t1 x \<longrightarrow> (\<exists>b. b |\<in>| t2 x \<and> a \<le>\<^sub>\<TT> b) \<Longrightarrow>
-    Branch t1 \<le>\<^sub>\<TT> Branch t2\<close>
-
-inductive_cases subtree_eqE[elim!]: \<open>Branch x \<le>\<^sub>\<TT> Branch y\<close>
-inductive_cases subtree_eqE'[elim]: \<open>x \<le>\<^sub>\<TT> y\<close>
-
-abbreviation(input) tree_supset_eq :: \<open>'a tree \<Rightarrow> 'a tree \<Rightarrow> bool\<close> (infix \<open>\<ge>\<^sub>\<TT>\<close> 50) where
-  \<open>x \<ge>\<^sub>\<TT> y \<equiv> y \<le>\<^sub>\<TT> x\<close>
-
-lemma subtree_eq_refl[iff]:
-  \<open>x \<le>\<^sub>\<TT> x\<close>
-  by (induct x) (blast intro: subtree_eqI dest: nth_mem)
-
-lemma subtree_eq_trans[trans]:
-  \<open>x \<le>\<^sub>\<TT> y \<Longrightarrow> y \<le>\<^sub>\<TT> z \<Longrightarrow> x \<le>\<^sub>\<TT> z\<close>
-  by (induct arbitrary: z rule: subtree_eq.induct)
-    (erule subtree_eqE', clarsimp, rule subtree_eqI, meson)
-(*
-lemma subtree_eq_antisym:
-  \<open>x \<le>\<^sub>\<TT> y \<Longrightarrow> y \<le>\<^sub>\<TT> x \<Longrightarrow> x = y\<close>
-  apply (induct rule: subtree_eq.induct)
-  apply (clarsimp simp add: fun_eq_iff fset_eq_iff)
-  apply (rule iffI)
-   apply (drule spec2, drule mp, blast)
-   apply clarsimp
-   apply (drule spec2, drule mp, blast)
-   apply clarsimp
-  oops
-  *)
-
-interpretation tree: preorder \<open>(\<le>\<^sub>\<TT>)\<close> \<open>((\<le>\<^sub>\<TT>) \<sqinter> - (\<ge>\<^sub>\<TT>))\<close>
-  apply standard
-     apply (force simp add: le_fun_def)
-    apply force
-   apply (force intro: subtree_eq_trans)
-  done
-
-lemma subtree_eqD[dest]:
-  \<open>t1 \<le>\<^sub>\<TT> t2 \<Longrightarrow> a |\<in>| branches t1 x \<Longrightarrow> \<exists>b. b |\<in>| branches t2 x \<and> a \<le>\<^sub>\<TT> b\<close>
-  by fastforce
-
 lemma safe_subtree_eq_antimono:
   assumes   
     \<open>safe tt c hl hs r g q F\<close>
@@ -686,77 +744,6 @@ lemma safe_subtree_eq_antimono:
   apply (frule safeD(5), force, force, force, force, force)
   apply (metis range_eqI)
   done
-
-(*
-(* TODO: move *)
-lemma ball_eq_iff:
-  \<open>(\<forall>x\<in>X. x = z) \<longleftrightarrow> X = {} \<or> X = {z}\<close>
-  by fastforce
-
-(* TODO: move *)
-definition trace_set_start_less_eq
-  :: \<open>'a list set \<Rightarrow> 'a list set \<Rightarrow> bool\<close> (infix \<open>\<sqsubseteq>\<^sub>l\<close> 60)
-  where
-  \<open>A \<sqsubseteq>\<^sub>l B \<equiv> \<forall>a\<in>A. \<exists>b\<in>B. a \<le>\<^sub>l b\<close>
-
-lemma trace_set_start_leq_mem_step:
-  \<open>T' \<sqsubseteq>\<^sub>l T \<Longrightarrow> a # t \<in> T' \<Longrightarrow> \<exists>t. a # t \<in> T\<close>
-  by (metis Cons_sublisteq_iff trace_set_start_less_eq_def)
-
-lemma trace_set_start_leq_step_sets:
-  \<open>T' \<sqsubseteq>\<^sub>l T \<Longrightarrow> a#t \<in> T' \<Longrightarrow> {t. a#t\<in>T'} \<sqsubseteq>\<^sub>l {t. a#t\<in>T}\<close>
-  by (simp add: trace_set_start_less_eq_def, metis Cons_sublisteq_iff)
-
-lemma safe_step_antimonoD:
-  assumes
-    \<open>safe T c hl hs r g q F\<close>
-    \<open>T' \<sqsubseteq>\<^sub>l T\<close>
-    \<open>good_trace_set n T'\<close>
-  shows
-    \<open>safe T' c hl hs r g q F\<close>
-  using assms
-  apply (induct n arbitrary: T T' c hl hs r g q F)
-   apply (force simp add: good_trace_set_def ball_eq_iff)
-  apply (rule safeI)
-        apply blast
-       apply blast
-    (* subgoal *)
-      apply (frule(1) good_trace_set_step)
-      apply (frule(1) trace_set_start_leq_step_sets)
-      apply (frule(1) trace_set_start_leq_mem_step)
-      apply (subgoal_tac \<open>safe {t. a # t \<in> T} c hl hs r g q F\<close>)
-       apply metis
-      apply fast
-    (* subgoal *)
-     apply (frule(1) good_trace_set_step)
-     apply (frule(1) trace_set_start_leq_step_sets)
-     apply (frule(1) trace_set_start_leq_mem_step)
-     apply (subgoal_tac \<open>safe {t. a # t \<in> T} c hl hs' r g q F\<close>)
-      apply metis
-     apply fast
-    (* subgoal *)
-    apply (meson safeD(5) trace_set_start_leq_mem_step; fail)
-    (* subgoal *)
-   apply (frule(1) good_trace_set_step)
-   apply (frule(1) trace_set_start_leq_step_sets)
-   apply (frule(1) trace_set_start_leq_mem_step)
-   apply clarsimp
-   apply (frule safeD(6), blast, blast, blast)
-   apply (subgoal_tac \<open>safe {t. a # t \<in> T} c' hl' hs' r g q F\<close>)
-    apply metis
-   apply blast
-    (* subgoal *)
-  apply (frule(1) good_trace_set_step)
-  apply (frule(1) trace_set_start_leq_step_sets)
-  apply (frule(1) trace_set_start_leq_mem_step)
-  apply clarsimp
-  apply (frule safeD(7), blast, blast, blast, blast, blast)
-  apply clarsimp
-  apply (subgoal_tac \<open>safe {t. a # t \<in> T} c' hl' hs' r g q F\<close>)
-   apply metis
-  apply blast
-  done
-*)
 
 lemma safe_frameset_antimonoD:
   \<open>safe n c hl hs r g q F \<Longrightarrow> F' \<le> F \<Longrightarrow> safe n c hl hs r g q F'\<close>
@@ -1119,8 +1106,6 @@ qed blast
 
 
 subsubsection \<open> Safety of external nondeterminism \<close>
-
-definition \<open>tree_term_rel \<equiv> {(t, Branch f)|t f. \<exists>x. t |\<in>| f x}\<^sup>+\<close>
 
 function endet_tracetree' :: \<open>'a act tree \<Rightarrow> 'a act tree \<Rightarrow> 'a act tree\<close> where
   \<open>endet_tracetree' (Branch ta) (Branch tb) = Branch (\<lambda>a.
