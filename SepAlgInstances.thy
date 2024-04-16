@@ -1,36 +1,18 @@
 theory SepAlgInstances
-  imports SepLogic HOL.Rat
+  imports SepLogic HOL.Rat "HOL-Library.Product_Order" "HOL-Library.Product_Plus"
 begin
 
 
 section \<open> Product \<close>
 
-subsection \<open> order \<close>
+declare plus_prod_def[simp]
 
-instantiation prod :: (order, order) order
-begin
-
-definition less_eq_prod :: \<open>'a \<times> 'b \<Rightarrow> 'a \<times> 'b \<Rightarrow> bool\<close> where
-  \<open>less_eq_prod a b \<equiv> fst a \<le> fst b \<and> snd a \<le> snd b\<close>
-declare less_eq_prod_def[simp]
-
-definition less_prod :: \<open>'a \<times> 'b \<Rightarrow> 'a \<times> 'b \<Rightarrow> bool\<close> where
-  \<open>less_prod a b \<equiv> fst a \<le> fst b \<and> snd a < snd b \<or> fst a < fst b \<and> snd a \<le> snd b\<close>
-
-instance
-  by standard
-    (force simp add: less_prod_def order.strict_iff_not)+
-
-end
+declare zero_prod_def[simp]
 
 subsection \<open> perm_alg \<close>
 
 instantiation prod :: (perm_alg,perm_alg) perm_alg
 begin
-
-definition plus_prod :: \<open>'a \<times> 'b \<Rightarrow> 'a \<times> 'b \<Rightarrow> 'a \<times> 'b\<close> where
-  \<open>plus_prod a b \<equiv> (fst a + fst b, snd a + snd b)\<close>
-declare plus_prod_def[simp]
 
 definition disjoint_prod :: \<open>'a \<times> 'b \<Rightarrow> 'a \<times> 'b \<Rightarrow> bool\<close> where
   \<open>disjoint_prod a b \<equiv> (fst a ## fst b \<and> snd a ## snd b)\<close>
@@ -91,12 +73,6 @@ subsection \<open> sep_alg \<close>
 instantiation prod :: (sep_alg,sep_alg) sep_alg
 begin
 
-definition zero_prod :: \<open>'a \<times> 'b\<close> where
-  \<open>zero_prod \<equiv> (0, 0)\<close>
-declare zero_prod_def[simp]
-
-definition bot_prod :: \<open>'a \<times> 'b\<close> where
-  \<open>bot_prod \<equiv> (\<bottom>, \<bottom>)\<close>
 declare bot_prod_def[simp]
 
 instance
