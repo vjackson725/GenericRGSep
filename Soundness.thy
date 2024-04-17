@@ -1,5 +1,5 @@
 theory Soundness
-  imports RGLogic "HOL-Library.FSet"
+  imports RGLogic "HOL-Library.FSet" "HOL-Library.Extended_Nat"
 begin
 
 (* TODO: move *)
@@ -391,6 +391,116 @@ thm natLeq_card_order natLeq_cinfinite regularCard_natLeq finite_iff_ordLess_nat
 (* a rose tree *)
 datatype 'a tree = Branch (branches: \<open>'a \<Rightarrow> 'a tree fset\<close>)
 
+definition tree_part_eq :: \<open>_ \<Rightarrow> _ \<Rightarrow> bool\<close> (infix \<open>\<le>\<^sub>t\<close> 50) where
+  \<open>tree_part_eq \<equiv> (\<lambda>a b. \<exists>x. a |\<in>| branches b x)\<^sup>*\<^sup>*\<close>
+
+lemmas tree_part_eq_induct =
+  rtranclp.induct[of \<open>\<lambda>a b. \<exists>x. a |\<in>| branches b x\<close>,
+    unfolded tree_part_eq_def[symmetric],
+    consumes 1,
+    case_names base step]
+
+lemmas converse_tree_part_eq_induct =
+  converse_rtranclp_induct[of \<open>\<lambda>a b. \<exists>x. a |\<in>| branches b x\<close>,
+    unfolded tree_part_eq_def[symmetric],
+    consumes 1,
+    case_names base step]
+
+definition tree_part :: \<open>_ \<Rightarrow> _ \<Rightarrow> bool\<close> (infix \<open><\<^sub>t\<close> 50) where
+  \<open>tree_part \<equiv> (\<lambda>a b. \<exists>x. a |\<in>| branches b x)\<^sup>+\<^sup>+\<close>
+
+lemmas tree_partE =
+  tranclp.cases[of \<open>\<lambda>a b. \<exists>x. a |\<in>| branches b x\<close>,
+    unfolded tree_part_def[symmetric],
+    consumes 1,
+    case_names base step]
+lemmas converse_tree_partE =
+  converse_tranclpE[of \<open>\<lambda>a b. \<exists>x. a |\<in>| branches b x\<close>,
+    unfolded tree_part_def[symmetric],
+    consumes 1,
+    case_names base step]
+
+lemmas tree_part_induct =
+  tranclp.induct[of \<open>\<lambda>a b. \<exists>x. a |\<in>| branches b x\<close>,
+    unfolded tree_part_def[symmetric],
+    consumes 1,
+    case_names base step]
+lemmas converse_tree_part_induct =
+  converse_tranclp_induct[of \<open>\<lambda>a b. \<exists>x. a |\<in>| branches b x\<close>,
+    unfolded tree_part_def[symmetric],
+    consumes 1,
+    case_names base step]
+
+(* This proof from Johannes Åman Pohjola *)
+lemma tree_part_strong_induct:
+  assumes nt: "\<And>x. (\<And>y. y <\<^sub>t x \<Longrightarrow> P y) \<Longrightarrow> P x"
+  shows "P b"
+proof -
+  have "\<And>b'. b' <\<^sub>t b \<or> b = b' \<Longrightarrow> P b'"
+  proof(induct b)
+    case (Branch b)
+    show ?case using Branch.prems
+      apply (rule disjE)
+       apply (erule tree_partE; force intro: Branch.hyps)
+      apply (rule nt)
+      apply (erule tree_partE; force intro: Branch.hyps)
+      done
+  qed
+  thus ?thesis by force
+qed
+
+lemma tree_part_order_wfP:
+  \<open>wfP (<\<^sub>t)\<close>
+  unfolding wfP_def wf_def
+  using tree_part_strong_induct
+  by auto
+
+lemma tree_part_order_wf: \<open>wf {(x,y). x <\<^sub>t y}\<close>
+  using tree_part_order_wfP wfP_def by auto
+
+lemma tree_branch_not_eq:
+  \<open>a |\<in>| branches b x \<Longrightarrow> a \<noteq> b\<close>
+  by (induct b arbitrary: a) fastforce
+
+lemma tree_part_baseI[intro]:
+  \<open>t' |\<in>| branches t x \<Longrightarrow> t' <\<^sub>t t\<close>
+  unfolding tree_part_def
+  using tranclp.r_into_trancl
+  by fastforce
+
+lemma tree_part_stepI[intro]:
+  \<open>t'' <\<^sub>t t' \<Longrightarrow> t' |\<in>| branches t x \<Longrightarrow> t'' <\<^sub>t t\<close>
+  unfolding tree_part_def
+  using tranclp.trancl_into_trancl
+  by fastforce
+
+
+lemma tree_part_no_loops:
+  \<open>a <\<^sub>t b \<Longrightarrow> b <\<^sub>t a \<Longrightarrow> False\<close>
+  using tree_part_order_wf
+  by (force elim: wf_asym[of _ a b])
+
+lemma tree_part_order_iff_strict: \<open>a \<le>\<^sub>t b \<longleftrightarrow> a <\<^sub>t b \<or> a = b\<close>
+  by (simp add: tree_part_eq_def tree_part_def)
+    (meson rtranclp.simps rtranclpD tranclp_into_rtranclp)
+
+lemma tree_part_antisym:
+  \<open>a \<le>\<^sub>t b \<Longrightarrow> b \<le>\<^sub>t a \<Longrightarrow> a = b\<close>
+  by (force simp add: tree_part_order_iff_strict dest: tree_part_no_loops)
+
+subsection \<open> Tree Depth \<close>
+
+function tree_depth :: \<open>'a tree \<Rightarrow> enat\<close> where
+  \<open>tree_depth (Branch f) = Sup ((fMax \<circ> fimage tree_depth) ` range f)\<close>
+  by pat_completeness auto
+termination
+  apply (relation \<open>{(x,y). x <\<^sub>t y}\<close>)
+   apply (simp add: tree_part_order_wf)
+  apply fastforce
+  done
+
+subsection \<open> Tree Order #2 \<close>
+
 (* TODO: move *)
 inductive subtree_eq :: \<open>'a tree \<Rightarrow> 'a tree \<Rightarrow> bool\<close> (infix \<open>\<le>\<^sub>\<TT>\<close> 50) where
   subtree_eqI:
@@ -448,122 +558,6 @@ interpretation tree: preorder \<open>(\<le>\<^sub>\<TT>)\<close> \<open>((\<le>\
 lemma subtree_eqD[dest]:
   \<open>t1 \<le>\<^sub>\<TT> t2 \<Longrightarrow> a |\<in>| branches t1 x \<Longrightarrow> \<exists>b. b |\<in>| branches t2 x \<and> a \<le>\<^sub>\<TT> b\<close>
   by fastforce
-
-definition tree_part_eq :: \<open>_ \<Rightarrow> _ \<Rightarrow> bool\<close> (infix \<open>\<le>\<^sub>t\<^sub>p\<close> 50) where
-  \<open>tree_part_eq \<equiv> (\<lambda>a b. \<exists>x. a |\<in>| branches b x)\<^sup>*\<^sup>*\<close>
-
-lemmas tree_part_eq_induct =
-  rtranclp.induct[of \<open>\<lambda>a b. \<exists>x. a |\<in>| branches b x\<close>,
-    unfolded tree_part_eq_def[symmetric],
-    consumes 1,
-    case_names base step]
-
-lemmas converse_tree_part_eq_induct =
-  converse_rtranclp_induct[of \<open>\<lambda>a b. \<exists>x. a |\<in>| branches b x\<close>,
-    unfolded tree_part_eq_def[symmetric],
-    consumes 1,
-    case_names base step]
-
-definition tree_part :: \<open>_ \<Rightarrow> _ \<Rightarrow> bool\<close> (infix \<open><\<^sub>t\<^sub>p\<close> 50) where
-  \<open>tree_part \<equiv> (\<lambda>a b. \<exists>x. a |\<in>| branches b x)\<^sup>+\<^sup>+\<close>
-
-lemmas tree_part_induct =
-  tranclp.induct[of \<open>\<lambda>a b. \<exists>x. a |\<in>| branches b x\<close>,
-    unfolded tree_part_def[symmetric],
-    consumes 1,
-    case_names base step]
-
-lemmas converse_tree_part_induct =
-  converse_tranclp_induct[of \<open>\<lambda>a b. \<exists>x. a |\<in>| branches b x\<close>,
-    unfolded tree_part_def[symmetric],
-    consumes 1,
-    case_names base step]
-
-lemma tree_branch_not_eq:
-  \<open>a |\<in>| branches b x \<Longrightarrow> a \<noteq> b\<close>
-  by (induct b arbitrary: a) fastforce
-
-lemma tree_branch_no_loops:
-  \<open>a |\<in>| branches b x \<Longrightarrow> b |\<in>| branches a y \<Longrightarrow> False\<close>
-  by (induct b arbitrary: a x y) fastforce
-
-inductive is_subtree :: \<open>'a tree \<Rightarrow> 'a tree \<Rightarrow> bool\<close> where
-  subtree_refl: \<open>is_subtree t t\<close>
-| subtree_step: \<open>is_subtree a b \<Longrightarrow> b |\<in>| branches c x \<Longrightarrow> is_subtree a c\<close>
-
-lemma tree_part_no_loops:
-  \<open>a \<le>\<^sub>t\<^sub>p b \<Longrightarrow> b \<le>\<^sub>t\<^sub>p a \<Longrightarrow> a = b\<close>
-proof (induct a arbitrary: b)
-  case (Branch xa)
-  then show ?case
-    apply (clarsimp simp add: image_def)
-
-    sorry
-qed
-
-
-
-lemma tree_part_not_eq:
-  \<open>\<forall>a. a \<le>\<^sub>t\<^sub>p b \<longrightarrow> a \<noteq> b\<close>
-  apply (induct b)
-  apply (clarsimp simp add: image_def)
-  apply (erule tree_partE)
-   apply fastforce
-  apply (rename_tac fa b x)
-  apply (drule_tac x=\<open>fa x\<close> and y=b in meta_spec2)
-  apply (drule meta_mp, blast)
-  apply clarsimp
-  
-
-  sledgehammer
-
-lemma \<open>(a,b) \<in> tree_ord_rel \<longleftrightarrow> tree_part a b\<close>
-proof (rule iffI)
-  assume \<open>(a,b) \<in> tree_ord_rel\<close>
-  then show \<open>tree_part a b \<and> a \<noteq> b\<close>
-    unfolding tree_ord_rel_def
-    apply (induct rule: trancl.induct)
-     apply (force dest: tree_part_not_eq)
-    apply (clarsimp dest: tree_part_not_eq)
-    try0
-
-
-
-lemma tree_term_rel_wf_helper:
-  \<open>(x, z) \<in> {ab. \<exists>x. fst ab |\<in>| branches (snd ab) x}\<^sup>+ \<Longrightarrow>
-    (\<forall>t a. t |\<in>| branches z a \<longrightarrow> P t) \<Longrightarrow>
-    P x\<close>
-  apply (induct rule: trancl.induct)
-   apply force
-  apply clarsimp
-  oops
-
-lemma tree_term_rel_wf: \<open>wf tree_ord_rel\<close>
-  unfolding tree_term_rel_def wf_def
-  apply clarsimp
-  apply (induct_tac x)
-  apply (clarsimp simp add: image_def)
-  apply (rename_tac f)
-  apply (drule spec, drule mp)
-   prefer 2
-   apply blast
-  apply clarsimp
-  apply (erule tranclE)
-   apply blast
-  apply clarsimp
-  apply (subgoal_tac \<open>P c\<close>)
-   prefer 2
-   apply blast
-  find_theorems \<open>_ \<in> _\<^sup>+\<close>
-
-  thm wfI[of UNIV UNIV]
-  apply (rule wfI[of _ UNIV UNIV])
-   apply (simp add: tree_term_rel_def)
-  apply (clarsimp simp add: tree_term_rel2_def)
-  apply (case_tac x)
-  apply clarsimp
-  oops
-  find_theorems wf
 
 
 section \<open> Safe \<close>
@@ -1183,144 +1177,50 @@ qed blast
 
 subsubsection \<open> Safety of external nondeterminism \<close>
 
-function endet_tracetree' :: \<open>'a act tree \<Rightarrow> 'a act tree \<Rightarrow> 'a act tree\<close> where
-  \<open>endet_tracetree' (Branch ta) (Branch tb) = Branch (\<lambda>a.
+function endet_tracetree :: \<open>'a act tree \<Rightarrow> 'a act tree \<Rightarrow> 'a act tree\<close> where
+  \<open>endet_tracetree (Branch ta) (Branch tb) = Branch (\<lambda>a.
     case a of
       Env x \<Rightarrow>
-        ((\<lambda>x. endet_tracetree' x (Branch tb)) |`| ta (Env x)) |\<union>|
-        (endet_tracetree' (Branch ta) |`| tb (Env x))
+        ((\<lambda>x. endet_tracetree x (Branch tb)) |`| ta (Env x)) |\<union>|
+        (endet_tracetree (Branch ta) |`| tb (Env x))
     | Loc x \<Rightarrow> ta (Loc x) |\<union>| tb (Loc x)
     | Tau \<Rightarrow>
-        ((\<lambda>x. endet_tracetree' x (Branch tb)) |`| ta Tau) |\<union>|
-        (endet_tracetree' (Branch ta) |`| tb Tau)
+        ((\<lambda>x. endet_tracetree x (Branch tb)) |`| ta Tau) |\<union>|
+        (endet_tracetree (Branch ta) |`| tb Tau)
   )\<close>
   by pat_completeness auto
 termination
-  apply (relation \<open>tree_term_rel \<times> UNIV \<union> UNIV \<times> tree_term_rel\<close>)
-  subgoal
-    sorry
-     apply (clarsimp simp add: tree_term_rel_def)
-  oops
-  
-
-inductive_cases endet_traces'_loc3E[elim]:
-  \<open>endet_traces' ta tb (Loc xy # t')\<close>
-inductive_cases endet_traces'_env3E[elim]:
-  \<open>endet_traces' ta tb (Env xy # t')\<close>
-inductive_cases endet_traces'_tau3E[elim]:
-  \<open>endet_traces' ta tb (Tau # t')\<close>
-
-definition
-  \<open>endet_traces A B \<equiv> {t|t ta tb. ta \<in> A \<and> tb \<in> B \<and> endet_traces' ta tb t}\<close>
-
-lemma endet_traces'_full_dom:
-  \<open>Ex (endet_traces' ta tb)\<close>
-  apply (induct ta arbitrary: tb)
-   apply (induct_tac tb)
-    apply blast
-   apply (case_tac a; blast)
-  apply (case_tac a; blast)
+  apply (relation \<open>{(x,y). x <\<^sub>t y} <*lex*> {(x,y). x <\<^sub>t y}\<close>)
+      apply (rule wf_lex_prod; simp add: tree_part_order_wf; fail)
+     apply force+
   done
+
+lemma branches_endet_tracetree_simps[simp]:
+  \<open>branches (endet_tracetree tta ttb) (Env x) =
+    ((\<lambda>x. endet_tracetree x ttb) |`| branches tta (Env x)) |\<union>|
+        (endet_tracetree tta |`| branches ttb (Env x))\<close>
+  \<open>branches (endet_tracetree tta ttb) (Loc x) =
+    (branches tta (Loc x) |\<union>| branches ttb (Loc x))\<close>
+  \<open>branches (endet_tracetree tta ttb) Tau =
+    ((\<lambda>x. endet_tracetree x ttb) |`| branches tta Tau) |\<union>|
+        (endet_tracetree tta |`| branches ttb Tau)\<close>
+  by (cases tta; cases ttb; simp)+
 
 lemma safe_endet:
   \<open>safe Ta c1 hl hs r g q F \<Longrightarrow>
     safe Tb c2 hl hs r g q F \<Longrightarrow>
     safe (endet_tracetree Ta Tb) (c1 \<box> c2) hl hs r g q F\<close>
 proof (induct arbitrary: Tb c2 rule: safe.inducts)
-  case (safeI n T c q hl hs r g F)
+  case (safeI c q hl hs tta r g F ttb)
   note safe_b = safeD[OF safeI.prems]
   show ?case
     using safeI.hyps(1) safe_b(1) safeI.prems
     apply -
-    apply clarsimp
     apply (rule safe.safeI)
-          apply (rule good_trace_set_endet_traces, blast, blast)
-         apply blast
-        apply (clarsimp simp add: endet_traces_def)
-        apply (erule endet_traces'_tau3E)
-         apply clarsimp
-         apply (frule safeI.hyps(4), blast, blast)
-         apply (simp add: endet_traces_Tau3_eq)
+        apply blast
+       apply (clarsimp simp add: image_def)
     sorry
 qed
-(*
-  case (ConsLess a as)
-
-  have safeSuc:
-    \<open>safe (a # as) c1 hl hs r g q F\<close>
-    \<open>safe (a # as) c2 hl hs r g q F\<close>
-    using ConsLess.prems
-    by simp+
-  note safe_suc1 = safe_sucD[OF safeSuc(1)]
-  note safe_suc2 = safe_sucD[OF safeSuc(2)]
-
-  show ?case
-    apply -
-    apply (rule safe_suc)
-         apply blast
-      (* subgoal: tau stuttering *)
-        apply (simp add: ConsLess.hyps safe_suc1(2) safe_suc2(2); fail)
-      (* subgoal: rely *)
-       apply (simp add: ConsLess.hyps safe_suc1(3) safe_suc2(3); fail)
-      (* subgoal: opstep guarantee *)
-      apply (simp add: opstep_iff del: sup_apply)
-      apply (metis safe_suc1(4) safe_suc2(4))
-      (* subgoal: plain opstep *)
-     apply (clarsimp simp add: opstep_iff simp del: sup_apply)
-     apply (elim disjE[of \<open>_ \<and> _\<close>] conjE exE)
-          apply (frule safe_suc1(5), blast, blast)
-         apply (frule safe_suc2(5), blast, blast)
-        apply (frule opstep_tau_preserves_heap)
-        apply clarsimp
-        apply (rule ConsLess.hyps)
-          apply blast
-         apply (simp add: safe_suc1(5); fail)
-        apply (simp add: safe_suc2(2); fail)
-       apply (frule opstep_tau_preserves_heap)
-       apply clarsimp
-       apply (rule ConsLess.hyps)
-         apply blast
-        apply (simp add: safe_suc1(2); fail)
-       apply (simp add: safe_suc2(5); fail)
-      apply (fastforce dest: safe_suc2(2))
-     apply (fastforce dest: safe_suc1(2))
-      (* subgoal: local frame opstep *)
-    apply (clarsimp simp add: opstep_iff simp del: sup_apply)
-    apply (elim disjE[of \<open>_ \<and> _\<close>] conjE exE)
-         apply (erule opstep_act_cases; metis safe_suc1(6))
-        apply (erule opstep_act_cases; metis safe_suc2(6))
-      (* subsubgoal: left tau passthrough *)
-       apply (frule safe_suc1(6), blast, blast, blast)
-       apply (clarsimp simp del: sup_apply)
-       apply (frule opstep_tau_preserves_heap)
-       apply (clarsimp simp del: sup_apply)
-       apply (rule ConsLess.hyps)
-         apply blast
-        apply blast
-       apply (metis safe_suc2(2))
-      (* subsubgoal: right tau passthrough *)
-      apply (frule safe_suc2(6), blast, blast, blast)
-      apply clarsimp
-      apply (frule opstep_tau_preserves_heap)
-      apply (clarsimp simp del: sup_apply)
-      apply (rule ConsLess.hyps)
-        apply blast
-       apply (metis safe_suc1(2))
-      apply blast
-      (* subsubgoal: right skip tau *)
-     apply (erule disjE)
-      apply (clarsimp simp del: sup_apply)
-      apply (metis safe_suc2(2))
-     apply blast
-      (* subsubgoal: left skip tau *)
-    apply (erule disjE)
-     apply (clarsimp simp del: sup_apply)
-     apply (metis safe_suc1(2))
-    apply blast
-    done
-qed simp
-*)
-
 
 subsection \<open> Safety of parallel \<close>
 
