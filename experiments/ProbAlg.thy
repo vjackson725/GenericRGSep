@@ -2,10 +2,57 @@ theory ProbAlg
   imports "../SepAlgInstances" "HOL-Analysis.Infinite_Sum"
 begin
 
+section \<open> Real interval [0,1]\<close>
+
 typedef rzointer = \<open>{0::real..1}\<close>
   by force
 
 setup_lifting type_definition_rzointer
+
+
+instantiation rzointer :: zero
+begin
+lift_definition zero_rzointer :: \<open>rzointer\<close> is \<open>0\<close> by force
+instance by standard
+end
+
+instantiation rzointer :: one
+begin
+lift_definition one_rzointer :: \<open>rzointer\<close> is \<open>1\<close> by force
+instance by standard
+end
+
+instantiation rzointer :: semigroup_mult
+begin
+lift_definition times_rzointer :: \<open>rzointer \<Rightarrow> rzointer \<Rightarrow> rzointer\<close> is \<open>(*)\<close>
+  by (simp add: mult_le_one)
+instance by standard (transfer, simp)
+end
+
+instantiation rzointer :: order
+begin
+lift_definition less_eq_rzointer :: \<open>rzointer \<Rightarrow> rzointer \<Rightarrow> bool\<close> is \<open>(\<le>)\<close> .
+lift_definition less_rzointer :: \<open>rzointer \<Rightarrow> rzointer \<Rightarrow> bool\<close> is \<open>(<)\<close> .
+instance by standard (transfer, force)+
+end
+
+instance rzointer :: comm_monoid_mult
+  by standard (transfer, simp)+
+
+instance rzointer :: mult_zero
+  by standard (transfer, simp)+
+
+instance rzointer :: zero_less_one
+  by standard (transfer, simp)+
+
+lift_definition frac_rzointer :: \<open>nat \<Rightarrow> rzointer\<close> (\<open>\<one>\<^bold>'/\<close>) is \<open>\<lambda>n. if n = 0 then 0 else 1 / real n\<close>
+  by force
+
+lemma frac_rzointer_mult_eq[simp]:
+  \<open>\<one>\<^bold>/a * \<one>\<^bold>/b = \<one>\<^bold>/(a*b)\<close>
+  by (transfer, simp)
+
+section \<open> dirac delta \<close>
 
 lemma summable_on_Diff:
   \<open>f summable_on (A - B) \<longleftrightarrow> (\<lambda>x. if x\<in>B then 0 else f x) summable_on A\<close>
@@ -37,6 +84,8 @@ proof -
     by simp
 qed
 
+section \<open> distributions \<close>
+
 typedef 'a DD = \<open>{f :: 'a \<Rightarrow> real. (\<forall>x. 0 \<le> f x) \<and> infsum f UNIV = 1}\<close>
   by (rule exI[of _ \<open>dirac undefined\<close>])
     (simp add: infsum_dirac, simp add: dirac_def)
@@ -52,20 +101,10 @@ lift_definition convex_sum :: \<open>rzointer \<Rightarrow> 'a DD \<Rightarrow> 
   apply (simp add: infsum_cmult_right')
   done
 
-instantiation rzointer :: zero
-begin
-lift_definition zero_rzointer :: \<open>rzointer\<close> is \<open>0\<close> by force
-instance by standard
-end
+lift_definition flip_rzointer :: \<open>rzointer \<Rightarrow> rzointer\<close> (\<open>(_\<^sup>F)\<close> [1000] 999) is
+  \<open>\<lambda>a. 1 - a\<close>
+  by simp
 
-instantiation rzointer :: one
-begin
-lift_definition one_rzointer :: \<open>rzointer\<close> is \<open>1\<close> by force
-instance by standard
-end
-
-lift_definition half_rzointer :: \<open>rzointer\<close> (\<open>\<onehalf>\<close>) is \<open>1 / 2\<close>
-  by force
 
 abbreviation convex_sum_pretty
   :: \<open>'a DD \<Rightarrow> rzointer \<Rightarrow> 'a DD \<Rightarrow> 'a DD\<close>
@@ -73,23 +112,17 @@ abbreviation convex_sum_pretty
   where
     \<open>a \<oplus>\<^bsub>p\<^esub> b \<equiv> convex_sum p a b\<close>
 
+lemma flip_eq_iff: \<open>x\<^sup>F = y \<longleftrightarrow> x = y\<^sup>F\<close>
+  by (transfer, force)
+
+\<comment> \<open> w = (y\<^sup>F / (y * x)\<^sup>F)\<^sup>F \<close>
 lemma convex_sum_half_assoc:
-  \<open>a \<oplus>\<^bsub>\<onehalf>\<^esub> b \<oplus>\<^bsub>\<onehalf>\<^esub> c = a \<oplus>\<^bsub>\<onehalf>\<^esub> (b \<oplus>\<^bsub>\<onehalf>\<^esub> c)\<close>
+  \<open>a \<oplus>\<^bsub>x\<^esub> b \<oplus>\<^bsub>y\<^esub> c = a \<oplus>\<^bsub>y * x\<^esub> (b \<oplus>\<^bsub>w\<^esub> c)\<close>
   apply transfer
-  apply clarsimp
+  apply (clarsimp simp add: fun_eq_iff left_diff_distrib[symmetric]
+      add.assoc[symmetric] mult.assoc[symmetric] ring_distribs(1,2))
+  find_theorems \<open>_ * (_ + _)\<close>
   sorry
 
-instantiation DD :: (type) semigroup_add
-begin
-
-definition plus_DD :: \<open>'a DD \<Rightarrow> 'a DD \<Rightarrow> 'a DD\<close> where
-  \<open>plus_DD a b \<equiv> a \<oplus>\<^bsub>\<onehalf>\<^esub> b\<close>
-
-instance
-  apply standard
-  apply (simp add: plus_DD_def)
-  apply transfer
-
-end
 
 end
