@@ -138,10 +138,11 @@ qed
 
 section \<open> Relations \<close>
 
-definition \<open>rel_liftL p \<equiv> \<lambda>a b. p a\<close>
-definition \<open>rel_liftR p \<equiv> \<lambda>a b. p b\<close>
-definition \<open>rel_lift p \<equiv> \<lambda>a b. p a \<and> p b\<close>
-definition \<open>rel_imp_lift p \<equiv> \<lambda>a b. p a \<longrightarrow> p b\<close>
+definition \<open>rel_lift p q \<equiv> \<lambda>a b. p a \<and> q b\<close>
+abbreviation \<open>rel_liftL p \<equiv> rel_lift p \<top>\<close>
+abbreviation \<open>rel_liftR p \<equiv> rel_lift \<top> p\<close>
+
+definition \<open>rel_lift_imp p q \<equiv> \<lambda>a b. p a \<longrightarrow> q b\<close>
 
 definition \<open>pre_state_of B r \<equiv> \<lambda>a. \<exists>b\<in>B. r a b\<close>
 definition \<open>post_state_of A r \<equiv> \<lambda>b. \<exists>a\<in>A. r a b\<close>
@@ -212,38 +213,40 @@ lemma post_state_reldisj[simp]:
 
 lemma rel_liftL_unfold[simp]:
   \<open>rel_liftL p a b = p a\<close>
-  by (simp add: rel_liftL_def)
+  by (simp add: rel_lift_def)
 
 lemma rel_liftR_unfold[simp]:
   \<open>rel_liftR p a b = p b\<close>
-  by (simp add: rel_liftR_def)
+  by (simp add: rel_lift_def)
 
 lemma rel_subid_unfold[simp]:
-  \<open>rel_lift p a b = (p a \<and> p b)\<close>
+  \<open>rel_lift p q a b = (p a \<and> q b)\<close>
   by (simp add: rel_lift_def)
 
 lemma liftL_le_liftL[simp]:
   \<open>rel_liftL p \<le> rel_liftL q \<longleftrightarrow> p \<le> q\<close>
-  by (simp add: rel_liftL_def le_fun_def)
+  by (simp add: rel_lift_def le_fun_def)
 
 lemma liftR_le_liftR[simp]:
   \<open>rel_liftR p \<le> rel_liftR q \<longleftrightarrow> p \<le> q\<close>
-  by (simp add: rel_liftR_def)
+  by (simp add: rel_lift_def)
 
 lemma rel_lift_top[simp]:
-  \<open>rel_lift \<top> = \<top>\<close>
+  \<open>rel_lift \<top> \<top> = \<top>\<close>
   by (force simp add: rel_lift_def)
 
 lemma rel_lift_bot[simp]:
   \<open>rel_lift \<bottom> = \<bottom>\<close>
   by (force simp add: rel_lift_def)
+
 lemma rel_lift_pred_True[simp]:
-  \<open>rel_lift (\<lambda>x. True) = \<top>\<close>
+  \<open>rel_lift (\<lambda>x. True) (\<lambda>x. True) = \<top>\<close>
   by (force simp add: rel_lift_def)
 
 lemma rel_lift_pred_False[simp]:
   \<open>rel_lift (\<lambda>x. False) = \<bottom>\<close>
-  by (force simp add: rel_lift_def)
+  \<open>rel_lift p (\<lambda>x. False) = \<bottom>\<close>
+  by (force simp add: rel_lift_def)+
 
 lemma pre_change_state_mono[dest]:
   \<open>r1 \<le> r2 \<Longrightarrow> pre_change_state r1 x \<Longrightarrow> pre_change_state r2 x\<close>
