@@ -972,6 +972,10 @@ lemma wlp_top[simp]:
   \<open>wlp r \<top> = \<top>\<close>
   by (force simp add: wlp_def)
 
+lemma wlp_Ktrue[simp]:
+  \<open>wlp r (\<lambda>_. True) = \<top>\<close>
+  by (force simp add: wlp_def)
+
 lemma wlp_inf[simp]: \<open>wlp r (p \<sqinter> q) = wlp r p \<sqinter> wlp r q\<close>
   by (force simp add: wlp_def)
 
@@ -980,6 +984,10 @@ lemma wlp_Inf[simp]: \<open>wlp r (\<Sqinter>P) = \<Sqinter>(wlp r ` P)\<close>
 
 lemma wlp_bot[simp]:
   \<open>wlp r \<bottom> = - pre_state r\<close>
+  by (simp add: wlp_def fun_eq_iff pre_state_def)
+
+lemma wlp_Kfalse[simp]:
+  \<open>wlp r (\<lambda>_. False) = - pre_state r\<close>
   by (simp add: wlp_def fun_eq_iff pre_state_def)
 
 lemma wlp_sup_semidistrib:
@@ -1051,6 +1059,10 @@ lemma sp_bot[simp]:
   \<open>sp r \<bottom> = \<bottom>\<close>
   by (force simp add: sp_def)
 
+lemma sp_Kfalse[simp]:
+  \<open>sp r (\<lambda>_. False) = \<bottom>\<close>
+  by (force simp add: sp_def)
+
 lemma sp_sup[simp]:
   \<open>sp r (p \<squnion> q) = sp r p \<squnion> sp r q\<close>
   by (force simp add: sp_def)
@@ -1062,6 +1074,10 @@ lemma sp_Sup[simp]:
 lemma sp_top[simp]:
   \<open>sp r \<top> = post_state r\<close>
   by (clarsimp simp add: sp_def post_state_def fun_eq_iff)
+
+lemma sp_Ktrue[simp]:
+  \<open>sp r (\<lambda>_. True) = post_state r\<close>
+  by (force simp add: sp_def post_state_def fun_eq_iff)
 
 lemma sp_inf_semidistrib:
   \<open>sp r (p \<sqinter> q) \<le> sp r p \<sqinter> sp r q\<close>
