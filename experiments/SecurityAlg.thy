@@ -2,6 +2,8 @@ theory SecurityAlg
   imports "../RGLogic"
 begin
 
+section \<open> Low/High Levels \<close>
+
 datatype level = Low | High
 
 instantiation level :: order
@@ -101,7 +103,117 @@ instance
 
 end  
 
+section \<open> Location heaps \<close>
 
+lemma dom_comp[simp]: \<open>dom (g \<circ>\<^sub>m f) = {a. \<exists>b. f a = Some b \<and> b \<in> dom g}\<close>
+  by (force simp add: map_comp_def dom_def split: option.splits)
+
+text \<open>
+  For security applications, we need not just the data to be splittable, but also
+  the \<^emph>\<open>locations\<close> of the heap. Being able to observe a location's existence can give
+  security-relevant information, even without access to its data.
+    Thus, we split the information that a location exists and a location's data into
+  separate resources.
+\<close>
+
+typedef ('a,'b) locheap (infixr \<open>\<rightharpoonup>\<^sub>l\<close> 0) =
+  \<open>{(L::'a set, h :: 'a \<rightharpoonup> 'b). dom h \<le> L}\<close>
+  by blast
+
+setup_lifting type_definition_locheap
+
+setup \<open>Sign.mandatory_path "locheap"\<close>
+
+lift_definition empty :: \<open>'a \<rightharpoonup>\<^sub>l 'b\<close> is \<open>({}, Map.empty)\<close>
+  by force
+
+lift_definition comp :: "('b \<rightharpoonup>\<^sub>l 'c) \<Rightarrow> ('a \<rightharpoonup>\<^sub>l 'b) \<Rightarrow> ('a \<rightharpoonup>\<^sub>l 'c)" (infixl "\<circ>\<^sub>l" 55) is
+  \<open>\<lambda>(B::'b set, g::'b \<rightharpoonup> 'c) (A::'a set, f::'a \<rightharpoonup> 'b). ({a. \<exists>b. f a = Some b \<and> b \<in> dom g}, g \<circ>\<^sub>m f)\<close>
+  by (simp split: prod.splits)
+
+lift_definition restrict :: "('a \<rightharpoonup>\<^sub>l 'b) \<Rightarrow> 'a set \<Rightarrow> ('a \<rightharpoonup>\<^sub>l 'b)" (infixl \<open>|`\<^sub>l\<close> 110) is
+  \<open>\<lambda>(A, m) B. (A \<inter> B, m |` B)\<close>
+  by (auto split: prod.splits)
+
+lift_definition dom :: "('a \<rightharpoonup>\<^sub>l 'b) \<Rightarrow> 'a set" is fst .
+lift_definition precise_dom :: "('a \<rightharpoonup>\<^sub>l 'b) \<Rightarrow> 'a set" is \<open>dom \<circ> snd\<close> .
+
+lift_definition less_eq :: \<open>('a \<rightharpoonup>\<^sub>l 'b) \<Rightarrow> ('a \<rightharpoonup>\<^sub>l 'b) \<Rightarrow> bool\<close> (infix \<open>\<subseteq>\<^sub>l\<close> 50) is
+  \<open>\<lambda>(A,a) (B,b). A \<subseteq> B \<and> a \<subseteq>\<^sub>m b\<close> .
+
+lemma less_eq_trans[trans]:
+  \<open>a \<subseteq>\<^sub>l b \<Longrightarrow> b \<subseteq>\<^sub>l c \<Longrightarrow> a \<subseteq>\<^sub>l c\<close>
+  by (transfer, force simp add: map_le_def dom_def split: prod.splits)
+
+lemma less_eq_refl[iff]:
+  \<open>a \<subseteq>\<^sub>l a\<close>
+  by (transfer, simp split: prod.splits)
+
+lemma less_eq_antisym:
+  \<open>a \<subseteq>\<^sub>l b \<Longrightarrow> b \<subseteq>\<^sub>l a \<Longrightarrow> a = b\<close>
+  by (transfer,
+      clarsimp simp add: map_le_def dom_def fun_eq_iff split: prod.splits,
+      metis not_Some_eq)
+
+setup \<open>Sign.parent_path\<close>
+
+instantiation locheap :: (type, type) plus
+begin
+lift_definition plus_locheap :: \<open>('a \<rightharpoonup>\<^sub>l 'b) \<Rightarrow> ('a \<rightharpoonup>\<^sub>l 'b) \<Rightarrow> 'a \<rightharpoonup>\<^sub>l 'b\<close> is
+  \<open>\<lambda>(D1, m1) (D2, m2). (D1 \<union> D2, m1 ++ m2)\<close>
+  by force
+instance by standard
+end
+
+instantiation locheap :: (type, perm_alg) perm_alg
+begin
+
+lift_definition disjoint_locheap :: \<open>('a \<rightharpoonup>\<^sub>l 'b) \<Rightarrow> ('a \<rightharpoonup>\<^sub>l 'b) \<Rightarrow> bool\<close> is
+  \<open>\<lambda>(D1, m1) (D2, m2). D1 \<inter> D2 = {}\<close> .
+
+instance
+  apply standard
+       apply (transfer, force)
+      apply (transfer, simp split: prod.splits)
+      apply (metis inf_mono inf_sup_aci(5) map_add_comm order_bot_class.bot.extremum_uniqueI)
+     apply (transfer, force)
+    apply (transfer, fastforce)
+   apply (transfer, fastforce)
+  apply (transfer, clarsimp split: prod.splits)
+  apply (metis Un_Int_assoc_eq Un_Int_eq(1) Un_Int_eq(3) empty_iff map_add_subsumed2 map_le_def sup_bot_left)
+  done
+
+end
+
+instantiation locheap :: (type, perm_alg) multiunit_sep_alg
+begin
+lift_definition unitof_locheap :: \<open>('a \<rightharpoonup>\<^sub>l 'b) \<Rightarrow> ('a \<rightharpoonup>\<^sub>l 'b)\<close> is
+  \<open>\<lambda>_. ({}, Map.empty)\<close>
+  by (simp split: prod.splits)
+instance by standard (transfer, force)+
+end
+
+instantiation locheap :: (type, perm_alg) sep_alg
+begin
+
+lift_definition zero_locheap :: \<open>('a \<rightharpoonup>\<^sub>l 'b)\<close> is
+  \<open>({}, Map.empty)\<close>
+  by (simp split: prod.splits)
+
+lift_definition bot_locheap :: \<open>('a \<rightharpoonup>\<^sub>l 'b)\<close> is
+  \<open>({}, Map.empty)\<close>
+  by (simp split: prod.splits)
+
+instance
+  apply standard
+   apply (simp add: less_eq_sepadd_def', transfer, force)
+  apply (transfer, force)
+  done
+
+end
+
+
+section \<open> Security Logic \<close>
 
 definition tuple_lift :: \<open>('a \<Rightarrow> bool) \<Rightarrow> ('a \<times> 'a \<Rightarrow> bool)\<close> (\<open>\<T>\<close>) where
   \<open>\<T> p \<equiv> \<lambda>(x,y). p x \<and> p y\<close>
