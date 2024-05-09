@@ -154,6 +154,8 @@ lemmas post_state_def = post_state_of_def[of UNIV, simplified]
 
 definition \<open>prepost_state \<equiv> pre_state \<squnion> post_state\<close>
 
+lemmas prepost_state_def' = prepost_state_def pre_state_def post_state_def
+
 abbreviation \<open>tight_reflp r \<equiv> reflp_on (Collect (prepost_state r)) r\<close>
 
 definition \<open>pre_change_state r \<equiv> \<lambda>a. \<exists>b. r a b \<and> a \<noteq> b\<close>
