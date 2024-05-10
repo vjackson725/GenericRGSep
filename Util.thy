@@ -494,6 +494,9 @@ lemmas preordering_trans =
 
 definition (in order) \<open>downset x \<equiv> {y. y\<le>x}\<close>
 
+definition (in conditionally_complete_lattice) \<open>supcl (A::'a set) \<equiv> {\<Squnion>A'|A'. A' \<noteq> {} \<and> A'\<subseteq>A}\<close>
+definition (in conditionally_complete_lattice) \<open>infcl (A::'a set) \<equiv> {\<Sqinter>A'|A'. A' \<noteq> {} \<and> A'\<subseteq>A}\<close>
+
 
 section \<open> Groups \<close>
 

@@ -138,6 +138,8 @@ lift_definition restrict :: "('a \<rightharpoonup>\<^sub>l 'b) \<Rightarrow> 'a 
 lift_definition dom :: "('a \<rightharpoonup>\<^sub>l 'b) \<Rightarrow> 'a set" is fst .
 lift_definition precise_dom :: "('a \<rightharpoonup>\<^sub>l 'b) \<Rightarrow> 'a set" is \<open>dom \<circ> snd\<close> .
 
+subsection \<open> (weak/permissive) leq \<close>
+
 lift_definition less_eq :: \<open>('a \<rightharpoonup>\<^sub>l 'b) \<Rightarrow> ('a \<rightharpoonup>\<^sub>l 'b) \<Rightarrow> bool\<close> (infix \<open>\<subseteq>\<^sub>l\<close> 50) is
   \<open>\<lambda>(A,a) (B,b). A \<subseteq> B \<and> a \<subseteq>\<^sub>m b\<close> .
 
@@ -155,7 +157,40 @@ lemma less_eq_antisym:
       clarsimp simp add: map_le_def dom_def fun_eq_iff split: prod.splits,
       metis not_Some_eq)
 
+subsection \<open> strong leq \<close>
+
+lift_definition strong_less_eq :: \<open>('a \<rightharpoonup>\<^sub>l 'b) \<Rightarrow> ('a \<rightharpoonup>\<^sub>l 'b) \<Rightarrow> bool\<close> (infix \<open>\<sqsubseteq>\<^sub>l\<close> 50) is
+  \<open>\<lambda>(A,a) (B,b). A = B \<and> a \<subseteq>\<^sub>m b\<close> .
+
+lemma strong_less_eq_trans[trans]:
+  \<open>a \<sqsubseteq>\<^sub>l b \<Longrightarrow> b \<sqsubseteq>\<^sub>l c \<Longrightarrow> a \<sqsubseteq>\<^sub>l c\<close>
+  by (transfer, force simp add: map_le_def dom_def split: prod.splits)
+
+lemma strong_less_eq_refl[iff]:
+  \<open>a \<sqsubseteq>\<^sub>l a\<close>
+  by (transfer, simp split: prod.splits)
+
+lemma strong_less_eq_antisym:
+  \<open>a \<sqsubseteq>\<^sub>l b \<Longrightarrow> b \<sqsubseteq>\<^sub>l a \<Longrightarrow> a = b\<close>
+  by (transfer,
+      clarsimp simp add: map_le_def dom_def fun_eq_iff split: prod.splits,
+      metis not_Some_eq)
+
+lemma strong_less_eq_impl_less_eq[dest]:
+  \<open>a \<sqsubseteq>\<^sub>l b \<Longrightarrow> a \<subseteq>\<^sub>l b\<close>
+  by (transfer, simp split: prod.splits)
+
+subsection \<open> Locheap completion \<close>
+
+lift_definition embed :: \<open>('a \<rightharpoonup> 'b) \<Rightarrow> ('a \<rightharpoonup>\<^sub>l 'b)\<close> is
+  \<open>\<lambda>h. (dom h, h)\<close>
+  by simp
+
+abbreviation completion :: \<open>('a \<rightharpoonup>\<^sub>l 'b) \<Rightarrow> ('a \<rightharpoonup> 'b) \<Rightarrow> bool\<close> (infix \<open>\<sqsubseteq>\<^sub>c\<close> 50) where
+  \<open>lh \<sqsubseteq>\<^sub>c h \<equiv> lh \<sqsubseteq>\<^sub>l locheap.embed h\<close>
+
 setup \<open>Sign.parent_path\<close>
+
 
 instantiation locheap :: (type, type) plus
 begin
@@ -256,8 +291,8 @@ definition sec_points_to
   \<open>p \<^bold>\<mapsto>\<^sub>s v \<equiv> \<T> (p \<^bold>\<mapsto> v)\<close>
 
 (* Low(e,e') in the paper.
-    The paper produces \<open>emp\<close> when it's successful; we cannot, as our local store and heap are mixed.
-    Thus, we must say \<open>lowe e e' \<and> ...\<close>
+    The paper produces \<open>emp\<close> when it's successful; we cannot, as we have a unitary resource model.
+    Thus, we must say \<open>lowe e e' \<and> ...\<close>.
 *)
 definition lowe
   :: \<open>('st::perm_alg \<Rightarrow> 'v) \<Rightarrow> ('st \<Rightarrow> 'v) \<Rightarrow> 'st sec_rel\<close>
@@ -277,8 +312,176 @@ lemma pre_state_un_eq[simp]:
   by (force simp add: pre_state_def fun_eq_iff)
 
 lemma
-  \<open>(=), (=) \<turnstile> { \<L> ((p \<triangleleft> l) l') } Assert (\<L> (p \<times>\<^sub>P \<top>)) { \<top> }\<close>
+  \<open>(=), (=) \<turnstile> { \<L> ((p \<triangleleft> l) l') } Assert (\<L> (\<T> p)) { \<L> (\<T> p) }\<close>
   unfolding Assert_def
-  by (rule rgsat_atom) (force simp add: sp_def)+
+  apply (rule rgsat_atom)
+      apply (force simp add: sp_def)
+     apply (force simp add: sp_def)
+    apply (clarsimp simp add: sp_def)
+  oops
+
+(* FIXME: We convert pp into  partial equivalence relation, which might not be what we want to do. *)
+definition lift_T_to_H :: \<open>('a \<times> 'a \<Rightarrow> bool) \<Rightarrow> (('a \<Rightarrow> bool) \<Rightarrow> bool)\<close> where
+  \<open>lift_T_to_H pp \<equiv> \<lambda>p. \<forall>x y. p x \<longrightarrow> tranclp (curry pp \<squnion> (curry pp)\<inverse>\<inverse>) x y \<longrightarrow> p y\<close>
+
+lemma \<open>r x y \<or> r y x \<Longrightarrow> tranclp (symclp r) x x\<close>
+  by (metis symclpI1 symclpI2 tranclp.simps)
+
+
+type_synonym 'a prog = \<open>'a \<Rightarrow> 'a set set\<close>
+
+definition less_eq_smyth :: \<open>('a::order) set \<Rightarrow> 'a set \<Rightarrow> bool\<close> (infix \<open>\<le>\<^sub>S\<close> 50) where
+  \<open>A \<le>\<^sub>S B \<equiv> \<forall>b\<in>B. \<exists>a\<in>A. a \<le> b\<close>
+
+lemma smyth_supcl_greater[intro]:
+  fixes A B :: \<open>('a::complete_lattice) set\<close>
+  shows \<open>A \<le>\<^sub>S supcl A\<close>
+  by (clarsimp simp add: supcl_def less_eq_smyth_def)
+    (meson Sup_upper order.trans all_not_in_conv subset_iff)
+
+lemma smyth_supcl_lesser[intro]:
+  fixes A B :: \<open>('a::complete_lattice) set\<close>
+  shows \<open>supcl A \<le>\<^sub>S A\<close>
+  by (clarsimp simp add: supcl_def less_eq_smyth_def)
+    (metis Sup_upper ccpo_Sup_singleton empty_iff insert_subset singletonI sup.order_iff
+      sup_bot.right_neutral)
+
+lemma smyth_supcl_closedR:
+  fixes A B :: \<open>('a::complete_lattice) set\<close>
+  shows \<open>A \<le>\<^sub>S B \<Longrightarrow> A \<le>\<^sub>S supcl B\<close>
+  by (clarsimp simp add: supcl_def less_eq_smyth_def)
+    (meson Sup_upper order.trans all_not_in_conv subset_iff)
+
+lemma smyth_supcl_closedL:
+  fixes A B :: \<open>('a::complete_lattice) set\<close>
+  shows \<open>supcl A \<le>\<^sub>S B \<Longrightarrow> A \<le>\<^sub>S B\<close>
+  by (clarsimp simp add: supcl_def less_eq_smyth_def)
+    (metis Sup_upper order.trans all_not_in_conv subset_iff)
+
+definition less_eq_hoare :: \<open>('a::order) set \<Rightarrow> 'a set \<Rightarrow> bool\<close> (infix \<open>\<le>\<^sub>H\<close> 50) where
+  \<open>A \<le>\<^sub>H B \<equiv> \<forall>a\<in>A. \<exists>b\<in>B. a \<le> b\<close>
+
+abbreviation less_eq_plotkin :: \<open>('a::order) set \<Rightarrow> 'a set \<Rightarrow> bool\<close> (infix \<open>\<le>\<^sub>P\<close> 50) where
+  \<open>A \<le>\<^sub>P B \<equiv> A \<le>\<^sub>S B \<and> A \<le>\<^sub>H B\<close>
+
+abbreviation refinement :: \<open>'a prog \<Rightarrow> 'a prog \<Rightarrow> bool\<close> (infix \<open>\<sqsubseteq>\<close> 50) where
+  \<open>S \<sqsubseteq> I \<equiv> \<forall>x. S x \<le>\<^sub>S I x\<close>
+
+lemma union_closure:
+  \<open>\<forall>x. \<forall>h HI. HI \<in> I' x \<longrightarrow> (\<exists>\<HH>. \<HH> \<noteq> {} \<and> HI = \<Union>\<HH> \<and> (\<forall>H\<in>\<HH>. H \<in> I x)) \<Longrightarrow>
+    \<forall>x. I x \<subseteq> I' x \<Longrightarrow>
+    I \<sqsubseteq> I' \<and> I' \<sqsubseteq> I\<close>
+  apply (clarsimp simp add: less_eq_smyth_def Ball_def split: prod.splits)
+  apply (intro conjI impI allI)
+   apply blast
+  apply fast
+  done
+
+lemma union_closure2:
+  \<open>I \<sqsubseteq> supcl \<circ> I \<and> supcl \<circ> I \<sqsubseteq> I\<close>
+  by (clarsimp simp add: Ball_def smyth_supcl_greater smyth_supcl_lesser split: prod.splits)
+
+lemma
+  fixes PP :: \<open>('a \<times> 'a set) set\<close>
+  assumes refl_cl: \<open>\<And>h H. (h, H) \<in> PP \<Longrightarrow> h \<in> H\<close>
+  assumes sym_cl: \<open>\<And>h h' H. (h, H) \<in> PP \<Longrightarrow> h' \<in> H \<Longrightarrow> (h', H) \<in> PP\<close>
+  shows \<open>PP = {(h,H)|h H u. (u,H) \<in> PP \<and> h \<in> H}\<close>
+  apply (simp add: set_eq_iff)
+  using refl_cl sym_cl by blast
+
+definition \<open>healthy p \<equiv> (\<forall>x y. p (x,y) \<longrightarrow> p (x,x)) \<and> (\<forall>x y. p (x,y) \<longrightarrow> p (y,x))\<close>
+
+lemma \<open>healthy ((e \<triangleleft> l') l)\<close>
+  by (simp add: healthy_def level_eval_def)
+
+definition level_eval_H
+  :: \<open>('a \<Rightarrow> 'v) \<Rightarrow> ('a \<Rightarrow> 'l::order) \<Rightarrow> ('l \<Rightarrow> 'a set set)\<close> (\<open>_ \<triangleleft>\<^sub>\<H> _\<close> [55,55] 55)
+  where
+  \<open>e \<triangleleft>\<^sub>\<H> l' \<equiv> \<lambda>l. supcl ({A. \<exists>s. A = {s'. l' s \<le> l \<longrightarrow> l' s' \<le> l \<longrightarrow> e s = e s'}})\<close>
+
+definition \<open>uncertainty p s \<equiv> {s'. p (s,s')}\<close>
+
+lemma hyperset_level_eval_eq:
+  \<open>{uncertainty ((e \<triangleleft> l') l) s|s. True} =
+      {A. \<exists>s. A = {s'. l' s \<le> l \<longrightarrow> l' s' \<le> l \<longrightarrow> e s = e s'}}\<close>
+  by transfer
+    (clarsimp simp add: level_eval_def level_eval_H_def uncertainty_def)
+
+lemma \<open>((e \<triangleleft>\<^sub>\<H> l') l) \<le>\<^sub>S {uncertainty ((e \<triangleleft> l') l) s|s. True}\<close>
+  by transfer
+    (force simp add: level_eval_def level_eval_H_def uncertainty_def)
+
+lemma \<open>{uncertainty ((e \<triangleleft> l') l) s|s. True} \<le>\<^sub>S ((e \<triangleleft>\<^sub>\<H> l') l)\<close>
+  by transfer
+    (force simp add: level_eval_def level_eval_H_def uncertainty_def)
+
+abbreviation \<open>equiv_class_by f \<equiv> \<lambda>x. {y. f x = f y}\<close>
+
+abbreviation \<open>equiv_classes_by f \<equiv> range (\<lambda>x. {y. f x = f y})\<close>
+
+lemma
+  \<open>supcl ({A. \<exists>s. A = {s'. l' s \<le> l \<longrightarrow> l' s' \<le> l \<longrightarrow> e s = e s'}}) = X\<close> (is \<open>?lhs = _\<close>)
+proof -
+  have \<open>?lhs = {\<Union>A'|A'. A' \<noteq> {} \<and> A' \<subseteq> (\<lambda>s. {s'. l' s \<le> l \<longrightarrow> l' s' \<le> l \<longrightarrow> e s = e s'}) ` UNIV}\<close>
+    by (simp add: supcl_def Union_eq Bex_def, fast)
+  then have \<open>... = {\<Union> A' |A'. A' \<noteq> {} \<and> A' \<subseteq> (\<lambda>s. {s'. \<not> l' s \<le> l} \<union> {s'. \<not> l' s' \<le> l} \<union> {s'. e s = e s'}) ` UNIV}\<close>
+    by (simp add: Un_def del: Collect_const)
+  then have \<open>... = {\<Union> A' |A'. A' \<noteq> {} \<and> A' \<subseteq> (if \<forall>x. l' x \<le> l then {} else {UNIV}) \<union> (\<lambda>x. {s'. \<not> l' s' \<le> l} \<union> {s'. e x = e s'}) ` {x. l' x \<le> l}}\<close>
+    by (simp add: if_distrib[where f=\<open>\<lambda>x. x \<union> _\<close>] image_constant_conv)
+  then have \<open>... =
+      {\<Union> A' |A'. A' \<noteq> {} \<and> (\<forall>x. l' x \<le> l) \<and> A' \<subseteq> range (\<lambda>x. {s'. l' s' \<le> l \<longrightarrow> e x = e s'})} \<union>
+      {\<Union> A' |A'. A' \<noteq> {} \<and> (\<exists>x. \<not> l' x \<le> l) \<and> A' \<subseteq> insert UNIV ((\<lambda>x. {s'. l' s' \<le> l \<longrightarrow> e x = e s'}) ` {x. l' x \<le> l})}\<close>
+    by (simp add: Collect_disj_eq[symmetric], blast)
+  then have \<open>... =
+    (if \<forall>x. l' x \<le> l
+     then {\<Union> A' |A'. A' \<noteq> {} \<and> A' \<subseteq> range (\<lambda>x. {s'. l' s' \<le> l \<longrightarrow> e x = e s'})}
+     else insert UNIV
+            {\<Union> A' |A'. A' \<noteq> {} \<and> UNIV \<notin> A' \<and> A' \<subseteq> (\<lambda>x. {s'. l' s' \<le> l \<longrightarrow> e x = e s'}) ` {x. l' x \<le> l}})\<close>
+    by (simp add: subset_insert_iff if_distrib[where f=\<open>(\<and>) _\<close>] if_bool_eq_disj
+        conj_disj_distribL ex_disj_distrib Collect_disj_eq, blast)
+  find_theorems \<open>?f (_ :: ?'a \<Rightarrow> ?'b) :: ?'a \<Rightarrow> ?'a set\<close>
+  then have \<open>... =
+    (if \<forall>x. l' x \<le> l
+     then supcl (equiv_classes_by e)
+     else insert UNIV
+            {\<Union> A' |A'. A' \<noteq> {} \<and> UNIV \<notin> A' \<and> A' \<subseteq> (\<lambda>x. {s'. l' s' \<le> l \<longrightarrow> e x = e s'}) ` {x. l' x \<le> l}})\<close>
+    unfolding supcl_def
+    by presburger
+  then have \<open>... =
+    (if \<forall>x. l' x \<le> l
+     then supcl (equiv_classes_by e)
+     else insert UNIV (supcl ((\<lambda>x. {s'. l' s' \<le> l \<longrightarrow> e x = e s'}) ` {x. l' x \<le> l})))\<close>
+    apply (simp add: supcl_def)
+    apply blast
+    done
+
+
+  show ?thesis
+    sorry
+qed
+
+find_theorems \<open>_ \<and> (_ \<or> _) \<longleftrightarrow> _\<close>
+lemma \<open>(\<exists>A. if x \<in> A then p A else q A) \<longleftrightarrow> (\<exists>A. x \<in> A \<and> p A else q A)\<close>
+
+lemma \<open>(\<lambda>_. UNIV) ` X = (if X = {} then {} else {UNIV})\<close>
+  apply (simp add: image_def Collect_conv_if)
+  try0
+  find_theorems \<open>{x. x = _ \<and> _}\<close>
+
+definition sec_points_to
+  :: \<open>'a \<Rightarrow> 'b \<Rightarrow> ('a \<rightharpoonup> 'b) sec_rel\<close>
+  (infix \<open>\<^bold>\<mapsto>\<^sub>s\<close> 90)
+  where
+  \<open>p \<^bold>\<mapsto>\<^sub>s v \<equiv> \<T> (p \<^bold>\<mapsto> v)\<close>
+
+(* Low(e,e') in the paper.
+    The paper produces \<open>emp\<close> when it's successful; we cannot, as we have a unitary resource model.
+    Thus, we must say \<open>lowe e e' \<and> ...\<close>.
+*)
+definition lowe
+  :: \<open>('st::perm_alg \<Rightarrow> 'v) \<Rightarrow> ('st \<Rightarrow> 'v) \<Rightarrow> 'st sec_rel\<close>
+  where
+  \<open>lowe e e' \<equiv> \<lambda>(sl, sh). (if e sl = e' sl then \<top> else \<bottom>)\<close>
+
 
 end
