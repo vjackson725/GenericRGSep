@@ -590,7 +590,7 @@ definition lowe
 
 lemma
   \<open>r = (\<lambda>(s,h) (s',h'). \<phi> s \<and> \<phi> s' \<and> h = h' \<and> h = 0) \<Longrightarrow>
-     tight_reflp r \<and> transp r \<and> symp r\<close>
+     quasireflp r \<and> transp r \<and> symp r\<close>
   by (clarsimp simp add: prepost_state_def' reflp_on_def transp_def
       symp_def)
 
@@ -607,7 +607,7 @@ lemma
 
 lemma
   \<open>r = (\<lambda>(s,h) (s',h'). (ep s \<^bold>\<mapsto> ev s) h \<and> (ep s' \<^bold>\<mapsto> ev s') h') \<Longrightarrow>
-      tight_reflp r \<and> transp r \<and> symp r\<close>
+      quasireflp r \<and> transp r \<and> symp r\<close>
   by (clarsimp simp add: prepost_state_def' reflp_on_def transp_def symp_def
       points_to_def split: prod.splits)
 
@@ -618,26 +618,26 @@ lemma
 
 (* nope *)
 lemma
-  \<open>tight_reflp (curry p) \<Longrightarrow> tight_reflp (curry q) \<Longrightarrow>
-    tight_reflp (curry (p \<leadsto> q))\<close>
+  \<open>quasireflp (curry p) \<Longrightarrow> quasireflp (curry q) \<Longrightarrow>
+    quasireflp (curry (p \<leadsto> q))\<close>
   nitpick
   oops
 
 lemma
-  \<open>tight_reflp (curry p) \<Longrightarrow> tight_reflp (curry q) \<Longrightarrow>
-    tight_reflp (curry (p \<sqinter> q))\<close>
+  \<open>quasireflp (curry p) \<Longrightarrow> quasireflp (curry q) \<Longrightarrow>
+    quasireflp (curry (p \<sqinter> q))\<close>
   by (clarsimp simp add: reflp_on_def prepost_state_def')
     blast
 
 lemma
-  \<open>tight_reflp (curry p) \<Longrightarrow> tight_reflp (curry q) \<Longrightarrow>
-    tight_reflp (curry (p \<squnion> q))\<close>
+  \<open>quasireflp (curry p) \<Longrightarrow> quasireflp (curry q) \<Longrightarrow>
+    quasireflp (curry (p \<squnion> q))\<close>
   by (clarsimp simp add: reflp_on_def prepost_state_def')
     blast
 
 lemma
-  \<open>tight_reflp (curry p) \<Longrightarrow> tight_reflp (curry q) \<Longrightarrow>
-    tight_reflp (curry (p \<^emph> q))\<close>
+  \<open>quasireflp (curry p) \<Longrightarrow> quasireflp (curry q) \<Longrightarrow>
+    quasireflp (curry (p \<^emph> q))\<close>
   apply (clarsimp simp add: reflp_on_def prepost_state_def' sepconj_def)
   apply (intro conjI impI allI)
    apply fast

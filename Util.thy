@@ -156,26 +156,26 @@ definition \<open>prepost_state \<equiv> pre_state \<squnion> post_state\<close>
 
 lemmas prepost_state_def' = prepost_state_def pre_state_def post_state_def
 
-abbreviation \<open>tight_reflp r \<equiv> reflp_on (Collect (prepost_state r)) r\<close>
+abbreviation \<open>quasireflp r \<equiv> reflp_on (Collect (prepost_state r)) r\<close>
 
 definition \<open>pre_change_state r \<equiv> \<lambda>a. \<exists>b. r a b \<and> a \<noteq> b\<close>
 definition \<open>post_change_state r \<equiv> \<lambda>b. \<exists>a. r a b \<and> a \<noteq> b\<close>
 definition \<open>change_state \<equiv> pre_change_state \<squnion> post_change_state\<close>
 
-lemma tight_reflpD1[dest]:
-  \<open>tight_reflp r \<Longrightarrow> r x y \<Longrightarrow> r x x\<close>
+lemma quasireflpD1[dest]:
+  \<open>quasireflp r \<Longrightarrow> r x y \<Longrightarrow> r x x\<close>
   by (metis mem_Collect_eq pre_state_def prepost_state_def reflp_onD sup2CI)
 
-lemma tight_reflpD2[dest]:
-  \<open>tight_reflp r \<Longrightarrow> r x y \<Longrightarrow> r y y\<close>
+lemma quasireflpD2[dest]:
+  \<open>quasireflp r \<Longrightarrow> r x y \<Longrightarrow> r y y\<close>
   by (metis mem_Collect_eq post_state_def prepost_state_def reflp_onD sup2CI)
 
-lemma tight_reflpD1'[dest]:
-  \<open>tight_reflp r \<Longrightarrow> pre_state r x \<Longrightarrow> r x x\<close>
+lemma quasireflpD1'[dest]:
+  \<open>quasireflp r \<Longrightarrow> pre_state r x \<Longrightarrow> r x x\<close>
   by (metis mem_Collect_eq prepost_state_def reflp_onD sup2CI)
 
-lemma tight_reflpD2'[dest]:
-  \<open>tight_reflp r \<Longrightarrow> post_state r y \<Longrightarrow> r y y\<close>
+lemma quasireflpD2'[dest]:
+  \<open>quasireflp r \<Longrightarrow> post_state r y \<Longrightarrow> r y y\<close>
   by (metis mem_Collect_eq prepost_state_def reflp_onD sup2CI)
 
 lemma pre_state_trancl_eq[simp]:
