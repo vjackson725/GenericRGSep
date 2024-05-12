@@ -495,6 +495,7 @@ lemmas preordering_trans =
   preordering.axioms(1)[THEN partial_preordering.trans]
 
 definition (in order) \<open>downset x \<equiv> {y. y\<le>x}\<close>
+definition (in order) \<open>Downset X \<equiv> {y. \<exists>x\<in>X. y \<le> x}\<close>
 
 definition (in conditionally_complete_lattice) \<open>supcl (A::'a set) \<equiv> {\<Squnion>A'|A'. A' \<noteq> {} \<and> A'\<subseteq>A}\<close>
 definition (in conditionally_complete_lattice) \<open>infcl (A::'a set) \<equiv> {\<Sqinter>A'|A'. A' \<noteq> {} \<and> A'\<subseteq>A}\<close>
@@ -859,6 +860,10 @@ lemma bequiv_iff2: \<open>a \<sim> b = (a \<sqinter> b) \<squnion> (-a \<sqinter
   using bequiv_iff sup.commute sup_inf_distrib2 by force
 
 end
+
+lemma mem_implies_iff[simp]:
+  \<open>x \<in> A \<leadsto> B \<longleftrightarrow> (x \<in> A \<longrightarrow> x \<in> B)\<close>
+  by (simp add: implies_def)
 
 subsection \<open> Bounded distributive lattices \<close>
 

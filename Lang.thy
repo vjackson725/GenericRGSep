@@ -244,29 +244,28 @@ section \<open> Specific Languages \<close>
 
 subsection \<open> Sugared atomic programs \<close>
 
-definition \<open>passert p \<equiv> \<lambda>a b. p a \<and> a = b\<close>
+definition \<open>pguard p \<equiv> \<lambda>a b. p a \<and> a = b\<close>
 
-abbreviation \<open>Assert p \<equiv> Atomic (passert p)\<close>
-abbreviation \<open>Assume p \<equiv> Atomic (\<lambda>a. p)\<close>
+abbreviation \<open>Guard p \<equiv> Atomic (pguard p)\<close>
 
-lemmas Assert_def = arg_cong[where f=Atomic, OF meta_eq_to_obj_eq[OF passert_def]]
+lemmas Guard_def = arg_cong[where f=Atomic, OF meta_eq_to_obj_eq[OF pguard_def]]
 
-lemma passert_simps[simp]:
-  \<open>passert p a b \<longleftrightarrow> p a \<and> b = a\<close>
-  by (force simp add: passert_def)
+lemma pguard_simps[simp]:
+  \<open>pguard p a b \<longleftrightarrow> p a \<and> b = a\<close>
+  by (force simp add: pguard_def)
 
 subsection \<open> If-then-else and While Loops \<close>
 
-definition \<open>IfThenElse p ct cf \<equiv> Assert p ;; ct \<box> Assert (-p) ;; cf\<close>
-definition \<open>WhileLoop p c \<equiv> DO (Assert p ;; c \<box> Assert (-p)) OD\<close>
+definition \<open>IfThenElse p ct cf \<equiv> Guard p ;; ct \<box> Guard (-p) ;; cf\<close>
+definition \<open>WhileLoop p c \<equiv> DO (Guard p ;; c \<box> Guard (-p)) OD\<close>
 
 lemma IfThenElse_inject[simp]:
   \<open>IfThenElse p1 ct1 cf1 = IfThenElse p2 ct2 cf2 \<longleftrightarrow> p1 = p2 \<and> ct1 = ct2 \<and> cf1 = cf2\<close>
-  by (simp add: IfThenElse_def passert_def fun_eq_iff, blast)
+  by (simp add: IfThenElse_def pguard_def fun_eq_iff, blast)
 
 lemma WhileLoop_inject[simp]:
   \<open>WhileLoop p1 c1 = WhileLoop p2 c2 \<longleftrightarrow> p1 = p2 \<and> c1 = c2\<close>
-  by (simp add: WhileLoop_def map_fixvar_inj_inject passert_def fun_eq_iff, blast)
+  by (simp add: WhileLoop_def map_fixvar_inj_inject pguard_def fun_eq_iff, blast)
 
 lemma IfThenElse_distinct[simp]:
   \<open>IfThenElse p ct cf \<noteq> Skip\<close>
