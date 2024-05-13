@@ -665,4 +665,17 @@ lemma
   \<open>symp (curry p) \<Longrightarrow> symp (curry (- p))\<close>
   by (clarsimp simp add: symp_def sepconj_def)
 
+definition revealH :: \<open>('s \<Rightarrow> 'v) \<Rightarrow> ('s set \<Rightarrow> 's set set)\<close> (\<open>reveal\<^sub>H\<close>) where
+  \<open>reveal\<^sub>H f \<equiv> \<lambda>U. (\<lambda>v. Set.filter ((=) v \<circ> f) U) ` UNIV\<close>
+
+definition \<open>equiv_class_rel f \<equiv> {(x,y). f x = f y}\<close>
+
+definition reveal :: \<open>('s \<Rightarrow> 'v) \<Rightarrow> (('s \<times> 's \<Rightarrow> bool) \<Rightarrow> ('s \<times> 's \<Rightarrow> bool) \<Rightarrow> bool)\<close> where
+  \<open>reveal f \<equiv> \<lambda>R R'. Collect R' = Collect R \<inter> equiv_class_rel f\<close>
+
+lemma
+  fixes l' :: \<open>'s \<Rightarrow> ('l::bounded_lattice)\<close>
+  shows \<open>(f \<triangleleft> l') \<top> \<le> sp (reveal f)\<close>
+  
+
 end
