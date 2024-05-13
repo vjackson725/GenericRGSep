@@ -25,6 +25,9 @@ lemmas conj_right_mp[simp] =
   SMT.verit_bool_simplify(8)
   arg_cong[where f=\<open>\<lambda>x. x \<and> R\<close> for R, OF SMT.verit_bool_simplify(8), simplified conj_assoc]
 
+lemma strong_imp_conj_iff: "(P \<Longrightarrow> R) \<Longrightarrow> ((Q \<longrightarrow> R) \<and> P) = P"
+  by blast
+
 lemma conj_imp_distribR:
   \<open>(p \<longrightarrow> q) \<and> r \<longleftrightarrow> (\<not> p \<and> r) \<or> (q \<and> r)\<close>
   by force
