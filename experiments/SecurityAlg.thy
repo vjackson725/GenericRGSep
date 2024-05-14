@@ -1,5 +1,5 @@
 theory SecurityAlg
-  imports "../RGLogic"
+  imports "../RGLogic" "HOL-Library.FSet"
 begin
 
 section \<open> Util (to move) \<close>
@@ -255,10 +255,8 @@ lift_definition bot_locheap :: \<open>('a \<rightharpoonup>\<^sub>l 'b)\<close> 
   by (simp split: prod.splits)
 
 instance
-  apply standard
-   apply (simp add: less_eq_sepadd_def', transfer, force)
-  apply (transfer, force)
-  done
+  by standard
+    (transfer, force)+
 
 end
 
@@ -409,36 +407,54 @@ lemma Un_contains_eq:
   shows \<open>A \<in> \<AA> \<Longrightarrow> \<Union> ((\<union>) A ` \<AA>) = \<Union> \<AA>\<close>
   by (drule mk_disjoint_insert, clarsimp)
 
+(* proof from Liam O'Connor *)
 lemma Sup_contains_eq:
-  fixes a :: \<open>'a :: complete_boolean_algebra\<close>
-  shows \<open>a \<in> A \<Longrightarrow> \<Squnion> ((\<squnion>) a ` A) = \<Squnion> A\<close>
-  apply (drule mk_disjoint_insert)
-  apply clarsimp
-  apply (simp add: Sup_insert[symmetric] image_def del: Sup_insert)
-  oops
+  fixes a :: \<open>'a :: complete_lattice\<close>
+  assumes \<open>a \<in> A\<close>
+  shows \<open>\<Squnion> ((\<squnion>) a ` A) = \<Squnion> A\<close>
+proof (rule antisym)
+  show \<open>\<Squnion> ((\<squnion>) a ` A) \<le> \<Squnion> A\<close> by (simp add: SUP_least Sup_upper assms)
+next
+  show \<open>\<Squnion> A \<le> \<Squnion> ((\<squnion>) a ` A)\<close> by (metis Sup_least Sup_upper image_eqI le_sup_iff)
+qed
 
 lemma un_Un_eq_Un_un_every:
   fixes a :: \<open>'a set\<close>
-  shows \<open>A \<noteq> {} \<Longrightarrow> a \<squnion> \<Squnion> A = \<Squnion> ((\<squnion>) a ` A)\<close>
+  shows \<open>\<AA> \<noteq> {} \<Longrightarrow> A \<union> \<Union> \<AA> = \<Union> ((\<union>) A ` \<AA>)\<close>
   by blast
 
 lemma sup_Sup_eq_Sup_sup_every:
-  fixes a :: \<open>'a :: complete_boolean_algebra\<close>
-  shows \<open>A \<noteq> {} \<Longrightarrow> a \<squnion> \<Squnion> A = \<Squnion> ((\<squnion>) a ` A)\<close>
-  oops
+  fixes a :: \<open>'a :: complete_lattice\<close>
+  assumes \<open>A \<noteq> {}\<close>
+  shows \<open>a \<squnion> \<Squnion> A = \<Squnion> ((\<squnion>) a ` A)\<close>
+  apply (intro order.antisym le_supI)
+    apply (meson assms SUP_upper2 ex_in_conv sup_ge1)
+   apply (metis Sup_mono imageI sup.cobounded2)
+  apply (metis SUP_least Sup_upper order_refl sup.mono)
+  done
 
-lemma
-  fixes a :: \<open>'a set\<close>
+lemma supcl_allsup_export:
+  fixes a :: \<open>'a::complete_lattice\<close>
   shows \<open>supcl ((\<squnion>) a ` B) = (\<squnion>) a ` supcl B\<close>
   apply (rule antisym)
-   apply (clarsimp simp add: supcl_def image_def subset_iff
-      Ball_def[symmetric] Bex_def)
-   apply (drule bchoice)
-   apply (clarsimp simp add: Ball_def subset_iff[symmetric])
-   apply (subgoal_tac \<open>A' \<subseteq> f -` B\<close>)
-    prefer 2
-    apply blast
-  oops
+  subgoal
+    apply (clarsimp simp add: supcl_def image_def subset_iff
+        Ball_def[symmetric] Bex_def)
+    apply (drule bchoice)
+    apply (clarsimp simp add: Ball_def subset_iff[symmetric])
+    apply (rule_tac x=\<open>\<Squnion>(f ` A')\<close> in exI)
+    apply (rule conjI)
+     apply blast
+    apply (simp add: sup_Sup_eq_Sup_sup_every)
+    apply (rule arg_cong[of _ _ Sup])
+    apply force
+    done
+  apply (clarsimp simp add: supcl_def image_def subset_iff
+      Ball_def Bex_def)
+  apply (rule_tac x=\<open>(\<squnion>) a ` A'\<close> in exI)
+  apply (meson image_iff image_is_empty sup_Sup_eq_Sup_sup_every)
+  done
+
 
 section \<open> Domain orders \<close>
 
@@ -617,16 +633,25 @@ proof -
     by force
   also have \<open>... =
     insert UNIV
-      (supcl
-        ((\<union>) {s'. \<not> l' s' \<le> l} `
-          (Set.filter
-            ((\<noteq>) {} \<circ> (\<inter>) (Collect ((\<ge>) l \<circ> l')))
-            (equiv_classes_by e))))\<close>
-
-    apply (rule arg_cong[of _ _ \<open>insert UNIV\<close>])
-    apply (simp add: supcl_def image_def)
-    sorry
-
+     (supcl ((\<union>) {s'. \<not> l' s' \<le> l} ` (equiv_class_by e ` {x. l' x \<le> l})))
+  \<close>
+    apply (simp add: comp_def image_def)
+    apply (rule arg_cong[of _ _ \<open>\<lambda>x. insert _ (supcl x)\<close>])
+    apply blast
+    done
+  also have \<open>... =
+    insert UNIV
+      ((\<union>) {s'. \<not> l' s' \<le> l} `
+        supcl (equiv_class_by e ` {x. l' x \<le> l}))
+  \<close>
+    by (simp add: supcl_allsup_export)
+  also have \<open>... =
+    insert UNIV
+      ((\<union>) {s'. \<not> l' s' \<le> l} `
+        supcl (Set.filter ((\<noteq>) {} \<circ> (\<inter>) {x. l' x \<le> l}) (equiv_classes_by e)))\<close>
+    apply (rule arg_cong[of _ _ \<open>\<lambda>x. insert _ (_ ` supcl x)\<close>])
+    apply (force simp add: Set.filter_def image_def Int_def)
+    done
 
   show ?thesis
     sorry
@@ -651,5 +676,117 @@ lemma reveal_triple:
   \<open>(reveal f l') P (P \<sqinter> (f \<triangleleft> l') \<sqinter> (\<lambda>_. equiv_class_rel l'))\<close>
   by (clarsimp simp add: reveal_def level_eval_def equiv_class_rel_def)
 
+
+lemma mono_comp:
+  \<open>mono f \<Longrightarrow> mono g \<Longrightarrow> mono (f \<circ> g)\<close>
+  by (simp add: monotone_on_o)
+
+definition
+  \<open>onesided_plus B \<equiv>
+    ((`) (case_prod (+)) \<circ> Set.filter (case_prod (##)) \<circ> (\<times>) B)\<close>
+
+lemma
+  fixes A B :: \<open>('a::perm_alg) set\<close>
+  shows
+  \<open>{a + b |a b. a \<in> A \<and> b \<in> B \<and> a ## b} =
+    onesided_plus B A\<close>
+  unfolding onesided_plus_def
+  by (simp add: set_eq_iff image_def Set.filter_def)
+    (meson disjoint_sym partial_add_commute)
+
+lemma onesided_plus_mono:
+  \<open>mono (onesided_plus B)\<close>
+  by (force simp add: onesided_plus_def mono_def image_def
+      Set.filter_def split: prod.splits)
+
+lemma
+  fixes x :: \<open>'a :: complete_lattice\<close>
+  shows \<open>
+    Lt = {(x::'a,y). x < y} \<Longrightarrow>
+    f (g x) = x \<Longrightarrow>
+    \<forall>A. \<Squnion>((f \<circ> g) ` A) = (f \<circ> g) (\<Squnion>A) \<Longrightarrow>
+    \<forall>A. \<Squnion>((f) ` A) = (f) (\<Squnion>A) \<Longrightarrow>
+    \<forall>A. \<Squnion>((g) ` A) = (g) (\<Squnion>A) \<Longrightarrow>
+    mono f \<Longrightarrow>
+    mono g \<Longrightarrow>
+    f x = x\<close>
+  nitpick[card=3]
+  oops
+
+lemma
+  fixes A C1 C2 :: \<open>('a::sep_alg) set\<close>
+  shows
+  \<open>dd A C1 \<Longrightarrow>
+    dd {a + b |a b. a \<in> A \<and> b \<in> C1 \<and> a ## b} C2 \<Longrightarrow>
+    A = {(a + x) + y|a x y.
+                  a \<in> A \<and> x \<in> C1 \<and> y \<in> C2 \<and>
+                  a ## x \<and> a + x ## y } \<Longrightarrow>
+    A = { a + x |a x. a \<in> A \<and> x \<in> C1 \<and> a ## x }\<close>
+  apply (intro set_eqI iffI)
+   apply clarsimp
+   prefer 2
+   apply clarsimp
+   apply (drule subst[rotated, of \<open>(\<in>) _\<close>], assumption)
+   apply (subst (asm) mem_Collect_eq)
+   apply clarsimp
+   apply (rename_tac c1 a c1' c2)
+   apply (rename_tac a c1)
+  oops
+
+
+instantiation set :: (perm_alg) sep_alg
+begin
+
+definition
+  \<open>plus_set A B \<equiv>
+    {a + b|a b. a\<in>A \<and> b\<in>B \<and> a ## b}\<close>
+
+definition
+  \<open>disjoint_set (A :: 'a set) (B :: 'a set) \<equiv>
+    True\<close>
+
+definition
+  \<open>unitof_set (A::'a set) \<equiv> {} :: 'a set\<close>
+declare unitof_set_def[simp]
+
+definition
+  \<open>zero_set \<equiv> {}\<close>
+
+instance
+  apply standard
+           apply (clarsimp simp add: plus_set_def disjoint_set_def Bex_def)
+           apply (intro iffI conjI impI allI set_eqI; (simp; fail)?)
+            apply clarsimp
+            apply (metis disjoint_add_leftR disjoint_add_swap_lr partial_add_assoc2)
+           apply clarsimp
+           apply (metis disjoint_add_rightL disjoint_add_swap_rl partial_add_assoc3)
+          apply (clarsimp simp add: plus_set_def disjoint_set_def)
+          apply (metis (mono_tags, opaque_lifting) disjoint_sym_iff partial_add_commute)
+         apply (clarsimp simp add: plus_set_def disjoint_set_def)
+         (* apply (meson disjoint_sym) *)
+        apply (clarsimp simp add: plus_set_def disjoint_set_def split: if_splits)
+        (* apply (metis disjoint_add_rightL) *)
+       apply (clarsimp simp add: plus_set_def disjoint_set_def split: if_splits)
+       (* apply (metis disjoint_add_rightR disjoint_add_right_commute) *)
+      apply (rename_tac A C1 B C2)
+      apply (clarsimp simp add: plus_set_def split: if_splits)
+      apply (rename_tac A C1 C2)
+      apply (drule sym)
+      apply (rule antisym)
+       apply clarsimp
+       apply (drule subst[rotated, where P=\<open>(\<in>) _\<close>], assumption)
+       apply (subst (asm) mem_Collect_eq)
+       apply clarsimp
+       apply (rename_tac c2 a c1)
+  find_theorems \<open>_ \<in> Collect _\<close>
+
+  oops
+
+    apply (simp add: plus_set_def zero_set_def)
+   apply (simp add: zero_set_def plus_set_def)
+  apply (simp add: zero_set_def)
+  done
+
+end
 
 end

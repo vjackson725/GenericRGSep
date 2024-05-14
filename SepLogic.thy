@@ -793,9 +793,13 @@ end
 section \<open> (Single Unit) Separation Algebra\<close>
 
 class sep_alg = multiunit_sep_alg + zero + bot +
-  assumes zero_least[simp,intro!]: \<open>0 \<preceq> x\<close>
+  assumes zero_least_unfolded: \<open>0 = b \<or> (\<exists>c. 0 ## c \<and> 0 + c = b)\<close>
   assumes bot_is_zero[simp]: \<open>\<bottom> = 0\<close>
 begin
+
+lemma zero_least[iff]: \<open>0 \<preceq> b\<close>
+  using zero_least_unfolded less_eq_sepadd_def'
+  by presburger
 
 sublocale order_bot \<open>\<bottom>\<close> \<open>(\<preceq>)\<close> \<open>(\<prec>)\<close>
   by standard
@@ -1083,7 +1087,7 @@ sublocale is_sep_alg: sep_alg the_unit the_unit \<open>(+)\<close> \<open>(##)\<
     apply (metis exactly_one_unit unitof_disjoint2 unitof_is_unit2 unitof_is_sepadd_unit
       the_unit_is_a_unit)
    apply (simp add: all_compatible compatible_unit_disjoint disjoint_sym_iff
-      units_least the_unit_is_a_unit)
+      units_least the_unit_is_a_unit compatible_to_unit_is_unit_left; fail)
   apply simp
   done
 

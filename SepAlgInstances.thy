@@ -750,7 +750,8 @@ definition bot_fun :: \<open>('a \<Rightarrow> 'b)\<close> where
 declare bot_fun_def[simp]
 
 instance
-  by standard (simp add: fun_eq_iff less_eq_sepadd_fun_eq2)+
+  by standard
+    (fastforce simp add: fun_eq_iff less_eq_sepadd_fun_eq2)+
 
 end
 
@@ -1350,9 +1351,12 @@ instantiation dlat_sep :: (bounded_distrib_lattice) sep_alg
 begin
 lift_definition zero_dlat_sep :: \<open>'a dlat_sep\<close> is \<open>\<bottom>\<close> .
 instance
-  by standard
-    (simp add: zero_dlat_sep_def bot_dlat_sep_def;
-      metis bot_dlat_sep_def sepadd_bot_least)+
+  apply standard
+   apply (simp add: zero_dlat_sep_def bot_dlat_sep_def)
+   apply (metis Rep_dlat_sep_inverse bot_dlat_sep_def inf_bot_left
+      plus_dlat_sep.abs_eq sup_bot_left)
+  apply (simp add: zero_dlat_sep_def bot_dlat_sep_def; fail)
+  done
 end
 
 instance dlat_sep :: (distrib_lattice_bot) dupcl_perm_alg
