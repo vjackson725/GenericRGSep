@@ -458,14 +458,20 @@ lemma supcl_allsup_export:
 
 section \<open> Domain orders \<close>
 
-definition less_eq_smyth :: \<open>('a::order) set \<Rightarrow> 'a set \<Rightarrow> bool\<close> (infix \<open>\<le>\<^sub>S\<close> 50) where
+paragraph \<open> leq \<close>
+
+definition leq_smyth :: \<open>('a::order) set \<Rightarrow> 'a set \<Rightarrow> bool\<close> (infix \<open>\<le>\<^sub>S\<close> 50) where
   \<open>A \<le>\<^sub>S B \<equiv> \<forall>b\<in>B. \<exists>a\<in>A. a \<le> b\<close>
 
-definition less_eq_hoare :: \<open>('a::order) set \<Rightarrow> 'a set \<Rightarrow> bool\<close> (infix \<open>\<le>\<^sub>H\<close> 50) where
+definition leq_hoare :: \<open>('a::order) set \<Rightarrow> 'a set \<Rightarrow> bool\<close> (infix \<open>\<le>\<^sub>H\<close> 50) where
   \<open>A \<le>\<^sub>H B \<equiv> \<forall>a\<in>A. \<exists>b\<in>B. a \<le> b\<close>
 
-abbreviation less_eq_plotkin :: \<open>('a::order) set \<Rightarrow> 'a set \<Rightarrow> bool\<close> (infix \<open>\<le>\<^sub>P\<close> 50) where
+definition leq_plotkin :: \<open>('a::order) set \<Rightarrow> 'a set \<Rightarrow> bool\<close> (infix \<open>\<le>\<^sub>P\<close> 50) where
   \<open>A \<le>\<^sub>P B \<equiv> A \<le>\<^sub>S B \<and> A \<le>\<^sub>H B\<close>
+
+lemmas leq_plotkin_def' = leq_plotkin_def leq_smyth_def leq_hoare_def
+
+paragraph \<open> equality \<close>
 
 definition eq_smyth :: \<open>('a::order) set \<Rightarrow> 'a set \<Rightarrow> bool\<close> (infix \<open>=\<^sub>S\<close> 50) where
   \<open>a =\<^sub>S b \<equiv> a \<le>\<^sub>S b \<and> b \<le>\<^sub>S a\<close>
@@ -476,31 +482,222 @@ definition eq_hoare :: \<open>('a::order) set \<Rightarrow> 'a set \<Rightarrow>
 definition eq_plotkin :: \<open>('a::order) set \<Rightarrow> 'a set \<Rightarrow> bool\<close> (infix \<open>=\<^sub>P\<close> 50) where
   \<open>a =\<^sub>P b \<equiv> a \<le>\<^sub>P b \<and> b \<le>\<^sub>P a\<close>
 
+paragraph \<open> less \<close>
+
+definition le_smyth :: \<open>('a::order) set \<Rightarrow> 'a set \<Rightarrow> bool\<close> (infix \<open><\<^sub>S\<close> 50) where
+  \<open>A <\<^sub>S B \<equiv> A \<le>\<^sub>S B \<and> \<not>(A =\<^sub>S B)\<close>
+
+definition le_hoare :: \<open>('a::order) set \<Rightarrow> 'a set \<Rightarrow> bool\<close> (infix \<open><\<^sub>H\<close> 50) where
+  \<open>A <\<^sub>H B \<equiv> A \<le>\<^sub>H B \<and> \<not>(A =\<^sub>H B)\<close>
+
+definition le_plotkin :: \<open>('a::order) set \<Rightarrow> 'a set \<Rightarrow> bool\<close> (infix \<open><\<^sub>P\<close> 50) where
+  \<open>A <\<^sub>P B \<equiv> A \<le>\<^sub>P B \<and> \<not>(A =\<^sub>P B)\<close>
+
+subsection \<open> Smyth is an order \<close>
+
+setup \<open>Sign.mandatory_path "leq_smyth"\<close>
+
+interpretation partial_preordering \<open>(\<le>\<^sub>S)\<close>
+  apply standard
+   apply (fastforce simp add: leq_smyth_def)
+  apply (meson order.trans leq_smyth_def; fail)
+  done
+
+setup \<open>Sign.parent_path\<close>
+
+declare leq_smyth.refl[iff]
+declare leq_smyth.trans[trans]
+
+lemma smyth_antisym:
+  \<open>a \<le>\<^sub>S b \<Longrightarrow> b \<le>\<^sub>S a \<Longrightarrow> a =\<^sub>S b\<close>
+  unfolding leq_smyth_def eq_smyth_def
+  by argo
+
+lemma eq_smyth_refl[iff]:
+  \<open>a =\<^sub>S a\<close>
+  by (simp add: eq_smyth_def)
+
+lemma eq_smyth_sym:
+  \<open>a =\<^sub>S b \<Longrightarrow> b =\<^sub>S a\<close>
+  by (simp add: eq_smyth_def)
+
+lemma eq_smyth_trans[trans]:
+  \<open>a =\<^sub>S b \<Longrightarrow> b =\<^sub>S c \<Longrightarrow> a =\<^sub>S c\<close>
+  by (force simp add: eq_smyth_def intro: leq_smyth.trans)
+
+lemma smyth_eq_refl:
+  \<open>a =\<^sub>S b \<Longrightarrow> a \<le>\<^sub>S b\<close>
+  by (simp add: eq_smyth_def)
+
+lemma smyth_less_le:
+  \<open>(x <\<^sub>S y) = (x \<le>\<^sub>S y \<and> \<not>(x =\<^sub>S y))\<close>
+  by (simp add: le_smyth_def)
+
+lemma smyth_nless_le:
+  \<open>(\<not> (x <\<^sub>S y)) = (\<not>(x \<le>\<^sub>S y) \<or> x =\<^sub>S y)\<close>
+  by (simp add: le_smyth_def)
+
+local_setup \<open>
+  HOL_Order_Tac.declare_order {
+    ops = {eq = @{term \<open>(=\<^sub>S) :: ('a::order) set \<Rightarrow> 'a set \<Rightarrow> bool\<close>}, le = @{term \<open>(\<le>\<^sub>S)\<close>},
+            lt = @{term \<open>(<\<^sub>S)\<close>}},
+    thms = {trans = @{thm leq_smyth.trans},
+            refl = @{thm leq_smyth.refl},
+            eqD1 = @{thm smyth_eq_refl},
+            eqD2 = @{thm smyth_eq_refl[OF eq_smyth_sym]},
+            antisym = @{thm smyth_antisym},
+            contr = @{thm notE}},
+    conv_thms = {less_le = @{thm eq_reflection[OF smyth_less_le]},
+                 nless_le = @{thm eq_reflection[OF smyth_nless_le]}}
+  }
+\<close>
+
+subsection \<open> Hoare is an order \<close>
+
+setup \<open>Sign.mandatory_path "leq_hoare"\<close>
+
+interpretation partial_preordering \<open>(\<le>\<^sub>H)\<close>
+  apply standard
+   apply (fastforce simp add: leq_hoare_def)
+  apply (meson order.trans leq_hoare_def; fail)
+  done
+
+setup \<open>Sign.parent_path\<close>
+
+declare leq_hoare.refl[iff]
+declare leq_hoare.trans[trans]
+
+lemma hoare_antisym:
+  \<open>a \<le>\<^sub>H b \<Longrightarrow> b \<le>\<^sub>H a \<Longrightarrow> a =\<^sub>H b\<close>
+  unfolding leq_hoare_def eq_hoare_def
+  by argo
+
+lemma eq_hoare_refl[iff]:
+  \<open>a =\<^sub>H a\<close>
+  by (simp add: eq_hoare_def)
+
+lemma eq_hoare_sym:
+  \<open>a =\<^sub>H b \<Longrightarrow> b =\<^sub>H a\<close>
+  by (simp add: eq_hoare_def)
+
+lemma eq_hoare_trans[trans]:
+  \<open>a =\<^sub>H b \<Longrightarrow> b =\<^sub>H c \<Longrightarrow> a =\<^sub>H c\<close>
+  by (force simp add: eq_hoare_def intro: leq_hoare.trans)
+
+lemma hoare_eq_refl:
+  \<open>a =\<^sub>H b \<Longrightarrow> a \<le>\<^sub>H b\<close>
+  by (simp add: eq_hoare_def)
+
+lemma hoare_less_le:
+  \<open>(x <\<^sub>H y) = (x \<le>\<^sub>H y \<and> \<not>(x =\<^sub>H y))\<close>
+  by (simp add: le_hoare_def)
+
+lemma hoare_nless_le:
+  \<open>(\<not> (x <\<^sub>H y)) = (\<not>(x \<le>\<^sub>H y) \<or> x =\<^sub>H y)\<close>
+  by (simp add: le_hoare_def)
+
+local_setup \<open>
+  HOL_Order_Tac.declare_order {
+    ops = {eq = @{term \<open>(=\<^sub>H) :: ('a::order) set \<Rightarrow> 'a set \<Rightarrow> bool\<close>},
+            le = @{term \<open>(\<le>\<^sub>H)\<close>},
+            lt = @{term \<open>(<\<^sub>H)\<close>}},
+    thms = {trans = @{thm leq_hoare.trans},
+            refl = @{thm leq_hoare.refl},
+            eqD1 = @{thm hoare_eq_refl},
+            eqD2 = @{thm hoare_eq_refl[OF eq_hoare_sym]},
+            antisym = @{thm hoare_antisym},
+            contr = @{thm notE}},
+    conv_thms = {less_le = @{thm eq_reflection[OF hoare_less_le]},
+                 nless_le = @{thm eq_reflection[OF hoare_nless_le]}}
+  }
+\<close>
+
+subsection \<open> Plotkin is an order \<close>
+
+setup \<open>Sign.mandatory_path "leq_plotkin"\<close>
+
+interpretation partial_preordering \<open>(\<le>\<^sub>P)\<close>
+  apply standard
+   apply (fastforce simp add: leq_plotkin_def)
+  apply (meson leq_plotkin_def leq_hoare.trans leq_smyth.trans; fail)
+  done
+
+setup \<open>Sign.parent_path\<close>
+
+declare leq_plotkin.refl[iff]
+declare leq_plotkin.trans[trans]
+
+lemma plotkin_antisym:
+  \<open>a \<le>\<^sub>P b \<Longrightarrow> b \<le>\<^sub>P a \<Longrightarrow> a =\<^sub>P b\<close>
+  unfolding leq_plotkin_def eq_plotkin_def
+  by argo
+
+lemma eq_plotkin_refl[iff]:
+  \<open>a =\<^sub>P a\<close>
+  by (simp add: eq_plotkin_def)
+
+lemma eq_plotkin_sym:
+  \<open>a =\<^sub>P b \<Longrightarrow> b =\<^sub>P a\<close>
+  by (simp add: eq_plotkin_def)
+
+lemma eq_plotkin_trans[trans]:
+  \<open>a =\<^sub>P b \<Longrightarrow> b =\<^sub>P c \<Longrightarrow> a =\<^sub>P c\<close>
+  by (clarsimp simp add: leq_plotkin_def eq_plotkin_def,
+      blast intro: leq_smyth.trans leq_hoare.trans)
+
+lemma plotkin_eq_refl:
+  \<open>a =\<^sub>P b \<Longrightarrow> a \<le>\<^sub>P b\<close>
+  by (simp add: eq_plotkin_def)
+
+lemma plotkin_less_le:
+  \<open>(x <\<^sub>P y) = (x \<le>\<^sub>P y \<and> \<not>(x =\<^sub>P y))\<close>
+  by (simp add: le_plotkin_def)
+
+lemma plotkin_nless_le:
+  \<open>(\<not> (x <\<^sub>P y)) = (\<not>(x \<le>\<^sub>P y) \<or> x =\<^sub>P y)\<close>
+  by (force simp add: le_plotkin_def)
+
+local_setup \<open>
+  HOL_Order_Tac.declare_order {
+    ops = {eq = @{term \<open>(=\<^sub>P) :: ('a::order) set \<Rightarrow> 'a set \<Rightarrow> bool\<close>},
+            le = @{term \<open>(\<le>\<^sub>P)\<close>},
+            lt = @{term \<open>(<\<^sub>P)\<close>}},
+    thms = {trans = @{thm leq_plotkin.trans},
+            refl = @{thm leq_plotkin.refl},
+            eqD1 = @{thm plotkin_eq_refl},
+            eqD2 = @{thm plotkin_eq_refl[OF eq_plotkin_sym]},
+            antisym = @{thm plotkin_antisym},
+            contr = @{thm notE}},
+    conv_thms = {less_le = @{thm eq_reflection[OF plotkin_less_le]},
+                 nless_le = @{thm eq_reflection[OF plotkin_nless_le]}}
+  }
+\<close>
+
 subsection \<open> Domain order lemmas \<close>
 
 lemma smyth_supcl_greater[intro]:
   fixes A B :: \<open>('a::complete_lattice) set\<close>
   shows \<open>A \<le>\<^sub>S supcl A\<close>
-  by (clarsimp simp add: supcl_def less_eq_smyth_def)
+  by (clarsimp simp add: supcl_def leq_smyth_def)
     (meson Sup_upper order.trans all_not_in_conv subset_iff)
 
 lemma smyth_supcl_lesser[intro]:
   fixes A B :: \<open>('a::complete_lattice) set\<close>
   shows \<open>supcl A \<le>\<^sub>S A\<close>
-  by (clarsimp simp add: supcl_def less_eq_smyth_def)
+  by (clarsimp simp add: supcl_def leq_smyth_def)
     (metis Sup_upper ccpo_Sup_singleton empty_iff insert_subset singletonI sup.order_iff
       sup_bot.right_neutral)
 
 lemma smyth_supcl_closedR:
   fixes A B :: \<open>('a::complete_lattice) set\<close>
   shows \<open>A \<le>\<^sub>S B \<Longrightarrow> A \<le>\<^sub>S supcl B\<close>
-  by (clarsimp simp add: supcl_def less_eq_smyth_def)
+  by (clarsimp simp add: supcl_def leq_smyth_def)
     (meson Sup_upper order.trans all_not_in_conv subset_iff)
 
 lemma smyth_supcl_closedL:
   fixes A B :: \<open>('a::complete_lattice) set\<close>
   shows \<open>supcl A \<le>\<^sub>S B \<Longrightarrow> A \<le>\<^sub>S B\<close>
-  by (clarsimp simp add: supcl_def less_eq_smyth_def)
+  by (clarsimp simp add: supcl_def leq_smyth_def)
     (metis Sup_upper order.trans all_not_in_conv subset_iff)
 
 lemma supcl_smyth_eq:
@@ -520,7 +717,7 @@ lemma union_closure:
   \<open>\<forall>x. \<forall>h HI. HI \<in> I' x \<longrightarrow> (\<exists>\<HH>. \<HH> \<noteq> {} \<and> HI = \<Union>\<HH> \<and> (\<forall>H\<in>\<HH>. H \<in> I x)) \<Longrightarrow>
     \<forall>x. I x \<subseteq> I' x \<Longrightarrow>
     I \<sqsubseteq> I' \<and> I' \<sqsubseteq> I\<close>
-  apply (clarsimp simp add: less_eq_smyth_def Ball_def split: prod.splits)
+  apply (clarsimp simp add: leq_smyth_def Ball_def split: prod.splits)
   apply (intro conjI impI allI)
    apply blast
   apply fast
@@ -708,6 +905,80 @@ lemma
   oops
 
 lemma
+  fixes A B :: \<open>('a::canonically_ordered_monoid_add) set\<close>
+  assumes
+    \<open>A \<noteq> {}\<close>
+    \<open>B \<noteq> {}\<close>
+    \<open>AB = {a + b|a b. a \<in> A \<and> b \<in> B}\<close>
+  shows
+    \<open>A \<le>\<^sub>P AB\<close>
+    \<open>B \<le>\<^sub>P AB\<close>
+  using assms
+  by (force simp add: leq_plotkin_def' le_iff_add add.commute)+
+
+lemma canonically_ordered_set_add_trans_plotkin:
+  fixes X :: \<open>('a::canonically_ordered_monoid_add) set\<close>
+  assumes
+    \<open>A \<noteq> {}\<close>
+    \<open>B \<noteq> {}\<close>
+    \<open>{x + a + b|x a b. x \<in> X \<and> a \<in> A \<and> b \<in> B} = X\<close>
+  shows
+    \<open>{x + a|x a. x \<in> X \<and> a \<in> A} =\<^sub>P X\<close>
+proof -
+  have \<open>X \<le>\<^sub>P {x + a|x a. x \<in> X \<and> a \<in> A}\<close>
+    using assms
+    by (force simp add: leq_plotkin_def' le_iff_add)
+  moreover have \<open>... \<le>\<^sub>P {x + a + b|x a b. x \<in> X \<and> a \<in> A \<and> b \<in> B}\<close>
+    using assms
+    by (clarsimp simp add: leq_plotkin_def' le_iff_add, blast)
+  ultimately show ?thesis
+    using assms eq_plotkin_def
+    by force
+qed
+
+lemma perm_alg_set_add_trans_plotkin:
+  fixes X :: \<open>('a::{perm_alg,order}) set\<close>
+  assumes
+    \<open>((\<le>) :: 'a \<Rightarrow> 'a \<Rightarrow> bool) = (\<preceq>)\<close>
+    \<open>A \<noteq> {}\<close>
+    \<open>B \<noteq> {}\<close>
+    \<open>{(x + a) + b|x a b. x \<in> X \<and> a \<in> A \<and> b \<in> B \<and> x ## a \<and> x + a ## b} = X\<close>
+  shows
+    \<open>{x + a|x a. x \<in> X \<and> a \<in> A \<and> x ## a} =\<^sub>S X\<close>
+proof -
+  have \<open>X \<le>\<^sub>S {x + a|x a. x \<in> X \<and> a \<in> A \<and> x ## a}\<close>
+    using assms(2-)
+    apply (clarsimp simp add: leq_smyth_def assms(1) less_eq_sepadd_def')
+    apply blast
+    done
+  moreover have \<open>... \<le>\<^sub>S {(x + a) + b|x a b. x \<in> X \<and> a \<in> A \<and> b \<in> B \<and> x ## a \<and> x + a ## b}\<close>
+    using assms(2-)
+    apply (clarsimp simp add: leq_smyth_def assms(1) less_eq_sepadd_def'
+        conj_disj_distribL ex_disj_distrib)
+    apply (drule iffD1[OF set_eq_iff])
+    apply simp
+    apply metis
+    done
+  ultimately show ?thesis
+    using assms eq_smyth_def
+    by force
+qed
+
+lemma
+  fixes A B :: \<open>('a::canonically_ordered_monoid_add) set\<close>
+  shows \<open>A =\<^sub>P B \<Longrightarrow> A = B\<close>
+  nitpick
+  oops
+
+lemma perm_alg_set_add_trans_plotkin:
+  fixes A B :: \<open>('a::{perm_alg,order}) set\<close>
+  assumes \<open>((\<le>) :: 'a \<Rightarrow> 'a \<Rightarrow> bool) = (\<preceq>)\<close>
+  shows \<open>A =\<^sub>S B \<Longrightarrow> A = B\<close>
+  nitpick
+  oops
+
+
+lemma
   fixes X :: \<open>('a::{plus,disjoint}) set\<close>
   (* partial commutative monoid *)
   assumes partial_add_assoc: \<open>\<And>a b c::'a. a ## b \<Longrightarrow> b ## c \<Longrightarrow> a ## c \<Longrightarrow> (a + b) + c = a + (b + c)\<close>
@@ -732,7 +1003,7 @@ lemma
   oops
 
 lemma
-  fixes A C1 C2 :: \<open>('a::sep_alg) set\<close>
+  fixes A C1 C2 :: \<open>('a::multiunit_sep_alg) set\<close>
   shows
   \<open>dd A C1 \<Longrightarrow>
     dd {a + b |a b. a \<in> A \<and> b \<in> C1 \<and> a ## b} C2 \<Longrightarrow>
@@ -750,6 +1021,28 @@ lemma
    apply (rename_tac c1 a c1' c2)
    apply (rename_tac a c1)
   oops
+
+definition
+  \<open>seple_rel = {(a,b). a \<noteq> b \<and> (\<exists>c::'a::perm_alg. a ## c \<and> a + c = b)}\<close>
+
+lemma seple_rel_prec:
+  fixes x :: \<open>'a :: perm_alg\<close>
+  shows \<open>(x,y) \<in> seple_rel\<^sup>+ \<Longrightarrow> x \<prec> y\<close>
+  apply (induct rule: trancl.induct)
+   apply (clarsimp simp add: seple_rel_def less_sepadd_def')+
+  apply (metis positivity trans_helper)
+  done
+
+lemma
+  fixes x :: \<open>'a :: perm_alg\<close>
+  shows \<open>(x,y) \<in> seple_rel\<^sup>+ \<Longrightarrow> x = y \<Longrightarrow> False\<close>
+  apply (induct rule: trancl.induct)
+   apply (simp add: seple_rel_def)
+  apply (drule seple_rel_prec)
+  apply (clarsimp simp add: seple_rel_def)
+  apply (simp add: partial_le_plus resource_order.leD)
+  done
+
 
 
 instantiation set :: (perm_alg) sep_alg
