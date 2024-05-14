@@ -682,22 +682,17 @@ lemma mono_comp:
   by (simp add: monotone_on_o)
 
 definition
-  \<open>onesided_plus B \<equiv>
-    ((`) (case_prod (+)) \<circ> Set.filter (case_prod (##)) \<circ> (\<times>) B)\<close>
+  \<open>set_plus A \<equiv>
+    ((`) (case_prod (+)) \<circ> Set.filter (case_prod (##)) \<circ> (\<times>) A)\<close>
 
 lemma
-  fixes A B :: \<open>('a::perm_alg) set\<close>
-  shows
-  \<open>{a + b |a b. a \<in> A \<and> b \<in> B \<and> a ## b} =
-    onesided_plus B A\<close>
-  unfolding onesided_plus_def
-  by (simp add: set_eq_iff image_def Set.filter_def)
-    (meson disjoint_sym partial_add_commute)
+  \<open>{a + b |a b. a \<in> A \<and> b \<in> B \<and> a ## b} = set_plus A B\<close>
+  unfolding set_plus_def
+  by (simp add: set_eq_iff image_def Set.filter_def, blast)
 
 lemma onesided_plus_mono:
-  \<open>mono (onesided_plus B)\<close>
-  by (force simp add: onesided_plus_def mono_def image_def
-      Set.filter_def split: prod.splits)
+  \<open>mono (set_plus B)\<close>
+  by (force simp add: set_plus_def mono_def image_def Set.filter_def split: prod.splits)
 
 lemma
   fixes x :: \<open>'a :: complete_lattice\<close>
@@ -710,7 +705,30 @@ lemma
     mono f \<Longrightarrow>
     mono g \<Longrightarrow>
     f x = x\<close>
-  nitpick[card=3]
+  oops
+
+lemma
+  fixes X :: \<open>('a::{plus,disjoint}) set\<close>
+  (* partial commutative monoid *)
+  assumes partial_add_assoc: \<open>\<And>a b c::'a. a ## b \<Longrightarrow> b ## c \<Longrightarrow> a ## c \<Longrightarrow> (a + b) + c = a + (b + c)\<close>
+  assumes partial_add_commute: \<open>\<And>a b::'a. a ## b \<Longrightarrow> a + b = b + a\<close>
+  assumes disjoint_sym: \<open>\<And>a b::'a. a ## b \<Longrightarrow> b ## a\<close>
+  assumes disjoint_add_rightL: \<open>\<And>a b c::'a. b ## c \<Longrightarrow> a ## b + c \<Longrightarrow> a ## b\<close>
+  assumes disjoint_add_right_commute: \<open>\<And>a b c::'a. b ## c \<Longrightarrow> a ## b + c \<Longrightarrow> b ## a + c\<close>
+  (* separation laws *)
+  assumes positivity:
+    \<open>\<And>a b c1 c2::'a. a ## c1 \<Longrightarrow> a + c1 = b \<Longrightarrow> b ## c2 \<Longrightarrow> b + c2 = a \<Longrightarrow> a = b\<close>
+  assumes
+    \<open>\<And>A. ff A = \<Squnion>((\<lambda>a. {a + b |b. b \<in> F \<and> a ## b}) ` A)\<close>
+    \<open>\<And>A. gg A = \<Squnion>((\<lambda>a. {a + b |b. b \<in> G \<and> a ## b}) ` A)\<close>
+    \<open>ffgg = ff \<circ> gg\<close>
+    \<open>F = {x}\<close>
+    \<open>G = {y}\<close>
+  shows
+  \<open>(d :: 'a \<times> _ \<Rightarrow> _) = case_prod (##) \<Longrightarrow>
+    (p :: 'a \<times> _ \<Rightarrow> _) = case_prod (+) \<Longrightarrow>
+    ffgg X = X \<Longrightarrow> ff X = X\<close>
+  nitpick
   oops
 
 lemma
