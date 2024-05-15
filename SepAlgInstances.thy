@@ -1055,6 +1055,175 @@ end
 (* not an all_disjoint_perm_alg *)
 
 
+section \<open> Zero-one interval \<close>
+
+typedef(overloaded) ('a::\<open>{linordered_semiring,zero_less_one}\<close>) zoint =
+  \<open>{x. (0::'a) \<le> x \<and> x \<le> 1}\<close>
+  morphisms zoint_val ZOInt
+  using zero_less_one_class.zero_le_one
+  by blast
+
+setup_lifting type_definition_zoint
+
+subsection \<open> helper lemmas \<close>
+
+lemmas ZOInt_inverse_iff[simp] = ZOInt_inverse[simplified]
+lemmas ZOInt_inject_iff[simp] = ZOInt_inject[simplified]
+lemmas zoint_val_inject_rev = zoint_val_inject[symmetric]
+
+lemma ZOInt_eq_iff:
+  \<open>0 \<le> a \<Longrightarrow> a \<le> 1 \<Longrightarrow> ZOInt a = pa \<longleftrightarrow> zoint_val pa = a\<close>
+  using zoint_val_inverse by fastforce
+
+lemma eq_ZOInt_iff:
+  \<open>0 \<le> a \<Longrightarrow> a \<le> 1 \<Longrightarrow> pa = ZOInt a \<longleftrightarrow> zoint_val pa = a\<close>
+  by (metis ZOInt_inverse_iff zoint_val_inverse)
+
+lemma zoint_val_conditions:
+  \<open>0 \<le> zoint_val x\<close>
+  \<open>zoint_val x \<le> 1\<close>
+  using zoint_val by force+
+
+lemma zoint_val_add_gt0:
+  \<open>0 \<le> zoint_val x + zoint_val y\<close>
+  by (simp add: add_pos_pos zoint_val_conditions(1))
+
+instantiation zoint :: (\<open>{linordered_semiring,zero_less_one}\<close>) order
+begin
+
+definition less_eq_zoint :: \<open>'a zoint \<Rightarrow> 'a zoint \<Rightarrow> bool\<close> where
+  \<open>less_eq_zoint a b \<equiv> zoint_val a \<le> zoint_val b\<close>
+
+lemma less_eq_zoint_iff[simp]:
+  \<open>0 \<le> x \<Longrightarrow> x \<le> 1 \<Longrightarrow> 0 \<le> y \<Longrightarrow> y \<le> 1 \<Longrightarrow> ZOInt x \<le> ZOInt y \<longleftrightarrow> x \<le> y\<close>
+  by (simp add: less_eq_zoint_def)
+
+definition less_zoint :: \<open>'a zoint \<Rightarrow> 'a zoint \<Rightarrow> bool\<close> where
+  \<open>less_zoint a b \<equiv> zoint_val a < zoint_val b\<close>
+
+lemma less_zoint_iff[simp]:
+  \<open>0 \<le> x \<Longrightarrow> x \<le> 1 \<Longrightarrow> 0 \<le> y \<Longrightarrow> y \<le> 1 \<Longrightarrow> ZOInt x < ZOInt y \<longleftrightarrow> x < y\<close>
+  by (simp add: less_zoint_def)
+
+instance
+  apply standard
+     apply (force simp add: less_eq_zoint_def less_zoint_def)+
+  apply (fastforce simp add: less_eq_zoint_def zoint_val_inject)
+  done
+
+end
+
+subsection \<open> perm_alg \<close>
+
+instantiation zoint :: (\<open>{linordered_semiring,zero_less_one}\<close>) zero
+begin
+lift_definition zero_zoint :: \<open>'a zoint\<close> is \<open>0\<close> by simp
+declare zero_zoint.rep_eq[simp]
+instance by standard
+end
+
+instantiation zoint :: (\<open>{linordered_semiring,zero_less_one}\<close>) one
+begin
+lift_definition one_zoint :: \<open>'a zoint\<close> is \<open>1\<close> by simp
+declare one_zoint.rep_eq[simp]
+instance by standard
+end
+
+instantiation zoint :: (\<open>{linordered_semiring,zero_less_one}\<close>) sep_alg
+begin
+
+lift_definition disjoint_zoint :: \<open>'a zoint \<Rightarrow> 'a zoint \<Rightarrow> bool\<close> is
+  \<open>\<lambda>a b. a + b \<le> 1\<close> .
+lemmas disjoint_zoint_iff = disjoint_zoint.rep_eq
+
+lift_definition plus_zoint :: \<open>'a zoint \<Rightarrow> 'a zoint \<Rightarrow> 'a zoint\<close> is \<open>\<lambda>x y. min 1 (x + y)\<close>
+  by (force simp add: add_pos_pos min_def)
+
+lemma plus_zoint_iff[simp]:
+  \<open>0 < x \<Longrightarrow> x \<le> 1 \<Longrightarrow> 0 < y \<Longrightarrow> y \<le> 1 \<Longrightarrow> ZOInt x + ZOInt y = ZOInt (min 1 (x + y))\<close>
+  by (simp add: plus_zoint.abs_eq eq_onp_same_args)
+
+lemma plus_zoint_eq:
+  \<open>x + y = ZOInt (min 1 (zoint_val x + zoint_val y))\<close>
+  by (metis zoint_val_inverse plus_zoint.rep_eq)
+
+lift_definition unitof_zoint :: \<open>'a zoint \<Rightarrow> 'a zoint\<close> is \<open>\<lambda>x. 0\<close>
+  by force
+declare unitof_zoint.rep_eq[simp]
+
+lemma unitof_zoint_eq[simp]:
+  \<open>unitof (x :: 'a zoint) = 0\<close>
+  by (transfer, force)
+
+lift_definition bot_zoint :: \<open>'a zoint\<close> is \<open>0\<close>
+  by force
+declare bot_zoint.rep_eq[simp]
+
+instance
+  apply standard
+           apply (force simp add: zoint_val_inject_rev add.assoc disjoint_zoint_def plus_zoint.rep_eq)
+          apply (force simp add: zoint_val_inject_rev add.commute disjoint_zoint_def plus_zoint.rep_eq)
+         apply (simp add: disjoint_zoint_def add.commute; fail)
+        apply (simp add: disjoint_zoint_def plus_zoint.rep_eq add.assoc[symmetric])
+        apply (meson order.trans le_add_same_cancel1 zoint_val_conditions(1))
+       apply (simp add: disjoint_zoint_def plus_zoint.rep_eq add.left_commute
+      min.coboundedI2 min_add_distrib_right; fail)
+      apply (simp add: disjoint_zoint_def zoint_val_inject_rev
+      plus_zoint.rep_eq)
+      apply (metis add.comm_neutral add_left_mono verit_la_disequality zoint_val_conditions(1))
+     apply (simp add: disjoint_zoint_def zoint_val_conditions; fail)
+    apply (simp add: disjoint_zoint_def zoint_val_conditions
+      zoint_val_inject_rev plus_zoint.rep_eq; fail)
+   apply (simp add: disjoint_zoint_def zoint_val_conditions
+      zoint_val_inject_rev plus_zoint.rep_eq, blast)
+  apply (simp add: zoint_val_inject_rev)
+  done
+
+end
+
+
+lemma zoint_one_greatest:
+  fixes a :: \<open>'a::linordered_semidom zoint\<close>
+  shows \<open>a \<preceq> 1\<close>
+  unfolding less_eq_sepadd_def'
+  apply (transfer, clarsimp)
+  apply (metis add_diff_cancel_left' le_add_diff_inverse2 le_numeral_extra(4)
+      linordered_semidom_ge0_le_iff_add)
+  done
+
+subsection \<open> Extended instances \<close>
+
+instance zoint :: (\<open>{linordered_semiring,zero_less_one}\<close>) dupcl_perm_alg
+  by standard
+    (transfer, simp add: add_nonneg_eq_0_iff)
+
+instance zoint :: (linordered_semidom) allcompatible_perm_alg
+  by standard 
+    (simp add: compatible_def,
+      metis compatible_def zoint_one_greatest trans_le_ge_is_compatible)
+
+(* not a strong_sep_perm_alg *)
+
+(* not a disjoint_parts_perm_alg *)
+
+(* not a trivial_selfdisjoint_perm_alg *)
+
+(* not a crosssplit_perm_alg *)
+
+instance zoint :: (\<open>{linordered_semiring,zero_less_one}\<close>) cancel_perm_alg
+  by standard (transfer, force)
+
+(* not a no_unit_perm_alg *)
+
+instantiation zoint :: (linordered_field) halving_perm_alg
+begin
+lift_definition half_zoint :: \<open>'a zoint \<Rightarrow> 'a zoint\<close> is \<open>\<lambda>x. x / 2\<close> by simp
+instance  by standard (transfer, simp)+
+end
+
+(* not an all_disjoint_perm_alg *)
+
+
 section \<open> Error monad \<close>
 
 text \<open>
