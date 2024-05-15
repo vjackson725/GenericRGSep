@@ -484,13 +484,13 @@ definition eq_plotkin :: \<open>('a::order) set \<Rightarrow> 'a set \<Rightarro
 
 paragraph \<open> less \<close>
 
-definition le_smyth :: \<open>('a::order) set \<Rightarrow> 'a set \<Rightarrow> bool\<close> (infix \<open><\<^sub>S\<close> 50) where
+definition less_smyth :: \<open>('a::order) set \<Rightarrow> 'a set \<Rightarrow> bool\<close> (infix \<open><\<^sub>S\<close> 50) where
   \<open>A <\<^sub>S B \<equiv> A \<le>\<^sub>S B \<and> \<not>(A =\<^sub>S B)\<close>
 
-definition le_hoare :: \<open>('a::order) set \<Rightarrow> 'a set \<Rightarrow> bool\<close> (infix \<open><\<^sub>H\<close> 50) where
+definition less_hoare :: \<open>('a::order) set \<Rightarrow> 'a set \<Rightarrow> bool\<close> (infix \<open><\<^sub>H\<close> 50) where
   \<open>A <\<^sub>H B \<equiv> A \<le>\<^sub>H B \<and> \<not>(A =\<^sub>H B)\<close>
 
-definition le_plotkin :: \<open>('a::order) set \<Rightarrow> 'a set \<Rightarrow> bool\<close> (infix \<open><\<^sub>P\<close> 50) where
+definition less_plotkin :: \<open>('a::order) set \<Rightarrow> 'a set \<Rightarrow> bool\<close> (infix \<open><\<^sub>P\<close> 50) where
   \<open>A <\<^sub>P B \<equiv> A \<le>\<^sub>P B \<and> \<not>(A =\<^sub>P B)\<close>
 
 subsection \<open> Smyth is an order \<close>
@@ -531,11 +531,11 @@ lemma smyth_eq_refl:
 
 lemma smyth_less_le:
   \<open>(x <\<^sub>S y) = (x \<le>\<^sub>S y \<and> \<not>(x =\<^sub>S y))\<close>
-  by (simp add: le_smyth_def)
+  by (simp add: less_smyth_def)
 
 lemma smyth_nless_le:
   \<open>(\<not> (x <\<^sub>S y)) = (\<not>(x \<le>\<^sub>S y) \<or> x =\<^sub>S y)\<close>
-  by (simp add: le_smyth_def)
+  by (simp add: less_smyth_def)
 
 local_setup \<open>
   HOL_Order_Tac.declare_order {
@@ -590,11 +590,11 @@ lemma hoare_eq_refl:
 
 lemma hoare_less_le:
   \<open>(x <\<^sub>H y) = (x \<le>\<^sub>H y \<and> \<not>(x =\<^sub>H y))\<close>
-  by (simp add: le_hoare_def)
+  by (simp add: less_hoare_def)
 
 lemma hoare_nless_le:
   \<open>(\<not> (x <\<^sub>H y)) = (\<not>(x \<le>\<^sub>H y) \<or> x =\<^sub>H y)\<close>
-  by (simp add: le_hoare_def)
+  by (simp add: less_hoare_def)
 
 local_setup \<open>
   HOL_Order_Tac.declare_order {
@@ -651,11 +651,11 @@ lemma plotkin_eq_refl:
 
 lemma plotkin_less_le:
   \<open>(x <\<^sub>P y) = (x \<le>\<^sub>P y \<and> \<not>(x =\<^sub>P y))\<close>
-  by (simp add: le_plotkin_def)
+  by (simp add: less_plotkin_def)
 
 lemma plotkin_nless_le:
   \<open>(\<not> (x <\<^sub>P y)) = (\<not>(x \<le>\<^sub>P y) \<or> x =\<^sub>P y)\<close>
-  by (force simp add: le_plotkin_def)
+  by (force simp add: less_plotkin_def)
 
 local_setup \<open>
   HOL_Order_Tac.declare_order {
@@ -1002,25 +1002,58 @@ lemma
   nitpick
   oops
 
+lemma all_iff_conv:
+  fixes p q :: \<open>_ \<Rightarrow> bool\<close>
+  shows \<open>(\<forall>x. p x = q x) \<longleftrightarrow> p \<le> q \<and> q \<le> p\<close>
+  by force
+
+lemma set_eq_choice2_iff:
+  \<open>A = {f x y|x y. P x y} \<longleftrightarrow>
+    (\<exists>g1 g2. \<forall>a\<in>A. a = f (g1 a) (g2 a) \<and> P (g1 a) (g2 a)) \<and>
+    (\<forall>x y. P x y \<longrightarrow> (\<exists>a\<in>A. a = f x y))\<close>
+  by (simp add: set_eq_iff all_iff_conv le_fun_def choice_iff', blast)
+
+lemma set_eq_choice3_iff:
+  \<open>A = {f x y z|x y z. P x y z} \<longleftrightarrow>
+    (\<exists>g1 g2 g3. \<forall>a\<in>A. a = f (g1 a) (g2 a) (g3 a) \<and> P (g1 a) (g2 a) (g3 a)) \<and>
+    (\<forall>x y z. P x y z \<longrightarrow> (\<exists>a\<in>A. a = f x y z))\<close>
+  by (simp add: set_eq_iff all_iff_conv le_fun_def choice_iff', fast)
+
 lemma
   fixes A C1 C2 :: \<open>('a::multiunit_sep_alg) set\<close>
-  shows
-  \<open>dd A C1 \<Longrightarrow>
-    dd {a + b |a b. a \<in> A \<and> b \<in> C1 \<and> a ## b} C2 \<Longrightarrow>
-    A = {(a + x) + y|a x y.
+  assumes
+    \<open>dd A C1\<close>
+    \<open>dd {a + b |a b. a \<in> A \<and> b \<in> C1 \<and> a ## b} C2\<close>
+    \<open>{(a + x) + y|a x y.
                   a \<in> A \<and> x \<in> C1 \<and> y \<in> C2 \<and>
-                  a ## x \<and> a + x ## y } \<Longrightarrow>
-    A = { a + x |a x. a \<in> A \<and> x \<in> C1 \<and> a ## x }\<close>
-  apply (intro set_eqI iffI)
-   apply clarsimp
-   prefer 2
-   apply clarsimp
-   apply (drule subst[rotated, of \<open>(\<in>) _\<close>], assumption)
-   apply (subst (asm) mem_Collect_eq)
-   apply clarsimp
-   apply (rename_tac c1 a c1' c2)
-   apply (rename_tac a c1)
-  oops
+                  a ## x \<and> a + x ## y } = A\<close>
+  shows
+    \<open>{ a + x |a x. a \<in> A \<and> x \<in> C1 \<and> a ## x } = A\<close>
+proof -
+
+  obtain fa fc1 fc2 where triple_choice:
+    \<open>\<forall>a\<in>A. a = fa a + fc1 a + fc2 a\<close>
+    \<open>\<forall>a\<in>A. fa a \<in> A\<close>
+    \<open>\<forall>a\<in>A. fc1 a \<in> C1\<close>
+    \<open>\<forall>a\<in>A. fc2 a \<in> C2\<close>
+    \<open>\<forall>a\<in>A. fa a ## fc1 a\<close>
+    \<open>\<forall>a\<in>A. fa a + fc1 a ## fc2 a\<close>
+    \<open>\<forall>a\<in>A. \<forall>c1\<in>C1. \<forall>c2\<in>C2.
+        a ## c1 \<and> a + c1 ## c2 \<longrightarrow> a + c1 + c2 \<in> A\<close>
+    using assms(3)
+    by (simp add: trans[OF eq_commute set_eq_choice3_iff], fast)
+
+  have \<open>\<forall>a\<in>A. fa a \<preceq> a\<close>
+    using triple_choice
+    by (metis less_eq_sepadd_def' trans_helper)
+
+  show ?thesis
+    using assms(3)
+    apply (simp add: trans[OF eq_commute set_eq_choice2_iff])
+    apply (rule conjI)
+    sorry
+qed
+
 
 definition
   \<open>seple_rel = {(a,b). a \<noteq> b \<and> (\<exists>c::'a::perm_alg. a ## c \<and> a + c = b)}\<close>
