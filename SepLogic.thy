@@ -302,7 +302,11 @@ lemma sepadd_unit_disjoint_trans:
   using disjoint_preservation units_least by blast
 
 lemma unit_sub_closure2:
-  \<open>a ## x \<Longrightarrow> a + x ## y \<Longrightarrow> y ## y \<Longrightarrow> a + (x + y) = a \<Longrightarrow> a + x = a\<close>
+  \<open>a ## x \<Longrightarrow> a + x ## y \<Longrightarrow> a + (x + y) = a \<Longrightarrow> a + x = a\<close>
+  by (simp add: positivity partial_add_assoc2)
+
+lemma unit_sub_closure2':
+  \<open>a ## x \<Longrightarrow> a + x ## y \<Longrightarrow> a + x + y = a \<Longrightarrow> a + x = a\<close>
   by (simp add: positivity partial_add_assoc2)
 
 

@@ -1039,7 +1039,7 @@ proof -
     \<open>\<forall>a\<in>A. fa a ## fc1 a\<close>
     \<open>\<forall>a\<in>A. fa a + fc1 a ## fc2 a\<close>
     \<open>\<forall>a\<in>A. \<forall>c1\<in>C1. \<forall>c2\<in>C2.
-        a ## c1 \<and> a + c1 ## c2 \<longrightarrow> a + c1 + c2 \<in> A\<close>
+        a ## c1 \<longrightarrow> a + c1 ## c2 \<longrightarrow> a + c1 + c2 \<in> A\<close>
     using assms(3)
     by (simp add: trans[OF eq_commute set_eq_choice3_iff], fast)
 
@@ -1051,6 +1051,21 @@ proof -
     using assms(3)
     apply (simp add: trans[OF eq_commute set_eq_choice2_iff])
     apply (rule conjI)
+     prefer 2
+     apply clarsimp
+     apply (case_tac \<open>\<exists>a'. a' \<preceq> a \<and> a' \<in> A \<and> fa a' = a'\<close>)
+      apply clarsimp
+      apply (subgoal_tac \<open>\<exists>x'\<in>C1. \<exists>y'\<in>C2.
+                            a' ## x' \<and> a' + x' ## y' \<and> a' + x' + y' = a'\<close>)
+       prefer 2
+       apply (metis triple_choice(1,3-6))
+      apply clarsimp
+      apply (drule unit_sub_closure2'[rotated 2], blast, blast)
+      apply simp
+      apply (simp add: less_eq_sepadd_def')
+      apply (erule disjE)
+       apply simp
+      
     sorry
 qed
 
@@ -1076,6 +1091,99 @@ lemma
   apply (simp add: partial_le_plus resource_order.leD)
   done
 
+typedef inat = \<open>UNIV :: nat set\<close>
+  by blast
+setup_lifting type_definition_inat
+
+
+instantiation set :: (perm_alg) plus
+begin
+definition \<open>plus_set A B \<equiv> {a + b|a b. a\<in>A \<and> b\<in>B \<and> a ## b}\<close>
+instance by standard
+end
+
+lemma fperm_exI:
+  fixes x :: \<open>'a :: {linordered_semiring,zero_less_one}\<close>
+  shows \<open>0 < x \<Longrightarrow> x \<le> 1 \<Longrightarrow> P x \<Longrightarrow> \<exists>x::'a fperm. P (fperm_val x)\<close>
+  by (metis FPerm_inverse_iff)
+
+lemma
+  \<open>(UNIV :: rat fperm set) + {x. x < 1} = UNIV\<close>
+  apply (clarsimp simp add: plus_set_def set_eq_iff)
+  apply (simp add: plus_fperm_def less_fperm_def disjoint_fperm_def)
+  apply (subst eq_FPerm_iff)
+    apply (force simp add: fperm_val_add_gt0)
+   apply force
+  apply (rule_tac x=\<open>fperm_val x / 2\<close> in fperm_exI)
+    apply (simp add: fperm_val_conditions; fail)
+   apply (metis fperm_val_conditions(2) half_fperm.rep_eq)
+  apply (rule_tac x=\<open>fperm_val x / 2\<close> in fperm_exI)
+    apply (simp add: fperm_val_conditions; fail)
+   apply (metis fperm_val_conditions(2) half_fperm.rep_eq)
+  apply (simp add: fperm_val_conditions)
+  apply (metis fperm_val_conditions(2) less_add_same_cancel1 mult_1
+      one_add_one one_fperm.rep_eq order_le_less pos_add_strict zero_less_one)
+  done
+
+lemma
+  fixes X :: \<open>rat fperm set\<close>
+  shows
+    \<open>(\<forall>y. \<exists>x\<in>X + Y. x < y) \<Longrightarrow>
+      (\<forall>y. \<exists>x\<in>X. x < y)\<close>
+  apply (clarsimp simp add: Bex_def plus_set_def)
+  apply (drule_tac x=y in spec)
+  apply clarsimp
+  apply (rule_tac x=a in exI)
+  apply (simp add: disjoint_fperm_iff less_fperm_def plus_fperm.rep_eq)
+  apply (meson fperm_val_conditions(1) less_add_same_cancel1 order.strict_trans)
+  done
+
+lemma
+  \<open>(\<forall>y. \<exists>x\<in>X. x < y) \<Longrightarrow> (UNIV :: rat fperm set) + X = UNIV\<close>
+  apply (clarsimp simp add: plus_set_def set_eq_iff)
+  apply (simp add: plus_fperm_def less_fperm_def disjoint_fperm_def)
+  apply (subst eq_FPerm_iff)
+    apply (force simp add: fperm_val_add_gt0)
+   apply force
+  apply (rename_tac y)
+  apply (drule_tac x=y in spec)
+  apply clarsimp
+  apply (rule_tac x=\<open>FPerm (fperm_val y - fperm_val x)\<close> in exI)
+  apply (rule_tac x=x in exI)
+  apply (subst FPerm_inverse_iff)
+    apply (metis diff_gt_0_iff_gt fperm_val_conditions
+      less_eq_rat_def less_fperm_def add_diff_inverse not_less_iff_gr_or_eq
+      pos_add_strict)
+  apply (subst FPerm_inverse_iff)
+    apply (metis diff_gt_0_iff_gt fperm_val_conditions
+      less_eq_rat_def less_fperm_def add_diff_inverse not_less_iff_gr_or_eq
+      pos_add_strict)
+  apply (rule conjI)
+   apply (simp add: fperm_val_conditions(2); fail)
+  apply (simp add: fperm_val_conditions(2); fail)
+  done
+
+lemma
+  \<open>P = {(x,y). 0 < (x::rat zoint) \<and> 0 < (y::rat zoint)} \<Longrightarrow>
+    P = {(x,0)|x. 0 < x} + {(0,y)|y. 0 < y}\<close>
+  by (clarsimp simp add: plus_set_def set_eq_iff)
+
+lemma
+  \<open>P = {(x,y). 0 < (x::rat zoint) \<and> 0 < (y::rat zoint)} \<Longrightarrow>
+    P + {(x,0)|x. 0 < x} = P\<close>
+  apply (clarsimp simp add: plus_set_def set_eq_iff)
+apply (simp add: disjoint_zoint_def)
+  apply (intro iffI; elim exE conjE)
+   apply (simp add: zoint_val_inject_rev plus_zoint.rep_eq
+      less_zoint_def; fail)
+   apply (simp add: zoint_val_inject_rev plus_zoint.rep_eq less_zoint_def)
+  apply (rule_tac x=\<open>ZOInt (zoint_val a / 2)\<close> in exI)
+  apply (rule_tac x=\<open>ZOInt (zoint_val a / 2)\<close> in exI)
+  apply simp
+  apply (subst ZOInt_inverse_iff,
+      metis half_zoint.rep_eq zoint_val_conditions)+
+  apply (simp add: zoint_val_conditions)
+  done
 
 
 instantiation set :: (perm_alg) sep_alg
