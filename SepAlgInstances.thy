@@ -119,9 +119,9 @@ text \<open>
   However, Isabelle's typeclasses will now allow multiple instances,
   even when the instance is completely logical. (I.e. there are no new definitions.)
 
-  We pick a right biased implementation, to match the default associativity.
-  This means that permissions must be added on the *right* of a tuple if we
-  want certain nice instances, like the cancellability of munit heaps.
+  We pick a right biased implementation, to match the default associativity of prod.
+  This means that permissions must be placed on the *right* of a tuple if we want to derive
+  instances like the cancellativity of munit heaps automatically.
 \<close>
 instance prod :: (perm_alg, no_unit_perm_alg) no_unit_perm_alg
   by (standard) (metis no_units prod_eq_decompose(2) prod_sepadd_unit_iff)
