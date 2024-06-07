@@ -685,7 +685,7 @@ section \<open> Multi-unit Separation Algebra \<close>
 
 class multiunit_sep_alg = perm_alg +
   fixes unitof :: \<open>'a \<Rightarrow> 'a\<close>
-  assumes unitof_disjoint[simp,intro!]: \<open>unitof a ## a\<close>
+  assumes unitof_disjoint[simp]: \<open>unitof a ## a\<close>
   assumes unitof_is_unit[simp]: \<open>\<And>a b. unitof a ## b \<Longrightarrow> unitof a + b = b\<close>
 begin
 
@@ -784,7 +784,8 @@ lemma secoimp_imp_sepconj:
 
 lemma not_coimp_emp:
   \<open>\<not> sepadd_unit h \<Longrightarrow> (- (\<top> \<sim>\<^emph> emp)) h\<close>
-  by (force simp add: sepcoimp_def emp_def)
+  by (simp add: sepcoimp_def emp_def sepadd_unit_def,
+      metis unitof_disjoint unitof_is_unit)
 
 lemma supported_intuitionistic_to_precise:
   \<open>supported P \<Longrightarrow> intuitionistic P \<Longrightarrow> precise (P \<sqinter> - (P \<^emph> (-emp)))\<close>
@@ -796,34 +797,29 @@ end
 
 section \<open> (Single Unit) Separation Algebra\<close>
 
-class sep_alg = multiunit_sep_alg + zero + bot +
-  assumes zero_least_unfolded: \<open>0 = b \<or> (\<exists>c. 0 ## c \<and> 0 + c = b)\<close>
-  assumes bot_is_zero[simp]: \<open>\<bottom> = 0\<close>
+class sep_alg = multiunit_sep_alg + zero +
+  assumes zero_disjoint[simp]: \<open>0 ## a\<close>
+  assumes zero_unit[simp]: \<open>0 + a = a\<close>
 begin
-
-lemma zero_least[iff]: \<open>0 \<preceq> b\<close>
-  using zero_least_unfolded less_eq_sepadd_def'
-  by presburger
-
-sublocale order_bot \<open>\<bottom>\<close> \<open>(\<preceq>)\<close> \<open>(\<prec>)\<close>
-  by standard
-    (metis bot_is_zero zero_least)
-
-lemma unitof_eq_zero[simp]: \<open>unitof x = 0\<close>
-  by (metis common_disjoint_same_unit disjoint_preservation le_unitof_eq unitof_disjoint
-      unitof_is_sepadd_unit unitof_sepadd_unit zero_least)
-
-lemma zero_disjointL[simp]: \<open>0 ## a\<close>
-  using unitof_disjoint by auto
 
 lemma zero_disjointR[simp]: \<open>a ## 0\<close>
   by (simp add: disjoint_sym)
 
-lemma sepadd_0[simp]: \<open>0 + a = a\<close>
-  using unitof_disjoint2 unitof_is_unit2 by auto
+lemma zero_unitR[simp]: \<open>a + 0 = a\<close>
+  using partial_add_commute zero_disjoint zero_unit
+  by presburger
 
-lemma sepadd_0_right[simp]: "a + 0 = a"
-  by (metis zero_disjointR sepadd_0 partial_add_commute)
+lemma zero_least[iff]: \<open>0 \<preceq> b\<close>
+  using less_eq_sepadd_def'
+  by simp
+
+sublocale order_bot \<open>0\<close> \<open>(\<preceq>)\<close> \<open>(\<prec>)\<close>
+  by standard
+    (metis zero_least)
+
+lemma unitof_eq_zero[simp]: \<open>unitof x = 0\<close>
+  by (metis common_disjoint_same_unit disjoint_preservation le_unitof_eq unitof_disjoint
+      unitof_is_sepadd_unit unitof_sepadd_unit zero_least)
 
 lemma zero_only_unit[simp]:
   \<open>sepadd_unit x \<longleftrightarrow> x = 0\<close>
@@ -1085,14 +1081,13 @@ lemma the_unit_is_a_unit:
   unfolding the_unit_def
   by (rule theI', simp add: exactly_one_unit)
 
-sublocale is_sep_alg: sep_alg the_unit the_unit \<open>(+)\<close> \<open>(##)\<close> \<open>(\<lambda>_. the_unit)\<close>
+sublocale is_sep_alg: sep_alg the_unit \<open>(+)\<close> \<open>(##)\<close> \<open>(\<lambda>_. the_unit)\<close>
   apply standard
-     apply (metis exactly_one_unit unitof_disjoint unitof_is_sepadd_unit the_unit_is_a_unit)
-    apply (metis exactly_one_unit unitof_disjoint2 unitof_is_unit2 unitof_is_sepadd_unit
+    apply (metis exactly_one_unit unitof_disjoint unitof_is_sepadd_unit the_unit_is_a_unit)
+   apply (metis exactly_one_unit unitof_disjoint2 unitof_is_unit2 unitof_is_sepadd_unit
       the_unit_is_a_unit)
-   apply (simp add: all_compatible compatible_unit_disjoint disjoint_sym_iff
+  apply (simp add: all_compatible compatible_unit_disjoint disjoint_sym_iff
       units_least the_unit_is_a_unit compatible_to_unit_is_unit_left; fail)
-  apply simp
   done
 
 end

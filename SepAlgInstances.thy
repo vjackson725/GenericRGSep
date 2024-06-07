@@ -1174,9 +1174,8 @@ instance
      apply (simp add: disjoint_zoint_def zoint_val_conditions; fail)
     apply (simp add: disjoint_zoint_def zoint_val_conditions
       zoint_val_inject_rev plus_zoint.rep_eq; fail)
-   apply (simp add: disjoint_zoint_def zoint_val_conditions
-      zoint_val_inject_rev plus_zoint.rep_eq, blast)
-  apply (simp add: zoint_val_inject_rev)
+   apply (simp add: disjoint_zoint_iff zoint_val_conditions(2); fail)
+  apply (simp add: plus_zoint_eq zoint_val_conditions(2) zoint_val_inverse; fail)
   done
 
 end
@@ -1371,8 +1370,8 @@ section \<open> Distributive Lattice Separation Algebra \<close>
 
 text \<open>
   This is a lifting of a distributive lattice (with bot) into a sep-algebra,
-  such that + \<equiv> \<squnion>, except that you are only able to add when the sup is disjoint.
-  (Compare the standard heap instance.)
+  such that + \<equiv> \<squnion>, except that you are only able to add when the sup is disjoint
+  (that is, a \<sqinter> b = \<bottom>). (Compare the standard heap instance.)
 
   This is also a generalisation of Krebber's [Krebbers2014] lockable permission structure.
   (Which, in this formulation, is \<open>bool dlat_sep\<close>.) The value \<bottom> represents locked,
@@ -1521,10 +1520,9 @@ begin
 lift_definition zero_dlat_sep :: \<open>'a dlat_sep\<close> is \<open>\<bottom>\<close> .
 instance
   apply standard
-   apply (simp add: zero_dlat_sep_def bot_dlat_sep_def)
-   apply (metis Rep_dlat_sep_inverse bot_dlat_sep_def inf_bot_left
-      plus_dlat_sep.abs_eq sup_bot_left)
-  apply (simp add: zero_dlat_sep_def bot_dlat_sep_def; fail)
+   apply (metis Rep_dlat_sep_inverse SepAlgInstances.zero_dlat_sep.abs_eq unitof_disjoint
+      unitof_dlat_sep.abs_eq)
+  apply (simp add: plus_dlat_sep_def zero_dlat_sep_def; fail)
   done
 end
 

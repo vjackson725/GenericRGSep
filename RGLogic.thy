@@ -217,9 +217,7 @@ end
 lemma (in sep_alg) sep_alg_framed_subresource_rel_iff:
   \<open>p 0 \<Longrightarrow>
     weak_framed_subresource_rel p ha ha' h h' \<longleftrightarrow> framed_subresource_rel p ha ha' h h'\<close>
-  apply (simp add: weak_framed_subresource_rel_def framed_subresource_rel_def)
-  apply (metis sepadd_0_right zero_disjointR)
-  done
+  by (force simp add: weak_framed_subresource_rel_def framed_subresource_rel_def)
 
 
 section \<open> Rely-Guarantee Separation Logic \<close>
