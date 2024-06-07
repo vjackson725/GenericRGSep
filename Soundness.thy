@@ -178,11 +178,8 @@ lemmas rev_opstep_preserves_all_atom_comm = opstep_preserves_all_atom_comm[rotat
 
 subsection \<open> Opstep rules for defined programs \<close>
 
-lemma opstep_assert[intro!]: \<open>p h \<Longrightarrow> opstep Local (h, Assert p) (h, Skip)\<close>
-  by (force simp add: opstep.atomic passert_def)
-
-lemma opstep_assume[intro!]: \<open>q h' \<Longrightarrow> opstep Local (h, Assume q) (h', Skip)\<close>
-  by (force simp add: opstep.atomic rel_liftR_def)
+lemma opstep_guard[intro!]: \<open>p h \<Longrightarrow> opstep Local (h, Guard p) (h, Skip)\<close>
+  by (force simp add: opstep.atomic pguard_def)
 
 lemma opstep_IfThenElse_iff[opstep_iff]:
   \<open>opstep a (h, IfThenElse p ct cf) s' \<longleftrightarrow>
@@ -198,14 +195,14 @@ lemma opstep_IfThenElse_false[intro]:
   by (simp add: opstep_iff)
 
 lemma pre_state_passert_eq[simp]:
-  \<open>pre_state (passert p) = p\<close>
-  by (simp add: passert_def pre_state_def)
+  \<open>pre_state (pguard p) = p\<close>
+  by (simp add: pguard_def pre_state_def)
 
 lemma opstep_WhileLoop_iff[opstep_iff]:
   \<open>opstep a (h, WhileLoop p c) s' \<longleftrightarrow>
     a = Tau \<and> s' = (h,
-      (Assert p ;; c \<box> Assert (- p)) ;;
-        DO Assert p ;; c \<box> Assert (- p) OD)\<close>
+      (Guard p ;; c \<box> Guard (- p)) ;;
+        DO Guard p ;; c \<box> Guard (- p) OD)\<close>
   by (simp add: WhileLoop_def opstep_iff)
 
 
