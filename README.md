@@ -17,3 +17,4 @@ This theory has been tested with Isabelle2023, and does not require any speciali
 
 Isabelle2023 can be obtained from: <https://isabelle.in.tum.de/>.
 
+The primary theorem is `soundness` in `Soundness.thy`.

@@ -65,24 +65,15 @@ subsection \<open> mu_sep_alg \<close>
 instantiation prod :: (multiunit_sep_alg,multiunit_sep_alg) multiunit_sep_alg
 begin
 
-lemma less_sepadd_prod_eq2[simp]:
-  fixes a :: \<open>'a \<times> 'b\<close>
-  shows \<open>a \<prec> b \<longleftrightarrow> (fst a \<prec> fst b \<and> snd a \<preceq> snd b \<or> fst a \<preceq> fst b \<and> snd a \<prec> snd b)\<close>
-  by (cases a, cases b, clarsimp simp add: less_sepadd_def' less_eq_sepadd_def',
-      metis unitof_disjoint2 unitof_is_unitR2)
-
-lemma less_eq_sepadd_prod_eq2[simp]:
-  fixes a :: \<open>'a \<times> 'b\<close>
-  shows \<open>a \<preceq> b \<longleftrightarrow> fst a \<preceq> fst b \<and> snd a \<preceq> snd b\<close>
-  by (cases a, cases b, clarsimp simp add: less_eq_sepadd_def',
-      metis unitof_disjoint2 unitof_is_unitR2)
-
 definition unitof_prod :: \<open>'a \<times> 'b \<Rightarrow> 'a \<times> 'b\<close> where
   \<open>unitof \<equiv> map_prod unitof unitof\<close>
 declare unitof_prod_def[simp]
 
 instance
-  by standard (simp add: less_eq_sepadd_def)+
+  apply standard
+    apply (simp add: less_eq_sepadd_def)+
+  apply (force simp add: le_iff_sepadd)
+  done
 
 end
 
@@ -100,11 +91,15 @@ definition bot_prod :: \<open>'a \<times> 'b\<close> where
 declare bot_prod_def[simp]
 
 instance
-  by standard (simp add: fun_eq_iff)+
+  by standard (simp add: fun_eq_iff zero_is_bot)+
 
 end
 
-subsection \<open> Extended sep-alg instances \<close>
+lemma prod_sepadd_unit_iff[simp]:
+  \<open>sepadd_unit (a, b) \<longleftrightarrow> sepadd_unit a \<and> sepadd_unit b\<close>
+  by (simp add: sepadd_unit_def, force)
+
+subsection \<open> Extended instances \<close>
 
 instance prod :: (dupcl_perm_alg, dupcl_perm_alg) dupcl_perm_alg
   by standard (force dest: dup_sub_closure)
@@ -342,8 +337,9 @@ lemmas unitof_simps[simp] =
 
 instance
   apply standard
-   apply (case_tac a; simp)
-  apply (case_tac a; case_tac b; simp)
+    apply (case_tac a; simp)
+   apply (case_tac a; case_tac b; simp)
+  apply (fastforce simp add: less_eq_sum_def le_iff_sepadd disjoint_sum_def)
   done
 
 end
@@ -401,6 +397,35 @@ instance
 
 end
 
+subsection \<open> Extended instances \<close>
+
+instance munit :: dupcl_perm_alg
+  by standard simp
+
+(* not a allcompatible_perm_alg *)
+
+instance munit :: strong_sep_perm_alg
+  by standard simp
+
+instance munit :: disjoint_parts_perm_alg
+  by standard simp
+
+instance munit :: trivial_selfdisjoint_perm_alg
+  by standard simp
+
+instance munit :: crosssplit_perm_alg
+  by standard simp
+
+instance munit :: cancel_perm_alg
+  by standard simp
+
+instance munit :: no_unit_perm_alg
+  by standard (simp add: sepadd_unit_def)
+
+(* not a halving_perm_alg *)
+
+(* not an all_disjoint_perm_alg *)
+
 
 section \<open> option \<close>
 
@@ -444,18 +469,39 @@ lemma plus_option_iff:
   \<open>a + b = None \<longleftrightarrow> a = None \<and> b = None\<close>
   by (force simp add: disjoint_option_def plus_option_def split: option.splits)+
 
+definition unitof_option :: \<open>'a option \<Rightarrow> 'a option\<close> where
+  \<open>unitof_option x \<equiv> None\<close>
+declare unitof_option_def[simp]
+
+definition zero_option :: \<open>'a option\<close> where
+  \<open>zero_option \<equiv> None\<close>
+declare zero_option_def[simp]
+
+definition bot_option :: \<open>'a option\<close> where
+  \<open>bot_option \<equiv> None\<close>
+declare bot_option_def[simp]
+
 instance
   apply standard
-       apply (simp add: disjoint_option_def plus_option_def partial_add_assoc
+                apply (metis less_eq_option_def2 less_option_def2 resource_order.strict_iff_not)
+               apply (force simp add: less_eq_option_def2)
+              apply (force simp add: less_eq_option_def2)
+             apply (force simp add: less_eq_option_def2)
+            apply (simp add: disjoint_option_def plus_option_def partial_add_assoc
       split: option.splits; fail)
-      apply (simp add: disjoint_option_def plus_option_def split: option.splits,
+           apply (simp add: disjoint_option_def plus_option_def split: option.splits,
       metis partial_add_commute; fail)
-     apply (metis disjoint_option_def2 disjoint_sym)
-    apply (simp add: disjoint_option_def split: option.splits,
+          apply (metis disjoint_option_def2 disjoint_sym)
+         apply (simp add: less_option_def disjoint_option_def split: option.splits,
       metis disjoint_add_rightL; fail)
-   apply (simp add: disjoint_option_def disjoint_sym_iff
+        apply (simp add: less_option_def disjoint_option_def disjoint_sym_iff
       disjoint_add_right_commute split: option.splits; fail)
-  apply (simp add: disjoint_option_def positivity split: option.splits; fail)
+       apply (simp add: less_option_def disjoint_option_def positivity split: option.splits; fail)
+      apply (simp; fail)
+     apply (simp; fail)
+    apply (force simp add: less_eq_option_def fun_eq_iff disjoint_option_def less_eq_sepadd_def'
+      split: option.splits)
+   apply (force simp add: less_eq_option_def)+
   done
 
 end
@@ -500,12 +546,11 @@ instance
 
 end
 
-
 subsection \<open> Extended instances \<close>
 
 instance option :: (dupcl_perm_alg) dupcl_perm_alg
   by standard
-    (simp add: disjoint_option_def split: option.splits,
+    (simp add: less_option_def disjoint_option_def split: option.splits,
       metis dup_sub_closure)
 
 
@@ -538,8 +583,6 @@ instance
   apply (simp add: disjoint_fun_def plus_fun_def fun_eq_iff, metis positivity)
   done
 
-end
-
 lemma less_sepadd_fun_eq:
   fixes f g :: \<open>'a \<Rightarrow> 'b::perm_alg\<close>
   shows \<open>f \<prec> g \<longleftrightarrow> (\<exists>x. f x \<noteq> g x) \<and> (\<forall>x. f x \<lesssim> g x)\<close>
@@ -552,6 +595,12 @@ lemma less_eq_sepadd_fun_eq:
   by (simp add: part_of_def less_eq_sepadd_def' disjoint_fun_def fun_eq_iff,
       metis)
 
+end
+
+lemma fun_all_unit_elems_then_unit:
+  \<open>\<forall>x. sepadd_unit (f x) \<Longrightarrow> sepadd_unit f\<close>
+  by (simp add: disjoint_fun_def plus_fun_def sepadd_unit_def)
+
 instantiation "fun" :: (type, multiunit_sep_alg) multiunit_sep_alg
 begin
  
@@ -562,16 +611,6 @@ declare unitof_fun_def[simp]
 instance
   by standard
     (simp add: disjoint_fun_def plus_fun_def le_fun_def fun_eq_iff le_iff_sepadd; metis)+
-
-lemma less_sepadd_fun_eq2:
-  fixes f g :: \<open>'a \<Rightarrow> 'b\<close>
-  shows \<open>f \<prec> g \<longleftrightarrow> (\<exists>x. f x \<prec> g x) \<and> (\<forall>x. f x \<preceq> g x)\<close>
-  by (metis le_iff_part_of less_sepadd_def less_sepadd_fun_eq)
-
-lemma less_eq_sepadd_fun_eq2:
-  fixes f g :: \<open>'a \<Rightarrow> 'b\<close>
-  shows \<open>f \<preceq> g \<longleftrightarrow> (\<forall>x. f x \<preceq> g x)\<close>
-  by (metis le_iff_part_of less_eq_sepadd_def' less_eq_sepadd_fun_eq)
 
 end
 
@@ -588,7 +627,8 @@ definition bot_fun :: \<open>('a \<Rightarrow> 'b)\<close> where
 declare bot_fun_def[simp]
 
 instance
-  by standard (simp add: fun_eq_iff less_eq_sepadd_fun_eq2)+
+  by standard
+    (fastforce simp add: fun_eq_iff less_eq_sepadd_fun_eq2)+
 
 end
 
@@ -934,8 +974,8 @@ section \<open> Distributive Lattice Separation Algebra \<close>
 
 text \<open>
   This is a lifting of a distributive lattice (with bot) into a sep-algebra,
-  such that + \<equiv> \<squnion>, except that you are only able to add when the sup is disjoint.
-  (Compare the standard heap instance.)
+  such that + \<equiv> \<squnion>, except that you are only able to add when the sup is disjoint
+  (that is, a \<sqinter> b = \<bottom>). (Compare the standard heap instance.)
 
   This is also a generalisation of Krebber's [Krebbers2014] lockable permission structure.
   (Which, in this formulation, is \<open>bool dlat_sep\<close>.) The value \<bottom> represents locked,
@@ -1083,9 +1123,11 @@ instantiation dlat_sep :: (bounded_distrib_lattice) sep_alg
 begin
 lift_definition zero_dlat_sep :: \<open>'a dlat_sep\<close> is \<open>\<bottom>\<close> .
 instance
-  by standard
-    (simp add: zero_dlat_sep_def bot_dlat_sep_def;
-      metis bot_dlat_sep_def sepadd_bot_least)+
+  apply standard
+   apply (metis Rep_dlat_sep_inverse SepAlgInstances.zero_dlat_sep.abs_eq unitof_disjoint
+      unitof_dlat_sep.abs_eq)
+  apply (simp add: plus_dlat_sep_def zero_dlat_sep_def; fail)
+  done
 end
 
 instance dlat_sep :: (distrib_lattice_bot) dupcl_perm_alg
@@ -1134,14 +1176,6 @@ lemma sepdomeq_fun:
       simp del: not_Some_prod_eq split: if_splits, metis)
   apply blast
   done
-
-
-section \<open> Bibliography \<close>
-
-text \<open>
-  [Krebbers2014] R Krebbers. Separation Algebras for C Verification in Coq. VSTTE 2014.
-                  \<^url>\<open>https://doi.org/10.1007/978-3-319-12154-3 10\<close>
-\<close>
 
 
 end

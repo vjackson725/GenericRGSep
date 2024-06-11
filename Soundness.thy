@@ -25,8 +25,6 @@ fun head_atoms :: \<open>'a comm \<Rightarrow> ('a \<Rightarrow> 'a \<Rightarrow
 | \<open>head_atoms (Atomic b) = {b}\<close>
 | \<open>head_atoms (DO c OD) = head_atoms c\<close>
 | \<open>head_atoms Skip = {}\<close>
-| \<open>head_atoms (\<mu> c) = head_atoms c\<close>
-| \<open>head_atoms (FixVar x) = \<bottom>\<close>
 
 inductive opstep :: \<open>act \<Rightarrow> ('l \<times> 's) \<times> ('l \<times> 's) comm \<Rightarrow> (('l \<times> 's) \<times> ('l \<times> 's) comm) \<Rightarrow> bool\<close> where
   seq_left[intro!]: \<open>opstep a (h, c1) (h', c1') \<Longrightarrow> opstep a (h, c1 ;; c2) (h', c1' ;; c2)\<close>
@@ -39,16 +37,11 @@ inductive opstep :: \<open>act \<Rightarrow> ('l \<times> 's) \<times> ('l \<tim
 | endet_skip_right[intro!]: \<open>opstep Tau (h, c1 \<box> Skip) (h, c1)\<close>
 | endet_local_left[intro]:  \<open>a \<noteq> Tau \<Longrightarrow> opstep a (h, c1) s' \<Longrightarrow> opstep a (h, c1 \<box> c2) s'\<close>
 | endet_local_right[intro]: \<open>a \<noteq> Tau \<Longrightarrow> opstep a (h, c2) s' \<Longrightarrow> opstep a (h, c1 \<box> c2) s'\<close>
-(* TODO
-| par_left_tau[intro]: \<open>opstep Tau (h, Skip \<parallel> t) (h', t)\<close>
-| par_right_tau[intro]: \<open>opstep a (h, s \<parallel> Skip) (h', s)\<close>
-*)
 | par_left[intro]: \<open>opstep a (h, s) (h', s') \<Longrightarrow> opstep a (h, s \<parallel> t) (h', s' \<parallel> t)\<close>
 | par_right[intro]: \<open>opstep a (h, t) (h', t') \<Longrightarrow> opstep a (h, s \<parallel> t) (h', s \<parallel> t')\<close>
 | par_skip[intro!]: \<open>opstep Tau (h, Skip \<parallel> Skip) (h, Skip)\<close>
 | iter_step[intro]: \<open>opstep Tau (h, DO c OD) (h, c ;; DO c OD)\<close>
 | iter_end[intro]: \<open>\<not> pre_state (\<Squnion>(head_atoms c)) h \<Longrightarrow> opstep Tau (h, DO c OD) (h, Skip)\<close>
-| fixpt_skip[intro!]: \<open>c' = c[0 \<leftarrow> \<mu> c] \<Longrightarrow> opstep Tau (h, \<mu> c) (h, c')\<close>
 | atomic[intro!]: \<open>a = Local \<Longrightarrow> snd s' = Skip \<Longrightarrow> b h (fst s') \<Longrightarrow> opstep a (h, Atomic b) s'\<close>
 
 inductive_cases opstep_tauE[elim]: \<open>opstep Tau s s'\<close>
@@ -60,7 +53,6 @@ inductive_cases opstep_indetE[elim]: \<open>opstep a (h, c1 \<^bold>+ c2) s'\<cl
 inductive_cases opstep_endetE[elim]: \<open>opstep a (h, c1 \<box> c2) s'\<close>
 inductive_cases opstep_parE[elim]: \<open>opstep a (h, c1 \<parallel> c2) s'\<close>
 inductive_cases opstep_iterE[elim]: \<open>opstep a (h, DO c OD) s'\<close>
-inductive_cases opstep_fixptE[elim]: \<open>opstep a (h, \<mu> c) s'\<close>
 inductive_cases opstep_atomicE[elim!]: \<open>opstep a (h, Atomic b) s'\<close>
 
 paragraph \<open> Pretty operational semantics \<close>
@@ -94,7 +86,6 @@ lemma opstep_iff_standard[opstep_iff]:
   \<open>opstep a (h, DO c OD) s' \<longleftrightarrow>
     a = Tau \<and> \<not> pre_state (\<Squnion>(head_atoms c)) h \<and> s' = (h, Skip) \<or>
     a = Tau \<and> s' = (h, c ;; DO c OD)\<close>
-  \<open>opstep a (h, \<mu> c) s' \<longleftrightarrow> a = Tau \<and> s' = (h, c[0 \<leftarrow> \<mu> c])\<close>
   \<open>opstep a (h, Atomic b) s' \<longleftrightarrow>
     a = Local \<and> snd s' = Skip \<and> b h (fst s')\<close>
          apply blast
@@ -197,17 +188,6 @@ lemma opstep_IfThenElse_false[intro]:
   \<open>\<not> p h \<Longrightarrow> opstep Local (h, IfThenElse p a b) (h, Skip ;; b)\<close>
   by (simp add: opstep_iff)
 
-lemma pre_state_passert_eq[simp]:
-  \<open>pre_state (passert p) = p\<close>
-  by (simp add: passert_def pre_state_def)
-
-lemma opstep_WhileLoop_iff[opstep_iff]:
-  \<open>opstep a (h, WhileLoop p c) s' \<longleftrightarrow>
-    a = Tau \<and> s' = (h,
-      (Assert p ;; c \<box> Assert (- p)) ;;
-        DO Assert p ;; c \<box> Assert (- p) OD)\<close>
-  by (simp add: WhileLoop_def opstep_iff)
-
 
 section \<open> Safe \<close>
 
@@ -220,8 +200,8 @@ inductive safe
   safe_nil[intro!]: \<open>safe 0 c hl hs r g q F\<close>
 | safe_suc[intro]:
   \<open>\<comment> \<open> if the command is Skip, the postcondition is established \<close>
-    \<comment> \<open> TODO: This requires termination is represented as infinite stuttering past the end.
-               We may want a different model, but that would be more complicated. \<close>
+    \<comment> \<open> This requires termination is represented as infinite stuttering past the end.
+               We may want a different model later. \<close>
     (c = Skip \<longrightarrow> q (hl, hs)) \<Longrightarrow>
     \<comment> \<open> rely steps are safe \<close>
     (\<And>hs'. r hs hs' \<Longrightarrow> safe n c hl hs' r g q F) \<Longrightarrow>
@@ -776,7 +756,6 @@ qed
 
 subsection \<open> Safety of parallel \<close>
 
-(* TODO: weaken the frame sets *)
 lemma safe_parallel':
   \<open>safe n c1 hl1 hs (r \<squnion> g2) g1 (sswa (r \<squnion> g2) q1) \<top> \<Longrightarrow>
     safe n c2 hl2 hs (r \<squnion> g1) g2 (sswa (r \<squnion> g1) q2) \<top> \<Longrightarrow>
