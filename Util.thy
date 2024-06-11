@@ -868,6 +868,7 @@ lemma mem_implies_iff[simp]:
   \<open>x \<in> A \<leadsto> B \<longleftrightarrow> (x \<in> A \<longrightarrow> x \<in> B)\<close>
   by (simp add: implies_def)
 
+
 subsection \<open> Bounded distributive lattices \<close>
 
 class distrib_lattice_bot = distrib_lattice + bounded_lattice_bot
@@ -880,6 +881,7 @@ subclass distrib_lattice_bot by standard
 subclass distrib_lattice_top by standard
 subclass bounded_distrib_lattice by standard
 end
+
 
 section \<open> Times \<close>
 

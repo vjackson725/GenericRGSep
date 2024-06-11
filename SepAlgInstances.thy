@@ -47,24 +47,13 @@ subsection \<open> mu_sep_alg \<close>
 instantiation prod :: (multiunit_sep_alg,multiunit_sep_alg) multiunit_sep_alg
 begin
 
-lemma less_sepadd_prod_eq2[simp]:
-  fixes a :: \<open>'a \<times> 'b\<close>
-  shows \<open>a \<prec> b \<longleftrightarrow> (fst a \<prec> fst b \<and> snd a \<preceq> snd b \<or> fst a \<preceq> fst b \<and> snd a \<prec> snd b)\<close>
-  by (cases a, cases b, clarsimp simp add: less_sepadd_def' less_eq_sepadd_def',
-      metis unitof_disjoint2 unitof_is_unitR2)
-
-lemma less_eq_sepadd_prod_eq2[simp]:
-  fixes a :: \<open>'a \<times> 'b\<close>
-  shows \<open>a \<preceq> b \<longleftrightarrow> fst a \<preceq> fst b \<and> snd a \<preceq> snd b\<close>
-  by (cases a, cases b, clarsimp simp add: less_eq_sepadd_def',
-      metis unitof_disjoint2 unitof_is_unitR2)
-
 definition unitof_prod :: \<open>'a \<times> 'b \<Rightarrow> 'a \<times> 'b\<close> where
   \<open>unitof \<equiv> map_prod unitof unitof\<close>
 declare unitof_prod_def[simp]
 
 instance
-  by standard (simp add: less_eq_sepadd_def)+
+  by standard
+    (simp add: less_eq_sepadd_def)+
 
 end
 
@@ -725,16 +714,6 @@ instance
   by standard
     (simp add: disjoint_fun_def plus_fun_def le_fun_def fun_eq_iff le_iff_sepadd; metis)+
 
-lemma less_sepadd_fun_eq2:
-  fixes f g :: \<open>'a \<Rightarrow> 'b\<close>
-  shows \<open>f \<prec> g \<longleftrightarrow> (\<exists>x. f x \<prec> g x) \<and> (\<forall>x. f x \<preceq> g x)\<close>
-  by (metis le_iff_part_of less_sepadd_def less_sepadd_fun_eq)
-
-lemma less_eq_sepadd_fun_eq2:
-  fixes f g :: \<open>'a \<Rightarrow> 'b\<close>
-  shows \<open>f \<preceq> g \<longleftrightarrow> (\<forall>x. f x \<preceq> g x)\<close>
-  by (metis le_iff_part_of less_eq_sepadd_def' less_eq_sepadd_fun_eq)
-
 end
 
 
@@ -751,7 +730,7 @@ declare bot_fun_def[simp]
 
 instance
   by standard
-    (fastforce simp add: fun_eq_iff less_eq_sepadd_fun_eq2)+
+    (fastforce simp add: fun_eq_iff)+
 
 end
 
@@ -1574,14 +1553,6 @@ lemma sepdomeq_fun:
       simp del: not_Some_prod_eq split: if_splits, metis)
   apply blast
   done
-
-
-section \<open> Bibliography \<close>
-
-text \<open>
-  [Krebbers2014] R Krebbers. Separation Algebras for C Verification in Coq. VSTTE 2014.
-                  \<^url>\<open>https://doi.org/10.1007/978-3-319-12154-3 10\<close>
-\<close>
 
 
 end
