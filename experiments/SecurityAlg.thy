@@ -1543,6 +1543,58 @@ proof clarsimp
     done
 qed
 
+lemma test_unit_set_contains_unit:
+  fixes A :: \<open>('a::perm_alg) set\<close>
+  assumes Cpunit: \<open>A + C = A\<close>
+    and C_reduced: \<open>\<forall>c\<in>C. \<exists>a\<in>A. a ## c\<close>
+    and never_punit_C: \<open>\<forall>a\<in>A. a \<notin> {a} + C\<close>
+  shows \<open>\<forall>C1 C2. C = C1 + C2 \<longrightarrow> (\<forall>c\<in>C1. \<exists>a\<in>A. a ## c) \<longrightarrow> (A + C1 = A)\<close>
+proof clarsimp
+  fix C1 C2
+  assume assmsP1:
+    \<open>C = C1 + C2\<close>
+    \<open>\<forall>c\<in>C1. \<exists>a\<in>A. a ## c\<close>
+
+  define Crel :: \<open>'a \<Rightarrow> 'a \<Rightarrow> bool\<close> where
+    \<open>Crel = (\<lambda>x y. y \<in> {x} + C \<and> x \<noteq> y)\<close>
+
+  have Crel_less:
+    \<open>\<And>x y. Crel x y \<Longrightarrow> x \<prec> y\<close>
+    unfolding Crel_def
+    by (metis plus_set_singleton_left_leq resource_ordering.not_eq_order_implies_strict)
+  
+  have Crel_transcl_less:
+    \<open>\<And>x y. Crel\<^sup>+\<^sup>+ x y \<Longrightarrow> x \<prec> y\<close>
+    by (erule tranclp_induct, metis Crel_less, metis Crel_less resource_ordering.strict_trans)
+
+  have assum1': \<open>(\<Union>a\<in>A. {a} + C) = A\<close>
+    using assms
+    by (metis plus_set_eq_plus_left_members)
+  then have A_always_descending: \<open>\<forall>x\<in>A. \<exists>y\<in>A. y \<prec> x\<close>
+    using Crel_def Crel_less never_punit_C
+    by blast
+
+  have H1: \<open>\<forall>a\<in>A. \<forall>b\<in>{a} + C. a \<prec> b\<close>
+    using never_punit_C Crel_def Crel_less by blast
+
+  have H2: \<open>\<forall>a\<in>A. (\<exists>c\<in>C. a ## c) \<longrightarrow> (\<exists>a'\<in>A. a \<prec> a')\<close>
+    using assum1' H1
+    by (fastforce simp add: set_eq_iff singleton_plus_set_eq Bex_def Ball_def)
+
+  let ?R = \<open>{x. \<exists>a\<in>A. \<exists>a'\<in>A. a ## x \<and> a' = a + x \<and> a \<noteq> a'}\<close>
+
+  have \<open>C \<subseteq> ?R\<close>
+    using Cpunit C_reduced never_punit_C
+    by (fastforce simp add: plus_set_def Ball_def Bex_def)
+
+  have \<open>A + C1 = A \<longrightarrow> (\<forall>a\<in>A. a \<notin> {a} + C1) \<longrightarrow> C1 \<subseteq> ?R\<close>
+    using assmsP1(2)
+    by (fastforce simp add: plus_set_def)
+
+  show \<open>A + C1 = A\<close>
+    oops
+
+
 
 lemma (* C is not too small *)
   fixes A :: \<open>('a::unit_perm_alg) set\<close>
