@@ -749,17 +749,17 @@ definition level_eval_H
 
 definition \<open>uncertainty p s \<equiv> {s'. p (s,s')}\<close>
 
-definition \<open>urel_to_hyperset p \<equiv> range (uncertainty p)\<close>
+definition \<open>urel_to_hypemset p \<equiv> range (uncertainty p)\<close>
 
-lemma hyperset_level_eval_eq:
+lemma hypemset_level_eval_eq:
   \<open>{uncertainty ((e \<triangleleft> l') l) s|s. True} =
       {A. \<exists>s. A = {s'. l' s \<le> l \<longrightarrow> l' s' \<le> l \<longrightarrow> e s = e s'}}\<close>
   by transfer
     (clarsimp simp add: level_eval_def level_eval_H_def uncertainty_def)
 
-lemma \<open>((e \<triangleleft>\<^sub>\<H> l') l) = urel_to_hyperset ((e \<triangleleft> l') l)\<close>
+lemma \<open>((e \<triangleleft>\<^sub>\<H> l') l) = urel_to_hypemset ((e \<triangleleft> l') l)\<close>
   by transfer
-    (force simp add: level_eval_def level_eval_H_def urel_to_hyperset_def uncertainty_def)
+    (force simp add: level_eval_def level_eval_H_def urel_to_hypemset_def uncertainty_def)
 
 lemma
   fixes l' :: \<open>'s \<Rightarrow> 'l::ord\<close>
@@ -1595,109 +1595,6 @@ proof clarsimp
     oops
 
 
-
-lemma (* C is not too small *)
-  fixes A :: \<open>('a::unit_perm_alg) set\<close>
-  assumes \<open>A + C = A\<close>
-  shows \<open>\<forall>a\<in>A. \<exists>c\<in>C. a ## c \<and> a + c = a\<close>
-proof (clarsimp)
-  fix a
-  assume a_mem_A: \<open>a \<in> A\<close>
-
-  define succrel :: \<open>'a \<Rightarrow> 'a \<Rightarrow> bool\<close> where
-    \<open>succrel = (\<lambda>x y. y \<in> {x} + C \<and> x \<notin> {x} + C)\<close>
-  let ?succf = \<open>\<lambda>x. Collect (succrel x)\<close>
-
-  have succrel_strict_increasing:
-    \<open>\<And>x y. succrel x y \<Longrightarrow> x \<prec> y\<close>
-    unfolding succrel_def
-    by (metis plus_set_singleton_left_leq resource_ordering.order_iff_strict)
-
-  have assum1': \<open>(\<Union>a\<in>A. {a} + C) = A\<close>
-    using assms
-    by (metis plus_set_eq_plus_left_members)
-  then have succrel_A_closed_fwd:
-    \<open>\<And>x y. succrel x y \<Longrightarrow> x \<in> A \<Longrightarrow> y \<in> A\<close>
-    using succrel_def by auto
-
-  have succrel_transcl_A_closed_fwd:
-    \<open>\<And>x y. succrel\<^sup>+\<^sup>+ x y \<Longrightarrow> x \<in> A \<Longrightarrow> y \<in> A\<close>
-    by (erule tranclp_induct; metis succrel_A_closed_fwd)
-
-  have succrel_transcl_strict_increasing:
-    \<open>\<And>x y. succrel\<^sup>+\<^sup>+ x y \<Longrightarrow> x \<prec> y\<close>
-    by (erule tranclp_induct,
-        metis succrel_strict_increasing,
-        metis resource_ordering.strict_trans succrel_strict_increasing)
-
-  have L0:
-    \<open>\<And>x y. succrel\<^sup>+\<^sup>+ x y \<Longrightarrow> (\<exists>c\<in>C. x ## c \<and> x + c = x) \<Longrightarrow> (\<exists>c\<in>C. y ## c \<and> y + c = y)\<close>
-    by (meson pseudo_units_monotone resource_order.nless_le succrel_transcl_strict_increasing)
-
-  have downwards_not_selfC:
-    \<open>\<And>x y . x \<notin> {x} + C \<Longrightarrow> x \<in> {y} + C \<Longrightarrow> y \<notin> {y} + C\<close>
-    apply (frule plus_set_singleton_left_leq[rotated])
-    apply (clarsimp simp add: singleton_plus_set_eq)
-    apply (metis pseudo_units_monotone)
-    done
-
-  (* This and helper1 implies any element s.t. \<open>x \<notin> {x} + C\<close> has an infinite descending
-     succrel-chain. This works in any perm_alg.
-     Thus \<open>finite A\<close> implies \<open>\<forall>x\<in>A. x \<in> {x} + C\<close>.
-  *)
-  have H2: \<open>\<And>x. x \<in> A \<Longrightarrow> x \<notin> {x} + C \<Longrightarrow> \<exists>w\<in>A. w \<noteq> x \<and> succrel w x\<close>
-    unfolding succrel_def
-    using assum1'
-    apply (simp add: set_eq_iff)
-    apply (drule_tac x=x in spec)
-    apply clarsimp
-    apply (rename_tac w)
-    apply (rule_tac x=w in bexI[rotated])
-     apply blast
-    apply (blast dest: downwards_not_selfC)
-    done
-
-  (* In a \<open>wunit_perm_alg\<close>, \<open>x \<notin> {x} + C\<close> is inherited upwards along \<open>succrel\<close> too.
-     This is _not_ true for \<open>perm_alg\<close>.
-   *)
-  have upwards_not_selfC: \<open>\<And>x y. succrel x y \<Longrightarrow> y \<notin> {y} + C\<close>
-    apply (clarsimp simp add: succrel_def singleton_plus_set_eq)
-    apply (metis disjoint_add_leftL disjoint_sym partial_add_commute punit_collapse)
-    done
-
-  have L1: \<open>\<And>y. succrel\<^sup>+\<^sup>+ a y \<Longrightarrow> \<exists>c\<in>C. y ## c \<and> y + c = y \<Longrightarrow> \<exists>c\<in>C. a ## c \<and> a + c = a\<close>
-    apply (drule succrel_transcl_strict_increasing)
-    apply (clarsimp simp add: less_sepadd_def' Bex_def)
-    apply (metis disjoint_add_leftL disjoint_sym partial_add_commute punit_collapse)
-    done
-
-  have L2: \<open>\<And>x y. succrel\<^sup>+\<^sup>+ x y \<Longrightarrow> x \<in> {y} + C \<Longrightarrow> \<exists>c\<in>C. y ## c \<and> y + c = y\<close>
-    by (meson insertI1 plus_set_singleton_left_no_unit_less resource_ordering.asym
-        succrel_transcl_strict_increasing)
-
-  have L3: \<open>\<And>x. x \<in> A \<Longrightarrow> \<exists>y. succrel\<^sup>+\<^sup>+ x y \<and> x \<in> {y} + C\<close>
-    sorry
-
-  show \<open>\<exists>c\<in>C. a ## c \<and> a + c = a\<close>
-    using L3[OF a_mem_A]
-    apply clarsimp
-    apply (frule(1) L2)
-    apply clarsimp
-    apply (rule L1; blast)
-    done
-qed
-
-
-lemma all_eqD1:
-  fixes f g :: \<open>'a \<Rightarrow> 'b::order\<close>
-  shows \<open>\<forall>x. f x = g x \<Longrightarrow> \<forall>x. f x \<le> g x\<close>
-  by simp
-
-lemma all_eqD2:
-  fixes f g :: \<open>'a \<Rightarrow> 'b::order\<close>
-  shows \<open>\<forall>x. f x = g x \<Longrightarrow> \<forall>x. g x \<le> f x\<close>
-  by simp
-
 lemma minset_positivity_sep_alg:
   fixes A :: \<open>('a::sep_alg) set\<close>
   assumes split_punit_add: \<open>A + (C1 + C2) = A\<close>
@@ -1727,105 +1624,157 @@ lemma minset_positivity_sep_alg:
   apply (metis disjoint_add_rightL disjoint_add_swap_rl unit_sub_closure2)
   done
 
-lemma set_positivity:
-  fixes A :: \<open>('a::perm_alg) set\<close>
-  assumes
-    \<open>finite A\<close>
-    \<open>A + (C1 + C2) = A\<close>
-    \<open>P = ((+) :: 'a \<Rightarrow> 'a \<Rightarrow> 'a)\<close>
-    \<open>D = ((##) :: 'a \<Rightarrow> 'a \<Rightarrow> bool)\<close>
-  shows \<open>A + C1 = A\<close>
-  using assms(1-2)
-proof (induct rule: finite.induct)
-  case emptyI
-  then show ?case by simp
-next
-  case (insertI A a)
-  
-  show ?case
-    using insertI(3)
-    apply (clarsimp simp add: conj_disj_distribL conj_disj_distribR ex_disj_distrib
-        Collect_disj_eq insert_plus_set_eqL)
-    apply (rule trans[OF sym, symmetric], assumption)
+section \<open> minsets \<close>
 
-    sorry
-qed
-
-lemma
-  \<open>A + C = A \<Longrightarrow> \<forall>x. sepadd_Unit x \<longrightarrow> x \<in> A \<and> x \<in> C\<close>
-  sorry
-
-
-
-text \<open>
-  \<open>A + C = A\<close>
-  What can we say about \<open>{c\<in>C. \<nexists>a\<in>A. c ## a}\<close>?
-\<close>
-
-
-
-
-
-
-typedef(overloaded) ('a::perm_alg) rset = \<open>{A::'a set. \<Union>(sepequivs ` A) = A}\<close>
+typedef(overloaded) ('a::perm_alg) mset = \<open>{A::'a set. \<forall>x\<in>A. \<exists>y\<in>A. y \<preceq> x \<and> (\<forall>z\<in>A. \<not> z \<prec> y)}\<close>
   using sepequivs_def by auto
 
 print_theorems
-setup_lifting type_definition_rset
+setup_lifting type_definition_mset
 
-lift_definition rmember :: \<open>('a::perm_alg) \<Rightarrow> 'a rset \<Rightarrow> bool\<close> (infix \<open>\<in>\<^sub>r\<close> 55) is
+
+lift_definition mset_mins :: \<open>('a::perm_alg) mset \<Rightarrow> 'a set\<close> is
+  \<open>\<lambda>A. {x\<in>A. \<forall>z\<in>A. \<not> z \<prec> x}\<close> .
+
+lift_definition mset_mins_of :: \<open>('a::perm_alg) mset \<Rightarrow> 'a \<Rightarrow> 'a set\<close> is
+  \<open>\<lambda>A a. {x\<in>A. x \<preceq> a \<and> (\<forall>z\<in>A. \<not> z \<prec> x)}\<close> .
+
+lemma mins_of_all_eq_mins:
+  \<open>\<Union>(mset_mins_of A ` Rep_mset A) = mset_mins A\<close>
+  by (transfer, force)
+
+lift_definition mset_member :: \<open>('a::perm_alg) \<Rightarrow> 'a mset \<Rightarrow> bool\<close> (infix \<open>\<in>\<^sub>M\<close> 55) is
   \<open>(\<in>)\<close> .
 
-lift_definition rsubseteq :: \<open>('a::perm_alg) rset \<Rightarrow> 'a rset \<Rightarrow> bool\<close> (infix \<open>\<subseteq>\<^sub>r\<close> 55) is
+lift_definition mset_subseteq :: \<open>('a::perm_alg) mset \<Rightarrow> 'a mset \<Rightarrow> bool\<close> (infix \<open>\<subseteq>\<^sub>M\<close> 55) is
   \<open>(\<subseteq>)\<close> .
 
-lemma rset_antisym:
-  \<open>A \<subseteq>\<^sub>r B \<Longrightarrow> B \<subseteq>\<^sub>r A \<Longrightarrow> A = B\<close>
-  by (simp add: Rep_rset_inject rsubseteq.rep_eq)
+lemma mset_antisym:
+  \<open>A \<subseteq>\<^sub>M B \<Longrightarrow> B \<subseteq>\<^sub>M A \<Longrightarrow> A = B\<close>
+  by (simp add: Rep_mset_inject mset_subseteq.rep_eq)
 
-instantiation rset :: (multiunit_sep_alg) perm_alg
+
+lemma (in perm_alg) sepadd_right_addmono:
+  \<open>a ## c \<Longrightarrow> a + x ## c \<Longrightarrow> a ## x \<Longrightarrow> a + c + x = a + x + c\<close>
+  using disjoint_add_leftR disjoint_add_left_commute2 partial_add_right_commute
+  by blast+
+
+lemma (in perm_alg) disjoint22_commute23:
+  \<open>a ## c \<Longrightarrow> b ## d \<Longrightarrow> a + c ## b + d \<Longrightarrow> a + b ## c + d\<close>
+  by (meson disjoint_add_rightL disjoint_add_swap_rl disjoint_middle_swap)
+
+lemma (in perm_alg) sepadd22_commute23:
+  \<open>a ## c \<Longrightarrow> b ## d \<Longrightarrow> a + c ## b + d \<Longrightarrow> a + c + (b + d) = a + b + (c + d)\<close>
+  by (metis disjoint_add_rightR disjoint_add_swap_lr disjoint_sym partial_add_double_assoc)
+
+lemma (in perm_alg) resource_order_parts_leq_then_add_leq:
+  assumes
+    \<open>a' \<preceq> a\<close>
+    \<open>b' \<preceq> b\<close>
+    \<open>a ## b\<close>
+  shows
+    \<open>a' + b' \<preceq> a + b\<close>
+  using assms
+  by (meson disjoint_preservation disjoint_preservation2 resource_order.order_trans
+      sepadd_left_mono sepadd_right_mono)
+
+abbreviation (in perm_alg) \<open>min_of A y \<equiv> \<forall>z\<in>A. \<not> z \<prec> y\<close>
+
+lemma (in perm_alg)
+  assumes chain_induct:
+    \<open>\<And>C P. \<And>a::'a. a \<in> C \<Longrightarrow> pred_on.chain UNIV (\<prec>) C  \<Longrightarrow> (\<forall>x\<in>C. (\<forall>y\<in>C. y \<prec> x \<longrightarrow> P y) \<longrightarrow> P x) \<Longrightarrow> P a\<close>
+  shows
+  \<open>\<forall>x\<in>A. \<exists>y\<in>A. y \<preceq> x \<and> min_of A y \<Longrightarrow>
+    \<forall>x\<in>B. \<exists>y\<in>B. y \<preceq> x \<and> min_of B y \<Longrightarrow>
+    L = {(x,y). x \<prec> y} \<Longrightarrow>
+    MA = {x\<in>A. min_of A x} \<Longrightarrow>
+    MB = {x\<in>B. min_of B x} \<Longrightarrow>
+    MAB = {x+y|x y. x ## y \<and> x \<in> MA \<and> y \<in> MB} \<Longrightarrow>
+    \<exists>ma\<in>A. \<exists>mb\<in>B. min_of A ma \<and> min_of B mb \<and> ma ## mb \<Longrightarrow>
+    \<exists>ma\<in>A. \<exists>mb\<in>B.
+      min_of A ma \<and> min_of B mb \<and> ma ## mb \<and>
+      (\<forall>x\<in>A. min_of A x \<longrightarrow> (\<forall>y\<in>B. min_of B y \<longrightarrow> x ## y \<longrightarrow> \<not> x + y \<prec> ma + mb))\<close>
+  apply (clarsimp simp add: Ball_def Bex_def)
+  apply (rename_tac ma mb)
+  apply (rule ccontr)
+  apply clarsimp
+  apply (drule_tac x=ma in spec, drule mp, assumption, drule make_pos_rule', blast)
+  apply (drule_tac x=mb in spec, drule mp, assumption, drule mp, assumption, drule make_pos_rule', blast)
+  apply clarsimp
+  apply (rename_tac ma' mb')
+  nitpick
+  oops
+
+
+lemma
+  fixes A B :: \<open>('a :: disjoint_parts_perm_alg) set\<close>
+  shows
+  \<open>L = {(a::'a,b). a \<lesssim> b} \<Longrightarrow>
+    R = {(a::'a,b,a + b)|a b. a ## b} \<Longrightarrow>
+    \<forall>x\<in>A. \<exists>y\<in>A. y \<preceq> x \<and> (\<forall>z\<in>A. \<not> z \<prec> y) \<Longrightarrow>
+    \<forall>x\<in>B. \<exists>y\<in>B. y \<preceq> x \<and> (\<forall>z\<in>B. \<not> z \<prec> y) \<Longrightarrow>
+    MA = {y\<in>A. \<forall>z\<in>A. \<not> z \<prec> y} \<Longrightarrow>
+    MB = {y\<in>B. \<forall>z\<in>B. \<not> z \<prec> y} \<Longrightarrow>
+    MAB = MA + MB \<Longrightarrow>
+    a \<in> A \<Longrightarrow>
+    b \<in> B \<Longrightarrow>
+    a ## b \<Longrightarrow>
+    \<forall>x\<in>MAB. \<exists>y\<in>MAB. y \<preceq> x \<and> (\<forall>z\<in>MAB. \<not> z \<prec> y)\<close>
+  apply (clarsimp simp add: plus_set_def Bex_def Ball_def)
+  apply (rename_tac ma mb)
+  apply (subgoal_tac \<open>\<exists>ma2 mb2. (\<forall>ya\<in>A. (\<forall>z\<in>A. \<not> z \<prec> ya) \<longrightarrow> (\<forall>yb\<in>B. (\<forall>z\<in>B. \<not> z \<prec> yb) \<longrightarrow>
+                                   ma1 + ma2 \<preceq> ya + yb)))\<close>)
+  oops
+
+lemma (in perm_alg) min_sepadd_preservation:
+  \<open>L = {(a,b). a \<prec> b} \<Longrightarrow>
+    \<forall>x\<in>A. \<exists>y\<in>A. \<forall>z\<in>A. \<not> z \<prec> y \<Longrightarrow>
+    \<forall>x\<in>B. \<exists>y\<in>B. \<forall>z\<in>B. \<not> z \<prec> y \<Longrightarrow>
+    a \<in> A \<Longrightarrow>
+    b \<in> B \<Longrightarrow>
+    a ## b \<Longrightarrow>
+    (\<exists>x'\<in>A. (\<forall>z\<in>A. \<not> z \<prec> x') \<and>
+      (\<exists>y'\<in>B. (\<forall>z\<in>B. \<not> z \<prec> y') \<and>
+        x' ## y' \<and> (\<forall>za\<in>A. \<forall>zb\<in>B. za ## zb \<longrightarrow> \<not> za + zb \<prec> x' + y')
+      ))\<close>
+  
+  oops
+
+instantiation mset :: (multiunit_sep_alg) perm_alg
 begin
 
-lift_definition plus_rset :: \<open>('a::multiunit_sep_alg) rset \<Rightarrow> 'a rset \<Rightarrow> 'a rset\<close> is
+lift_definition plus_mset :: \<open>('a::multiunit_sep_alg) mset \<Rightarrow> 'a mset \<Rightarrow> 'a mset\<close> is
   \<open>\<lambda>A B. {a + b|a b. a \<in> A \<and> b \<in> B \<and> a ## b}\<close>
-  apply (clarsimp simp add: sepequivs_def set_eq_iff)
-  apply (rule iffI)
-   apply (metis disjoint_add_leftR disjoint_add_swap_lr partial_add_assoc2)
-  apply blast
-  done
+  apply (clarsimp simp add: Bex_def)
+  apply (rename_tac A B a b)
+  apply (drule_tac x=a in meta_spec)
+  apply (drule_tac x=b in meta_spec)
+  apply clarsimp
+  apply (rename_tac am bm)
+  apply (rule_tac x=\<open>am + bm\<close> in exI)
+  apply (rule conjI)
+   apply (metis disjoint_preservation disjoint_sym)
+  apply (rule conjI)
+   apply (metis resource_order_parts_leq_then_add_leq)
+  apply clarsimp
+  apply (rename_tac x y a' b')
+  nitpick
+  sorry
 
-lift_definition disjoint_rset :: \<open>('a::multiunit_sep_alg) rset \<Rightarrow> 'a rset \<Rightarrow> bool\<close> is
+lift_definition disjoint_mset :: \<open>('a::multiunit_sep_alg) mset \<Rightarrow> 'a mset \<Rightarrow> bool\<close> is
   \<open>\<lambda>A B. True\<close> .
 
 instance
   apply standard
        apply transfer
-       apply clarsimp
-       apply (clarsimp simp add: set_eq_iff)
-       apply (rule iffI)
-        apply (metis disjoint_add_leftR disjoint_add_swap_lr  partial_add_assoc2)
-       apply (metis disjoint_add_rightL disjoint_add_swap_rl partial_add_assoc2)
-      apply transfer
-      apply (clarsimp simp add: set_eq_iff)
-      apply (meson disjoint_sym partial_add_commute; fail)
-     apply transfer
-     apply (metis disjoint_sym)
-    apply transfer
-    apply (blast dest: disjoint_add_rightL)
-   apply transfer
-   apply (clarsimp simp add: set_eq_iff)
-
+  oops
+      apply (transfer, force)
+     apply (transfer, force)
+    apply (transfer, force)
+   apply (transfer, force)
   apply clarsimp
-  apply transfer
-  apply clarsimp
-  apply (rule sym, rule_tac ?B2.0=c2 in set_positivity[unfolded plus_set_def])
-  apply clarsimp
-  apply (rule trans[rotated, of \<open>Collect _\<close>], assumption)
-  apply (thin_tac _)+
-  apply (clarsimp simp add: set_eq_iff)
-  apply (rule iffI)
-   apply (metis disjoint_add_rightL disjoint_add_swap_rl partial_add_assoc3)
-  apply (metis disjoint_add_leftR disjoint_add_swap_lr partial_add_assoc2)
+  apply (transfer)
+  apply force
   done
 
 end
